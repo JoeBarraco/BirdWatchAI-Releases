@@ -490,12 +490,9 @@ ul {
     color: var(--color-white);
 }
 
-.feature-card-main h3 {
-    color: #ffffff !important;
-}
-
+.feature-card-main h3,
 .feature-card-main p {
-    color: rgba(255, 255, 255, 0.95) !important;
+    color: #ffffff !important;
 }
 
 .feature-icon {
@@ -510,6 +507,11 @@ ul {
 .feature-card p {
     font-size: 0.9375rem;
     color: var(--color-gray-500);
+}
+
+.features-grid .feature-card-main p {
+    color: #ffffff !important;
+    opacity: 1;
 }
 
 @media (min-width: 768px) {
