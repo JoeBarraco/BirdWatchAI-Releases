@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Getting Started - BirdWatchAI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Source+Sans+3:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --color-primary: #2d5a3d;
+            --color-primary-light: #3d7a52;
+            --color-accent: #d4a574;
+            --color-cream: #faf8f5;
+            --color-gray-100: #f5f3f0;
+            --color-gray-500: #7a756d;
+            --color-gray-700: #4a4640;
+            --color-gray-900: #2a2825;
+        }
+        
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            font-family: 'Source Sans 3', -apple-system, sans-serif;
+            font-size: 1.0625rem;
+            line-height: 1.7;
+            color: var(--color-gray-700);
+            background: var(--color-cream);
+            padding: 2rem 1rem;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--color-primary);
+            font-weight: 500;
+            margin-bottom: 2rem;
+        }
+        
+        h1, h2, h3 {
+            font-family: 'Fraunces', serif;
+            color: var(--color-gray-900);
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 3px solid var(--color-primary);
+        }
+        
+        h2 {
+            font-size: 1.5rem;
+            margin: 2.5rem 0 1rem;
+            color: var(--color-primary);
+        }
+        
+        h3 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.5rem;
+        }
+        
+        p { margin: 1rem 0; }
+        
+        ul, ol {
+            margin: 1rem 0;
+            padding-left: 1.5rem;
+        }
+        
+        li { margin: 0.5rem 0; }
+        
+        a { color: var(--color-primary); }
+        
+        code {
+            background: var(--color-gray-100);
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-family: 'Consolas', monospace;
+            font-size: 0.9em;
+        }
+        
+        .box {
+            padding: 1.25rem;
+            border-radius: 8px;
+            margin: 1.5rem 0;
+            border-left: 4px solid;
+        }
+        
+        .box-info {
+            background: #e3f2fd;
+            border-color: #2196f3;
+        }
+        
+        .box-tip {
+            background: #e8f5e9;
+            border-color: var(--color-primary);
+        }
+        
+        .box-warning {
+            background: #fff8e1;
+            border-color: #ffc107;
+        }
+        
+        .box h3, .box strong {
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+        
+        .step-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 2rem;
+            height: 2rem;
+            background: var(--color-primary);
+            color: white;
+            border-radius: 50%;
+            font-weight: bold;
+            margin-right: 0.75rem;
+        }
+        
+        .step-section {
+            display: flex;
+            align-items: flex-start;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        
+        .step-content {
+            flex: 1;
+        }
+        
+        .step-content h3 {
+            margin-top: 0;
+        }
+        
+        footer {
+            margin-top: 3rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--color-gray-100);
+            text-align: center;
+            color: var(--color-gray-500);
+            font-size: 0.875rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">← Back to BirdWatchAI</a>
+        
+        <h1>🚀 Getting Started with BirdWatchAI</h1>
+        
+        <p>Welcome to BirdWatchAI! This guide will help you get up and running in just a few minutes.</p>
+        
+        <h2>What You'll Need</h2>
+        
+        <ul>
+            <li><strong>A Windows computer</strong> (Windows 10 or 11)</li>
+            <li><strong>An RTSP-compatible camera</strong> pointed at your bird feeder</li>
+            <li><strong>Both on the same WiFi network</strong></li>
+        </ul>
+        
+        <div class="box box-tip">
+            <strong>🎥 Recommended Camera</strong>
+            We recommend the <strong>TAPO C120</strong> (~$30) for its excellent 2K quality, weatherproof design, and easy RTSP setup. See our <a href="tapo-setup.html">TAPO C120 Setup Guide</a> for detailed instructions.
+        </div>
+        
+        <h2>Quick Start Guide</h2>
+        
+        <div class="step-section">
+            <span class="step-number">1</span>
+            <div class="step-content">
+                <h3>Download & Install</h3>
+                <p>Download BirdWatchAI from our <a href="../index.html#download">download page</a> and run the installer. The installation takes about 2 minutes.</p>
+            </div>
+        </div>
+        
+        <div class="step-section">
+            <span class="step-number">2</span>
+            <div class="step-content">
+                <h3>Run the Setup Wizard</h3>
+                <p>On first launch, the Setup Wizard guides you through:</p>
+                <ul>
+                    <li>Camera connection (RTSP URL configuration)</li>
+                    <li>Your location (zip code for weather & bird rarity)</li>
+                    <li>Notification preferences (email and/or Pushover)</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="step-section">
+            <span class="step-number">3</span>
+            <div class="step-content">
+                <h3>Start Monitoring</h3>
+                <p>Click the <strong>"Start Monitoring"</strong> button, and BirdWatchAI will begin watching your feeder. When a bird appears, the AI will identify the species and save a snapshot.</p>
+            </div>
+        </div>
+        
+        <div class="step-section">
+            <span class="step-number">4</span>
+            <div class="step-content">
+                <h3>Get Notified</h3>
+                <p>If you've set up notifications, you'll receive alerts on your phone whenever a bird is detected. Each notification includes a photo and the identified species.</p>
+            </div>
+        </div>
+        
+        <h2>Setting Up Your Camera</h2>
+        
+        <p>BirdWatchAI connects to your camera via RTSP (Real Time Streaming Protocol). Most IP cameras support RTSP, but setup varies by brand.</p>
+        
+        <h3>Camera-Specific Guides</h3>
+        <ul>
+            <li><a href="tapo-setup.html"><strong>TAPO C120 / C200 / C310</strong></a> - Detailed setup guide</li>
+            <li><strong>Other cameras</strong> - Check your camera's manual for the RTSP URL format</li>
+        </ul>
+        
+        <div class="box box-info">
+            <strong>📹 General RTSP URL Format</strong>
+            <p>Most cameras use a URL like:</p>
+            <code>rtsp://username:password@192.168.1.xxx:554/stream</code>
+            <p>The exact format depends on your camera brand. Common paths include <code>/stream1</code>, <code>/live</code>, or <code>/h264</code>.</p>
+        </div>
+        
+        <h2>Setting Up Notifications</h2>
+        
+        <h3>Email Notifications</h3>
+        <p>Get bird detection alerts sent to your email with photos attached.</p>
+        <ol>
+            <li>Go to <strong>Settings → Email</strong></li>
+            <li>Enable email notifications</li>
+            <li>Enter your SMTP settings (Gmail works great)</li>
+            <li>For Gmail: Use an <a href="https://myaccount.google.com/apppasswords" target="_blank">App Password</a>, not your regular password</li>
+        </ol>
+        
+        <h3>Pushover Notifications (Recommended)</h3>
+        <p>Pushover delivers instant push notifications to your phone with attached photos.</p>
+        <ol>
+            <li>Create an account at <a href="https://pushover.net" target="_blank">pushover.net</a></li>
+            <li>Install the Pushover app on your phone ($5 one-time purchase)</li>
+            <li>Create an application at pushover.net to get an API token</li>
+            <li>Enter your User Key and API Token in BirdWatchAI settings</li>
+        </ol>
+        
+        <h2>Tips for Best Results</h2>
+        
+        <div class="box box-tip">
+            <strong>📍 Camera Placement</strong>
+            <ul>
+                <li>Position the camera 4-8 feet from the feeder</li>
+                <li>Ensure good lighting (avoid backlit situations)</li>
+                <li>Keep the background simple if possible</li>
+                <li>Angle slightly downward toward the feeder</li>
+            </ul>
+        </div>
+        
+        <div class="box box-tip">
+            <strong>⚙️ Confidence Threshold</strong>
+            <p>The default 70% confidence threshold works well for most setups. If you're getting too many false positives, increase it to 80%. If you're missing birds, try lowering it to 60%.</p>
+        </div>
+        
+        <div class="box box-tip">
+            <strong>🌅 Daylight Hours</strong>
+            <p>Enable "Monitor during daylight hours only" to avoid false detections at night and save resources when birds aren't active.</p>
+        </div>
+        
+        <h2>Need Help?</h2>
+        
+        <ul>
+            <li><a href="tapo-setup.html">TAPO Camera Setup Guide</a></li>
+            <li><a href="mailto:support@birdwatchai.com">Email Support</a></li>
+        </ul>
+        
+        <footer>
+            <p>BirdWatchAI - Getting Started Guide</p>
+            <p><a href="../index.html">← Back to Home</a></p>
+        </footer>
+    </div>
+</body>
+</html>

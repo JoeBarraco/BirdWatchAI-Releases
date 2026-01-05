@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TAPO C120 Camera Setup Guide - BirdWatchAI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Source+Sans+3:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --color-primary: #2d5a3d;
+            --color-primary-light: #3d7a52;
+            --color-accent: #d4a574;
+            --color-cream: #faf8f5;
+            --color-gray-100: #f5f3f0;
+            --color-gray-500: #7a756d;
+            --color-gray-700: #4a4640;
+            --color-gray-900: #2a2825;
+        }
+        
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            font-family: 'Source Sans 3', -apple-system, sans-serif;
+            font-size: 1.0625rem;
+            line-height: 1.7;
+            color: var(--color-gray-700);
+            background: var(--color-cream);
+            padding: 2rem 1rem;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--color-primary);
+            font-weight: 500;
+            margin-bottom: 2rem;
+        }
+        
+        h1, h2, h3 {
+            font-family: 'Fraunces', serif;
+            color: var(--color-gray-900);
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 3px solid var(--color-primary);
+        }
+        
+        h2 {
+            font-size: 1.5rem;
+            margin: 2.5rem 0 1rem;
+            color: var(--color-primary);
+        }
+        
+        h3 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.5rem;
+        }
+        
+        p { margin: 1rem 0; }
+        
+        ul, ol {
+            margin: 1rem 0;
+            padding-left: 1.5rem;
+        }
+        
+        li { margin: 0.5rem 0; }
+        
+        a { color: var(--color-primary); }
+        
+        code {
+            background: var(--color-gray-100);
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-family: 'Consolas', monospace;
+            font-size: 0.9em;
+        }
+        
+        pre {
+            background: var(--color-gray-900);
+            color: #f8f8f2;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        
+        pre code {
+            background: none;
+            padding: 0;
+        }
+        
+        .box {
+            padding: 1.25rem;
+            border-radius: 8px;
+            margin: 1.5rem 0;
+            border-left: 4px solid;
+        }
+        
+        .box-info {
+            background: #e3f2fd;
+            border-color: #2196f3;
+        }
+        
+        .box-warning {
+            background: #fff8e1;
+            border-color: #ffc107;
+        }
+        
+        .box-error {
+            background: #ffebee;
+            border-color: #f44336;
+        }
+        
+        .box-step {
+            background: var(--color-gray-100);
+            border-color: var(--color-primary);
+        }
+        
+        .box h3, .box strong {
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+        
+        th, td {
+            border: 1px solid var(--color-gray-100);
+            padding: 0.75rem 1rem;
+            text-align: left;
+        }
+        
+        th {
+            background: var(--color-primary);
+            color: white;
+        }
+        
+        tr:nth-child(even) { background: var(--color-gray-100); }
+        
+        .check-list {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .check-list li {
+            padding-left: 1.75rem;
+            position: relative;
+        }
+        
+        .check-list li::before {
+            content: "✓";
+            color: var(--color-primary);
+            font-weight: bold;
+            position: absolute;
+            left: 0;
+        }
+        
+        footer {
+            margin-top: 3rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--color-gray-100);
+            text-align: center;
+            color: var(--color-gray-500);
+            font-size: 0.875rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">← Back to BirdWatchAI</a>
+        
+        <h1>📷 TAPO C120 Camera Setup Guide</h1>
+        
+        <p>This guide walks you through setting up your TAPO C120 camera for use with BirdWatchAI. The TAPO C120 is an excellent choice for bird monitoring with its 2K resolution, indoor/outdoor capability, and native RTSP support.</p>
+        
+        <div class="box box-info">
+            <strong>📌 Supported TAPO Models</strong>
+            This guide applies to all TAPO cameras with RTSP support including: C100, C110, C120, C200, C210, C310, C320WS, C500, C510W, and C520WS.
+        </div>
+        
+        <h2>Before You Begin</h2>
+        
+        <p>Make sure you have:</p>
+        <ul class="check-list">
+            <li>TAPO C120 camera connected to your home WiFi network</li>
+            <li>TAPO app installed on your smartphone (iOS or Android)</li>
+            <li>Camera registered and working in the TAPO app</li>
+            <li>Computer running BirdWatchAI on the same network as the camera</li>
+        </ul>
+        
+        <h2>Step 1: Create a Camera Account (Required)</h2>
+        
+        <div class="box box-warning">
+            <strong>⚠️ Important</strong>
+            You MUST create a Camera Account in the TAPO app before you can use RTSP streaming. This is a separate account from your TAPO login credentials.
+        </div>
+        
+        <div class="box box-step">
+            <h3>Instructions:</h3>
+            <ol>
+                <li>Open the <strong>TAPO app</strong> on your smartphone</li>
+                <li>Tap on your <strong>C120 camera</strong> to open the Live View</li>
+                <li>Tap the <strong>⚙️ gear icon</strong> in the top-right corner</li>
+                <li>Tap <strong>"Advanced Settings"</strong></li>
+                <li>Tap <strong>"Camera Account"</strong></li>
+                <li>Read the security notice and tap <strong>"Understand and Agree to Use"</strong></li>
+                <li>Create a <strong>username</strong> (6-32 characters)</li>
+                <li>Create a <strong>password</strong> (6-32 characters)</li>
+                <li>Tap <strong>"Save"</strong></li>
+            </ol>
+        </div>
+        
+        <div class="box box-warning">
+            <strong>🔐 Security Tips</strong>
+            <ul>
+                <li>Use a <strong>different password</strong> than your TAPO account password</li>
+                <li>Write down your Camera Account username and password - you'll need these for BirdWatchAI</li>
+                <li>RTSP streaming should only be used on trusted local networks</li>
+            </ul>
+        </div>
+        
+        <h2>Step 2: Find Your Camera's IP Address</h2>
+        
+        <h3>Option A: Using the TAPO App (Easiest)</h3>
+        <div class="box box-step">
+            <ol>
+                <li>Open the TAPO app</li>
+                <li>Tap your camera to open Live View</li>
+                <li>Tap the <strong>⚙️ gear icon</strong></li>
+                <li>Scroll down and tap <strong>"Device Info"</strong></li>
+                <li>Look for <strong>"IP Address"</strong> (e.g., 192.168.1.105)</li>
+            </ol>
+        </div>
+        
+        <h3>Option B: Using Your Router</h3>
+        <div class="box box-step">
+            <ol>
+                <li>Log into your router's admin page (usually <code>192.168.1.1</code> or <code>192.168.0.1</code>)</li>
+                <li>Look for "Connected Devices", "DHCP Clients", or "Client List"</li>
+                <li>Find your camera by name (usually "TAPO_C120_XXXX")</li>
+                <li>Note the IP address</li>
+            </ol>
+        </div>
+        
+        <div class="box box-info">
+            <strong>💡 Tip</strong>
+            Consider setting a static IP for your camera in your router settings. This prevents the IP from changing and breaking your BirdWatchAI connection.
+        </div>
+        
+        <h2>Step 3: RTSP URL Format</h2>
+        
+        <p>The RTSP URL for TAPO cameras follows this format:</p>
+        
+        <pre><code>rtsp://&lt;username&gt;:&lt;password&gt;@&lt;camera_ip&gt;:554/stream1</code></pre>
+        
+        <h3>Stream Options</h3>
+        <table>
+            <tr>
+                <th>Stream Path</th>
+                <th>Quality</th>
+                <th>Resolution</th>
+                <th>Use Case</th>
+            </tr>
+            <tr>
+                <td><code>/stream1</code></td>
+                <td>High Quality</td>
+                <td>2K (2304×1296)</td>
+                <td>Best for bird identification</td>
+            </tr>
+            <tr>
+                <td><code>/stream2</code></td>
+                <td>Low Quality</td>
+                <td>640×360</td>
+                <td>Lower bandwidth, faster preview</td>
+            </tr>
+        </table>
+        
+        <h3>Example URLs</h3>
+        <pre><code>High Quality:  rtsp://birdcam:MyPassword123@192.168.1.105/stream1
+Low Quality:   rtsp://birdcam:MyPassword123@192.168.1.105/stream2</code></pre>
+        
+        <h2>Step 4: Configure BirdWatchAI</h2>
+        
+        <div class="box box-step">
+            <h3>Using the Setup Wizard (Recommended)</h3>
+            <p>On first launch, BirdWatchAI shows a setup wizard that guides you through camera configuration.</p>
+            <ol>
+                <li>Select <strong>"TP-Link Tapo"</strong> as your camera type</li>
+                <li>Enter your camera's <strong>IP Address</strong></li>
+                <li>Enter the <strong>RTSP Username</strong> (Camera Account username)</li>
+                <li>Enter the <strong>RTSP Password</strong> (Camera Account password)</li>
+                <li>Click <strong>"Build URL"</strong></li>
+                <li>Click <strong>"Test Connection"</strong></li>
+                <li>If successful, click <strong>"Next"</strong> to continue setup</li>
+            </ol>
+        </div>
+        
+        <h2>Troubleshooting</h2>
+        
+        <div class="box box-error">
+            <strong>❌ "Connection refused" or "Connection timed out"</strong>
+            <ul>
+                <li><strong>Check:</strong> Have you created a Camera Account in the TAPO app?</li>
+                <li><strong>Check:</strong> Is the camera IP address correct?</li>
+                <li><strong>Check:</strong> Is your computer on the same network as the camera?</li>
+                <li><strong>Try:</strong> Ping the camera: <code>ping 192.168.1.105</code></li>
+            </ul>
+        </div>
+        
+        <div class="box box-error">
+            <strong>❌ "Authentication failed" or "401 Unauthorized"</strong>
+            <ul>
+                <li><strong>Check:</strong> Username and password are case-sensitive</li>
+                <li><strong>Check:</strong> Use the Camera Account credentials (not your TAPO login)</li>
+                <li><strong>Try:</strong> Delete and recreate the Camera Account in TAPO app</li>
+            </ul>
+        </div>
+        
+        <div class="box box-error">
+            <strong>❌ "Choppy video" or "Lag"</strong>
+            <ul>
+                <li><strong>Try:</strong> Use <code>/stream2</code> (lower resolution) for smoother playback</li>
+                <li><strong>Check:</strong> WiFi signal strength at camera location</li>
+                <li><strong>Try:</strong> Move camera closer to your WiFi router</li>
+            </ul>
+        </div>
+        
+        <h2>Quick Reference</h2>
+        
+        <table>
+            <tr>
+                <th>Setting</th>
+                <th>Value</th>
+            </tr>
+            <tr>
+                <td>RTSP Port</td>
+                <td>554</td>
+            </tr>
+            <tr>
+                <td>High Quality Stream</td>
+                <td>/stream1</td>
+            </tr>
+            <tr>
+                <td>Low Quality Stream</td>
+                <td>/stream2</td>
+            </tr>
+            <tr>
+                <td>URL Format</td>
+                <td>rtsp://user:pass@ip/stream1</td>
+            </tr>
+            <tr>
+                <td>Username Length</td>
+                <td>6-32 characters</td>
+            </tr>
+            <tr>
+                <td>Password Length</td>
+                <td>6-32 characters</td>
+            </tr>
+        </table>
+        
+        <h2>Need More Help?</h2>
+        
+        <ul>
+            <li><a href="https://www.tp-link.com/us/support/faq/2680/" target="_blank">TP-Link Official RTSP Guide</a></li>
+            <li><a href="https://www.tp-link.com/us/support/faq/4465/" target="_blank">TAPO Camera RTSP FAQ</a></li>
+            <li><a href="mailto:support@birdwatchai.com">Contact BirdWatchAI Support</a></li>
+        </ul>
+        
+        <footer>
+            <p>BirdWatchAI - TAPO C120 Setup Guide</p>
+            <p><a href="../index.html">← Back to Home</a></p>
+        </footer>
+    </div>
+</body>
+</html>
