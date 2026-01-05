@@ -490,13 +490,12 @@ ul {
     color: var(--color-white);
 }
 
-.feature-card-main h3,
-.feature-card-main p {
-    color: var(--color-white);
+.feature-card-main h3 {
+    color: #ffffff !important;
 }
 
 .feature-card-main p {
-    opacity: 0.9;
+    color: rgba(255, 255, 255, 0.95) !important;
 }
 
 .feature-icon {
