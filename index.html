@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BirdWatchAI - Automatic Bird Detection & Identification</title>
+    <meta name="description" content="Transform your backyard into a smart bird sanctuary. BirdWatchAI uses AI to automatically detect, identify, and notify you of bird visitors at your feeders.">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" type="image/png" href="images/favicon.png">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="nav">
+        <div class="nav-container">
+            <a href="#" class="nav-logo">
+                <img src="images/logo.png" alt="BirdWatchAI" class="nav-logo-img">
+                <span>BirdWatchAI</span>
+            </a>
+            <div class="nav-links">
+                <a href="#features">Features</a>
+                <a href="#how-it-works">How It Works</a>
+                <a href="#pricing">Pricing</a>
+                <a href="#requirements">Requirements</a>
+                <a href="#download" class="btn btn-nav">Download Free Trial</a>
+            </div>
+            <button class="nav-mobile-toggle" aria-label="Toggle menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <header class="hero">
+        <div class="hero-bg"></div>
+        <div class="hero-content">
+            <div class="hero-badge">🐦 AI-Powered Bird Monitoring</div>
+            <h1>Know Every Bird<br>That Visits Your Feeder</h1>
+            <p class="hero-subtitle">
+                BirdWatchAI connects to your camera and uses artificial intelligence to 
+                automatically detect, identify, and notify you of bird visitors — even when you're away.
+            </p>
+            <div class="hero-cta">
+                <a href="#download" class="btn btn-primary btn-large">
+                    <span>Download Free Trial</span>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                </a>
+                <a href="#how-it-works" class="btn btn-secondary btn-large">See How It Works</a>
+            </div>
+            <p class="hero-trial-note">14-day free trial • No credit card required</p>
+        </div>
+        <div class="hero-image">
+            <div class="hero-screenshot-wrapper">
+                <!-- Placeholder for app screenshot -->
+                <div class="hero-screenshot-placeholder">
+                    <span>App Screenshot</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Social Proof / Stats -->
+    <section class="stats">
+        <div class="container">
+            <div class="stats-grid">
+                <div class="stat">
+                    <span class="stat-number">965+</span>
+                    <span class="stat-label">Bird Species Recognized</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-number">24/7</span>
+                    <span class="stat-label">Automatic Monitoring</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-number">100%</span>
+                    <span class="stat-label">Local & Private</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="features">
+        <div class="container">
+            <div class="section-header">
+                <h2>Everything You Need to<br>Monitor Your Feeders</h2>
+                <p>Powerful features designed for bird enthusiasts who want to see every visitor.</p>
+            </div>
+            
+            <div class="features-grid">
+                <div class="feature-card feature-card-main">
+                    <div class="feature-icon">🤖</div>
+                    <h3>AI Bird Identification</h3>
+                    <p>Our trained neural network identifies 965+ North American bird species in real-time. Get instant notifications with species name, confidence level, and rarity for your location.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">📹</div>
+                    <h3>RTSP Camera Support</h3>
+                    <p>Works with most IP cameras including popular TAPO C120. Easy setup wizard guides you through camera configuration.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">📸</div>
+                    <h3>Automatic Snapshots</h3>
+                    <p>Captures and saves photos of every bird detection with beautiful overlays showing species, time, temperature, and more.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">🎬</div>
+                    <h3>Video Recording</h3>
+                    <p>Record video clips when birds are detected. Never miss a special moment at your feeder.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">📱</div>
+                    <h3>Instant Notifications</h3>
+                    <p>Get push notifications via Pushover or email alerts with photos. Know when rare species visit!</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h3>Statistics & Reports</h3>
+                    <p>Weekly and monthly summary reports with detection stats, species counts, and your best snapshots.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">🌡️</div>
+                    <h3>Weather Integration</h3>
+                    <p>Automatically records temperature at detection time based on your location's zip code.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">🔒</div>
+                    <h3>100% Private</h3>
+                    <p>All processing happens locally on your computer. Your camera feed and data never leave your home.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section id="how-it-works" class="how-it-works">
+        <div class="container">
+            <div class="section-header">
+                <h2>Up and Running in Minutes</h2>
+                <p>Simple setup gets you watching birds faster.</p>
+            </div>
+            
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h3>Connect Your Camera</h3>
+                        <p>Point any RTSP-compatible camera at your bird feeder. Our setup wizard walks you through the process, with special guides for popular cameras like the TAPO C120.</p>
+                    </div>
+                </div>
+                
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h3>Start Monitoring</h3>
+                        <p>Click "Start" and BirdWatchAI begins watching your feeder. Motion detection triggers the AI to identify any birds that appear.</p>
+                    </div>
+                </div>
+                
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h3>Get Notified</h3>
+                        <p>Receive instant notifications on your phone with photos. Review your detection history, browse snapshots, and enjoy weekly summary reports.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Screenshot Gallery -->
+    <section class="gallery">
+        <div class="container">
+            <div class="section-header">
+                <h2>See It in Action</h2>
+                <p>A glimpse of what BirdWatchAI looks like.</p>
+            </div>
+            
+            <div class="gallery-grid">
+                <div class="gallery-item gallery-item-large">
+                    <div class="gallery-placeholder">Main Application Screenshot</div>
+                </div>
+                <div class="gallery-item">
+                    <div class="gallery-placeholder">Detection Snapshot</div>
+                </div>
+                <div class="gallery-item">
+                    <div class="gallery-placeholder">Notification Example</div>
+                </div>
+                <div class="gallery-item">
+                    <div class="gallery-placeholder">Statistics View</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section id="pricing" class="pricing">
+        <div class="container">
+            <div class="section-header">
+                <h2>Simple, One-Time Pricing</h2>
+                <p>No subscriptions. No hidden fees. Just great bird watching.</p>
+            </div>
+            
+            <div class="pricing-cards">
+                <div class="pricing-card">
+                    <div class="pricing-header">
+                        <h3>Free Trial</h3>
+                        <div class="pricing-price">
+                            <span class="price-amount">$0</span>
+                            <span class="price-period">for 14 days</span>
+                        </div>
+                    </div>
+                    <ul class="pricing-features">
+                        <li><span class="check">✓</span> Full feature access</li>
+                        <li><span class="check">✓</span> AI bird identification</li>
+                        <li><span class="check">✓</span> Email & push notifications</li>
+                        <li><span class="check">✓</span> Snapshots & video recording</li>
+                        <li><span class="check">✓</span> Summary reports</li>
+                        <li class="muted"><span class="check">~</span> Watermark on exports</li>
+                    </ul>
+                    <a href="#download" class="btn btn-secondary btn-block">Download Trial</a>
+                </div>
+                
+                <div class="pricing-card pricing-card-featured">
+                    <div class="pricing-badge">Best Value</div>
+                    <div class="pricing-header">
+                        <h3>Full License</h3>
+                        <div class="pricing-price">
+                            <span class="price-amount">$29</span>
+                            <span class="price-period">one-time payment</span>
+                        </div>
+                    </div>
+                    <ul class="pricing-features">
+                        <li><span class="check">✓</span> Everything in trial</li>
+                        <li><span class="check">✓</span> No watermarks</li>
+                        <li><span class="check">✓</span> Lifetime license</li>
+                        <li><span class="check">✓</span> Free updates</li>
+                        <li><span class="check">✓</span> Email support</li>
+                        <li><span class="check">✓</span> Support indie development</li>
+                    </ul>
+                    <a href="#" class="btn btn-primary btn-block" id="buy-btn">Buy Now</a>
+                </div>
+            </div>
+            
+            <p class="pricing-note">
+                💳 Secure payment via Gumroad. Your personalized license key will be emailed within 24 hours.
+            </p>
+        </div>
+    </section>
+
+    <!-- Requirements Section -->
+    <section id="requirements" class="requirements">
+        <div class="container">
+            <div class="section-header">
+                <h2>System Requirements</h2>
+                <p>What you need to get started.</p>
+            </div>
+            
+            <div class="requirements-grid">
+                <div class="requirement-card">
+                    <h3>💻 Computer</h3>
+                    <ul>
+                        <li>Windows 10 or Windows 11</li>
+                        <li>4 GB RAM minimum (8 GB recommended)</li>
+                        <li>500 MB free disk space</li>
+                        <li>Internet connection for notifications</li>
+                    </ul>
+                </div>
+                
+                <div class="requirement-card">
+                    <h3>📷 Camera</h3>
+                    <ul>
+                        <li>Any RTSP-compatible IP camera</li>
+                        <li>Recommended: TAPO C120</li>
+                        <li>Position with clear view of feeder</li>
+                        <li>Stable WiFi connection</li>
+                    </ul>
+                </div>
+                
+                <div class="requirement-card">
+                    <h3>📱 Optional</h3>
+                    <ul>
+                        <li>Pushover app ($5 one-time) for mobile notifications</li>
+                        <li>Email account for email alerts</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Download Section -->
+    <section id="download" class="download">
+        <div class="container">
+            <div class="download-content">
+                <h2>Ready to Meet Your Feathered Visitors?</h2>
+                <p>Download BirdWatchAI and start your 14-day free trial today.</p>
+                
+                <a href="#" class="btn btn-primary btn-large download-btn" id="download-btn">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    <span>Download for Windows</span>
+                </a>
+                
+                <p class="download-info">
+                    Version 1.0.0 • Windows 10/11 • 102 MB
+                </p>
+                
+                <div class="download-help">
+                    <p>Need help setting up? Check out our <a href="docs/setup-guide.html">Setup Guide</a> or <a href="docs/tapo-setup.html">TAPO C120 Camera Guide</a>.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section class="faq">
+        <div class="container">
+            <div class="section-header">
+                <h2>Frequently Asked Questions</h2>
+            </div>
+            
+            <div class="faq-grid">
+                <div class="faq-item">
+                    <h3>What cameras are supported?</h3>
+                    <p>BirdWatchAI works with any camera that supports RTSP streaming. We recommend the TAPO C120 for its excellent image quality and affordable price (~$30). Other popular options include Wyze, Reolink, and Amcrest cameras.</p>
+                </div>
+                
+                <div class="faq-item">
+                    <h3>Is my video feed sent to the cloud?</h3>
+                    <p>No! All processing happens 100% locally on your computer. Your camera feed, snapshots, and data never leave your home network. We take privacy seriously.</p>
+                </div>
+                
+                <div class="faq-item">
+                    <h3>How accurate is the bird identification?</h3>
+                    <p>Our AI model recognizes 965+ North American bird species with high accuracy. You can adjust the confidence threshold to balance between catching more birds vs. reducing false positives.</p>
+                </div>
+                
+                <div class="faq-item">
+                    <h3>Can I use this on Mac or Linux?</h3>
+                    <p>Currently BirdWatchAI is Windows-only (Windows 10 and 11). Mac and Linux versions may be developed in the future based on demand.</p>
+                </div>
+                
+                <div class="faq-item">
+                    <h3>What happens after the trial ends?</h3>
+                    <p>After 14 days, the app will continue to work but exports will have a watermark. Simply purchase a license key to remove the watermark and unlock full functionality forever.</p>
+                </div>
+                
+                <div class="faq-item">
+                    <h3>Do I need an internet connection?</h3>
+                    <p>Bird detection works offline! You only need internet for push notifications, email alerts, and weather data. The core functionality works completely locally.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <img src="images/logo.png" alt="BirdWatchAI" class="footer-logo">
+                    <p>Automatic bird detection and identification for backyard bird enthusiasts.</p>
+                </div>
+                
+                <div class="footer-links">
+                    <div class="footer-column">
+                        <h4>Product</h4>
+                        <a href="#features">Features</a>
+                        <a href="#pricing">Pricing</a>
+                        <a href="#download">Download</a>
+                        <a href="#requirements">Requirements</a>
+                    </div>
+                    
+                    <div class="footer-column">
+                        <h4>Resources</h4>
+                        <a href="docs/setup-guide.html">Setup Guide</a>
+                        <a href="docs/tapo-setup.html">TAPO C120 Guide</a>
+                        <a href="docs/faq.html">FAQ</a>
+                    </div>
+                    
+                    <div class="footer-column">
+                        <h4>Support</h4>
+                        <a href="mailto:support@birdwatchai.com">Contact Us</a>
+                        <a href="#">License Agreement</a>
+                        <a href="#">Privacy Policy</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <p>&copy; 2025 Bird Watch Solutions LLC. Made with ❤️ for bird lovers everywhere.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/main.js"></script>
+</body>
+</html>
