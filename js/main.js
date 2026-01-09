@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const downloadBtn = document.getElementById('download-btn');
     if (downloadBtn) {
         downloadBtn.addEventListener('click', function(e) {
-            const downloadUrl = 'https://github.com/JoeBarraco/BirdWatchAI-Releases/releases/download/v1.0.0.1/BirdWatchAI_Setup_1.0.0.1.exe';
+            const downloadUrl = 'https://github.com/JoeBarraco/BirdWatchAI-Releases/releases/download/v1.1.0.0/BirdWatchAI_Setup_1.1.0.0.exe';
             
             // Track download (if you add analytics later)
             console.log('Download initiated');
