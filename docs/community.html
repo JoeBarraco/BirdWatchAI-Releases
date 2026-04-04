@@ -701,9 +701,13 @@
         } else {
             document.getElementById('feed-view').style.display = 'none';
             document.getElementById('map-view').style.display  = '';
-            renderMap();
-            // Leaflet needs a size invalidation after being revealed
-            setTimeout(() => map && map.invalidateSize(), 200);
+            // Double rAF: wait for the browser to actually paint the div
+            // before Leaflet measures its dimensions
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                if (!map) initMap();
+                map.invalidateSize();
+                renderMap();
+            }));
         }
     }
 
@@ -757,6 +761,16 @@
 
     // ── Init ─────────────────────────────────────────────────
     loadFeed();
+
+    // Eagerly initialize the map off-screen so it's ready when the tab is clicked.
+    // We temporarily make it visible (but off-screen) so Leaflet can measure it.
+    window.addEventListener('load', () => {
+        const mv = document.getElementById('map-view');
+        mv.style.cssText = 'position:absolute;visibility:hidden;top:-9999px';
+        initMap();
+        mv.style.cssText = '';
+        mv.style.display = 'none';
+    });
 </script>
 </body>
 </html>
