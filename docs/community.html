@@ -602,51 +602,91 @@
 
     async function renderMap() {
         initMap();
+
+        const loading = document.getElementById('map-loading');
+        const noData  = document.getElementById('map-no-data');
+
+        if (heatLayer) { map.removeLayer(heatLayer); heatLayer = null; }
+
         const speciesFilter = document.getElementById('map-species-filter').value;
         const visible = applyClientFilters(allDetections).filter(d =>
             !speciesFilter || d.species === speciesFilter
         );
 
-        // Count detections per zip
-        const zipCounts = {};
-        for (const d of visible) {
-            if (d.zip_code) zipCounts[d.zip_code] = (zipCounts[d.zip_code] || 0) + 1;
+        try {
+            let points = [];
+
+            // ① Prefer direct lat/lng on the detection row (no geocoding needed)
+            const withCoords = visible.filter(d => d.latitude != null && d.longitude != null);
+            if (withCoords.length > 0) {
+                const locMap = {};
+                for (const d of withCoords) {
+                    const key = `${d.latitude},${d.longitude}`;
+                    if (!locMap[key]) locMap[key] = { lat: +d.latitude, lng: +d.longitude, count: 0 };
+                    locMap[key].count++;
+                }
+                const maxCount = Math.max(...Object.values(locMap).map(l => l.count));
+                points = Object.values(locMap).map(l => [l.lat, l.lng, l.count / maxCount]);
+
+            // ② Fall back to zip-code geocoding
+            } else {
+                const zipCounts = {};
+                for (const d of visible) {
+                    if (d.zip_code) zipCounts[d.zip_code] = (zipCounts[d.zip_code] || 0) + 1;
+                }
+                const uniqueZips = Object.keys(zipCounts);
+
+                if (uniqueZips.length === 0) {
+                    noData.textContent = 'No location data for the current filters. Detections need a zip code or coordinates to appear on the map.';
+                    noData.style.display = '';
+                    return;
+                }
+                noData.style.display = 'none';
+
+                loading.textContent = `Geocoding ${uniqueZips.length} location${uniqueZips.length !== 1 ? 's' : ''}…`;
+                loading.style.display = 'block';
+                const coords = await Promise.all(uniqueZips.map(z => geocodeZip(z)));
+                loading.style.display = 'none';
+
+                const maxCount = Math.max(...Object.values(zipCounts));
+                uniqueZips.forEach((zip, i) => {
+                    if (!coords[i]) return;
+                    points.push([coords[i].lat, coords[i].lng, zipCounts[zip] / maxCount]);
+                });
+            }
+
+            if (points.length === 0) {
+                noData.textContent = 'Could not geocode any locations. Check that zip codes are valid US zip codes.';
+                noData.style.display = '';
+                return;
+            }
+            noData.style.display = 'none';
+
+            // ③ Heatmap (preferred) — fall back to circle markers if plugin didn't load
+            if (typeof L.heatLayer === 'function') {
+                heatLayer = L.heatLayer(points, {
+                    radius: 35, blur: 25, maxZoom: 10,
+                    gradient: { 0.2: '#4575b4', 0.45: '#91cf60', 0.65: '#fee090', 0.85: '#f46d43', 1.0: '#a50026' },
+                }).addTo(map);
+            } else {
+                for (const [lat, lng, intensity] of points) {
+                    L.circleMarker([lat, lng], {
+                        radius: 8 + intensity * 14,
+                        fillColor: '#2d5a3d', color: '#1a3d2a',
+                        weight: 1, opacity: 0.9,
+                        fillOpacity: 0.4 + intensity * 0.5,
+                    }).addTo(map);
+                }
+            }
+
+            // Fit map to the plotted points
+            map.fitBounds(L.latLngBounds(points.map(p => [p[0], p[1]])).pad(0.15));
+
+        } catch (err) {
+            loading.style.display = 'none';
+            noData.textContent = `Map error: ${err.message}`;
+            noData.style.display = '';
         }
-
-        const uniqueZips = Object.keys(zipCounts);
-        const noData = document.getElementById('map-no-data');
-        if (uniqueZips.length === 0) {
-            if (heatLayer) { map.removeLayer(heatLayer); heatLayer = null; }
-            if (noData) noData.style.display = '';
-            return;
-        }
-        if (noData) noData.style.display = 'none';
-
-        const loading = document.getElementById('map-loading');
-        loading.style.display = 'block';
-
-        // Geocode all unique zips (in parallel, cached after first run)
-        const coords = await Promise.all(uniqueZips.map(z => geocodeZip(z)));
-
-        const maxCount = Math.max(...Object.values(zipCounts));
-        const points = [];
-        uniqueZips.forEach((zip, i) => {
-            if (!coords[i]) return;
-            const intensity = zipCounts[zip] / maxCount;
-            points.push([coords[i].lat, coords[i].lng, intensity]);
-        });
-
-        loading.style.display = 'none';
-
-        if (heatLayer) map.removeLayer(heatLayer);
-        if (points.length === 0) return;
-
-        heatLayer = L.heatLayer(points, {
-            radius: 35,
-            blur: 25,
-            maxZoom: 10,
-            gradient: { 0.2: '#4575b4', 0.45: '#91cf60', 0.65: '#fee090', 0.85: '#f46d43', 1.0: '#a50026' },
-        }).addTo(map);
     }
 
     // ── View switching ───────────────────────────────────────
