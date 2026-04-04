@@ -463,7 +463,7 @@
     function applyClientFilters(data) {
         const { feeder, zip } = getFilters();
         return data.filter(d => {
-            if (feeder && d.feeder_name !== feeder) return false;
+            if (feeder && d.feeders?.display_name !== feeder) return false;
             if (zip    && d.zip_code   !== zip)    return false;
             return true;
         });
@@ -478,7 +478,7 @@
         const { period } = getFilters();
         const since = periodToISO(period);
 
-        let url = `${SUPABASE_URL}/rest/v1/community_feed?limit=500&order=detected_at.desc`;
+        let url = `${SUPABASE_URL}/rest/v1/community_detections?select=*,feeders(display_name)&limit=500&order=detected_at.desc`;
         if (since) url += `&detected_at=gte.${encodeURIComponent(since)}`;
 
         try {
@@ -506,7 +506,7 @@
     function populateFeederDropdown(data) {
         const sel   = document.getElementById('feeder-filter');
         const prev  = sel.value;
-        const names = [...new Set(data.map(d => d.feeder_name).filter(Boolean))].sort();
+        const names = [...new Set(data.map(d => d.feeders?.display_name).filter(Boolean))].sort();
         sel.innerHTML = '<option value="">All feeders</option>' +
             names.map(n => `<option value="${n}">${n}</option>`).join('');
         if (names.includes(prev)) sel.value = prev;
@@ -558,7 +558,7 @@
                             ? ` · 📍 ${esc(d.zip_code)}` : ''}${d.temperature != null
                             ? ` · 🌡️ ${d.temperature}°F` : ''}
                     </div>
-                    ${d.feeder_name ? `<div class="card-feeder">📡 ${esc(d.feeder_name)}</div>` : ''}
+                    ${d.feeders?.display_name ? `<div class="card-feeder">📡 ${esc(d.feeders.display_name)}</div>` : ''}
                     ${d.video_url
                         ? `<a class="card-video" href="${d.video_url}" target="_blank" rel="noopener">🎬 Watch video</a>`
                         : ''}
