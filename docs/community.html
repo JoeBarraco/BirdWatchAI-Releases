@@ -235,7 +235,11 @@
             gap: 14px;
             align-items: flex-start;
             background: white;
-            transition: background 0.4s;
+            transition: background 0.4s, box-shadow 0.2s, border-color 0.2s;
+        }
+        .card:hover {
+            box-shadow: 0 4px 16px rgba(0,0,0,0.09);
+            border-color: #c0bbb3;
         }
         .card.new { background: #f0fff4; }
 
@@ -617,6 +621,27 @@
             .stats-table { font-size: 0.8rem; }
             .stats-table th, .stats-table td { padding: 6px 8px; }
         }
+
+        /* ── Toggle pill button (favorites) ────────────────── */
+        .toggle-btn {
+            font-family: inherit;
+            font-size: 0.8125rem;
+            padding: 4px 12px;
+            border: 1px solid #d0cbc3;
+            border-radius: 20px;
+            background: white;
+            color: var(--color-gray-700);
+            cursor: pointer;
+            transition: all 0.15s;
+            white-space: nowrap;
+        }
+        .toggle-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
+        .toggle-btn.active {
+            background: #fff8e6;
+            border-color: #e6a817;
+            color: #b07a00;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
@@ -656,6 +681,10 @@
         <div class="filter-group">
             <span class="filter-label">Zip</span>
             <input id="zip-filter" class="filter-input" type="text" placeholder="e.g. 90210" maxlength="10">
+        </div>
+
+        <div class="filter-group">
+            <button id="fav-toggle" class="toggle-btn" onclick="toggleFavorites()">⭐ Favorites only</button>
         </div>
 
         <button class="clear-btn" onclick="clearFilters()">✕ Clear</button>
@@ -732,9 +761,11 @@
     const REFRESH_SECS = 30;
 
     let countdown      = REFRESH_SECS;
+    let tabHiddenAt    = null;   // timestamp when tab was hidden
     let lastTopId      = null;
     let allDetections  = [];   // raw data from server
     let currentView    = 'feed';
+    let favoritesOnly  = false;
     let map            = null;
     let markerGroup    = null;
     const geocodeCache = {};   // zip -> {lat, lng} or null
@@ -742,11 +773,20 @@
     // ── Filters ─────────────────────────────────────────────
     function getFilters() {
         return {
-            period:  document.querySelector('.period-btn.active')?.dataset.period ?? '',
-            species: document.getElementById('species-filter').value,
-            feeder:  document.getElementById('feeder-filter').value,
-            zip:     document.getElementById('zip-filter').value.trim(),
+            period:        document.querySelector('.period-btn.active')?.dataset.period ?? '',
+            species:       document.getElementById('species-filter').value,
+            feeder:        document.getElementById('feeder-filter').value,
+            zip:           document.getElementById('zip-filter').value.trim(),
+            favoritesOnly,
         };
+    }
+
+    function toggleFavorites() {
+        favoritesOnly = !favoritesOnly;
+        document.getElementById('fav-toggle').classList.toggle('active', favoritesOnly);
+        renderFeed();
+        if (currentView === 'map')   renderMap();
+        if (currentView === 'stats') renderStats();
     }
 
     function periodToISO(period) {
@@ -770,12 +810,21 @@
     }
 
     function applyClientFilters(data) {
-        const { feeder, zip, species } = getFilters();
+        const { feeder, zip, species, favoritesOnly } = getFilters();
         return data.filter(d => {
-            if (species && d.species             !== species) return false;
-            if (feeder  && d.feeders?.display_name !== feeder) return false;
-            if (zip     && d.zip_code              !== zip)    return false;
+            if (species       && d.species               !== species) return false;
+            if (feeder        && d.feeders?.display_name !== feeder)  return false;
+            if (zip           && d.zip_code              !== zip)      return false;
+            if (favoritesOnly && !d.is_favorite)                       return false;
             return true;
+        });
+    }
+
+    // ── Format detection time with local timezone label ──────
+    function fmtDetectedAt(isoStr) {
+        return new Date(isoStr).toLocaleString(undefined, {
+            month: 'numeric', day: 'numeric', year: 'numeric',
+            hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
         });
     }
 
@@ -875,7 +924,7 @@
                             ? ` <span class="${rarityClass}">· ${esc(d.rarity)}</span>` : ''}
                     </div>
                     <div class="card-meta">
-                        🕐 ${new Date(d.detected_at).toLocaleString()}${d.zip_code
+                        🕐 ${fmtDetectedAt(d.detected_at)}${d.zip_code
                             ? ` · 📍 ${esc(d.zip_code)}` : ''}${d.temperature != null
                             ? ` · 🌡️ ${d.temperature}°F` : ''}
                     </div>
@@ -1367,7 +1416,7 @@
         currentView = 'feed';
         document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
         document.querySelector('.view-tab').classList.add('active');
-        document.getElementById('feed-view').style.display   = '';
+        document.getElementById('feed-view').style.display   = 'grid';
         document.getElementById('map-view').style.display    = 'none';
         document.getElementById('stats-view').style.display  = 'none';
         renderFeed();
@@ -1410,11 +1459,14 @@
         document.getElementById('species-filter').value = '';
         document.getElementById('feeder-filter').value  = '';
         document.getElementById('zip-filter').value     = '';
+        favoritesOnly = false;
+        document.getElementById('fav-toggle').classList.remove('active');
         loadFeed();
     }
 
     // ── Auto-refresh ─────────────────────────────────────────
     setInterval(() => {
+        if (document.hidden) return;   // don't tick while tab is hidden
         countdown--;
         if (countdown <= 0) {
             loadFeed();
@@ -1422,6 +1474,17 @@
             document.getElementById('countdown').textContent = `Refreshing in ${countdown}s`;
         }
     }, 1000);
+
+    // When user returns to tab, refresh immediately if overdue
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && tabHiddenAt !== null) {
+            const secondsAway = (Date.now() - tabHiddenAt) / 1000;
+            tabHiddenAt = null;
+            if (secondsAway >= REFRESH_SECS) loadFeed();
+        } else if (document.hidden) {
+            tabHiddenAt = Date.now();
+        }
+    });
 
     // ── Lightbox ─────────────────────────────────────────────
     const lightbox     = document.getElementById('lightbox');
