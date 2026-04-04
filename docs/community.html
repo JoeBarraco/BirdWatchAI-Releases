@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Community Feed - BirdWatchAI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Source+Sans+3:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --color-primary: #2d5a3d;
+            --color-primary-light: #3d7a52;
+            --color-accent: #d4a574;
+            --color-cream: #faf8f5;
+            --color-gray-100: #f5f3f0;
+            --color-gray-500: #7a756d;
+            --color-gray-700: #4a4640;
+            --color-gray-900: #2a2825;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Source Sans 3', -apple-system, sans-serif;
+            font-size: 1.0625rem;
+            line-height: 1.7;
+            color: var(--color-gray-700);
+            background: var(--color-cream);
+            padding: 2rem 1rem;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--color-primary);
+            font-weight: 500;
+            text-decoration: none;
+            margin-bottom: 2rem;
+        }
+
+        .back-link:hover { text-decoration: underline; }
+
+        h1 {
+            font-family: 'Fraunces', serif;
+            font-size: 2.5rem;
+            color: var(--color-gray-900);
+            margin-bottom: 0.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 3px solid var(--color-primary);
+        }
+
+        .page-subtitle {
+            color: var(--color-gray-500);
+            margin-bottom: 1.5rem;
+        }
+
+        /* Status bar */
+        #status-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 13px;
+            color: var(--color-gray-500);
+            margin-bottom: 1.5rem;
+            padding: 0.75rem 1rem;
+            background: white;
+            border: 1px solid #e8e4de;
+            border-radius: 8px;
+        }
+
+        #refresh-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #4caf50;
+            flex-shrink: 0;
+        }
+
+        #refresh-indicator.refreshing {
+            background: #ff9800;
+            animation: pulse 0.6s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50%       { opacity: 0.3; }
+        }
+
+        .refresh-btn {
+            margin-left: auto;
+            font-size: 12px;
+            padding: 4px 12px;
+            cursor: pointer;
+            background: var(--color-primary);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-family: inherit;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+
+        .refresh-btn:hover { background: var(--color-primary-light); }
+
+        /* Feed cards */
+        .card {
+            border: 1px solid #e8e4de;
+            border-radius: 8px;
+            padding: 14px;
+            margin: 10px 0;
+            display: flex;
+            gap: 14px;
+            align-items: flex-start;
+            background: white;
+            transition: background 0.4s;
+        }
+
+        .card.new { background: #f0fff4; }
+
+        .card img {
+            width: 120px;
+            height: 90px;
+            object-fit: cover;
+            border-radius: 6px;
+            flex-shrink: 0;
+        }
+
+        .card-body { flex: 1; min-width: 0; }
+
+        .card-title {
+            font-family: 'Fraunces', serif;
+            font-size: 1.1rem;
+            color: var(--color-gray-900);
+            margin-bottom: 4px;
+        }
+
+        .card-meta {
+            font-size: 0.875rem;
+            color: var(--color-gray-500);
+            margin-top: 4px;
+        }
+
+        .card-feeder {
+            font-size: 0.8rem;
+            color: #aaa;
+            margin-top: 2px;
+        }
+
+        .card-video {
+            display: inline-block;
+            margin-top: 6px;
+            font-size: 12px;
+            color: var(--color-primary);
+            text-decoration: none;
+        }
+
+        .card-video:hover { text-decoration: underline; }
+
+        .rarity-rare      { color: orange; font-weight: 600; }
+        .rarity-very-rare { color: #d32f2f; font-weight: 600; }
+        .rarity-uncommon  { color: var(--color-gray-500); }
+
+        /* Loading / error states */
+        #feed {
+            min-height: 200px;
+        }
+
+        .feed-loading {
+            text-align: center;
+            padding: 3rem;
+            color: var(--color-gray-500);
+        }
+
+        .feed-error {
+            padding: 1rem 1.25rem;
+            background: #fff3f3;
+            border: 1px solid #f5c6c6;
+            border-radius: 8px;
+            color: #c62828;
+        }
+
+        .feed-empty {
+            text-align: center;
+            padding: 3rem;
+            color: var(--color-gray-500);
+        }
+
+        @media (max-width: 600px) {
+            h1 { font-size: 1.75rem; }
+            .card img { width: 80px; height: 60px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">← Back to BirdWatchAI</a>
+
+        <h1>🐦 Community Feed</h1>
+        <p class="page-subtitle">Live bird detections shared by BirdWatchAI users around the world.</p>
+
+        <div id="status-bar">
+            <span id="refresh-indicator"></span>
+            <span id="countdown">Refreshing in 30s</span>
+            <span id="feed-count"></span>
+            <button class="refresh-btn" onclick="loadFeed()">Refresh now</button>
+        </div>
+
+        <div id="feed">
+            <div class="feed-loading">Loading detections…</div>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://lsamggztfizmkyljdgwq.supabase.co';
+        const ANON_KEY     = 'sb_publishable_-80LQjkx2s82XnURj2DfQQ_d7ARz3js';
+        const REFRESH_SECS = 30;
+
+        let countdown  = REFRESH_SECS;
+        let lastTopId  = null;
+
+        async function loadFeed() {
+            const indicator = document.getElementById('refresh-indicator');
+            indicator.classList.add('refreshing');
+            document.getElementById('countdown').textContent = 'Refreshing…';
+
+            try {
+                const res = await fetch(
+                    `${SUPABASE_URL}/rest/v1/community_feed?limit=50`,
+                    { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` } }
+                );
+
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const detections = await res.json();
+
+                const newTopId = detections[0]?.id ?? null;
+                const hasNew   = lastTopId !== null && newTopId !== lastTopId;
+                lastTopId      = newTopId;
+
+                document.getElementById('feed-count').textContent =
+                    detections.length
+                        ? `${detections.length} detection${detections.length !== 1 ? 's' : ''}`
+                        : '';
+
+                if (detections.length === 0) {
+                    document.getElementById('feed').innerHTML =
+                        '<div class="feed-empty">No detections yet — check back soon!</div>';
+                } else {
+                    document.getElementById('feed').innerHTML = detections.map((d, i) => {
+                        const rarityClass = d.rarity
+                            ? 'rarity-' + d.rarity.toLowerCase().replace(/\s+/g, '-')
+                            : '';
+                        const isNew = hasNew && i === 0;
+
+                        return `
+                            <div class="card${isNew ? ' new' : ''}">
+                                ${d.image_url
+                                    ? `<img src="${d.image_url}" alt="${d.species}" loading="lazy">`
+                                    : ''}
+                                <div class="card-body">
+                                    <div class="card-title">
+                                        ${d.is_favorite ? '⭐ ' : ''}${d.species}${d.rarity
+                                            ? ` <span class="${rarityClass}">· ${d.rarity}</span>`
+                                            : ''}
+                                    </div>
+                                    <div class="card-meta">
+                                        🕐 ${new Date(d.detected_at).toLocaleString()}${d.zip_code
+                                            ? ` · 📍 ${d.zip_code}`
+                                            : ''}${d.temperature != null
+                                            ? ` · 🌡️ ${d.temperature}°F`
+                                            : ''}
+                                    </div>
+                                    ${d.feeder_name
+                                        ? `<div class="card-feeder">📡 ${d.feeder_name}</div>`
+                                        : ''}
+                                    ${d.video_url
+                                        ? `<a class="card-video" href="${d.video_url}" target="_blank" rel="noopener">🎬 Watch video</a>`
+                                        : ''}
+                                </div>
+                            </div>`;
+                    }).join('');
+                }
+
+            } catch (err) {
+                document.getElementById('feed').innerHTML =
+                    `<div class="feed-error">Error loading feed: ${err.message}</div>`;
+            }
+
+            indicator.classList.remove('refreshing');
+            countdown = REFRESH_SECS;
+        }
+
+        setInterval(() => {
+            countdown--;
+            if (countdown <= 0) {
+                loadFeed();
+            } else {
+                document.getElementById('countdown').textContent =
+                    `Refreshing in ${countdown}s`;
+            }
+        }, 1000);
+
+        loadFeed();
+    </script>
+</body>
+</html>
