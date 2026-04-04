@@ -777,6 +777,11 @@
             <select id="map-species-filter" class="filter-select" onchange="renderMap()">
                 <option value="">All species</option>
             </select>
+            <span class="filter-label" style="margin-left:1rem;">Layer</span>
+            <div class="period-btns">
+                <button class="period-btn active" id="map-layer-pins"  onclick="setMapLayer('pins',  this)">📍 Pins</button>
+                <button class="period-btn"         id="map-layer-heat" onclick="setMapLayer('heat',  this)">🔥 Heatmap</button>
+            </div>
         </div>
         <div id="map-loading" style="display:none">Geocoding locations…</div>
         <div class="map-wrap"><div id="map"></div></div>
@@ -815,6 +820,7 @@
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 <script>
     const SUPABASE_URL = 'https://lsamggztfizmkyljdgwq.supabase.co';
     const ANON_KEY     = 'sb_publishable_-80LQjkx2s82XnURj2DfQQ_d7ARz3js';
@@ -828,6 +834,8 @@
     let favoritesOnly  = false;
     let map            = null;
     let markerGroup    = null;
+    let heatLayer      = null;
+    let mapLayer       = 'pins';   // 'pins' | 'heat'
     const geocodeCache = {};   // zip -> {lat, lng} or null
 
     // ── Filters ─────────────────────────────────────────────
@@ -1112,6 +1120,15 @@
         }).join('');
     }
 
+    // ── Map layer toggle ─────────────────────────────────────
+    function setMapLayer(layer, btn) {
+        mapLayer = layer;
+        document.querySelectorAll('#map-layer-pins, #map-layer-heat')
+            .forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        renderMap();
+    }
+
     // ── Map rendering ────────────────────────────────────────
     function initMap() {
         if (map) return;
@@ -1195,6 +1212,7 @@
         const noData  = document.getElementById('map-no-data');
 
         if (markerGroup) { map.removeLayer(markerGroup); markerGroup = null; }
+        if (heatLayer)   { map.removeLayer(heatLayer);   heatLayer   = null; }
         renderLegend([]);
 
         const speciesFilter = document.getElementById('map-species-filter').value;
@@ -1280,50 +1298,62 @@
             }
             noData.style.display = 'none';
 
-            // Drop a colored pin per species per location
-            markerGroup = L.layerGroup().addTo(map);
             const usedSpecies = [...new Set(entries.map(e => e.species))].sort();
+            const bounds = L.latLngBounds(entries.map(e => [e.lat, e.lng]));
 
-            // Slight offset when multiple species share the same lat/lng
-            const locOffset = {};
-            for (const e of entries) {
-                const locKey = `${e.lat.toFixed(3)},${e.lng.toFixed(3)}`;
-                if (!locOffset[locKey]) locOffset[locKey] = 0;
-                const idx    = locOffset[locKey]++;
-                const angle  = (idx * 137.5 * Math.PI) / 180; // golden angle spread
-                const radius = idx === 0 ? 0 : 0.015;
-                const lat    = e.lat + radius * Math.cos(angle);
-                const lng    = e.lng + radius * Math.sin(angle);
+            if (mapLayer === 'heat') {
+                // ── Heatmap layer ──────────────────────────────────
+                const heatPoints = entries.map(e => [e.lat, e.lng, e.count]);
+                heatLayer = L.heatLayer(heatPoints, {
+                    radius: 35, blur: 25, maxZoom: 12,
+                    gradient: { 0.2: '#4575b4', 0.4: '#91cf60', 0.65: '#fee090', 0.85: '#f46d43', 1.0: '#a50026' },
+                }).addTo(map);
+                renderLegend([]);
+            } else {
+                // ── Pin layer ──────────────────────────────────────
+                markerGroup = L.layerGroup().addTo(map);
 
-                const color  = speciesColor(e.species);
-                const marker = L.marker([lat, lng], { icon: makeIcon(color, e.count) });
+                // Slight offset when multiple species share the same lat/lng
+                const locOffset = {};
+                for (const e of entries) {
+                    const locKey = `${e.lat.toFixed(3)},${e.lng.toFixed(3)}`;
+                    if (!locOffset[locKey]) locOffset[locKey] = 0;
+                    const idx    = locOffset[locKey]++;
+                    const angle  = (idx * 137.5 * Math.PI) / 180; // golden angle spread
+                    const radius = idx === 0 ? 0 : 0.015;
+                    const lat    = e.lat + radius * Math.cos(angle);
+                    const lng    = e.lng + radius * Math.sin(angle);
 
-                const thumbs = e.images.slice(0, 6).map(url =>
-                    `<img src="${url}" style="width:72px;height:54px;object-fit:cover;border-radius:4px;flex-shrink:0;" loading="lazy">`
-                ).join('');
-                const thumbGrid = thumbs
-                    ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;">${thumbs}</div>`
-                    : '';
+                    const color  = speciesColor(e.species);
+                    const marker = L.marker([lat, lng], { icon: makeIcon(color, e.count) });
 
-                marker.bindPopup(
-                    `<div style="min-width:160px;">` +
-                    `<strong style="font-size:0.95rem;">${esc(e.species)}</strong><br>` +
-                    `<span style="font-size:0.8rem;color:#777;">${e.count} detection${e.count !== 1 ? 's' : ''}</span>` +
-                    thumbGrid +
-                    `</div>`,
-                    { maxWidth: 260 }
-                );
-                marker.addTo(markerGroup);
+                    const thumbs = e.images.slice(0, 6).map(url =>
+                        `<img src="${url}" style="width:72px;height:54px;object-fit:cover;border-radius:4px;flex-shrink:0;" loading="lazy">`
+                    ).join('');
+                    const thumbGrid = thumbs
+                        ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;">${thumbs}</div>`
+                        : '';
+
+                    marker.bindPopup(
+                        `<div style="min-width:160px;">` +
+                        `<strong style="font-size:0.95rem;">${esc(e.species)}</strong><br>` +
+                        `<span style="font-size:0.8rem;color:#777;">${e.count} detection${e.count !== 1 ? 's' : ''}</span>` +
+                        thumbGrid +
+                        `<div style="margin-top:8px;">` +
+                        `<a href="#" style="font-size:0.8rem;color:#2d5a3d;font-weight:600;" ` +
+                        `onclick="event.preventDefault();filterBySpeciesFromMap(${JSON.stringify(e.species)})">` +
+                        `View in feed →</a></div>` +
+                        `</div>`,
+                        { maxWidth: 260 }
+                    );
+                    marker.addTo(markerGroup);
+                }
+                renderLegend(usedSpecies);
             }
 
-            renderLegend(usedSpecies);
-
-            // Fit map to all pins (invalidate first so dimensions are correct)
+            // Fit map to all data points
             map.invalidateSize();
-            map.fitBounds(
-                L.latLngBounds(entries.map(e => [e.lat, e.lng])).pad(0.5),
-                { maxZoom: 12 }
-            );
+            map.fitBounds(bounds.pad(0.5), { maxZoom: 12 });
 
         } catch (err) {
             loading.style.display = 'none';
@@ -1583,6 +1613,12 @@
                     </tr>`).join('')}
                 </tbody>
             </table>`;
+    }
+
+    function filterBySpeciesFromMap(speciesName) {
+        selectedSpecies = speciesName;
+        document.getElementById('species-search').value = speciesName;
+        switchView('feed', document.querySelector('.view-tab'));
     }
 
     function filterBySpecies(btn) {
