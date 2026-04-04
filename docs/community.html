@@ -306,11 +306,10 @@
         .map-legend {
             margin-top: 0.75rem;
             font-size: 0.8125rem;
-            color: var(--color-gray-500);
+            color: var(--color-gray-700);
             display: flex;
-            align-items: center;
-            gap: 1rem;
             flex-wrap: wrap;
+            gap: 2px;
         }
 
         .legend-gradient {
@@ -413,9 +412,7 @@
         <div id="map-no-data" style="display:none;text-align:center;padding:1rem;color:var(--color-gray-500);font-size:0.875rem;">
             No location data available for the current filters. Detections need a zip code to appear on the map.
         </div>
-        <div class="map-legend">
-            <span>📍 Each pin represents a location. Click a pin to see detection details.</span>
-        </div>
+        <div id="map-legend" class="map-legend"></div>
     </div>
 </div>
 
@@ -596,6 +593,55 @@
         }
     }
 
+    // ── Species color palette ────────────────────────────────
+    const PALETTE = [
+        '#e74c3c','#3498db','#2ecc71','#f39c12','#9b59b6',
+        '#1abc9c','#e67e22','#e91e63','#00bcd4','#8bc34a',
+        '#ff5722','#607d8b','#c0392b','#ff9800','#673ab7',
+        '#2980b9','#27ae60','#d35400','#8e44ad','#16a085',
+    ];
+    const speciesColorMap = {};
+    let paletteIdx = 0;
+
+    function speciesColor(species) {
+        if (!speciesColorMap[species]) {
+            speciesColorMap[species] = PALETTE[paletteIdx % PALETTE.length];
+            paletteIdx++;
+        }
+        return speciesColorMap[species];
+    }
+
+    function makeIcon(color, count) {
+        const label = count > 99 ? '99+' : String(count);
+        return L.divIcon({
+            className: '',
+            html: `<div style="
+                background:${color};
+                width:32px;height:32px;border-radius:50%;
+                display:flex;align-items:center;justify-content:center;
+                color:#fff;font-weight:700;font-size:11px;font-family:sans-serif;
+                border:2px solid rgba(255,255,255,0.9);
+                box-shadow:0 2px 6px rgba(0,0,0,0.4);
+                cursor:pointer;
+            ">${label}</div>`,
+            iconSize: [32, 32],
+            iconAnchor: [16, 16],
+            popupAnchor: [0, -20],
+        });
+    }
+
+    function renderLegend(usedSpecies) {
+        const legend = document.getElementById('map-legend');
+        if (!legend) return;
+        if (usedSpecies.length === 0) { legend.innerHTML = ''; return; }
+        legend.innerHTML = usedSpecies.map(s =>
+            `<span style="display:inline-flex;align-items:center;gap:5px;margin:3px 8px 3px 0;font-size:0.8rem;">
+                <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${speciesColor(s)};flex-shrink:0;"></span>
+                ${esc(s)}
+            </span>`
+        ).join('');
+    }
+
     async function renderMap() {
         initMap();
 
@@ -603,6 +649,7 @@
         const noData  = document.getElementById('map-no-data');
 
         if (markerGroup) { map.removeLayer(markerGroup); markerGroup = null; }
+        renderLegend([]);
 
         const speciesFilter = document.getElementById('map-species-filter').value;
         const visible = applyClientFilters(allDetections).filter(d =>
@@ -610,19 +657,39 @@
         );
 
         try {
-            // Build a map of location -> detections
-            let locations = {}; // key -> { lat, lng, detections[] }
+            // Group detections by (location key, species)
+            // locSpecies: "locKey|species" -> { lat, lng, species, count }
+            let locSpecies = {};
+            let allLatLngs = [];
 
-            // ① Prefer direct lat/lng on the detection row
+            async function addDetections(detections, getKey) {
+                for (const d of detections) {
+                    const sp  = d.species || 'Unknown';
+                    const key = `${getKey(d)}|${sp}`;
+                    if (!locSpecies[key]) {
+                        locSpecies[key] = { lat: null, lng: null, species: sp, count: 0 };
+                    }
+                    locSpecies[key].count++;
+                    // coords set below after geocoding
+                }
+            }
+
+            // ① Direct lat/lng
             const withCoords = visible.filter(d => d.latitude != null && d.longitude != null);
             if (withCoords.length > 0) {
                 for (const d of withCoords) {
-                    const key = `${(+d.latitude).toFixed(4)},${(+d.longitude).toFixed(4)}`;
-                    if (!locations[key]) locations[key] = { lat: +d.latitude, lng: +d.longitude, detections: [] };
-                    locations[key].detections.push(d);
+                    const sp      = d.species || 'Unknown';
+                    const locKey  = `${(+d.latitude).toFixed(3)},${(+d.longitude).toFixed(3)}`;
+                    const fullKey = `${locKey}|${sp}`;
+                    if (!locSpecies[fullKey]) {
+                        locSpecies[fullKey] = { lat: +d.latitude, lng: +d.longitude, species: sp, count: 0 };
+                    }
+                    locSpecies[fullKey].count++;
+                    locSpecies[fullKey].lat = +d.latitude;
+                    locSpecies[fullKey].lng = +d.longitude;
                 }
 
-            // ② Fall back to zip-code geocoding
+            // ② Zip geocoding
             } else {
                 const zipDetections = {};
                 for (const d of visible) {
@@ -632,9 +699,8 @@
                     }
                 }
                 const uniqueZips = Object.keys(zipDetections);
-
                 if (uniqueZips.length === 0) {
-                    noData.textContent = 'No location data for the current filters. Detections need a zip code or coordinates to appear on the map.';
+                    noData.textContent = 'No location data for the current filters.';
                     noData.style.display = '';
                     return;
                 }
@@ -647,33 +713,55 @@
 
                 uniqueZips.forEach((zip, i) => {
                     if (!coords[i]) return;
-                    locations[zip] = { lat: coords[i].lat, lng: coords[i].lng, detections: zipDetections[zip] };
+                    for (const d of zipDetections[zip]) {
+                        const sp      = d.species || 'Unknown';
+                        const fullKey = `${zip}|${sp}`;
+                        if (!locSpecies[fullKey]) {
+                            locSpecies[fullKey] = { lat: coords[i].lat, lng: coords[i].lng, species: sp, count: 0 };
+                        }
+                        locSpecies[fullKey].count++;
+                    }
                 });
             }
 
-            const locList = Object.values(locations);
-            if (locList.length === 0) {
+            const entries = Object.values(locSpecies).filter(e => e.lat != null);
+            if (entries.length === 0) {
                 noData.textContent = 'Could not resolve any locations. Check that zip codes are valid US zip codes.';
                 noData.style.display = '';
                 return;
             }
             noData.style.display = 'none';
 
-            // ③ Drop a pin for each location with a popup summary
+            // Drop a colored pin per species per location
             markerGroup = L.layerGroup().addTo(map);
-            for (const loc of locList) {
-                const count   = loc.detections.length;
-                const species = [...new Set(loc.detections.map(d => d.species).filter(Boolean))];
-                const topLine = species.slice(0, 5).join(', ') + (species.length > 5 ? ` +${species.length - 5} more` : '');
-                const popup   = `<strong>${count} detection${count !== 1 ? 's' : ''}</strong><br>${topLine}`;
-                L.marker([loc.lat, loc.lng])
-                    .bindPopup(popup)
-                    .addTo(markerGroup);
+            const usedSpecies = [...new Set(entries.map(e => e.species))].sort();
+
+            // Slight offset when multiple species share the same lat/lng
+            const locOffset = {};
+            for (const e of entries) {
+                const locKey = `${e.lat.toFixed(3)},${e.lng.toFixed(3)}`;
+                if (!locOffset[locKey]) locOffset[locKey] = 0;
+                const idx    = locOffset[locKey]++;
+                const angle  = (idx * 137.5 * Math.PI) / 180; // golden angle spread
+                const radius = idx === 0 ? 0 : 0.015;
+                const lat    = e.lat + radius * Math.cos(angle);
+                const lng    = e.lng + radius * Math.sin(angle);
+
+                const color  = speciesColor(e.species);
+                const marker = L.marker([lat, lng], { icon: makeIcon(color, e.count) });
+                marker.bindPopup(
+                    `<strong>${esc(e.species)}</strong><br>` +
+                    `${e.count} detection${e.count !== 1 ? 's' : ''}`
+                );
+                marker.addTo(markerGroup);
             }
 
-            // Fit map to pins
-            const latlngs = locList.map(l => [l.lat, l.lng]);
-            map.fitBounds(L.latLngBounds(latlngs).pad(0.15));
+            renderLegend(usedSpecies);
+
+            // Fit map to all pins
+            map.fitBounds(
+                L.latLngBounds(entries.map(e => [e.lat, e.lng])).pad(0.15)
+            );
 
         } catch (err) {
             loading.style.display = 'none';
