@@ -758,7 +758,8 @@
 
             renderLegend(usedSpecies);
 
-            // Fit map to all pins
+            // Fit map to all pins (invalidate first so dimensions are correct)
+            map.invalidateSize();
             map.fitBounds(
                 L.latLngBounds(entries.map(e => [e.lat, e.lng])).pad(0.15)
             );
