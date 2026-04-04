@@ -682,11 +682,12 @@
                     const locKey  = `${(+d.latitude).toFixed(3)},${(+d.longitude).toFixed(3)}`;
                     const fullKey = `${locKey}|${sp}`;
                     if (!locSpecies[fullKey]) {
-                        locSpecies[fullKey] = { lat: +d.latitude, lng: +d.longitude, species: sp, count: 0 };
+                        locSpecies[fullKey] = { lat: +d.latitude, lng: +d.longitude, species: sp, count: 0, images: [] };
                     }
                     locSpecies[fullKey].count++;
                     locSpecies[fullKey].lat = +d.latitude;
                     locSpecies[fullKey].lng = +d.longitude;
+                    if (d.image_url) locSpecies[fullKey].images.push(d.image_url);
                 }
 
             // ② Zip geocoding
@@ -717,9 +718,10 @@
                         const sp      = d.species || 'Unknown';
                         const fullKey = `${zip}|${sp}`;
                         if (!locSpecies[fullKey]) {
-                            locSpecies[fullKey] = { lat: coords[i].lat, lng: coords[i].lng, species: sp, count: 0 };
+                            locSpecies[fullKey] = { lat: coords[i].lat, lng: coords[i].lng, species: sp, count: 0, images: [] };
                         }
                         locSpecies[fullKey].count++;
+                        if (d.image_url) locSpecies[fullKey].images.push(d.image_url);
                     }
                 });
             }
@@ -749,9 +751,21 @@
 
                 const color  = speciesColor(e.species);
                 const marker = L.marker([lat, lng], { icon: makeIcon(color, e.count) });
+
+                const thumbs = e.images.slice(0, 6).map(url =>
+                    `<img src="${url}" style="width:72px;height:54px;object-fit:cover;border-radius:4px;flex-shrink:0;" loading="lazy">`
+                ).join('');
+                const thumbGrid = thumbs
+                    ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;">${thumbs}</div>`
+                    : '';
+
                 marker.bindPopup(
-                    `<strong>${esc(e.species)}</strong><br>` +
-                    `${e.count} detection${e.count !== 1 ? 's' : ''}`
+                    `<div style="min-width:160px;">` +
+                    `<strong style="font-size:0.95rem;">${esc(e.species)}</strong><br>` +
+                    `<span style="font-size:0.8rem;color:#777;">${e.count} detection${e.count !== 1 ? 's' : ''}</span>` +
+                    thumbGrid +
+                    `</div>`,
+                    { maxWidth: 260 }
                 );
                 marker.addTo(markerGroup);
             }
