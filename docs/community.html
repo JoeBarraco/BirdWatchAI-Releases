@@ -292,12 +292,15 @@
         /* ── Map view ───────────────────────────────────── */
         #map-view { display: none; }
 
-        #map {
-            width: 100%;
-            height: 520px;
+        .map-wrap {
             border-radius: 10px;
             border: 1px solid #e8e4de;
             overflow: hidden;
+        }
+
+        #map {
+            width: 100%;
+            height: 520px;
         }
 
         .map-legend {
@@ -406,7 +409,10 @@
             </select>
         </div>
         <div id="map-loading" style="display:none">Geocoding locations…</div>
-        <div id="map"></div>
+        <div class="map-wrap"><div id="map"></div></div>
+        <div id="map-no-data" style="display:none;text-align:center;padding:1rem;color:var(--color-gray-500);font-size:0.875rem;">
+            No location data available for the current filters. Detections need a zip code to appear on the map.
+        </div>
         <div class="map-legend">
             <span>Low activity</span>
             <span class="legend-gradient"></span>
@@ -608,10 +614,13 @@
         }
 
         const uniqueZips = Object.keys(zipCounts);
+        const noData = document.getElementById('map-no-data');
         if (uniqueZips.length === 0) {
             if (heatLayer) { map.removeLayer(heatLayer); heatLayer = null; }
+            if (noData) noData.style.display = '';
             return;
         }
+        if (noData) noData.style.display = 'none';
 
         const loading = document.getElementById('map-loading');
         loading.style.display = 'block';
@@ -654,7 +663,7 @@
             document.getElementById('map-view').style.display  = '';
             renderMap();
             // Leaflet needs a size invalidation after being revealed
-            setTimeout(() => map && map.invalidateSize(), 50);
+            setTimeout(() => map && map.invalidateSize(), 200);
         }
     }
 
