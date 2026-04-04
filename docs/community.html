@@ -1106,9 +1106,9 @@
         document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
         btn.classList.add('active');
 
-        document.getElementById('feed-view').style.display   = view === 'feed'  ? ''      : 'none';
+        document.getElementById('feed-view').style.display   = view === 'feed'  ? 'block' : 'none';
         document.getElementById('map-view').style.display    = view === 'map'   ? 'block' : 'none';
-        document.getElementById('stats-view').style.display  = view === 'stats' ? ''      : 'none';
+        document.getElementById('stats-view').style.display  = view === 'stats' ? 'block' : 'none';
 
         if (view === 'map') {
             // Double rAF: wait for the browser to actually paint the div
