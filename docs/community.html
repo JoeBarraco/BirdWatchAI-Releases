@@ -414,16 +414,12 @@
             No location data available for the current filters. Detections need a zip code to appear on the map.
         </div>
         <div class="map-legend">
-            <span>Low activity</span>
-            <span class="legend-gradient"></span>
-            <span>High activity</span>
-            <span style="margin-left:auto">Heatmap weighted by detection count per location</span>
+            <span>📍 Each pin represents a location. Click a pin to see detection details.</span>
         </div>
     </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 <script>
     const SUPABASE_URL = 'https://lsamggztfizmkyljdgwq.supabase.co';
     const ANON_KEY     = 'sb_publishable_-80LQjkx2s82XnURj2DfQQ_d7ARz3js';
@@ -434,7 +430,7 @@
     let allDetections  = [];   // raw data from server
     let currentView    = 'feed';
     let map            = null;
-    let heatLayer      = null;
+    let markerGroup    = null;
     const geocodeCache = {};   // zip -> {lat, lng} or null
 
     // ── Filters ─────────────────────────────────────────────
@@ -606,7 +602,7 @@
         const loading = document.getElementById('map-loading');
         const noData  = document.getElementById('map-no-data');
 
-        if (heatLayer) { map.removeLayer(heatLayer); heatLayer = null; }
+        if (markerGroup) { map.removeLayer(markerGroup); markerGroup = null; }
 
         const speciesFilter = document.getElementById('map-species-filter').value;
         const visible = applyClientFilters(allDetections).filter(d =>
@@ -614,27 +610,28 @@
         );
 
         try {
-            let points = [];
+            // Build a map of location -> detections
+            let locations = {}; // key -> { lat, lng, detections[] }
 
-            // ① Prefer direct lat/lng on the detection row (no geocoding needed)
+            // ① Prefer direct lat/lng on the detection row
             const withCoords = visible.filter(d => d.latitude != null && d.longitude != null);
             if (withCoords.length > 0) {
-                const locMap = {};
                 for (const d of withCoords) {
-                    const key = `${d.latitude},${d.longitude}`;
-                    if (!locMap[key]) locMap[key] = { lat: +d.latitude, lng: +d.longitude, count: 0 };
-                    locMap[key].count++;
+                    const key = `${(+d.latitude).toFixed(4)},${(+d.longitude).toFixed(4)}`;
+                    if (!locations[key]) locations[key] = { lat: +d.latitude, lng: +d.longitude, detections: [] };
+                    locations[key].detections.push(d);
                 }
-                const maxCount = Math.max(...Object.values(locMap).map(l => l.count));
-                points = Object.values(locMap).map(l => [l.lat, l.lng, l.count / maxCount]);
 
             // ② Fall back to zip-code geocoding
             } else {
-                const zipCounts = {};
+                const zipDetections = {};
                 for (const d of visible) {
-                    if (d.zip_code) zipCounts[d.zip_code] = (zipCounts[d.zip_code] || 0) + 1;
+                    if (d.zip_code) {
+                        if (!zipDetections[d.zip_code]) zipDetections[d.zip_code] = [];
+                        zipDetections[d.zip_code].push(d);
+                    }
                 }
-                const uniqueZips = Object.keys(zipCounts);
+                const uniqueZips = Object.keys(zipDetections);
 
                 if (uniqueZips.length === 0) {
                     noData.textContent = 'No location data for the current filters. Detections need a zip code or coordinates to appear on the map.';
@@ -648,39 +645,35 @@
                 const coords = await Promise.all(uniqueZips.map(z => geocodeZip(z)));
                 loading.style.display = 'none';
 
-                const maxCount = Math.max(...Object.values(zipCounts));
                 uniqueZips.forEach((zip, i) => {
                     if (!coords[i]) return;
-                    points.push([coords[i].lat, coords[i].lng, zipCounts[zip] / maxCount]);
+                    locations[zip] = { lat: coords[i].lat, lng: coords[i].lng, detections: zipDetections[zip] };
                 });
             }
 
-            if (points.length === 0) {
-                noData.textContent = 'Could not geocode any locations. Check that zip codes are valid US zip codes.';
+            const locList = Object.values(locations);
+            if (locList.length === 0) {
+                noData.textContent = 'Could not resolve any locations. Check that zip codes are valid US zip codes.';
                 noData.style.display = '';
                 return;
             }
             noData.style.display = 'none';
 
-            // ③ Heatmap (preferred) — fall back to circle markers if plugin didn't load
-            if (typeof L.heatLayer === 'function') {
-                heatLayer = L.heatLayer(points, {
-                    radius: 35, blur: 25, maxZoom: 10,
-                    gradient: { 0.2: '#4575b4', 0.45: '#91cf60', 0.65: '#fee090', 0.85: '#f46d43', 1.0: '#a50026' },
-                }).addTo(map);
-            } else {
-                for (const [lat, lng, intensity] of points) {
-                    L.circleMarker([lat, lng], {
-                        radius: 8 + intensity * 14,
-                        fillColor: '#2d5a3d', color: '#1a3d2a',
-                        weight: 1, opacity: 0.9,
-                        fillOpacity: 0.4 + intensity * 0.5,
-                    }).addTo(map);
-                }
+            // ③ Drop a pin for each location with a popup summary
+            markerGroup = L.layerGroup().addTo(map);
+            for (const loc of locList) {
+                const count   = loc.detections.length;
+                const species = [...new Set(loc.detections.map(d => d.species).filter(Boolean))];
+                const topLine = species.slice(0, 5).join(', ') + (species.length > 5 ? ` +${species.length - 5} more` : '');
+                const popup   = `<strong>${count} detection${count !== 1 ? 's' : ''}</strong><br>${topLine}`;
+                L.marker([loc.lat, loc.lng])
+                    .bindPopup(popup)
+                    .addTo(markerGroup);
             }
 
-            // Fit map to the plotted points
-            map.fitBounds(L.latLngBounds(points.map(p => [p[0], p[1]])).pad(0.15));
+            // Fit map to pins
+            const latlngs = locList.map(l => [l.lat, l.lng]);
+            map.fitBounds(L.latLngBounds(latlngs).pad(0.15));
 
         } catch (err) {
             loading.style.display = 'none';
