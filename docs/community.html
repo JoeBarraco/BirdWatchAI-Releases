@@ -622,6 +622,19 @@
             .stats-table th, .stats-table td { padding: 6px 8px; }
         }
 
+        /* ── Trend chart ────────────────────────────────────── */
+        .trend-controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        .trend-svg-wrap {
+            overflow-x: auto;
+        }
+        .trend-svg-wrap svg text { font-family: 'Source Sans 3', sans-serif; }
+
         /* ── Species type-ahead ────────────────────────────── */
         .species-wrap {
             position: relative;
@@ -762,7 +775,8 @@
         <span id="refresh-indicator"></span>
         <span id="countdown">Refreshing in 30s</span>
         <span id="feed-count"></span>
-        <button class="refresh-btn" onclick="loadFeed()">Refresh now</button>
+        <button class="refresh-btn" style="margin-left:auto;" onclick="loadFeed()">Refresh now</button>
+        <button class="refresh-btn" style="background:var(--color-gray-500);" onclick="exportCSV()" title="Download filtered detections as CSV">⬇ CSV</button>
     </div>
 
     <!-- Feed view -->
@@ -803,6 +817,7 @@
             <button class="stats-tab" onclick="switchStatsTab('hotspots', this)">📍 Hotspots</button>
             <button class="stats-tab" onclick="switchStatsTab('temperature', this)">🌡️ Temperature</button>
             <button class="stats-tab" onclick="switchStatsTab('leaderboard', this)">🏆 Leaderboard</button>
+            <button class="stats-tab" onclick="switchStatsTab('trend', this)">📈 Trend</button>
         </div>
 
         <div id="stats-life-list"  class="stats-panel"></div>
@@ -810,6 +825,7 @@
         <div id="stats-hotspots"   class="stats-panel" style="display:none;"></div>
         <div id="stats-temperature" class="stats-panel" style="display:none;"></div>
         <div id="stats-leaderboard" class="stats-panel" style="display:none;"></div>
+        <div id="stats-trend"      class="stats-panel" style="display:none;"></div>
     </div>
 </div>
 
@@ -1394,6 +1410,7 @@
         btn.classList.add('active');
         document.querySelectorAll('.stats-panel').forEach(p => p.style.display = 'none');
         document.getElementById('stats-' + tabName).style.display = '';
+        if (tabName === 'trend') renderTrend();
     }
 
     function fmtHour(h) {
@@ -1613,6 +1630,127 @@
                     </tr>`).join('')}
                 </tbody>
             </table>`;
+    }
+
+    // ── Trend chart ──────────────────────────────────────────
+    function renderTrend() {
+        const visible = applyClientFilters(allDetections);
+        const panel   = document.getElementById('stats-trend');
+        if (!visible.length) {
+            panel.innerHTML = '<div class="feed-empty">No data for the current filters.</div>';
+            return;
+        }
+
+        // Build daily counts per species (top 5 by total)
+        const spTotals = {};
+        visible.forEach(d => { spTotals[d.species || 'Unknown'] = (spTotals[d.species || 'Unknown'] || 0) + 1; });
+        const topSpecies = Object.entries(spTotals).sort((a,b) => b[1]-a[1]).slice(0, 5).map(e => e[0]);
+
+        // Day buckets: YYYY-MM-DD
+        const dayMap = {};
+        visible.forEach(d => {
+            const day = d.detected_at.slice(0, 10);
+            if (!dayMap[day]) dayMap[day] = {};
+            const sp = d.species || 'Unknown';
+            if (topSpecies.includes(sp)) dayMap[day][sp] = (dayMap[day][sp] || 0) + 1;
+        });
+        const days = Object.keys(dayMap).sort();
+
+        if (days.length < 2) {
+            panel.innerHTML = '<div class="feed-empty">Not enough data to draw a trend (need at least 2 days).</div>';
+            return;
+        }
+
+        // Build a species-selector
+        const spColors = topSpecies.map((s, i) => PALETTE[i % PALETTE.length]);
+
+        // SVG dimensions
+        const W = 700, H = 260, PAD = { top: 20, right: 20, bottom: 50, left: 45 };
+        const chartW = W - PAD.left - PAD.right;
+        const chartH = H - PAD.top  - PAD.bottom;
+
+        const maxVal = Math.max(...topSpecies.map(sp => Math.max(...days.map(d => dayMap[d][sp] || 0))), 1);
+
+        const xScale = i => PAD.left + (i / (days.length - 1)) * chartW;
+        const yScale = v => PAD.top  + chartH - (v / maxVal) * chartH;
+
+        // Y grid lines
+        const yTicks = 4;
+        let gridLines = '', yLabels = '';
+        for (let t = 0; t <= yTicks; t++) {
+            const v = Math.round((t / yTicks) * maxVal);
+            const y = yScale(v);
+            gridLines += `<line x1="${PAD.left}" y1="${y}" x2="${PAD.left + chartW}" y2="${y}" stroke="#e8e4de" stroke-width="1"/>`;
+            yLabels   += `<text x="${PAD.left - 6}" y="${y + 4}" text-anchor="end" font-size="11" fill="#7a756d">${v}</text>`;
+        }
+
+        // X axis labels (show up to 10 evenly spaced day labels)
+        let xLabels = '';
+        const labelStep = Math.max(1, Math.floor(days.length / 10));
+        days.forEach((day, i) => {
+            if (i % labelStep !== 0 && i !== days.length - 1) return;
+            const x = xScale(i);
+            const label = day.slice(5); // MM-DD
+            xLabels += `<text x="${x}" y="${H - PAD.bottom + 16}" text-anchor="middle" font-size="10" fill="#7a756d">${label}</text>`;
+        });
+
+        // Polylines per species
+        let polylines = '', dots = '';
+        topSpecies.forEach((sp, si) => {
+            const color = spColors[si];
+            const pts = days.map((d, i) => `${xScale(i)},${yScale(dayMap[d][sp] || 0)}`).join(' ');
+            polylines += `<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" opacity="0.85"/>`;
+            days.forEach((d, i) => {
+                const v = dayMap[d][sp] || 0;
+                if (v > 0) dots += `<circle cx="${xScale(i)}" cy="${yScale(v)}" r="3.5" fill="${color}" stroke="white" stroke-width="1.5"><title>${sp}: ${v} on ${d}</title></circle>`;
+            });
+        });
+
+        // Legend
+        const legend = topSpecies.map((sp, i) =>
+            `<span style="display:inline-flex;align-items:center;gap:5px;margin-right:14px;font-size:0.8rem;">
+                <span style="display:inline-block;width:18px;height:3px;background:${spColors[i]};border-radius:2px;"></span>${esc(sp)}
+            </span>`
+        ).join('');
+
+        panel.innerHTML = `
+            <div class="stats-section-title">Detections Over Time (top ${topSpecies.length} species)</div>
+            <div style="margin-bottom:0.75rem;">${legend}</div>
+            <div class="trend-svg-wrap">
+                <svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px;display:block;">
+                    ${gridLines}${yLabels}
+                    <line x1="${PAD.left}" y1="${PAD.top}" x2="${PAD.left}" y2="${PAD.top+chartH}" stroke="#d0cbc3" stroke-width="1"/>
+                    <line x1="${PAD.left}" y1="${PAD.top+chartH}" x2="${PAD.left+chartW}" y2="${PAD.top+chartH}" stroke="#d0cbc3" stroke-width="1"/>
+                    ${xLabels}${polylines}${dots}
+                </svg>
+            </div>`;
+    }
+
+    // ── CSV export ───────────────────────────────────────────
+    function exportCSV() {
+        const visible = applyClientFilters(allDetections);
+        if (!visible.length) { alert('No detections to export.'); return; }
+        const cols = ['detected_at', 'species', 'rarity', 'zip_code', 'temperature', 'feeder', 'is_favorite', 'image_url', 'video_url'];
+        const header = cols.join(',');
+        const rows = visible.map(d => [
+            d.detected_at,
+            d.species || '',
+            d.rarity || '',
+            d.zip_code || '',
+            d.temperature != null ? d.temperature : '',
+            d.feeders?.display_name || '',
+            d.is_favorite ? 'true' : 'false',
+            d.image_url || '',
+            d.video_url || '',
+        ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(','));
+        const csv  = [header, ...rows].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href     = url;
+        a.download = `birdwatchai-detections-${new Date().toISOString().slice(0,10)}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
     }
 
     function filterBySpeciesFromMap(speciesName) {
