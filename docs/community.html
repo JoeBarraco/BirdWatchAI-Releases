@@ -379,6 +379,236 @@
             .period-btns { flex-wrap: wrap; }
             #map { height: 360px; }
         }
+
+        /* ── Stats view ─────────────────────────────────────── */
+        #stats-view { display: none; }
+
+        .stats-kpi-row {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
+        }
+
+        .stats-kpi {
+            background: white;
+            border: 1px solid #e8e4de;
+            border-radius: 10px;
+            padding: 1rem 1.5rem;
+            min-width: 110px;
+            flex: 1;
+            text-align: center;
+        }
+
+        .stats-kpi-value {
+            font-family: 'Fraunces', serif;
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--color-primary);
+            line-height: 1.1;
+        }
+
+        .stats-kpi-label {
+            font-size: 0.72rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--color-gray-500);
+            margin-top: 4px;
+        }
+
+        .stats-tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .stats-tab {
+            font-family: inherit;
+            font-size: 0.875rem;
+            font-weight: 500;
+            padding: 6px 16px;
+            border: 1px solid #d0cbc3;
+            border-radius: 6px;
+            background: white;
+            color: var(--color-gray-500);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .stats-tab:hover { border-color: var(--color-primary); color: var(--color-primary); }
+        .stats-tab.active {
+            background: var(--color-primary);
+            border-color: var(--color-primary);
+            color: white;
+        }
+
+        .stats-panel {
+            background: white;
+            border: 1px solid #e8e4de;
+            border-radius: 10px;
+            padding: 1.25rem;
+            min-height: 200px;
+            overflow-x: auto;
+        }
+
+        .stats-section-title {
+            font-family: 'Fraunces', serif;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--color-gray-900);
+            margin-bottom: 1rem;
+        }
+
+        .stats-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+
+        .stats-table th {
+            text-align: left;
+            padding: 8px 12px;
+            border-bottom: 2px solid #e8e4de;
+            font-size: 0.72rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--color-gray-500);
+            white-space: nowrap;
+        }
+
+        .stats-table td {
+            padding: 8px 12px;
+            border-bottom: 1px solid #f0ece6;
+            vertical-align: middle;
+        }
+
+        .stats-table tr:last-child td { border-bottom: none; }
+        .stats-table tr:hover td { background: #faf8f5; }
+
+        .stats-rank {
+            color: var(--color-gray-500);
+            font-size: 0.8rem;
+            width: 2rem;
+            text-align: center;
+        }
+
+        .stats-species-name { font-weight: 500; color: var(--color-gray-900); }
+        .stats-count        { text-align: right; font-variant-numeric: tabular-nums; }
+        .stats-peak         { text-align: center; font-variant-numeric: tabular-nums; }
+
+        .stats-pct {
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            justify-content: flex-end;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .pct-bar-wrap {
+            display: inline-block;
+            width: 80px;
+            height: 8px;
+            background: #f0ece6;
+            border-radius: 4px;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .pct-bar {
+            display: block;
+            height: 100%;
+            background: var(--color-primary);
+            border-radius: 4px;
+            min-width: 2px;
+        }
+
+        .rarity-badge {
+            font-size: 0.68rem;
+            font-weight: 600;
+            padding: 1px 6px;
+            border-radius: 10px;
+            vertical-align: middle;
+            margin-left: 4px;
+            background: #f5f3f0;
+        }
+        .rarity-badge.rarity-rare      { background: #fff3e0; color: #e65100; }
+        .rarity-badge.rarity-very-rare { background: #ffebee; color: #c62828; }
+        .rarity-badge.rarity-uncommon  { background: #f5f5f5; color: #616161; }
+
+        .stats-view-btn {
+            font-family: inherit;
+            font-size: 0.75rem;
+            padding: 3px 10px;
+            border: 1px solid var(--color-primary);
+            border-radius: 4px;
+            background: white;
+            color: var(--color-primary);
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .stats-view-btn:hover { background: var(--color-primary); color: white; }
+
+        /* ── Horizontal bar chart ─────────────────────────── */
+        .bar-chart-h { display: flex; flex-direction: column; gap: 5px; }
+
+        .bar-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.8125rem;
+        }
+
+        .bar-label {
+            min-width: 3.5rem;
+            text-align: right;
+            color: var(--color-gray-500);
+            font-size: 0.75rem;
+            flex-shrink: 0;
+        }
+
+        .bar-label-wide {
+            min-width: 7rem;
+            text-align: right;
+            color: var(--color-gray-700);
+            font-size: 0.8rem;
+            flex-shrink: 0;
+        }
+
+        .bar-track {
+            flex: 1;
+            height: 18px;
+            background: #f0ece6;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .bar-fill {
+            height: 100%;
+            background: var(--color-primary);
+            border-radius: 4px;
+            min-width: 2px;
+        }
+
+        .bar-value {
+            min-width: 3rem;
+            font-variant-numeric: tabular-nums;
+            color: var(--color-gray-700);
+            font-size: 0.8125rem;
+        }
+
+        .bar-sub { color: var(--color-gray-500); font-size: 0.75rem; }
+
+        @media (max-width: 640px) {
+            .stats-kpi { min-width: 80px; padding: 0.75rem 1rem; }
+            .stats-kpi-value { font-size: 1.5rem; }
+            .pct-bar-wrap { width: 40px; }
+            .stats-table { font-size: 0.8rem; }
+            .stats-table th, .stats-table td { padding: 6px 8px; }
+        }
     </style>
 </head>
 <body>
@@ -427,6 +657,7 @@
     <div class="view-tabs">
         <button class="view-tab active" onclick="switchView('feed', this)">📋 Feed</button>
         <button class="view-tab" onclick="switchView('map', this)">🗺️ Map</button>
+        <button class="view-tab" onclick="switchView('stats', this)">📊 Stats</button>
     </div>
 
     <!-- Status bar -->
@@ -456,6 +687,27 @@
             No location data available for the current filters. Detections need a zip code to appear on the map.
         </div>
         <div id="map-legend" class="map-legend"></div>
+    </div>
+
+    <!-- Stats view -->
+    <div id="stats-view">
+        <!-- Summary KPIs -->
+        <div id="stats-summary"></div>
+
+        <!-- Sub-tabs -->
+        <div class="stats-tabs">
+            <button class="stats-tab active" onclick="switchStatsTab('life-list', this)">📋 Life List</button>
+            <button class="stats-tab" onclick="switchStatsTab('activity', this)">🕐 Activity</button>
+            <button class="stats-tab" onclick="switchStatsTab('hotspots', this)">📍 Hotspots</button>
+            <button class="stats-tab" onclick="switchStatsTab('temperature', this)">🌡️ Temperature</button>
+            <button class="stats-tab" onclick="switchStatsTab('leaderboard', this)">🏆 Leaderboard</button>
+        </div>
+
+        <div id="stats-life-list"  class="stats-panel"></div>
+        <div id="stats-activity"   class="stats-panel" style="display:none;"></div>
+        <div id="stats-hotspots"   class="stats-panel" style="display:none;"></div>
+        <div id="stats-temperature" class="stats-panel" style="display:none;"></div>
+        <div id="stats-leaderboard" class="stats-panel" style="display:none;"></div>
     </div>
 </div>
 
@@ -542,7 +794,8 @@
             populateFeedSpeciesDropdown(allDetections);
             populateMapSpeciesDropdown(allDetections);
             renderFeed();
-            if (currentView === 'map') renderMap();
+            if (currentView === 'map')   renderMap();
+            if (currentView === 'stats') renderStats();
 
         } catch (err) {
             document.getElementById('feed-view').innerHTML =
@@ -853,12 +1106,11 @@
         document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
         btn.classList.add('active');
 
-        if (view === 'feed') {
-            document.getElementById('feed-view').style.display = '';
-            document.getElementById('map-view').style.display  = 'none';
-        } else {
-            document.getElementById('feed-view').style.display = 'none';
-            document.getElementById('map-view').style.display  = 'block';
+        document.getElementById('feed-view').style.display   = view === 'feed'  ? ''      : 'none';
+        document.getElementById('map-view').style.display    = view === 'map'   ? 'block' : 'none';
+        document.getElementById('stats-view').style.display  = view === 'stats' ? ''      : 'none';
+
+        if (view === 'map') {
             // Double rAF: wait for the browser to actually paint the div
             // before Leaflet measures its dimensions
             requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -866,7 +1118,251 @@
                 map.invalidateSize();
                 renderMap();
             }));
+        } else if (view === 'stats') {
+            renderStats();
         }
+    }
+
+    // ── Stats ────────────────────────────────────────────────
+    let activeStatsTab = 'life-list';
+
+    function switchStatsTab(tabName, btn) {
+        activeStatsTab = tabName;
+        document.querySelectorAll('.stats-tab').forEach(t => t.classList.remove('active'));
+        btn.classList.add('active');
+        document.querySelectorAll('.stats-panel').forEach(p => p.style.display = 'none');
+        document.getElementById('stats-' + tabName).style.display = '';
+    }
+
+    function fmtHour(h) {
+        if (h === 0)  return '12am';
+        if (h < 12)   return h + 'am';
+        if (h === 12) return '12pm';
+        return (h - 12) + 'pm';
+    }
+
+    function renderStats() {
+        if (currentView !== 'stats') return;
+        const visible = applyClientFilters(allDetections);
+        const total   = visible.length;
+
+        // ── Summary KPIs ─────────────────────────────────────
+        const uniqueSpecies = new Set(visible.map(d => d.species).filter(Boolean));
+        const uniqueZips    = new Set(visible.map(d => d.zip_code).filter(Boolean));
+        const withTemp      = visible.filter(d => d.temperature != null);
+        const avgTemp       = withTemp.length
+            ? (withTemp.reduce((s, d) => s + d.temperature, 0) / withTemp.length).toFixed(1)
+            : null;
+
+        document.getElementById('stats-summary').innerHTML = `
+            <div class="stats-kpi-row">
+                <div class="stats-kpi">
+                    <div class="stats-kpi-value">${total.toLocaleString()}</div>
+                    <div class="stats-kpi-label">Total Detections</div>
+                </div>
+                <div class="stats-kpi">
+                    <div class="stats-kpi-value">${uniqueSpecies.size}</div>
+                    <div class="stats-kpi-label">Species Seen</div>
+                </div>
+                <div class="stats-kpi">
+                    <div class="stats-kpi-value">${uniqueZips.size}</div>
+                    <div class="stats-kpi-label">Locations</div>
+                </div>
+                ${avgTemp !== null ? `<div class="stats-kpi">
+                    <div class="stats-kpi-value">${avgTemp}°F</div>
+                    <div class="stats-kpi-label">Avg Temperature</div>
+                </div>` : ''}
+            </div>`;
+
+        // ── Life List ─────────────────────────────────────────
+        const spMap = {};
+        visible.forEach(d => {
+            const sp = d.species || 'Unknown';
+            if (!spMap[sp]) spMap[sp] = { count: 0, hours: new Array(24).fill(0), rarity: '' };
+            spMap[sp].count++;
+            spMap[sp].hours[new Date(d.detected_at).getHours()]++;
+            if (!spMap[sp].rarity && d.rarity) spMap[sp].rarity = d.rarity;
+        });
+
+        const maxCount = Math.max(...Object.values(spMap).map(s => s.count), 1);
+        const lifeList = Object.entries(spMap)
+            .map(([name, data]) => ({
+                name,
+                count: data.count,
+                pct: total > 0 ? ((data.count / total) * 100).toFixed(1) : '0.0',
+                peakHour: data.hours.indexOf(Math.max(...data.hours)),
+                rarity: data.rarity,
+            }))
+            .sort((a, b) => b.count - a.count);
+
+        document.getElementById('stats-life-list').innerHTML = lifeList.length === 0
+            ? '<div class="feed-empty">No data for the current filters.</div>'
+            : `<table class="stats-table">
+                <thead><tr>
+                    <th>#</th><th>Species</th><th>Detections</th>
+                    <th>% of Total</th><th>Peak Hour</th><th></th>
+                </tr></thead>
+                <tbody>${lifeList.map((s, i) => `
+                    <tr>
+                        <td class="stats-rank">${i + 1}</td>
+                        <td class="stats-species-name">${esc(s.name)}${s.rarity
+                            ? ` <span class="rarity-badge rarity-${s.rarity.toLowerCase().replace(/\s+/g,'-')}">${esc(s.rarity)}</span>`
+                            : ''}</td>
+                        <td class="stats-count">${s.count.toLocaleString()}</td>
+                        <td class="stats-pct">
+                            <span class="pct-bar-wrap"><span class="pct-bar" style="width:${(s.count/maxCount*100).toFixed(1)}%"></span></span>
+                            ${s.pct}%
+                        </td>
+                        <td class="stats-peak">${fmtHour(s.peakHour)}</td>
+                        <td><button class="stats-view-btn" data-species="${esc(s.name)}" onclick="filterBySpecies(this)">View</button></td>
+                    </tr>`).join('')}
+                </tbody>
+            </table>`;
+
+        // ── Hourly & Daily Activity ───────────────────────────
+        const hourCounts = new Array(24).fill(0);
+        const dayCounts  = new Array(7).fill(0);
+        visible.forEach(d => {
+            const dt = new Date(d.detected_at);
+            hourCounts[dt.getHours()]++;
+            dayCounts[dt.getDay()]++;
+        });
+        const maxHour = Math.max(...hourCounts, 1);
+        const maxDay  = Math.max(...dayCounts,  1);
+        const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+        document.getElementById('stats-activity').innerHTML = `
+            <div class="stats-section-title">Detections by Hour of Day</div>
+            <div class="bar-chart-h">${hourCounts.map((c, h) => `
+                <div class="bar-row">
+                    <div class="bar-label">${fmtHour(h)}</div>
+                    <div class="bar-track"><div class="bar-fill" style="width:${(c/maxHour*100).toFixed(1)}%"></div></div>
+                    <div class="bar-value">${c}</div>
+                </div>`).join('')}
+            </div>
+            <div class="stats-section-title" style="margin-top:2rem;">Detections by Day of Week</div>
+            <div class="bar-chart-h">${dayCounts.map((c, d) => `
+                <div class="bar-row">
+                    <div class="bar-label">${DAY_NAMES[d]}</div>
+                    <div class="bar-track"><div class="bar-fill" style="width:${(c/maxDay*100).toFixed(1)}%"></div></div>
+                    <div class="bar-value">${c}</div>
+                </div>`).join('')}
+            </div>`;
+
+        // ── Hotspots ──────────────────────────────────────────
+        const zipStats = {};
+        visible.forEach(d => {
+            if (!d.zip_code) return;
+            if (!zipStats[d.zip_code]) zipStats[d.zip_code] = { count: 0, species: new Set() };
+            zipStats[d.zip_code].count++;
+            if (d.species) zipStats[d.zip_code].species.add(d.species);
+        });
+        const maxZip   = Math.max(...Object.values(zipStats).map(z => z.count), 1);
+        const hotspots = Object.entries(zipStats)
+            .map(([zip, data]) => ({ zip, count: data.count, species: data.species.size }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 25);
+
+        document.getElementById('stats-hotspots').innerHTML = hotspots.length === 0
+            ? '<div class="feed-empty">No location data for the current filters.</div>'
+            : `<table class="stats-table">
+                <thead><tr>
+                    <th>#</th><th>Zip Code</th><th>Detections</th>
+                    <th>% of Total</th><th>Unique Species</th>
+                </tr></thead>
+                <tbody>${hotspots.map((h, i) => `
+                    <tr>
+                        <td class="stats-rank">${i + 1}</td>
+                        <td class="stats-species-name">${esc(h.zip)}</td>
+                        <td class="stats-count">${h.count.toLocaleString()}</td>
+                        <td class="stats-pct">
+                            <span class="pct-bar-wrap"><span class="pct-bar" style="width:${(h.count/maxZip*100).toFixed(1)}%"></span></span>
+                            ${total > 0 ? ((h.count/total)*100).toFixed(1) : '0.0'}%
+                        </td>
+                        <td class="stats-count">${h.species}</td>
+                    </tr>`).join('')}
+                </tbody>
+            </table>`;
+
+        // ── Temperature ───────────────────────────────────────
+        const TEMP_RANGES = [
+            { label: 'Below 32°F', min: -Infinity, max: 32,       count: 0, species: new Set() },
+            { label: '32 – 50°F',  min: 32,        max: 50,       count: 0, species: new Set() },
+            { label: '50 – 70°F',  min: 50,        max: 70,       count: 0, species: new Set() },
+            { label: '70 – 85°F',  min: 70,        max: 85,       count: 0, species: new Set() },
+            { label: 'Above 85°F', min: 85,        max: Infinity, count: 0, species: new Set() },
+        ];
+        let tempTotal = 0;
+        visible.forEach(d => {
+            if (d.temperature == null) return;
+            tempTotal++;
+            const r = TEMP_RANGES.find(r => d.temperature >= r.min && d.temperature < r.max);
+            if (r) { r.count++; if (d.species) r.species.add(d.species); }
+        });
+        const maxTemp = Math.max(...TEMP_RANGES.map(r => r.count), 1);
+
+        document.getElementById('stats-temperature').innerHTML = tempTotal === 0
+            ? '<div class="feed-empty">No temperature data for the current filters.</div>'
+            : `<div class="stats-section-title">Detections by Temperature Range</div>
+               <div class="bar-chart-h">${TEMP_RANGES.map(r => `
+                   <div class="bar-row">
+                       <div class="bar-label-wide">${r.label}</div>
+                       <div class="bar-track"><div class="bar-fill" style="width:${(r.count/maxTemp*100).toFixed(1)}%"></div></div>
+                       <div class="bar-value">${r.count} <span class="bar-sub">${r.species.size} sp.</span></div>
+                   </div>`).join('')}
+               </div>`;
+
+        // ── Leaderboard ───────────────────────────────────────
+        const feederStats = {};
+        visible.forEach(d => {
+            const name = d.feeders?.display_name;
+            if (!name) return;
+            if (!feederStats[name]) feederStats[name] = { count: 0, species: new Set(), rareCount: 0 };
+            feederStats[name].count++;
+            if (d.species) feederStats[name].species.add(d.species);
+            if (d.rarity === 'Rare' || d.rarity === 'Very Rare') feederStats[name].rareCount++;
+        });
+        const maxFeeder = Math.max(...Object.values(feederStats).map(f => f.count), 1);
+        const leaderboard = Object.entries(feederStats)
+            .map(([name, data]) => ({ name, count: data.count, species: data.species.size, rareCount: data.rareCount }))
+            .sort((a, b) => b.count - a.count);
+
+        // Medal icons for top 3
+        const medals = ['🥇', '🥈', '🥉'];
+
+        document.getElementById('stats-leaderboard').innerHTML = leaderboard.length === 0
+            ? '<div class="feed-empty">No feeder data for the current filters.</div>'
+            : `<table class="stats-table">
+                <thead><tr>
+                    <th>#</th><th>Feeder</th><th>Detections</th>
+                    <th>% of Total</th><th>Species</th><th>Rare / Very Rare</th>
+                </tr></thead>
+                <tbody>${leaderboard.map((f, i) => `
+                    <tr>
+                        <td class="stats-rank">${medals[i] ?? i + 1}</td>
+                        <td class="stats-species-name">${esc(f.name)}</td>
+                        <td class="stats-count">${f.count.toLocaleString()}</td>
+                        <td class="stats-pct">
+                            <span class="pct-bar-wrap"><span class="pct-bar" style="width:${(f.count/maxFeeder*100).toFixed(1)}%"></span></span>
+                            ${total > 0 ? ((f.count/total)*100).toFixed(1) : '0.0'}%
+                        </td>
+                        <td class="stats-count">${f.species}</td>
+                        <td class="stats-count">${f.rareCount > 0 ? `<span style="color:#d32f2f;font-weight:600;">${f.rareCount}</span>` : '—'}</td>
+                    </tr>`).join('')}
+                </tbody>
+            </table>`;
+    }
+
+    function filterBySpecies(btn) {
+        const speciesName = btn.dataset.species;
+        document.getElementById('species-filter').value = speciesName;
+        currentView = 'feed';
+        document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
+        document.querySelector('.view-tab').classList.add('active');
+        document.getElementById('feed-view').style.display   = '';
+        document.getElementById('map-view').style.display    = 'none';
+        document.getElementById('stats-view').style.display  = 'none';
+        renderFeed();
     }
 
     // ── Filter event wiring ──────────────────────────────────
@@ -880,12 +1376,14 @@
 
     document.getElementById('species-filter').addEventListener('change', () => {
         renderFeed();
-        if (currentView === 'map') renderMap();
+        if (currentView === 'map')   renderMap();
+        if (currentView === 'stats') renderStats();
     });
 
     document.getElementById('feeder-filter').addEventListener('change', () => {
         renderFeed();
-        if (currentView === 'map') renderMap();
+        if (currentView === 'map')   renderMap();
+        if (currentView === 'stats') renderStats();
     });
 
     let zipDebounce;
@@ -893,7 +1391,8 @@
         clearTimeout(zipDebounce);
         zipDebounce = setTimeout(() => {
             renderFeed();
-            if (currentView === 'map') renderMap();
+            if (currentView === 'map')   renderMap();
+            if (currentView === 'stats') renderStats();
         }, 400);
     });
 
