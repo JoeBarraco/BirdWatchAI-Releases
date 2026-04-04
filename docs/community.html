@@ -700,7 +700,7 @@
             document.getElementById('map-view').style.display  = 'none';
         } else {
             document.getElementById('feed-view').style.display = 'none';
-            document.getElementById('map-view').style.display  = '';
+            document.getElementById('map-view').style.display  = 'block';
             // Double rAF: wait for the browser to actually paint the div
             // before Leaflet measures its dimensions
             requestAnimationFrame(() => requestAnimationFrame(() => {
