@@ -770,12 +770,20 @@
         <button class="view-tab" onclick="switchView('stats', this)">📊 Stats</button>
     </div>
 
+    <!-- Notification permission banner (shown when needed) -->
+    <div id="notif-banner" style="display:none;background:#fff8e6;border:1px solid #e6a817;border-radius:8px;padding:0.75rem 1rem;margin-bottom:0.75rem;font-size:0.875rem;display:none;align-items:center;gap:1rem;flex-wrap:wrap;">
+        <span>🔔 Enable browser notifications to get alerted when a Rare or Very Rare bird is detected — even when this tab isn't in focus.</span>
+        <button onclick="requestNotifPermission()" style="font-family:inherit;font-size:0.8125rem;padding:4px 14px;border:1px solid #e6a817;border-radius:6px;background:#fff;color:#b07a00;cursor:pointer;font-weight:600;white-space:nowrap;">Enable notifications</button>
+        <button onclick="document.getElementById('notif-banner').style.display='none'" style="font-family:inherit;font-size:0.8125rem;padding:4px 10px;border:1px solid #d0cbc3;border-radius:6px;background:#fff;color:#7a756d;cursor:pointer;">Dismiss</button>
+    </div>
+
     <!-- Status bar -->
     <div id="status-bar">
         <span id="refresh-indicator"></span>
         <span id="countdown">Refreshing in 30s</span>
         <span id="feed-count"></span>
         <button class="refresh-btn" style="margin-left:auto;" onclick="loadFeed()">Refresh now</button>
+        <button id="notif-toggle" class="refresh-btn" style="background:var(--color-gray-500);" onclick="toggleNotifications()" title="Toggle rare bird notifications">🔔 Notify rare</button>
         <button class="refresh-btn" style="background:var(--color-gray-500);" onclick="exportCSV()" title="Download filtered detections as CSV">⬇ CSV</button>
     </div>
 
@@ -1052,6 +1060,7 @@
             renderFeed();
             if (currentView === 'map')   renderMap();
             if (currentView === 'stats') renderStats();
+            checkForRareNotifications(allDetections);
 
         } catch (err) {
             document.getElementById('feed-view').innerHTML =
@@ -1872,6 +1881,76 @@
         return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
                   .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
     }
+
+    // ── Push notifications for rare birds ────────────────────
+    let notificationsEnabled = false;
+    const seenRareIds = new Set();   // track which rare detections we've already notified
+
+    function updateNotifBtn() {
+        const btn = document.getElementById('notif-toggle');
+        if (notificationsEnabled) {
+            btn.textContent  = '🔔 Notifying';
+            btn.style.background = '#2d5a3d';
+        } else {
+            btn.textContent  = '🔔 Notify rare';
+            btn.style.background = 'var(--color-gray-500)';
+        }
+    }
+
+    async function requestNotifPermission() {
+        if (!('Notification' in window)) { alert('Notifications are not supported in this browser.'); return; }
+        const perm = await Notification.requestPermission();
+        if (perm === 'granted') {
+            notificationsEnabled = true;
+            document.getElementById('notif-banner').style.display = 'none';
+            updateNotifBtn();
+        }
+    }
+
+    function toggleNotifications() {
+        if (!('Notification' in window)) { alert('Notifications are not supported in this browser.'); return; }
+        if (Notification.permission === 'denied') {
+            alert('Notification permission was denied. Please enable it in your browser settings and reload.');
+            return;
+        }
+        if (!notificationsEnabled) {
+            if (Notification.permission === 'granted') {
+                notificationsEnabled = true;
+                updateNotifBtn();
+            } else {
+                // Show the inline banner asking for permission
+                document.getElementById('notif-banner').style.display = 'flex';
+            }
+        } else {
+            notificationsEnabled = false;
+            updateNotifBtn();
+        }
+    }
+
+    function checkForRareNotifications(detections) {
+        if (!notificationsEnabled || Notification.permission !== 'granted') return;
+        const rare = detections.filter(d =>
+            (d.rarity === 'Rare' || d.rarity === 'Very Rare') && !seenRareIds.has(d.id)
+        );
+        rare.forEach(d => {
+            seenRareIds.add(d.id);
+            const notif = new Notification(`${d.rarity} bird detected! 🐦`, {
+                body: `${d.species}${d.feeders?.display_name ? ' at ' + d.feeders.display_name : ''}${d.zip_code ? ' (' + d.zip_code + ')' : ''}`,
+                icon: d.image_url || '',
+                tag:  String(d.id),
+            });
+            notif.onclick = () => { window.focus(); notif.close(); };
+        });
+    }
+
+    // Offer notifications if not yet decided
+    window.addEventListener('load', () => {
+        if ('Notification' in window && Notification.permission === 'default') {
+            setTimeout(() => {
+                document.getElementById('notif-banner').style.display = 'flex';
+            }, 4000);
+        }
+    });
 
     // ── Init ─────────────────────────────────────────────────
     loadFeed();
