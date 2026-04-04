@@ -32,7 +32,7 @@
         }
 
         .container {
-            max-width: 1000px;
+            max-width: 1600px;
             margin: 0 auto;
         }
 
@@ -219,13 +219,18 @@
         .refresh-btn:hover { background: var(--color-primary-light); }
 
         /* ── Feed cards ─────────────────────────────────── */
-        #feed-view { min-height: 200px; }
+        #feed-view {
+            min-height: 200px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(440px, 1fr));
+            gap: 10px;
+            align-items: start;
+        }
 
         .card {
             border: 1px solid #e8e4de;
             border-radius: 8px;
             padding: 14px;
-            margin: 10px 0;
             display: flex;
             gap: 14px;
             align-items: flex-start;
@@ -313,11 +318,13 @@
         .rarity-uncommon  { color: var(--color-gray-500); }
 
         .feed-loading, .feed-empty {
+            grid-column: 1 / -1;
             text-align: center;
             padding: 3rem;
             color: var(--color-gray-500);
         }
         .feed-error {
+            grid-column: 1 / -1;
             padding: 1rem 1.25rem;
             background: #fff3f3;
             border: 1px solid #f5c6c6;
@@ -378,6 +385,7 @@
             .filter-bar { gap: 0.75rem; }
             .period-btns { flex-wrap: wrap; }
             #map { height: 360px; }
+            #feed-view { grid-template-columns: 1fr; }
         }
 
         /* ── Stats view ─────────────────────────────────────── */
