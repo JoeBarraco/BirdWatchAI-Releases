@@ -49,7 +49,6 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             nav.style.boxShadow = 'none';
         }
-        
         lastScroll = currentScroll;
     });
     
