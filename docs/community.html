@@ -402,6 +402,13 @@
         </div>
 
         <div class="filter-group">
+            <span class="filter-label">Species</span>
+            <select id="species-filter" class="filter-select">
+                <option value="">All species</option>
+            </select>
+        </div>
+
+        <div class="filter-group">
             <span class="filter-label">Feeder</span>
             <select id="feeder-filter" class="filter-select">
                 <option value="">All feeders</option>
@@ -475,9 +482,10 @@
     // ── Filters ─────────────────────────────────────────────
     function getFilters() {
         return {
-            period: document.querySelector('.period-btn.active')?.dataset.period ?? '',
-            feeder: document.getElementById('feeder-filter').value,
-            zip:    document.getElementById('zip-filter').value.trim(),
+            period:  document.querySelector('.period-btn.active')?.dataset.period ?? '',
+            species: document.getElementById('species-filter').value,
+            feeder:  document.getElementById('feeder-filter').value,
+            zip:     document.getElementById('zip-filter').value.trim(),
         };
     }
 
@@ -502,10 +510,11 @@
     }
 
     function applyClientFilters(data) {
-        const { feeder, zip } = getFilters();
+        const { feeder, zip, species } = getFilters();
         return data.filter(d => {
-            if (feeder && d.feeders?.display_name !== feeder) return false;
-            if (zip    && d.zip_code   !== zip)    return false;
+            if (species && d.species             !== species) return false;
+            if (feeder  && d.feeders?.display_name !== feeder) return false;
+            if (zip     && d.zip_code              !== zip)    return false;
             return true;
         });
     }
@@ -530,6 +539,7 @@
             allDetections = await res.json();
 
             populateFeederDropdown(allDetections);
+            populateFeedSpeciesDropdown(allDetections);
             populateMapSpeciesDropdown(allDetections);
             renderFeed();
             if (currentView === 'map') renderMap();
@@ -551,6 +561,15 @@
         sel.innerHTML = '<option value="">All feeders</option>' +
             names.map(n => `<option value="${n}">${n}</option>`).join('');
         if (names.includes(prev)) sel.value = prev;
+    }
+
+    function populateFeedSpeciesDropdown(data) {
+        const sel     = document.getElementById('species-filter');
+        const prev    = sel.value;
+        const species = [...new Set(data.map(d => d.species).filter(Boolean))].sort();
+        sel.innerHTML = '<option value="">All species</option>' +
+            species.map(s => `<option value="${s}">${s}</option>`).join('');
+        if (species.includes(prev)) sel.value = prev;
     }
 
     // ── Map species dropdown ─────────────────────────────────
@@ -859,6 +878,11 @@
         });
     });
 
+    document.getElementById('species-filter').addEventListener('change', () => {
+        renderFeed();
+        if (currentView === 'map') renderMap();
+    });
+
     document.getElementById('feeder-filter').addEventListener('change', () => {
         renderFeed();
         if (currentView === 'map') renderMap();
@@ -876,8 +900,9 @@
     function clearFilters() {
         document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
         document.querySelector('.period-btn[data-period=""]').classList.add('active');
-        document.getElementById('feeder-filter').value = '';
-        document.getElementById('zip-filter').value    = '';
+        document.getElementById('species-filter').value = '';
+        document.getElementById('feeder-filter').value  = '';
+        document.getElementById('zip-filter').value     = '';
         loadFeed();
     }
 
