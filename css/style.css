@@ -253,6 +253,16 @@ ul {
     color: var(--color-primary);
 }
 
+.nav-live {
+    color: #c62828 !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.01em;
+}
+
+.nav-live:hover {
+    color: #a50000 !important;
+}
+
 .nav-mobile-toggle {
     display: none;
     flex-direction: column;

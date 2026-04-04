@@ -7,6 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Source+Sans+3:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root {
             --color-primary: #2d5a3d;
@@ -31,7 +32,7 @@
         }
 
         .container {
-            max-width: 900px;
+            max-width: 1000px;
             margin: 0 auto;
         }
 
@@ -44,7 +45,6 @@
             text-decoration: none;
             margin-bottom: 2rem;
         }
-
         .back-link:hover { text-decoration: underline; }
 
         h1 {
@@ -61,15 +61,125 @@
             margin-bottom: 1.5rem;
         }
 
-        /* Status bar */
+        /* ── Filter bar ─────────────────────────────────── */
+        .filter-bar {
+            background: white;
+            border: 1px solid #e8e4de;
+            border-radius: 10px;
+            padding: 1rem 1.25rem;
+            margin-bottom: 1rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-label {
+            font-size: 0.8125rem;
+            font-weight: 600;
+            color: var(--color-gray-500);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            white-space: nowrap;
+        }
+
+        /* Time period pill buttons */
+        .period-btns {
+            display: flex;
+            gap: 4px;
+        }
+
+        .period-btn {
+            font-family: inherit;
+            font-size: 0.8125rem;
+            padding: 4px 12px;
+            border: 1px solid #d0cbc3;
+            border-radius: 20px;
+            background: white;
+            color: var(--color-gray-700);
+            cursor: pointer;
+            transition: all 0.15s;
+            white-space: nowrap;
+        }
+        .period-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
+        .period-btn.active {
+            background: var(--color-primary);
+            border-color: var(--color-primary);
+            color: white;
+        }
+
+        /* Feeder & zip inputs */
+        .filter-select, .filter-input {
+            font-family: inherit;
+            font-size: 0.875rem;
+            padding: 5px 10px;
+            border: 1px solid #d0cbc3;
+            border-radius: 6px;
+            background: white;
+            color: var(--color-gray-700);
+            min-width: 140px;
+        }
+        .filter-select:focus, .filter-input:focus {
+            outline: 2px solid var(--color-primary);
+            outline-offset: 1px;
+        }
+
+        .clear-btn {
+            font-family: inherit;
+            font-size: 0.8125rem;
+            padding: 5px 12px;
+            border: 1px solid #d0cbc3;
+            border-radius: 6px;
+            background: white;
+            color: var(--color-gray-500);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .clear-btn:hover { border-color: #c62828; color: #c62828; }
+
+        /* ── View tabs ──────────────────────────────────── */
+        .view-tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 1rem;
+        }
+
+        .view-tab {
+            font-family: inherit;
+            font-size: 0.9375rem;
+            font-weight: 500;
+            padding: 8px 20px;
+            border: 2px solid #e8e4de;
+            border-radius: 8px 8px 0 0;
+            background: white;
+            color: var(--color-gray-500);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .view-tab.active {
+            border-color: var(--color-primary);
+            border-bottom-color: var(--color-cream);
+            color: var(--color-primary);
+            font-weight: 600;
+            background: var(--color-cream);
+        }
+
+        /* ── Status bar ─────────────────────────────────── */
         #status-bar {
             display: flex;
             align-items: center;
             gap: 12px;
             font-size: 13px;
             color: var(--color-gray-500);
-            margin-bottom: 1.5rem;
-            padding: 0.75rem 1rem;
+            margin-bottom: 1rem;
+            padding: 0.625rem 1rem;
             background: white;
             border: 1px solid #e8e4de;
             border-radius: 8px;
@@ -83,7 +193,6 @@
             background: #4caf50;
             flex-shrink: 0;
         }
-
         #refresh-indicator.refreshing {
             background: #ff9800;
             animation: pulse 0.6s ease-in-out infinite;
@@ -107,10 +216,11 @@
             font-weight: 500;
             transition: background 0.2s;
         }
-
         .refresh-btn:hover { background: var(--color-primary-light); }
 
-        /* Feed cards */
+        /* ── Feed cards ─────────────────────────────────── */
+        #feed-view { min-height: 200px; }
+
         .card {
             border: 1px solid #e8e4de;
             border-radius: 8px;
@@ -122,7 +232,6 @@
             background: white;
             transition: background 0.4s;
         }
-
         .card.new { background: #f0fff4; }
 
         .card img {
@@ -161,24 +270,17 @@
             color: var(--color-primary);
             text-decoration: none;
         }
-
         .card-video:hover { text-decoration: underline; }
 
         .rarity-rare      { color: orange; font-weight: 600; }
         .rarity-very-rare { color: #d32f2f; font-weight: 600; }
         .rarity-uncommon  { color: var(--color-gray-500); }
 
-        /* Loading / error states */
-        #feed {
-            min-height: 200px;
-        }
-
-        .feed-loading {
+        .feed-loading, .feed-empty {
             text-align: center;
             padding: 3rem;
             color: var(--color-gray-500);
         }
-
         .feed-error {
             padding: 1rem 1.25rem;
             background: #fff3f3;
@@ -187,127 +289,425 @@
             color: #c62828;
         }
 
-        .feed-empty {
-            text-align: center;
-            padding: 3rem;
-            color: var(--color-gray-500);
+        /* ── Map view ───────────────────────────────────── */
+        #map-view { display: none; }
+
+        #map {
+            width: 100%;
+            height: 520px;
+            border-radius: 10px;
+            border: 1px solid #e8e4de;
+            overflow: hidden;
         }
 
-        @media (max-width: 600px) {
+        .map-legend {
+            margin-top: 0.75rem;
+            font-size: 0.8125rem;
+            color: var(--color-gray-500);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .legend-gradient {
+            display: inline-block;
+            width: 120px;
+            height: 10px;
+            border-radius: 5px;
+            background: linear-gradient(to right, #4575b4, #91cf60, #fee090, #f46d43, #a50026);
+            vertical-align: middle;
+        }
+
+        .map-species-filter {
+            margin-top: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        #map-loading {
+            text-align: center;
+            padding: 1rem;
+            color: var(--color-gray-500);
+            font-size: 0.875rem;
+        }
+
+        @media (max-width: 640px) {
             h1 { font-size: 1.75rem; }
             .card img { width: 80px; height: 60px; }
+            .filter-bar { gap: 0.75rem; }
+            .period-btns { flex-wrap: wrap; }
+            #map { height: 360px; }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <a href="../index.html" class="back-link">← Back to BirdWatchAI</a>
+<div class="container">
+    <a href="../index.html" class="back-link">← Back to BirdWatchAI</a>
 
-        <h1>🐦 Community Feed</h1>
-        <p class="page-subtitle">Live bird detections shared by BirdWatchAI users around the world.</p>
+    <h1>🐦 Community Feed</h1>
+    <p class="page-subtitle">Live bird detections shared by BirdWatchAI users around the world.</p>
 
-        <div id="status-bar">
-            <span id="refresh-indicator"></span>
-            <span id="countdown">Refreshing in 30s</span>
-            <span id="feed-count"></span>
-            <button class="refresh-btn" onclick="loadFeed()">Refresh now</button>
+    <!-- Filter bar -->
+    <div class="filter-bar">
+        <div class="filter-group">
+            <span class="filter-label">Period</span>
+            <div class="period-btns">
+                <button class="period-btn active" data-period="">All</button>
+                <button class="period-btn" data-period="today">Today</button>
+                <button class="period-btn" data-period="week">This Week</button>
+                <button class="period-btn" data-period="month">This Month</button>
+                <button class="period-btn" data-period="year">This Year</button>
+            </div>
         </div>
 
-        <div id="feed">
-            <div class="feed-loading">Loading detections…</div>
+        <div class="filter-group">
+            <span class="filter-label">Feeder</span>
+            <select id="feeder-filter" class="filter-select">
+                <option value="">All feeders</option>
+            </select>
         </div>
+
+        <div class="filter-group">
+            <span class="filter-label">Zip</span>
+            <input id="zip-filter" class="filter-input" type="text" placeholder="e.g. 90210" maxlength="10">
+        </div>
+
+        <button class="clear-btn" onclick="clearFilters()">✕ Clear</button>
     </div>
 
-    <script>
-        const SUPABASE_URL = 'https://lsamggztfizmkyljdgwq.supabase.co';
-        const ANON_KEY     = 'sb_publishable_-80LQjkx2s82XnURj2DfQQ_d7ARz3js';
-        const REFRESH_SECS = 30;
+    <!-- View tabs -->
+    <div class="view-tabs">
+        <button class="view-tab active" onclick="switchView('feed', this)">📋 Feed</button>
+        <button class="view-tab" onclick="switchView('map', this)">🗺️ Map</button>
+    </div>
 
-        let countdown  = REFRESH_SECS;
-        let lastTopId  = null;
+    <!-- Status bar -->
+    <div id="status-bar">
+        <span id="refresh-indicator"></span>
+        <span id="countdown">Refreshing in 30s</span>
+        <span id="feed-count"></span>
+        <button class="refresh-btn" onclick="loadFeed()">Refresh now</button>
+    </div>
 
-        async function loadFeed() {
-            const indicator = document.getElementById('refresh-indicator');
-            indicator.classList.add('refreshing');
-            document.getElementById('countdown').textContent = 'Refreshing…';
+    <!-- Feed view -->
+    <div id="feed-view">
+        <div class="feed-loading">Loading detections…</div>
+    </div>
 
-            try {
-                const res = await fetch(
-                    `${SUPABASE_URL}/rest/v1/community_feed?limit=50`,
-                    { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` } }
-                );
+    <!-- Map view -->
+    <div id="map-view">
+        <div class="map-species-filter">
+            <span class="filter-label">Species on map</span>
+            <select id="map-species-filter" class="filter-select" onchange="renderMap()">
+                <option value="">All species</option>
+            </select>
+        </div>
+        <div id="map-loading" style="display:none">Geocoding locations…</div>
+        <div id="map"></div>
+        <div class="map-legend">
+            <span>Low activity</span>
+            <span class="legend-gradient"></span>
+            <span>High activity</span>
+            <span style="margin-left:auto">Heatmap weighted by detection count per location</span>
+        </div>
+    </div>
+</div>
 
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const detections = await res.json();
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<script>
+    const SUPABASE_URL = 'https://lsamggztfizmkyljdgwq.supabase.co';
+    const ANON_KEY     = 'sb_publishable_-80LQjkx2s82XnURj2DfQQ_d7ARz3js';
+    const REFRESH_SECS = 30;
 
-                const newTopId = detections[0]?.id ?? null;
-                const hasNew   = lastTopId !== null && newTopId !== lastTopId;
-                lastTopId      = newTopId;
+    let countdown      = REFRESH_SECS;
+    let lastTopId      = null;
+    let allDetections  = [];   // raw data from server
+    let currentView    = 'feed';
+    let map            = null;
+    let heatLayer      = null;
+    const geocodeCache = {};   // zip -> {lat, lng} or null
 
-                document.getElementById('feed-count').textContent =
-                    detections.length
-                        ? `${detections.length} detection${detections.length !== 1 ? 's' : ''}`
-                        : '';
+    // ── Filters ─────────────────────────────────────────────
+    function getFilters() {
+        return {
+            period: document.querySelector('.period-btn.active')?.dataset.period ?? '',
+            feeder: document.getElementById('feeder-filter').value,
+            zip:    document.getElementById('zip-filter').value.trim(),
+        };
+    }
 
-                if (detections.length === 0) {
-                    document.getElementById('feed').innerHTML =
-                        '<div class="feed-empty">No detections yet — check back soon!</div>';
-                } else {
-                    document.getElementById('feed').innerHTML = detections.map((d, i) => {
-                        const rarityClass = d.rarity
-                            ? 'rarity-' + d.rarity.toLowerCase().replace(/\s+/g, '-')
-                            : '';
-                        const isNew = hasNew && i === 0;
+    function periodToISO(period) {
+        const now = new Date();
+        if (period === 'today') {
+            return new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+        }
+        if (period === 'week') {
+            const d = new Date(now);
+            d.setDate(d.getDate() - d.getDay());
+            d.setHours(0, 0, 0, 0);
+            return d.toISOString();
+        }
+        if (period === 'month') {
+            return new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+        }
+        if (period === 'year') {
+            return new Date(now.getFullYear(), 0, 1).toISOString();
+        }
+        return null;
+    }
 
-                        return `
-                            <div class="card${isNew ? ' new' : ''}">
-                                ${d.image_url
-                                    ? `<img src="${d.image_url}" alt="${d.species}" loading="lazy">`
-                                    : ''}
-                                <div class="card-body">
-                                    <div class="card-title">
-                                        ${d.is_favorite ? '⭐ ' : ''}${d.species}${d.rarity
-                                            ? ` <span class="${rarityClass}">· ${d.rarity}</span>`
-                                            : ''}
-                                    </div>
-                                    <div class="card-meta">
-                                        🕐 ${new Date(d.detected_at).toLocaleString()}${d.zip_code
-                                            ? ` · 📍 ${d.zip_code}`
-                                            : ''}${d.temperature != null
-                                            ? ` · 🌡️ ${d.temperature}°F`
-                                            : ''}
-                                    </div>
-                                    ${d.feeder_name
-                                        ? `<div class="card-feeder">📡 ${d.feeder_name}</div>`
-                                        : ''}
-                                    ${d.video_url
-                                        ? `<a class="card-video" href="${d.video_url}" target="_blank" rel="noopener">🎬 Watch video</a>`
-                                        : ''}
-                                </div>
-                            </div>`;
-                    }).join('');
-                }
+    function applyClientFilters(data) {
+        const { feeder, zip } = getFilters();
+        return data.filter(d => {
+            if (feeder && d.feeder_name !== feeder) return false;
+            if (zip    && d.zip_code   !== zip)    return false;
+            return true;
+        });
+    }
 
-            } catch (err) {
-                document.getElementById('feed').innerHTML =
-                    `<div class="feed-error">Error loading feed: ${err.message}</div>`;
-            }
+    // ── Load data ────────────────────────────────────────────
+    async function loadFeed() {
+        const indicator = document.getElementById('refresh-indicator');
+        indicator.classList.add('refreshing');
+        document.getElementById('countdown').textContent = 'Refreshing…';
 
-            indicator.classList.remove('refreshing');
-            countdown = REFRESH_SECS;
+        const { period } = getFilters();
+        const since = periodToISO(period);
+
+        let url = `${SUPABASE_URL}/rest/v1/community_feed?limit=500&order=detected_at.desc`;
+        if (since) url += `&detected_at=gte.${encodeURIComponent(since)}`;
+
+        try {
+            const res = await fetch(url, {
+                headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` }
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            allDetections = await res.json();
+
+            populateFeederDropdown(allDetections);
+            populateMapSpeciesDropdown(allDetections);
+            renderFeed();
+            if (currentView === 'map') renderMap();
+
+        } catch (err) {
+            document.getElementById('feed-view').innerHTML =
+                `<div class="feed-error">Error loading feed: ${err.message}</div>`;
         }
 
-        setInterval(() => {
-            countdown--;
-            if (countdown <= 0) {
-                loadFeed();
-            } else {
-                document.getElementById('countdown').textContent =
-                    `Refreshing in ${countdown}s`;
-            }
-        }, 1000);
+        indicator.classList.remove('refreshing');
+        countdown = REFRESH_SECS;
+    }
 
+    // ── Feeder dropdown ──────────────────────────────────────
+    function populateFeederDropdown(data) {
+        const sel   = document.getElementById('feeder-filter');
+        const prev  = sel.value;
+        const names = [...new Set(data.map(d => d.feeder_name).filter(Boolean))].sort();
+        sel.innerHTML = '<option value="">All feeders</option>' +
+            names.map(n => `<option value="${n}">${n}</option>`).join('');
+        if (names.includes(prev)) sel.value = prev;
+    }
+
+    // ── Map species dropdown ─────────────────────────────────
+    function populateMapSpeciesDropdown(data) {
+        const sel     = document.getElementById('map-species-filter');
+        const prev    = sel.value;
+        const species = [...new Set(data.map(d => d.species).filter(Boolean))].sort();
+        sel.innerHTML = '<option value="">All species</option>' +
+            species.map(s => `<option value="${s}">${s}</option>`).join('');
+        if (species.includes(prev)) sel.value = prev;
+    }
+
+    // ── Render feed ──────────────────────────────────────────
+    function renderFeed() {
+        const visible = applyClientFilters(allDetections);
+
+        const newTopId = visible[0]?.id ?? null;
+        const hasNew   = lastTopId !== null && newTopId !== lastTopId;
+        lastTopId      = newTopId;
+
+        document.getElementById('feed-count').textContent =
+            visible.length ? `${visible.length} detection${visible.length !== 1 ? 's' : ''}` : '';
+
+        if (visible.length === 0) {
+            document.getElementById('feed-view').innerHTML =
+                '<div class="feed-empty">No detections match your filters.</div>';
+            return;
+        }
+
+        document.getElementById('feed-view').innerHTML = visible.map((d, i) => {
+            const rarityClass = d.rarity
+                ? 'rarity-' + d.rarity.toLowerCase().replace(/\s+/g, '-')
+                : '';
+            const isNew = hasNew && i === 0;
+
+            return `
+            <div class="card${isNew ? ' new' : ''}">
+                ${d.image_url ? `<img src="${d.image_url}" alt="${esc(d.species)}" loading="lazy">` : ''}
+                <div class="card-body">
+                    <div class="card-title">
+                        ${d.is_favorite ? '⭐ ' : ''}${esc(d.species)}${d.rarity
+                            ? ` <span class="${rarityClass}">· ${esc(d.rarity)}</span>` : ''}
+                    </div>
+                    <div class="card-meta">
+                        🕐 ${new Date(d.detected_at).toLocaleString()}${d.zip_code
+                            ? ` · 📍 ${esc(d.zip_code)}` : ''}${d.temperature != null
+                            ? ` · 🌡️ ${d.temperature}°F` : ''}
+                    </div>
+                    ${d.feeder_name ? `<div class="card-feeder">📡 ${esc(d.feeder_name)}</div>` : ''}
+                    ${d.video_url
+                        ? `<a class="card-video" href="${d.video_url}" target="_blank" rel="noopener">🎬 Watch video</a>`
+                        : ''}
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    // ── Map rendering ────────────────────────────────────────
+    function initMap() {
+        if (map) return;
+        map = L.map('map').setView([39.5, -98.35], 4);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+            maxZoom: 18,
+        }).addTo(map);
+    }
+
+    async function geocodeZip(zip) {
+        if (zip in geocodeCache) return geocodeCache[zip];
+        try {
+            const res = await fetch(`https://api.zippopotam.us/us/${encodeURIComponent(zip)}`);
+            if (!res.ok) { geocodeCache[zip] = null; return null; }
+            const data = await res.json();
+            const place = data.places?.[0];
+            if (!place) { geocodeCache[zip] = null; return null; }
+            const coords = { lat: parseFloat(place.latitude), lng: parseFloat(place.longitude) };
+            geocodeCache[zip] = coords;
+            return coords;
+        } catch {
+            geocodeCache[zip] = null;
+            return null;
+        }
+    }
+
+    async function renderMap() {
+        initMap();
+        const speciesFilter = document.getElementById('map-species-filter').value;
+        const visible = applyClientFilters(allDetections).filter(d =>
+            !speciesFilter || d.species === speciesFilter
+        );
+
+        // Count detections per zip
+        const zipCounts = {};
+        for (const d of visible) {
+            if (d.zip_code) zipCounts[d.zip_code] = (zipCounts[d.zip_code] || 0) + 1;
+        }
+
+        const uniqueZips = Object.keys(zipCounts);
+        if (uniqueZips.length === 0) {
+            if (heatLayer) { map.removeLayer(heatLayer); heatLayer = null; }
+            return;
+        }
+
+        const loading = document.getElementById('map-loading');
+        loading.style.display = 'block';
+
+        // Geocode all unique zips (in parallel, cached after first run)
+        const coords = await Promise.all(uniqueZips.map(z => geocodeZip(z)));
+
+        const maxCount = Math.max(...Object.values(zipCounts));
+        const points = [];
+        uniqueZips.forEach((zip, i) => {
+            if (!coords[i]) return;
+            const intensity = zipCounts[zip] / maxCount;
+            points.push([coords[i].lat, coords[i].lng, intensity]);
+        });
+
+        loading.style.display = 'none';
+
+        if (heatLayer) map.removeLayer(heatLayer);
+        if (points.length === 0) return;
+
+        heatLayer = L.heatLayer(points, {
+            radius: 35,
+            blur: 25,
+            maxZoom: 10,
+            gradient: { 0.2: '#4575b4', 0.45: '#91cf60', 0.65: '#fee090', 0.85: '#f46d43', 1.0: '#a50026' },
+        }).addTo(map);
+    }
+
+    // ── View switching ───────────────────────────────────────
+    function switchView(view, btn) {
+        currentView = view;
+        document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
+        btn.classList.add('active');
+
+        if (view === 'feed') {
+            document.getElementById('feed-view').style.display = '';
+            document.getElementById('map-view').style.display  = 'none';
+        } else {
+            document.getElementById('feed-view').style.display = 'none';
+            document.getElementById('map-view').style.display  = '';
+            renderMap();
+            // Leaflet needs a size invalidation after being revealed
+            setTimeout(() => map && map.invalidateSize(), 50);
+        }
+    }
+
+    // ── Filter event wiring ──────────────────────────────────
+    document.querySelectorAll('.period-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            loadFeed();
+        });
+    });
+
+    document.getElementById('feeder-filter').addEventListener('change', () => {
+        renderFeed();
+        if (currentView === 'map') renderMap();
+    });
+
+    let zipDebounce;
+    document.getElementById('zip-filter').addEventListener('input', () => {
+        clearTimeout(zipDebounce);
+        zipDebounce = setTimeout(() => {
+            renderFeed();
+            if (currentView === 'map') renderMap();
+        }, 400);
+    });
+
+    function clearFilters() {
+        document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+        document.querySelector('.period-btn[data-period=""]').classList.add('active');
+        document.getElementById('feeder-filter').value = '';
+        document.getElementById('zip-filter').value    = '';
         loadFeed();
-    </script>
+    }
+
+    // ── Auto-refresh ─────────────────────────────────────────
+    setInterval(() => {
+        countdown--;
+        if (countdown <= 0) {
+            loadFeed();
+        } else {
+            document.getElementById('countdown').textContent = `Refreshing in ${countdown}s`;
+        }
+    }, 1000);
+
+    // ── Helpers ──────────────────────────────────────────────
+    function esc(str) {
+        if (!str) return '';
+        return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+                  .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
+
+    // ── Init ─────────────────────────────────────────────────
+    loadFeed();
+</script>
 </body>
 </html>
