@@ -12,6 +12,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="icon" type="image/png" href="images/favicon.png">
     <!-- Apply saved theme before first paint to prevent flash -->
     <script>
@@ -45,6 +46,11 @@
             </button>
         </div>
     </nav>
+
+    <!-- Live Detection Ticker -->
+    <div id="live-ticker" style="display:none;background:var(--color-primary);color:white;font-size:0.8125rem;padding:6px 0;overflow:hidden;white-space:nowrap;">
+        <div id="ticker-inner" style="display:inline-block;animation:ticker-scroll 30s linear infinite;padding-left:100%;"></div>
+    </div>
 
     <!-- Hero Section -->
     <header class="hero">
@@ -109,6 +115,43 @@
             <div style="text-align:center;margin-top:1.5rem;">
                 <a href="docs/community.html" class="btn btn-secondary">View Full Community Feed →</a>
             </div>
+        </div>
+    </section>
+
+    <!-- This Week's Highlights -->
+    <section id="highlights" class="highlights-section">
+        <div class="container">
+            <div class="section-header">
+                <h2>This Week's Highlights</h2>
+                <p>The best moments from community feeders over the past 7 days.</p>
+            </div>
+            <div id="highlights-grid" class="highlights-grid">
+                <div class="highlights-loading">Loading highlights…</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Seasonal Migration Status -->
+    <section id="migration" class="migration-section">
+        <div class="container">
+            <div class="section-header">
+                <h2>Migration Pulse</h2>
+                <p>Species detected this month — see what's passing through right now.</p>
+            </div>
+            <div id="migration-content" class="migration-content">
+                <div class="highlights-loading">Loading migration data…</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Interactive Community Map -->
+    <section id="community-map-section" class="community-map-section">
+        <div class="container">
+            <div class="section-header">
+                <h2>Detection Hotspots</h2>
+                <p>Where birds are being spotted by BirdWatchAI feeders across the country.</p>
+            </div>
+            <div id="community-map" style="height:420px;border-radius:12px;overflow:hidden;box-shadow:var(--shadow-md);"></div>
         </div>
     </section>
 
@@ -463,6 +506,7 @@
         </div>
     </footer>
 
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="js/main.js"></script>
     <script>
     function toggleMainTheme() {
@@ -519,6 +563,174 @@
         } catch {
             grid.innerHTML = '<div class="sightings-loading">Could not load recent sightings.</div>';
         }
+    })();
+    </script>
+    <script>
+    // ── Shared config ─────────────────────────────────────────
+    const _SB_URL  = 'https://lsamggztfizmkyljdgwq.supabase.co';
+    const _SB_KEY  = 'sb_publishable_-80LQjkx2s82XnURj2DfQQ_d7ARz3js';
+    const _headers = { apikey: _SB_KEY, Authorization: `Bearer ${_SB_KEY}` };
+    function _esc(s) { return s ? s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') : ''; }
+
+    // ── Live Ticker ───────────────────────────────────────────
+    (async () => {
+        try {
+            const res  = await fetch(`${_SB_URL}/rest/v1/community_detections?select=species,rarity,detected_at,feeders(display_name)&order=detected_at.desc&limit=20`, { headers: _headers });
+            const data = await res.json();
+            if (!data.length) return;
+            const items = data.map(d => {
+                const ago  = Math.round((Date.now() - new Date(d.detected_at)) / 60000);
+                const when = ago < 1 ? 'just now' : ago < 60 ? `${ago}m ago` : `${Math.round(ago/60)}h ago`;
+                const where = d.feeders?.display_name ? ` at ${_esc(d.feeders.display_name)}` : '';
+                const rare = d.rarity && d.rarity !== 'Common' ? ` · <em>${_esc(d.rarity)}</em>` : '';
+                return `<span class="ticker-item">🐦 <strong>${_esc(d.species)}</strong>${where}${rare} <span class="ticker-sep">·</span> ${when}</span>`;
+            }).join('<span class="ticker-sep">|</span>');
+            const inner = document.getElementById('ticker-inner');
+            inner.innerHTML = items + '<span style="padding:0 4rem;"></span>' + items;
+            const ticker = document.getElementById('live-ticker');
+            ticker.style.display = 'block';
+            // Adjust animation speed based on content width
+            const duration = Math.max(20, Math.round(inner.scrollWidth / 80));
+            inner.style.animationDuration = duration + 's';
+        } catch (_) {}
+    })();
+
+    // ── This Week's Highlights ────────────────────────────────
+    (async () => {
+        const panel = document.getElementById('highlights-grid');
+        try {
+            const since = new Date(Date.now() - 7 * 86400000).toISOString();
+            const res   = await fetch(`${_SB_URL}/rest/v1/community_detections?select=species,rarity,detected_at,image_url,feeders(display_name)&detected_at=gte.${encodeURIComponent(since)}&limit=500&order=detected_at.desc`, { headers: _headers });
+            const data  = await res.json();
+            if (!data.length) { panel.innerHTML = '<div class="highlights-loading">No data yet this week.</div>'; return; }
+
+            // Rarest bird
+            const rarityRank = { 'Very Rare': 3, 'Rare': 2, 'Uncommon': 1, 'Common': 0 };
+            const rarest = [...data].sort((a,b) => (rarityRank[b.rarity]||0) - (rarityRank[a.rarity]||0))[0];
+            // Most active feeder
+            const feederCounts = {};
+            data.forEach(d => { const n = d.feeders?.display_name; if (n) feederCounts[n] = (feederCounts[n]||0)+1; });
+            const topFeeder = Object.entries(feederCounts).sort((a,b)=>b[1]-a[1])[0];
+            // Total detections
+            const uniqueSpecies = new Set(data.map(d=>d.species)).size;
+            // Peak day
+            const dayCounts = {};
+            data.forEach(d => { const day = d.detected_at?.slice(0,10); if(day) dayCounts[day]=(dayCounts[day]||0)+1; });
+            const peakDay = Object.entries(dayCounts).sort((a,b)=>b[1]-a[1])[0];
+            const peakDayStr = peakDay ? new Date(peakDay[0]).toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'}) : '—';
+            // New species this week vs prior week
+            const priorSince = new Date(Date.now() - 14*86400000).toISOString();
+            const res2 = await fetch(`${_SB_URL}/rest/v1/community_detections?select=species,detected_at&detected_at=gte.${encodeURIComponent(priorSince)}&detected_at=lt.${encodeURIComponent(since)}&limit=500`, { headers: _headers });
+            const priorData = await res2.json();
+            const priorSpecies = new Set(priorData.map(d=>d.species));
+            const newThisWeek = [...new Set(data.map(d=>d.species))].filter(s=>!priorSpecies.has(s)).length;
+
+            panel.innerHTML = [
+                { icon:'🏆', label:'Rarest This Week', value: rarest ? _esc(rarest.species) : '—', sub: rarest?.rarity || '' },
+                { icon:'📡', label:'Most Active Feeder', value: topFeeder ? _esc(topFeeder[0]) : '—', sub: topFeeder ? `${topFeeder[1]} detections` : '' },
+                { icon:'🐦', label:'Unique Species', value: uniqueSpecies, sub: `detected this week` },
+                { icon:'📅', label:'Busiest Day', value: peakDayStr, sub: peakDay ? `${peakDay[1]} detections` : '' },
+                { icon:'🌟', label:'New Species', value: newThisWeek, sub: `not seen the week before` },
+                { icon:'📊', label:'Total Detections', value: data.length.toLocaleString(), sub: `in the last 7 days` },
+            ].map(h => `
+                <div class="highlight-card">
+                    <div class="highlight-icon">${h.icon}</div>
+                    <div class="highlight-label">${h.label}</div>
+                    <div class="highlight-value">${h.value}</div>
+                    ${h.sub ? `<div class="highlight-sub">${h.sub}</div>` : ''}
+                </div>`).join('');
+        } catch {
+            panel.innerHTML = '<div class="highlights-loading">Could not load highlights.</div>';
+        }
+    })();
+
+    // ── Migration Pulse ───────────────────────────────────────
+    (async () => {
+        const panel = document.getElementById('migration-content');
+        try {
+            const since = new Date(Date.now() - 30*86400000).toISOString();
+            const res   = await fetch(`${_SB_URL}/rest/v1/community_detections?select=species,detected_at,image_url&detected_at=gte.${encodeURIComponent(since)}&limit=500&order=detected_at.desc`, { headers: _headers });
+            const data  = await res.json();
+            if (!data.length) { panel.innerHTML = '<div class="highlights-loading">No data for this month.</div>'; return; }
+
+            // Count by species, pick top 12, attach a sample image
+            const spMap = {};
+            data.forEach(d => {
+                if (!d.species) return;
+                if (!spMap[d.species]) spMap[d.species] = { count: 0, img: null };
+                spMap[d.species].count++;
+                if (!spMap[d.species].img && d.image_url) spMap[d.species].img = d.image_url;
+            });
+            const top = Object.entries(spMap).sort((a,b)=>b[1].count-a[1].count).slice(0,12);
+            const maxCount = top[0]?.[1]?.count || 1;
+            const monthName = new Date().toLocaleDateString('en-US',{month:'long'});
+
+            panel.innerHTML = `<p style="color:var(--color-gray-500);font-size:0.875rem;margin-bottom:0.75rem;">Top species detected in <strong>${monthName}</strong> across all community feeders:</p>
+                <div class="migration-grid">
+                    ${top.map(([sp, info]) => `
+                        <a href="docs/community.html" class="migration-card" style="text-decoration:none;">
+                            ${info.img ? `<img src="${_esc(info.img)}" alt="${_esc(sp)}" loading="lazy">` : `<div style="width:52px;height:52px;background:var(--color-gray-100);border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1.5rem;">🐦</div>`}
+                            <div class="migration-card-info">
+                                <div class="migration-species">${_esc(sp)}</div>
+                                <div class="migration-count">${info.count} detection${info.count!==1?'s':''}</div>
+                                <div class="migration-bar-wrap"><div class="migration-bar" style="width:${(info.count/maxCount*100).toFixed(1)}%"></div></div>
+                            </div>
+                        </a>`).join('')}
+                </div>`;
+        } catch {
+            panel.innerHTML = '<div class="highlights-loading">Could not load migration data.</div>';
+        }
+    })();
+
+    // ── Community Detection Map ───────────────────────────────
+    (async () => {
+        try {
+            const since = new Date(Date.now() - 30*86400000).toISOString();
+            const res   = await fetch(`${_SB_URL}/rest/v1/community_detections?select=species,rarity,detected_at,zip_code,image_url&detected_at=gte.${encodeURIComponent(since)}&zip_code=not.is.null&limit=500&order=detected_at.desc`, { headers: _headers });
+            const data  = await res.json();
+            if (!data.length) return;
+
+            // Geocode unique zip codes
+            const zips = [...new Set(data.map(d=>d.zip_code).filter(Boolean))].slice(0,80);
+            const coords = {};
+            await Promise.allSettled(zips.map(async zip => {
+                try {
+                    const r = await fetch(`https://api.zippopotam.us/us/${zip}`);
+                    if (!r.ok) return;
+                    const j = await r.json();
+                    coords[zip] = [parseFloat(j.places[0].latitude), parseFloat(j.places[0].longitude)];
+                } catch {}
+            }));
+
+            const map = L.map('community-map', { scrollWheelZoom: false }).setView([39.5, -98.35], 4);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors', maxZoom: 13
+            }).addTo(map);
+
+            // Group by zip, add circle markers
+            const zipGroups = {};
+            data.forEach(d => {
+                if (!d.zip_code || !coords[d.zip_code]) return;
+                if (!zipGroups[d.zip_code]) zipGroups[d.zip_code] = [];
+                zipGroups[d.zip_code].push(d);
+            });
+
+            Object.entries(zipGroups).forEach(([zip, items]) => {
+                const [lat, lng] = coords[zip];
+                const radius = Math.min(6 + Math.sqrt(items.length) * 3, 24);
+                const hasRare = items.some(d => d.rarity === 'Rare' || d.rarity === 'Very Rare');
+                const color   = hasRare ? '#c0392b' : '#2d5a3d';
+                const sample  = items.find(d => d.image_url);
+                const popupHtml = `<div style="font-family:sans-serif;font-size:13px;max-width:180px;">
+                    ${sample?.image_url ? `<img src="${_esc(sample.image_url)}" style="width:100%;border-radius:6px;margin-bottom:6px;">` : ''}
+                    <strong>${items.length} detection${items.length!==1?'s':''}</strong> near ${zip}<br>
+                    <span style="color:#666;">${[...new Set(items.map(d=>d.species))].slice(0,3).join(', ')}${items.length>3?'…':''}</span>
+                </div>`;
+                L.circleMarker([lat, lng], { radius, color, fillColor: color, fillOpacity: 0.55, weight: 2 })
+                    .bindPopup(popupHtml)
+                    .addTo(map);
+            });
+        } catch (_) {}
     })();
     </script>
 </body>
