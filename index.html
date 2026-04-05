@@ -622,6 +622,7 @@
             inner.innerHTML = items + '<span style="padding:0 4rem;"></span>' + items;
             const ticker = document.getElementById('live-ticker');
             ticker.style.display = 'block';
+            document.body.classList.add('ticker-visible');
             // Adjust animation speed based on content width
             const duration = Math.max(20, Math.round(inner.scrollWidth / 80));
             inner.style.animationDuration = duration + 's';
