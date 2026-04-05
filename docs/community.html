@@ -220,14 +220,28 @@
         #status-bar {
             display: flex;
             align-items: center;
-            gap: 12px;
+            flex-wrap: wrap;
+            gap: 6px;
             font-size: 13px;
             color: var(--color-gray-500);
             margin-bottom: 1rem;
-            padding: 0.625rem 1rem;
+            padding: 0.5rem 0.75rem;
             background: var(--bg-card);
             border: 1px solid var(--border);
             border-radius: 8px;
+        }
+        #status-bar .status-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+            min-width: 0;
+        }
+        #status-bar .status-btns {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
         }
 
         #refresh-indicator {
@@ -435,6 +449,8 @@
             .period-btns { flex-wrap: wrap; }
             #map { height: 360px; }
             #feed-view { grid-template-columns: 1fr; }
+            .refresh-btn { font-size: 11px; padding: 3px 8px; }
+            #status-bar { font-size: 12px; }
         }
 
         /* ── Stats view ─────────────────────────────────────── */
@@ -1104,15 +1120,19 @@
 
     <!-- Status bar -->
     <div id="status-bar">
-        <span id="refresh-indicator"></span>
-        <span id="countdown">Refreshing in 30s</span>
-        <span id="feed-count"></span>
-        <button class="refresh-btn" style="margin-left:auto;" onclick="loadFeed()">Refresh now</button>
-        <button id="theme-toggle" class="refresh-btn" style="background:var(--color-gray-500);" onclick="toggleTheme()" title="Toggle dark mode">🌙</button>
-        <button id="sound-toggle" class="refresh-btn" style="background:var(--color-gray-500);" onclick="toggleSound()" title="Toggle sound on new detection">🔇 Sound</button>
-        <button id="notif-toggle" class="refresh-btn" style="background:var(--color-gray-500);" onclick="toggleNotifications()" title="Toggle rare bird notifications">🔔 Notify rare</button>
-        <button class="refresh-btn" style="background:var(--color-gray-500);" onclick="exportCSV()" title="Download filtered detections as CSV">⬇ CSV</button>
-        <button class="refresh-btn" style="background:var(--color-gray-500);" onclick="toggleKbdHint()" title="Keyboard shortcuts">⌨</button>
+        <div class="status-info">
+            <span id="refresh-indicator"></span>
+            <span id="countdown">Refreshing in 30s</span>
+            <span id="feed-count"></span>
+        </div>
+        <div class="status-btns">
+            <button class="refresh-btn" onclick="loadFeed()">↺ Refresh</button>
+            <button id="theme-toggle" class="refresh-btn" style="background:var(--color-gray-500);" onclick="toggleTheme()" title="Toggle dark mode">🌙</button>
+            <button id="sound-toggle" class="refresh-btn" style="background:var(--color-gray-500);" onclick="toggleSound()" title="Toggle sound">🔇</button>
+            <button id="notif-toggle" class="refresh-btn" style="background:var(--color-gray-500);" onclick="toggleNotifications()" title="Rare bird alerts">🔔</button>
+            <button class="refresh-btn" style="background:var(--color-gray-500);" onclick="exportCSV()" title="Download CSV">⬇ CSV</button>
+            <button class="refresh-btn" style="background:var(--color-gray-500);" onclick="toggleKbdHint()" title="Keyboard shortcuts">⌨</button>
+        </div>
     </div>
 
     <!-- Feed view -->
