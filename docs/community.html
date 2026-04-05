@@ -2157,7 +2157,7 @@
         }
         const shareBtn = e.target.closest('[data-share-id]');
         if (shareBtn) {
-            shareDetection(Number(shareBtn.dataset.shareId));
+            shareDetection(shareBtn.dataset.shareId);
         }
     });
 
@@ -2275,7 +2275,7 @@
     // ── Shareable detection links ─────────────────────────────
     function shareDetection(id) {
         const url   = `${location.origin}${location.pathname}?id=${id}`;
-        const det   = allDetections.find(x => x.id === id);
+        const det   = allDetections.find(x => String(x.id) === String(id));
         const title = det ? `${det.species} — BirdWatchAI` : 'BirdWatchAI Detection';
         const text  = det ? `Check out this ${det.species} spotted${det.feeders?.display_name ? ' at ' + det.feeders.display_name : ''}!` : 'Check out this bird detection!';
 
