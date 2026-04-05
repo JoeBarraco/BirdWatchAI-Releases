@@ -1042,6 +1042,16 @@
     const ANON_KEY     = 'sb_publishable_-80LQjkx2s82XnURj2DfQQ_d7ARz3js';
     const REFRESH_SECS = 30;
 
+    // ── TEMP: early URL debug banner (remove after diagnosing share link) ──
+    (function() {
+        const b = document.createElement('div');
+        b.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#c0392b;color:#fff;' +
+            'font-size:11px;font-family:monospace;padding:6px 10px;z-index:99999;word-break:break-all;';
+        b.textContent = 'URL: ' + location.href;
+        document.body.appendChild(b);
+        b.addEventListener('click', () => b.remove());
+    })();
+
     let countdown      = REFRESH_SECS;
     let tabHiddenAt    = null;   // timestamp when tab was hidden
     let lastTopId      = null;
@@ -2323,7 +2333,18 @@
 
     // Scroll to and highlight a shared detection on page load
     async function handleSharedId() {
+        // Debug panel — created immediately before any checks so it always appears
+        const dbg = document.createElement('div');
+        dbg.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);width:90vw;max-width:420px;' +
+            'background:#1a1a1a;color:#0f0;font-family:monospace;font-size:13px;padding:12px 16px;border-radius:10px;' +
+            'z-index:99999;white-space:pre-wrap;line-height:1.6;box-shadow:0 4px 20px rgba(0,0,0,0.5);';
+        dbg.textContent = 'handleSharedId running\nsearch: ' + (location.search || '(empty)') + '\n';
+        document.body.appendChild(dbg);
+        const log = msg => { dbg.textContent += msg + '\n'; };
+        dbg.addEventListener('click', () => dbg.remove());
+
         const id = new URLSearchParams(location.search).get('id');
+        log('id param: ' + id);
         if (!id) return;
 
         function scrollToCard(card) {
@@ -2346,16 +2367,6 @@
             document.getElementById('fav-toggle').classList.remove('active');
             renderFeed(); // synchronous — DOM is updated before next line runs
         }
-
-        // Debug panel — accumulates all messages, stays visible until tapped
-        const dbg = document.createElement('div');
-        dbg.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);width:90vw;max-width:420px;' +
-            'background:#1a1a1a;color:#0f0;font-family:monospace;font-size:13px;padding:12px 16px;border-radius:10px;' +
-            'z-index:99999;white-space:pre-wrap;line-height:1.6;box-shadow:0 4px 20px rgba(0,0,0,0.5);';
-        dbg.textContent = 'DBG: looking for id=' + id + '\n';
-        document.body.appendChild(dbg);
-        const log = msg => { dbg.textContent += msg + '\n'; };
-        dbg.addEventListener('click', () => dbg.remove());
 
         // 1. Already in the rendered DOM
         let card = document.querySelector(`.card[data-id="${id}"]`);
