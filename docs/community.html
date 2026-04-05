@@ -703,6 +703,80 @@
             color: #b07a00;
             font-weight: 600;
         }
+        /* ── Bird of the Day banner ─────────────────────────── */
+        #botd-banner {
+            display: none;
+            background: linear-gradient(135deg, #2d5a3d 0%, #3d7a52 100%);
+            color: white;
+            border-radius: 10px;
+            padding: 1rem 1.25rem;
+            margin-bottom: 1rem;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        #botd-banner.visible { display: flex; }
+        .botd-img {
+            width: 72px;
+            height: 54px;
+            object-fit: cover;
+            border-radius: 6px;
+            flex-shrink: 0;
+            border: 2px solid rgba(255,255,255,0.4);
+        }
+        .botd-label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            opacity: 0.75;
+            margin-bottom: 2px;
+        }
+        .botd-species {
+            font-family: 'Fraunces', serif;
+            font-size: 1.25rem;
+            font-weight: 600;
+            line-height: 1.2;
+        }
+        .botd-meta { font-size: 0.8rem; opacity: 0.8; margin-top: 2px; }
+        .botd-close {
+            margin-left: auto;
+            background: none;
+            border: none;
+            color: white;
+            opacity: 0.7;
+            font-size: 1.25rem;
+            cursor: pointer;
+            padding: 2px 6px;
+            line-height: 1;
+        }
+        .botd-close:hover { opacity: 1; }
+
+        /* ── Keyboard shortcut hint ─────────────────────────── */
+        .kbd-hint {
+            position: fixed;
+            bottom: 1.25rem;
+            right: 1.25rem;
+            background: rgba(42,40,37,0.88);
+            color: white;
+            font-size: 0.75rem;
+            padding: 0.5rem 0.875rem;
+            border-radius: 8px;
+            line-height: 1.8;
+            z-index: 8000;
+            display: none;
+            pointer-events: none;
+        }
+        .kbd-hint.visible { display: block; }
+        kbd {
+            display: inline-block;
+            background: rgba(255,255,255,0.15);
+            border-radius: 3px;
+            padding: 0 5px;
+            font-family: monospace;
+            font-size: 0.7rem;
+        }
+
     </style>
 </head>
 <body>
@@ -711,6 +785,17 @@
 
     <h1>🐦 Community Feed</h1>
     <p class="page-subtitle">Live bird detections shared by BirdWatchAI users around the world.</p>
+
+    <!-- Bird of the Day banner -->
+    <div id="botd-banner">
+        <img id="botd-img" class="botd-img" src="" alt="" style="display:none;">
+        <div>
+            <div class="botd-label">🏆 Bird of the Day</div>
+            <div id="botd-species" class="botd-species"></div>
+            <div id="botd-meta"    class="botd-meta"></div>
+        </div>
+        <button class="botd-close" onclick="document.getElementById('botd-banner').classList.remove('visible')" title="Dismiss">✕</button>
+    </div>
 
     <!-- Filter bar -->
     <div class="filter-bar">
@@ -783,8 +868,10 @@
         <span id="countdown">Refreshing in 30s</span>
         <span id="feed-count"></span>
         <button class="refresh-btn" style="margin-left:auto;" onclick="loadFeed()">Refresh now</button>
+        <button id="sound-toggle" class="refresh-btn" style="background:var(--color-gray-500);" onclick="toggleSound()" title="Toggle sound on new detection">🔇 Sound</button>
         <button id="notif-toggle" class="refresh-btn" style="background:var(--color-gray-500);" onclick="toggleNotifications()" title="Toggle rare bird notifications">🔔 Notify rare</button>
         <button class="refresh-btn" style="background:var(--color-gray-500);" onclick="exportCSV()" title="Download filtered detections as CSV">⬇ CSV</button>
+        <button class="refresh-btn" style="background:var(--color-gray-500);" onclick="toggleKbdHint()" title="Keyboard shortcuts">⌨</button>
     </div>
 
     <!-- Feed view -->
@@ -835,6 +922,16 @@
         <div id="stats-leaderboard" class="stats-panel" style="display:none;"></div>
         <div id="stats-trend"      class="stats-panel" style="display:none;"></div>
     </div>
+</div>
+
+<!-- Keyboard shortcut hint overlay -->
+<div id="kbd-hint" class="kbd-hint">
+    <strong style="display:block;margin-bottom:4px;">Keyboard Shortcuts</strong>
+    <kbd>j</kbd> / <kbd>k</kbd> &nbsp;Next / Prev card<br>
+    <kbd>f</kbd> &nbsp;Toggle Favorites filter<br>
+    <kbd>r</kbd> &nbsp;Refresh feed<br>
+    <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> &nbsp;Switch Feed / Map / Stats<br>
+    <kbd>Esc</kbd> &nbsp;Close lightbox / hints
 </div>
 
 <!-- Lightbox -->
@@ -1057,10 +1154,14 @@
             populateFeederDropdown(allDetections);
             populateFeedSpeciesDropdown(allDetections);
             populateMapSpeciesDropdown(allDetections);
+
+            const hadDetections = lastTopId !== null;
             renderFeed();
             if (currentView === 'map')   renderMap();
             if (currentView === 'stats') renderStats();
             checkForRareNotifications(allDetections);
+            renderBirdOfTheDay(allDetections);
+            if (hadDetections) playChime();
 
         } catch (err) {
             document.getElementById('feed-view').innerHTML =
@@ -1866,7 +1967,6 @@
     lightbox.addEventListener('click', closeLightbox);
     lightboxImg.addEventListener('click', e => e.stopPropagation());
     document.getElementById('lightbox-close').addEventListener('click', closeLightbox);
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
 
     // Delegate clicks on feed card images
     document.getElementById('feed-view').addEventListener('click', e => {
@@ -1950,6 +2050,95 @@
                 document.getElementById('notif-banner').style.display = 'flex';
             }, 4000);
         }
+    });
+
+    // ── Bird of the Day ──────────────────────────────────────
+    function renderBirdOfTheDay(detections) {
+        // Pick today's rarest detection (Very Rare > Rare > most-detected species)
+        const today  = new Date().toISOString().slice(0, 10);
+        const todays = detections.filter(d => d.detected_at.slice(0, 10) === today);
+        if (!todays.length) return;
+
+        const byRarity = r => r === 'Very Rare' ? 3 : r === 'Rare' ? 2 : r === 'Uncommon' ? 1 : 0;
+        const best = todays.slice().sort((a, b) => byRarity(b.rarity) - byRarity(a.rarity))[0];
+
+        document.getElementById('botd-species').textContent = best.species || 'Unknown';
+        document.getElementById('botd-meta').textContent =
+            [best.rarity, best.feeders?.display_name, best.zip_code].filter(Boolean).join(' · ');
+
+        const img = document.getElementById('botd-img');
+        if (best.image_url) { img.src = best.image_url; img.alt = best.species || ''; img.style.display = ''; }
+        else                { img.style.display = 'none'; }
+
+        document.getElementById('botd-banner').classList.add('visible');
+    }
+
+    // ── Sound on new detection ────────────────────────────────
+    let soundEnabled = false;
+    let audioCtx     = null;
+
+    function toggleSound() {
+        soundEnabled = !soundEnabled;
+        const btn = document.getElementById('sound-toggle');
+        btn.textContent      = soundEnabled ? '🔊 Sound' : '🔇 Sound';
+        btn.style.background = soundEnabled ? '#2d5a3d' : 'var(--color-gray-500)';
+        if (soundEnabled && !audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+
+    function playChime() {
+        if (!soundEnabled || !audioCtx) return;
+        // Simple two-tone pleasant chime using Web Audio API
+        [880, 1108].forEach((freq, i) => {
+            const osc  = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.type      = 'sine';
+            osc.frequency.value = freq;
+            const t = audioCtx.currentTime + i * 0.18;
+            gain.gain.setValueAtTime(0, t);
+            gain.gain.linearRampToValueAtTime(0.18, t + 0.04);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+            osc.start(t); osc.stop(t + 0.65);
+        });
+    }
+
+    // ── Keyboard shortcuts ────────────────────────────────────
+    let kbdHintVisible = false;
+
+    function toggleKbdHint() {
+        kbdHintVisible = !kbdHintVisible;
+        document.getElementById('kbd-hint').classList.toggle('visible', kbdHintVisible);
+    }
+
+    // Card focus tracking for j/k navigation
+    let focusedCardIdx = -1;
+    function getCards() { return [...document.querySelectorAll('#feed-view .card')]; }
+
+    function focusCard(idx) {
+        const cards = getCards();
+        if (!cards.length) return;
+        focusedCardIdx = Math.max(0, Math.min(idx, cards.length - 1));
+        cards.forEach((c, i) => c.style.outline = i === focusedCardIdx ? '2px solid var(--color-primary)' : '');
+        cards[focusedCardIdx].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    document.addEventListener('keydown', e => {
+        // Skip shortcuts when typing in an input
+        if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
+
+        if (e.key === 'Escape') {
+            closeLightbox();
+            kbdHintVisible = false;
+            document.getElementById('kbd-hint').classList.remove('visible');
+            return;
+        }
+        if (e.key === 'j') { focusCard(focusedCardIdx + 1); return; }
+        if (e.key === 'k') { focusCard(focusedCardIdx - 1); return; }
+        if (e.key === 'f') { toggleFavorites(); return; }
+        if (e.key === 'r') { loadFeed(); return; }
+        if (e.key === '1') { switchView('feed',  document.querySelectorAll('.view-tab')[0]); return; }
+        if (e.key === '2') { switchView('map',   document.querySelectorAll('.view-tab')[1]); return; }
+        if (e.key === '3') { switchView('stats', document.querySelectorAll('.view-tab')[2]); return; }
     });
 
     // ── Init ─────────────────────────────────────────────────
