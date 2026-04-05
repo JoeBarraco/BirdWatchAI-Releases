@@ -2258,8 +2258,10 @@
     // ── Shareable detection links ─────────────────────────────
     function shareDetection(id) {
         const url = `${location.origin}${location.pathname}?id=${id}`;
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText(url).then(() => showToast('Link copied!'));
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(url)
+                .then(() => showToast('Link copied!'))
+                .catch(() => { prompt('Copy this link:', url); });
         } else {
             prompt('Copy this link:', url);
         }
