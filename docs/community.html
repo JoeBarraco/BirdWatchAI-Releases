@@ -8,6 +8,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Source+Sans+3:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2d5a3d">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="BirdWatchAI">
     <style>
         :root {
             --color-primary: #2d5a3d;
@@ -2401,6 +2406,13 @@
         if (e.key === '2') { switchView('map',   document.querySelectorAll('.view-tab')[1]); return; }
         if (e.key === '3') { switchView('stats', document.querySelectorAll('.view-tab')[2]); return; }
     });
+
+    // ── Service Worker registration ───────────────────────────
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/docs/sw.js').catch(() => {});
+        });
+    }
 
     // ── Init ─────────────────────────────────────────────────
     loadFeed().then(handleSharedId);
