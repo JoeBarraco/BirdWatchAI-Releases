@@ -2257,14 +2257,24 @@
 
     // ── Shareable detection links ─────────────────────────────
     function shareDetection(id) {
-        const url = `${location.origin}${location.pathname}?id=${id}`;
+        const url  = `${location.origin}${location.pathname}?id=${id}`;
+        const d    = allDetections.find(d => d.id === id);
+        const title = d ? `${d.species} detected on BirdWatchAI` : 'Bird detection on BirdWatchAI';
+
+        // Web Share API — native share sheet on iOS/Android
+        if (navigator.share) {
+            navigator.share({ title, url }).catch(() => {});
+            return;
+        }
+        // Clipboard API — desktop browsers on HTTPS
         if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(url)
                 .then(() => showToast('Link copied!'))
                 .catch(() => { prompt('Copy this link:', url); });
-        } else {
-            prompt('Copy this link:', url);
+            return;
         }
+        // Last resort fallback
+        prompt('Copy this link:', url);
     }
 
     function showToast(msg) {
