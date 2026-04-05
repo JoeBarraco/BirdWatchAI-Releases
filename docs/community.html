@@ -705,7 +705,6 @@
         .species-suggestion:hover, .species-suggestion.focused {
             background: var(--color-gray-100);
             color: var(--color-primary);
-            color: var(--color-primary);
         }
 
         /* ── Near me button ─────────────────────────────────── */
@@ -744,6 +743,21 @@
             color: #b07a00;
             font-weight: 600;
         }
+        /* ── Confetti particle ──────────────────────────────── */
+        .confetti-piece {
+            position: fixed;
+            width: 9px;
+            height: 9px;
+            border-radius: 2px;
+            pointer-events: none;
+            z-index: 99999;
+            animation: confetti-fall linear forwards;
+        }
+        @keyframes confetti-fall {
+            0%   { transform: translateY(-20px) rotate(0deg);   opacity: 1; }
+            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        }
+
         /* ── Bird of the Day banner ─────────────────────────── */
         #botd-banner {
             display: none;
@@ -1198,11 +1212,17 @@
             populateMapSpeciesDropdown(allDetections);
 
             const hadDetections = lastTopId !== null;
+            const prevTop = lastTopId;
             renderFeed();
             if (currentView === 'map')   renderMap();
             if (currentView === 'stats') renderStats();
             checkForRareNotifications(allDetections);
             renderBirdOfTheDay(allDetections);
+            // Confetti for brand-new Very Rare detections (even without notifications)
+            if (hadDetections && prevTop !== allDetections[0]?.id) {
+                const newVeryRare = allDetections.find(d => d.id !== prevTop && d.rarity === 'Very Rare');
+                if (newVeryRare) launchConfetti();
+            }
             if (hadDetections) playChime();
 
         } catch (err) {
@@ -1588,22 +1608,35 @@
         document.getElementById('stats-summary').innerHTML = `
             <div class="stats-kpi-row">
                 <div class="stats-kpi">
-                    <div class="stats-kpi-value">${total.toLocaleString()}</div>
+                    <div class="stats-kpi-value" id="kpi-total">0</div>
                     <div class="stats-kpi-label">Total Detections</div>
                 </div>
                 <div class="stats-kpi">
-                    <div class="stats-kpi-value">${uniqueSpecies.size}</div>
+                    <div class="stats-kpi-value" id="kpi-species">0</div>
                     <div class="stats-kpi-label">Species Seen</div>
                 </div>
                 <div class="stats-kpi">
-                    <div class="stats-kpi-value">${uniqueZips.size}</div>
+                    <div class="stats-kpi-value" id="kpi-locations">0</div>
                     <div class="stats-kpi-label">Locations</div>
                 </div>
                 ${avgTemp !== null ? `<div class="stats-kpi">
-                    <div class="stats-kpi-value">${avgTemp}°F</div>
+                    <div class="stats-kpi-value" id="kpi-temp">0</div>
                     <div class="stats-kpi-label">Avg Temperature</div>
                 </div>` : ''}
             </div>`;
+
+        // Animate KPI values
+        animateCount(document.getElementById('kpi-total'),     total);
+        animateCount(document.getElementById('kpi-species'),   uniqueSpecies.size);
+        animateCount(document.getElementById('kpi-locations'), uniqueZips.size);
+        if (avgTemp !== null) {
+            const tempEl = document.getElementById('kpi-temp');
+            if (tempEl) {
+                animateCount(tempEl, parseFloat(avgTemp));
+                tempEl.addEventListener('animationend', () => { tempEl.textContent = avgTemp + '°F'; }, { once: true });
+                setTimeout(() => { if (tempEl) tempEl.textContent = avgTemp + '°F'; }, 700);
+            }
+        }
 
         // ── Life List ─────────────────────────────────────────
         const spMap = {};
@@ -2076,6 +2109,7 @@
         );
         rare.forEach(d => {
             seenRareIds.add(d.id);
+            if (d.rarity === 'Very Rare') launchConfetti();
             const notif = new Notification(`${d.rarity} bird detected! 🐦`, {
                 body: `${d.species}${d.feeders?.display_name ? ' at ' + d.feeders.display_name : ''}${d.zip_code ? ' (' + d.zip_code + ')' : ''}`,
                 icon: d.image_url || '',
@@ -2093,6 +2127,39 @@
             }, 4000);
         }
     });
+
+    // ── Animated KPI counter ─────────────────────────────────
+    function animateCount(el, target, duration = 600) {
+        const start    = performance.now();
+        const from     = parseInt(el.textContent.replace(/\D/g, '')) || 0;
+        const isFloat  = String(target).includes('.');
+        const decimals = isFloat ? 1 : 0;
+        function step(now) {
+            const t   = Math.min((now - start) / duration, 1);
+            const ease = 1 - Math.pow(1 - t, 3);   // ease-out cubic
+            const val  = from + (target - from) * ease;
+            el.textContent = isFloat ? val.toFixed(decimals) : Math.round(val).toLocaleString();
+            if (t < 1) requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+    }
+
+    // ── Very Rare confetti burst ─────────────────────────────
+    const CONFETTI_COLORS = ['#2d5a3d','#d4a574','#e74c3c','#3498db','#f39c12','#9b59b6','#fff'];
+
+    function launchConfetti(count = 80) {
+        for (let i = 0; i < count; i++) {
+            const el = document.createElement('div');
+            el.className = 'confetti-piece';
+            el.style.left     = Math.random() * 100 + 'vw';
+            el.style.top      = '-10px';
+            el.style.background = CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)];
+            el.style.animationDuration = (1.2 + Math.random() * 1.6) + 's';
+            el.style.animationDelay   = (Math.random() * 0.6) + 's';
+            document.body.appendChild(el);
+            el.addEventListener('animationend', () => el.remove());
+        }
+    }
 
     // ── Dark mode ────────────────────────────────────────────
     (function initTheme() {
