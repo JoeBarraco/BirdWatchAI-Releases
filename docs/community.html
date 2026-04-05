@@ -2326,26 +2326,39 @@
         const id = new URLSearchParams(location.search).get('id');
         if (!id) return;
 
-        function scrollTo(card) {
+        function scrollToCard(card) {
             card.classList.add('shared-highlight');
             card.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
-        // 1. Already in the rendered DOM
-        let card = document.querySelector(`.card[data-id="${id}"]`);
-        if (card) { scrollTo(card); return; }
-
-        // 2. In allDetections but hidden by active filters — clear and re-render
-        if (allDetections.find(x => String(x.id) === id)) {
-            clearFilters();
-            setTimeout(() => {
-                card = document.querySelector(`.card[data-id="${id}"]`);
-                if (card) scrollTo(card);
-            }, 150);
-            return;
+        // Resets filter UI and re-renders feed WITHOUT re-fetching from server
+        // (clearFilters() calls loadFeed() which is async and would clobber allDetections)
+        function resetFiltersAndRender() {
+            document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector('.period-btn[data-period=""]').classList.add('active');
+            selectedSpecies = '';
+            document.getElementById('species-search').value = '';
+            document.getElementById('species-suggestions').style.display = 'none';
+            document.getElementById('rarity-filter').value  = '';
+            document.getElementById('feeder-filter').value  = '';
+            document.getElementById('zip-filter').value     = '';
+            favoritesOnly = false;
+            document.getElementById('fav-toggle').classList.remove('active');
+            renderFeed(); // synchronous — DOM is updated before next line runs
         }
 
-        // 3. Not in the current batch — fetch just this one record directly
+        // 1. Already in the rendered DOM
+        let card = document.querySelector(`.card[data-id="${id}"]`);
+        if (card) { scrollToCard(card); return; }
+
+        // 2. In allDetections but hidden by active filters — reset and re-render
+        if (allDetections.find(x => String(x.id) === id)) {
+            resetFiltersAndRender();
+            card = document.querySelector(`.card[data-id="${id}"]`);
+            if (card) { scrollToCard(card); return; }
+        }
+
+        // 3. Not in the current batch — fetch just this one record
         try {
             const res = await fetch(
                 `${SUPABASE_URL}/rest/v1/community_detections?select=*,feeders(display_name)&id=eq.${encodeURIComponent(id)}`,
@@ -2353,13 +2366,13 @@
             );
             const rows = await res.json();
             if (!rows.length) { showToast('Detection not found'); return; }
+            // Prepend to in-memory list and re-render without re-fetching
             allDetections = [...rows, ...allDetections];
-            clearFilters();
-            setTimeout(() => {
-                card = document.querySelector(`.card[data-id="${id}"]`);
-                if (card) scrollTo(card);
-            }, 150);
-        } catch (_) { /* silent fail */ }
+            resetFiltersAndRender();
+            card = document.querySelector(`.card[data-id="${id}"]`);
+            if (card) scrollToCard(card);
+            else showToast('Could not display detection');
+        } catch (_) { showToast('Error loading detection'); }
     }
 
     // ── Dark mode ────────────────────────────────────────────
