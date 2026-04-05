@@ -839,6 +839,20 @@
             btn.disabled = false; btn.textContent = 'Subscribe Free';
         }
     }
+
+    // Show unsubscribe confirmation if redirected back from unsubscribe function
+    if (new URLSearchParams(location.search).get('unsubscribed') === '1') {
+        const msg = document.getElementById('newsletter-msg');
+        const form = document.getElementById('newsletter-form');
+        if (msg && form) {
+            form.style.display = 'none';
+            msg.textContent = "You've been unsubscribed. Sorry to see you go!";
+            msg.style.color = '#888';
+            msg.style.display = 'block';
+        }
+        // Clean URL without reloading
+        history.replaceState(null, '', location.pathname);
+    }
     </script>
 </body>
 </html>
