@@ -8,6 +8,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Source+Sans+3:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2d5a3d">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="BirdWatchAI">
     <style>
         :root {
             --color-primary: #2d5a3d;
@@ -18,6 +23,45 @@
             --color-gray-500: #7a756d;
             --color-gray-700: #4a4640;
             --color-gray-900: #2a2825;
+            /* surfaces */
+            --bg-page:   #faf8f5;
+            --bg-card:   #ffffff;
+            --bg-input:  #ffffff;
+            --border:    #e8e4de;
+            --border-input: #d0cbc3;
+        }
+
+        /* ── Dark mode overrides ────────────────────────────── */
+        [data-theme="dark"] {
+            --color-primary:       #5aab72;
+            --color-primary-light: #6dc489;
+            --color-cream:         #1a1a18;
+            --color-gray-100:      #242420;
+            --color-gray-500:      #9a9590;
+            --color-gray-700:      #ccc8c2;
+            --color-gray-900:      #f0ede8;
+            --bg-page:             #1a1a18;
+            --bg-card:             #242420;
+            --bg-input:            #2e2e2a;
+            --border:              #3a3a34;
+            --border-input:        #4a4a42;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root:not([data-theme="light"]) {
+                --color-primary:       #5aab72;
+                --color-primary-light: #6dc489;
+                --color-cream:         #1a1a18;
+                --color-gray-100:      #242420;
+                --color-gray-500:      #9a9590;
+                --color-gray-700:      #ccc8c2;
+                --color-gray-900:      #f0ede8;
+                --bg-page:             #1a1a18;
+                --bg-card:             #242420;
+                --bg-input:            #2e2e2a;
+                --border:              #3a3a34;
+                --border-input:        #4a4a42;
+            }
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -27,8 +71,9 @@
             font-size: 1.0625rem;
             line-height: 1.7;
             color: var(--color-gray-700);
-            background: var(--color-cream);
+            background: var(--bg-page);
             padding: 2rem 1rem;
+            transition: background 0.25s, color 0.25s;
         }
 
         .container {
@@ -63,8 +108,8 @@
 
         /* ── Filter bar ─────────────────────────────────── */
         .filter-bar {
-            background: white;
-            border: 1px solid #e8e4de;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
             border-radius: 10px;
             padding: 1rem 1.25rem;
             margin-bottom: 1rem;
@@ -100,9 +145,9 @@
             font-family: inherit;
             font-size: 0.8125rem;
             padding: 4px 12px;
-            border: 1px solid #d0cbc3;
+            border: 1px solid var(--border-input);
             border-radius: 20px;
-            background: white;
+            background: var(--bg-input);
             color: var(--color-gray-700);
             cursor: pointer;
             transition: all 0.15s;
@@ -120,9 +165,9 @@
             font-family: inherit;
             font-size: 0.875rem;
             padding: 5px 10px;
-            border: 1px solid #d0cbc3;
+            border: 1px solid var(--border-input);
             border-radius: 6px;
-            background: white;
+            background: var(--bg-input);
             color: var(--color-gray-700);
             min-width: 140px;
         }
@@ -135,9 +180,9 @@
             font-family: inherit;
             font-size: 0.8125rem;
             padding: 5px 12px;
-            border: 1px solid #d0cbc3;
+            border: 1px solid var(--border-input);
             border-radius: 6px;
-            background: white;
+            background: var(--bg-input);
             color: var(--color-gray-500);
             cursor: pointer;
             transition: all 0.15s;
@@ -156,33 +201,47 @@
             font-size: 0.9375rem;
             font-weight: 500;
             padding: 8px 20px;
-            border: 2px solid #e8e4de;
+            border: 2px solid var(--border);
             border-radius: 8px 8px 0 0;
-            background: white;
+            background: var(--bg-card);
             color: var(--color-gray-500);
             cursor: pointer;
             transition: all 0.15s;
         }
         .view-tab.active {
             border-color: var(--color-primary);
-            border-bottom-color: var(--color-cream);
+            border-bottom-color: var(--bg-page);
             color: var(--color-primary);
             font-weight: 600;
-            background: var(--color-cream);
+            background: var(--bg-page);
         }
 
         /* ── Status bar ─────────────────────────────────── */
         #status-bar {
             display: flex;
             align-items: center;
-            gap: 12px;
+            flex-wrap: wrap;
+            gap: 6px;
             font-size: 13px;
             color: var(--color-gray-500);
             margin-bottom: 1rem;
-            padding: 0.625rem 1rem;
-            background: white;
-            border: 1px solid #e8e4de;
+            padding: 0.5rem 0.75rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
             border-radius: 8px;
+        }
+        #status-bar .status-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+            min-width: 0;
+        }
+        #status-bar .status-btns {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
         }
 
         #refresh-indicator {
@@ -228,14 +287,18 @@
         }
 
         .card {
-            border: 1px solid #e8e4de;
+            border: 1px solid var(--border);
             border-radius: 8px;
             padding: 14px;
             display: flex;
             gap: 14px;
             align-items: flex-start;
-            background: white;
-            transition: background 0.4s;
+            background: var(--bg-card);
+            transition: background 0.4s, box-shadow 0.2s, border-color 0.2s;
+        }
+        .card:hover {
+            box-shadow: 0 4px 16px rgba(0,0,0,0.09);
+            border-color: var(--color-gray-500);
         }
         .card.new { background: #f0fff4; }
 
@@ -337,7 +400,7 @@
 
         .map-wrap {
             border-radius: 10px;
-            border: 1px solid #e8e4de;
+            border: 1px solid var(--border);
             overflow: hidden;
         }
 
@@ -386,6 +449,10 @@
             .period-btns { flex-wrap: wrap; }
             #map { height: 360px; }
             #feed-view { grid-template-columns: 1fr; }
+            #status-bar { flex-direction: column; align-items: stretch; gap: 6px; font-size: 12px; }
+            .status-info { flex: none; }
+            .status-btns { flex-wrap: wrap; }
+            .refresh-btn { font-size: 11px; padding: 3px 8px; }
         }
 
         /* ── Stats view ─────────────────────────────────────── */
@@ -399,8 +466,8 @@
         }
 
         .stats-kpi {
-            background: white;
-            border: 1px solid #e8e4de;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
             border-radius: 10px;
             padding: 1rem 1.5rem;
             min-width: 110px;
@@ -437,9 +504,9 @@
             font-size: 0.875rem;
             font-weight: 500;
             padding: 6px 16px;
-            border: 1px solid #d0cbc3;
+            border: 1px solid var(--border-input);
             border-radius: 6px;
-            background: white;
+            background: var(--bg-input);
             color: var(--color-gray-500);
             cursor: pointer;
             transition: all 0.15s;
@@ -452,8 +519,8 @@
         }
 
         .stats-panel {
-            background: white;
-            border: 1px solid #e8e4de;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
             border-radius: 10px;
             padding: 1.25rem;
             min-height: 200px;
@@ -477,7 +544,7 @@
         .stats-table th {
             text-align: left;
             padding: 8px 12px;
-            border-bottom: 2px solid #e8e4de;
+            border-bottom: 2px solid var(--border);
             font-size: 0.72rem;
             font-weight: 600;
             text-transform: uppercase;
@@ -488,12 +555,12 @@
 
         .stats-table td {
             padding: 8px 12px;
-            border-bottom: 1px solid #f0ece6;
+            border-bottom: 1px solid var(--border);
             vertical-align: middle;
         }
 
         .stats-table tr:last-child td { border-bottom: none; }
-        .stats-table tr:hover td { background: #faf8f5; }
+        .stats-table tr:hover td { background: var(--color-gray-100); }
 
         .stats-rank {
             color: var(--color-gray-500);
@@ -519,7 +586,7 @@
             display: inline-block;
             width: 80px;
             height: 8px;
-            background: #f0ece6;
+            background: var(--color-gray-100);
             border-radius: 4px;
             overflow: hidden;
             flex-shrink: 0;
@@ -589,7 +656,7 @@
         .bar-track {
             flex: 1;
             height: 18px;
-            background: #f0ece6;
+            background: var(--color-gray-100);
             border-radius: 4px;
             overflow: hidden;
         }
@@ -617,6 +684,419 @@
             .stats-table { font-size: 0.8rem; }
             .stats-table th, .stats-table td { padding: 6px 8px; }
         }
+
+        /* ── Trend chart ────────────────────────────────────── */
+        .trend-controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        .trend-svg-wrap {
+            overflow-x: auto;
+        }
+        .trend-svg-wrap svg text { font-family: 'Source Sans 3', sans-serif; }
+
+        /* ── Species type-ahead ────────────────────────────── */
+        .species-wrap {
+            position: relative;
+        }
+        .species-wrap input {
+            min-width: 160px;
+        }
+        #species-suggestions {
+            display: none;
+            position: absolute;
+            top: calc(100% + 4px);
+            left: 0;
+            min-width: 200px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-input);
+            border-radius: 6px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+            z-index: 999;
+            max-height: 220px;
+            overflow-y: auto;
+        }
+        .species-suggestion {
+            padding: 7px 12px;
+            font-size: 0.875rem;
+            cursor: pointer;
+            color: var(--color-gray-700);
+        }
+        .species-suggestion:hover, .species-suggestion.focused {
+            background: var(--color-gray-100);
+            color: var(--color-primary);
+        }
+
+        /* ── Near me button ─────────────────────────────────── */
+        .near-me-btn {
+            font-family: inherit;
+            font-size: 0.8125rem;
+            padding: 5px 10px;
+            border: 1px solid var(--border-input);
+            border-radius: 6px;
+            background: var(--bg-input);
+            color: var(--color-gray-500);
+            cursor: pointer;
+            transition: all 0.15s;
+            white-space: nowrap;
+        }
+        .near-me-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
+        .near-me-btn:disabled { opacity: 0.5; cursor: default; }
+
+        /* ── Toggle pill button (favorites) ────────────────── */
+        .toggle-btn {
+            font-family: inherit;
+            font-size: 0.8125rem;
+            padding: 4px 12px;
+            border: 1px solid var(--border-input);
+            border-radius: 20px;
+            background: var(--bg-input);
+            color: var(--color-gray-700);
+            cursor: pointer;
+            transition: all 0.15s;
+            white-space: nowrap;
+        }
+        .toggle-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
+        .toggle-btn.active {
+            background: #fff8e6;
+            border-color: #e6a817;
+            color: #b07a00;
+            font-weight: 600;
+        }
+        /* ── Confetti particle ──────────────────────────────── */
+        .confetti-piece {
+            position: fixed;
+            width: 9px;
+            height: 9px;
+            border-radius: 2px;
+            pointer-events: none;
+            z-index: 99999;
+            animation: confetti-fall linear forwards;
+        }
+        @keyframes confetti-fall {
+            0%   { transform: translateY(-20px) rotate(0deg);   opacity: 1; }
+            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        }
+
+        /* ── Map marker pulse (newest detections) ───────────── */
+        @keyframes marker-pulse {
+            0%   { box-shadow: 0 0 0 0 rgba(255,255,255,0.8); }
+            70%  { box-shadow: 0 0 0 12px rgba(255,255,255,0); }
+            100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
+        }
+        .marker-new { animation: marker-pulse 1.2s ease-out 3; }
+
+        /* ── Shared detection highlight ─────────────────────── */
+        .card.shared-highlight {
+            outline: 3px solid var(--color-primary);
+            box-shadow: 0 0 0 6px rgba(45,90,61,0.15);
+            animation: shared-flash 1s ease-out 2;
+        }
+        @keyframes shared-flash {
+            0%, 100% { background: var(--bg-card); }
+            50%       { background: #e8f5ee; }
+        }
+
+        /* ── Bird call audio button ─────────────────────────── */
+        .card-audio {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 6px;
+            font-size: 12px;
+            color: var(--color-gray-500);
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-family: inherit;
+            padding: 0;
+            transition: color 0.15s;
+        }
+        .card-audio:hover { color: var(--color-primary); }
+        .card-audio.playing { color: var(--color-primary); animation: sound-pulse 1s ease-in-out infinite; }
+        .card-audio.loading { opacity: 0.6; cursor: wait; }
+        @keyframes sound-pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50%       { opacity: 0.6; transform: scale(1.15); }
+        }
+
+        /* ── Detection detail modal ──────────────────────────── */
+        #detail-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.75);
+            z-index: 10001;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+        #detail-modal.open { display: flex; }
+        .detail-box {
+            background: var(--bg-card);
+            border-radius: 14px;
+            max-width: 560px;
+            width: 100%;
+            max-height: 92vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+            position: relative;
+        }
+        .detail-img {
+            width: 100%;
+            aspect-ratio: 4/3;
+            object-fit: cover;
+            border-radius: 14px 14px 0 0;
+            display: block;
+        }
+        .detail-body { padding: 1.25rem; }
+        .detail-title { font-family: var(--font-display); font-size: 1.4rem; font-weight: 700; margin-bottom: 0.25rem; color: var(--color-gray-900); }
+        [data-theme="dark"] .detail-title { color: var(--color-cream); }
+        .detail-meta { font-size: 0.875rem; color: var(--color-gray-500); display: flex; flex-direction: column; gap: 4px; margin-bottom: 1rem; }
+        .detail-meta span { display: flex; align-items: center; gap: 6px; }
+        .detail-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+        .detail-actions a, .detail-actions button {
+            font-family: inherit; font-size: 0.875rem; padding: 6px 16px;
+            border-radius: 6px; cursor: pointer; text-decoration: none;
+            border: 1px solid var(--border-input);
+            background: var(--bg-input); color: var(--color-gray-700);
+            transition: all 0.15s;
+        }
+        .detail-actions a:hover, .detail-actions button:hover { border-color: var(--color-primary); color: var(--color-primary); }
+        .detail-close {
+            position: absolute; top: 10px; right: 10px;
+            background: rgba(0,0,0,0.45); color: white; border: none;
+            width: 32px; height: 32px; border-radius: 50%; font-size: 1rem;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            z-index: 1;
+        }
+
+        /* ── Infinite scroll sentinel ────────────────────────── */
+        #feed-sentinel { height: 1px; }
+        .load-more-spinner {
+            text-align: center; padding: 1.5rem; color: var(--color-gray-500);
+            font-size: 0.875rem; grid-column: 1 / -1;
+        }
+
+        /* ── First-of-season badge ───────────────────────────── */
+        .badge-first-season {
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            color: white;
+            border-radius: 4px;
+            padding: 1px 5px;
+            margin-left: 4px;
+            vertical-align: middle;
+            letter-spacing: 0.02em;
+        }
+
+        /* ── Emoji reactions ─────────────────────────────────── */
+        .card-reactions {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+            margin-top: 6px;
+        }
+        .reaction-btn {
+            font-size: 13px;
+            padding: 2px 7px;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            background: var(--bg-input);
+            cursor: pointer;
+            transition: all 0.15s;
+            font-family: inherit;
+            color: var(--color-gray-700);
+            white-space: nowrap;
+        }
+        .reaction-btn:hover { border-color: var(--color-primary); background: var(--bg-card); }
+        .reaction-btn.reacted { border-color: var(--color-primary); background: rgba(45,90,61,0.08); font-weight: 600; }
+
+        /* ── Species photo carousel modal ────────────────────── */
+        #carousel-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.82);
+            z-index: 10000;
+            overflow-y: auto;
+            padding: 2rem 1rem;
+        }
+        #carousel-modal.open { display: flex; flex-direction: column; align-items: center; }
+        .carousel-header {
+            color: white;
+            font-size: 1.25rem;
+            font-family: var(--font-display);
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            width: 100%;
+            max-width: 900px;
+        }
+        .carousel-close {
+            margin-left: auto;
+            background: rgba(255,255,255,0.15);
+            border: none;
+            color: white;
+            font-size: 1.25rem;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .carousel-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            width: 100%;
+            max-width: 900px;
+        }
+        .carousel-grid img {
+            width: 100%;
+            aspect-ratio: 4/3;
+            object-fit: cover;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.15s;
+        }
+        .carousel-grid img:hover { transform: scale(1.03); }
+        .carousel-empty { color: rgba(255,255,255,0.6); margin-top: 2rem; font-size: 0.9rem; }
+
+        /* ── Species comparison panel ────────────────────────── */
+        .compare-selects {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+            align-items: center;
+        }
+        .compare-selects select { flex: 1; min-width: 140px; }
+        .compare-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+        .compare-table th, .compare-table td {
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border);
+            text-align: left;
+        }
+        .compare-table th { font-weight: 600; color: var(--color-gray-700); background: var(--bg-input); }
+        .compare-table td:first-child { color: var(--color-gray-500); font-size: 0.8rem; }
+        .compare-winner { color: var(--color-primary); font-weight: 700; }
+
+        /* ── Streak badge in leaderboard ─────────────────────── */
+        .streak-badge {
+            display: inline-block;
+            font-size: 11px;
+            background: #fff3cd;
+            color: #856404;
+            border-radius: 4px;
+            padding: 1px 6px;
+            margin-left: 6px;
+            font-weight: 600;
+        }
+        [data-theme="dark"] .streak-badge { background: #3d2e00; color: #ffc107; }
+
+        /* ── Copy link button on cards ──────────────────────── */
+        .card-share {
+            display: inline-block;
+            margin-top: 6px;
+            margin-left: 8px;
+            font-size: 12px;
+            color: var(--color-gray-500);
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-family: inherit;
+            padding: 0;
+        }
+        .card-share:hover { color: var(--color-primary); }
+
+        /* ── Bird of the Day banner ─────────────────────────── */
+        #botd-banner {
+            display: none;
+            background: linear-gradient(135deg, #2d5a3d 0%, #3d7a52 100%);
+            color: white;
+            border-radius: 10px;
+            padding: 1rem 1.25rem;
+            margin-bottom: 1rem;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        #botd-banner.visible { display: flex; }
+        .botd-img {
+            width: 72px;
+            height: 54px;
+            object-fit: cover;
+            border-radius: 6px;
+            flex-shrink: 0;
+            border: 2px solid rgba(255,255,255,0.4);
+        }
+        .botd-label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            opacity: 0.75;
+            margin-bottom: 2px;
+        }
+        .botd-species {
+            font-family: 'Fraunces', serif;
+            font-size: 1.25rem;
+            font-weight: 600;
+            line-height: 1.2;
+        }
+        .botd-meta { font-size: 0.8rem; opacity: 0.8; margin-top: 2px; }
+        .botd-close {
+            margin-left: auto;
+            background: none;
+            border: none;
+            color: white;
+            opacity: 0.7;
+            font-size: 1.25rem;
+            cursor: pointer;
+            padding: 2px 6px;
+            line-height: 1;
+        }
+        .botd-close:hover { opacity: 1; }
+
+        /* ── Keyboard shortcut hint ─────────────────────────── */
+        .kbd-hint {
+            position: fixed;
+            bottom: 1.25rem;
+            right: 1.25rem;
+            background: rgba(42,40,37,0.88);
+            color: white;
+            font-size: 0.75rem;
+            padding: 0.5rem 0.875rem;
+            border-radius: 8px;
+            line-height: 1.8;
+            z-index: 8000;
+            display: none;
+            pointer-events: none;
+        }
+        .kbd-hint.visible { display: block; }
+        kbd {
+            display: inline-block;
+            background: rgba(255,255,255,0.15);
+            border-radius: 3px;
+            padding: 0 5px;
+            font-family: monospace;
+            font-size: 0.7rem;
+        }
+
     </style>
 </head>
 <body>
@@ -625,6 +1105,17 @@
 
     <h1>🐦 Community Feed</h1>
     <p class="page-subtitle">Live bird detections shared by BirdWatchAI users around the world.</p>
+
+    <!-- Bird of the Day banner -->
+    <div id="botd-banner">
+        <img id="botd-img" class="botd-img" src="" alt="" style="display:none;">
+        <div>
+            <div class="botd-label">🏆 Bird of the Day</div>
+            <div id="botd-species" class="botd-species"></div>
+            <div id="botd-meta"    class="botd-meta"></div>
+        </div>
+        <button class="botd-close" onclick="document.getElementById('botd-banner').classList.remove('visible')" title="Dismiss">✕</button>
+    </div>
 
     <!-- Filter bar -->
     <div class="filter-bar">
@@ -641,8 +1132,19 @@
 
         <div class="filter-group">
             <span class="filter-label">Species</span>
-            <select id="species-filter" class="filter-select">
-                <option value="">All species</option>
+            <div class="species-wrap">
+                <input id="species-search" class="filter-input" type="text" placeholder="Search species…" autocomplete="off">
+                <div id="species-suggestions"></div>
+            </div>
+        </div>
+
+        <div class="filter-group">
+            <span class="filter-label">Rarity</span>
+            <select id="rarity-filter" class="filter-select">
+                <option value="">All</option>
+                <option value="Uncommon">Uncommon</option>
+                <option value="Rare">Rare</option>
+                <option value="Very Rare">Very Rare</option>
             </select>
         </div>
 
@@ -656,6 +1158,11 @@
         <div class="filter-group">
             <span class="filter-label">Zip</span>
             <input id="zip-filter" class="filter-input" type="text" placeholder="e.g. 90210" maxlength="10">
+            <button id="near-me-btn" class="near-me-btn" onclick="useMyLocation()" title="Use my location">📍 Near me</button>
+        </div>
+
+        <div class="filter-group">
+            <button id="fav-toggle" class="toggle-btn" onclick="toggleFavorites()">⭐ Favorites only</button>
         </div>
 
         <button class="clear-btn" onclick="clearFilters()">✕ Clear</button>
@@ -668,18 +1175,35 @@
         <button class="view-tab" onclick="switchView('stats', this)">📊 Stats</button>
     </div>
 
+    <!-- Notification permission banner (shown when needed) -->
+    <div id="notif-banner" style="display:none;background:#fff8e6;border:1px solid #e6a817;border-radius:8px;padding:0.75rem 1rem;margin-bottom:0.75rem;font-size:0.875rem;display:none;align-items:center;gap:1rem;flex-wrap:wrap;">
+        <span>🔔 Enable browser notifications to get alerted when a Rare or Very Rare bird is detected — even when this tab isn't in focus.</span>
+        <button onclick="requestNotifPermission()" style="font-family:inherit;font-size:0.8125rem;padding:4px 14px;border:1px solid #e6a817;border-radius:6px;background:#fff;color:#b07a00;cursor:pointer;font-weight:600;white-space:nowrap;">Enable notifications</button>
+        <button onclick="document.getElementById('notif-banner').style.display='none'" style="font-family:inherit;font-size:0.8125rem;padding:4px 10px;border:1px solid #d0cbc3;border-radius:6px;background:#fff;color:#7a756d;cursor:pointer;">Dismiss</button>
+    </div>
+
     <!-- Status bar -->
     <div id="status-bar">
-        <span id="refresh-indicator"></span>
-        <span id="countdown">Refreshing in 30s</span>
-        <span id="feed-count"></span>
-        <button class="refresh-btn" onclick="loadFeed()">Refresh now</button>
+        <div class="status-info">
+            <span id="refresh-indicator"></span>
+            <span id="countdown">Refreshing in 30s</span>
+            <span id="feed-count"></span>
+        </div>
+        <div class="status-btns">
+            <button class="refresh-btn" onclick="loadFeed()">↺ Refresh</button>
+            <button id="theme-toggle" class="refresh-btn" style="background:var(--color-gray-500);" onclick="toggleTheme()" title="Toggle dark mode">🌙</button>
+            <button id="sound-toggle" class="refresh-btn" style="background:var(--color-gray-500);" onclick="toggleSound()" title="Toggle sound">🔇</button>
+            <button id="notif-toggle" class="refresh-btn" style="background:var(--color-gray-500);" onclick="toggleNotifications()" title="Rare bird alerts">🔔</button>
+            <button class="refresh-btn" style="background:var(--color-gray-500);" onclick="exportCSV()" title="Download CSV">⬇ CSV</button>
+            <button class="refresh-btn" style="background:var(--color-gray-500);" onclick="toggleKbdHint()" title="Keyboard shortcuts">⌨</button>
+        </div>
     </div>
 
     <!-- Feed view -->
     <div id="feed-view">
         <div class="feed-loading">Loading detections…</div>
     </div>
+    <div id="feed-sentinel"></div>
 
     <!-- Map view -->
     <div id="map-view">
@@ -688,6 +1212,11 @@
             <select id="map-species-filter" class="filter-select" onchange="renderMap()">
                 <option value="">All species</option>
             </select>
+            <span class="filter-label" style="margin-left:1rem;">Layer</span>
+            <div class="period-btns">
+                <button class="period-btn active" id="map-layer-pins"  onclick="setMapLayer('pins',  this)">📍 Pins</button>
+                <button class="period-btn"         id="map-layer-heat" onclick="setMapLayer('heat',  this)">🔥 Heatmap</button>
+            </div>
         </div>
         <div id="map-loading" style="display:none">Geocoding locations…</div>
         <div class="map-wrap"><div id="map"></div></div>
@@ -709,6 +1238,8 @@
             <button class="stats-tab" onclick="switchStatsTab('hotspots', this)">📍 Hotspots</button>
             <button class="stats-tab" onclick="switchStatsTab('temperature', this)">🌡️ Temperature</button>
             <button class="stats-tab" onclick="switchStatsTab('leaderboard', this)">🏆 Leaderboard</button>
+            <button class="stats-tab" onclick="switchStatsTab('trend', this)">📈 Trend</button>
+            <button class="stats-tab" onclick="switchStatsTab('compare', this)">⚖️ Compare</button>
         </div>
 
         <div id="stats-life-list"  class="stats-panel"></div>
@@ -716,7 +1247,41 @@
         <div id="stats-hotspots"   class="stats-panel" style="display:none;"></div>
         <div id="stats-temperature" class="stats-panel" style="display:none;"></div>
         <div id="stats-leaderboard" class="stats-panel" style="display:none;"></div>
+        <div id="stats-trend"      class="stats-panel" style="display:none;"></div>
+        <div id="stats-compare"    class="stats-panel" style="display:none;"></div>
     </div>
+</div>
+
+<!-- Keyboard shortcut hint overlay -->
+<div id="kbd-hint" class="kbd-hint">
+    <strong style="display:block;margin-bottom:4px;">Keyboard Shortcuts</strong>
+    <kbd>j</kbd> / <kbd>k</kbd> &nbsp;Next / Prev card<br>
+    <kbd>f</kbd> &nbsp;Toggle Favorites filter<br>
+    <kbd>r</kbd> &nbsp;Refresh feed<br>
+    <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> &nbsp;Switch Feed / Map / Stats<br>
+    <kbd>Esc</kbd> &nbsp;Close lightbox / hints
+</div>
+
+<!-- Detection detail modal -->
+<div id="detail-modal" role="dialog" aria-modal="true">
+    <div class="detail-box">
+        <button class="detail-close" id="detail-close" aria-label="Close">✕</button>
+        <img class="detail-img" id="detail-img" src="" alt="" style="display:none;">
+        <div class="detail-body">
+            <div class="detail-title" id="detail-title"></div>
+            <div class="detail-meta" id="detail-meta"></div>
+            <div class="detail-actions" id="detail-actions"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Species photo carousel modal -->
+<div id="carousel-modal" role="dialog" aria-modal="true">
+    <div class="carousel-header">
+        <span id="carousel-title"></span>
+        <button class="carousel-close" id="carousel-close" aria-label="Close">✕</button>
+    </div>
+    <div class="carousel-grid" id="carousel-grid"></div>
 </div>
 
 <!-- Lightbox -->
@@ -726,27 +1291,156 @@
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 <script>
     const SUPABASE_URL = 'https://lsamggztfizmkyljdgwq.supabase.co';
     const ANON_KEY     = 'sb_publishable_-80LQjkx2s82XnURj2DfQQ_d7ARz3js';
     const REFRESH_SECS = 30;
 
+
     let countdown      = REFRESH_SECS;
+    let tabHiddenAt    = null;   // timestamp when tab was hidden
     let lastTopId      = null;
     let allDetections  = [];   // raw data from server
     let currentView    = 'feed';
+    let favoritesOnly  = false;
     let map            = null;
     let markerGroup    = null;
+    let heatLayer      = null;
+    let mapLayer       = 'pins';   // 'pins' | 'heat'
     const geocodeCache = {};   // zip -> {lat, lng} or null
 
     // ── Filters ─────────────────────────────────────────────
+    let selectedSpecies = '';   // tracks the committed species filter value
+
     function getFilters() {
         return {
-            period:  document.querySelector('.period-btn.active')?.dataset.period ?? '',
-            species: document.getElementById('species-filter').value,
-            feeder:  document.getElementById('feeder-filter').value,
-            zip:     document.getElementById('zip-filter').value.trim(),
+            period:        document.querySelector('.period-btn.active')?.dataset.period ?? '',
+            species:       selectedSpecies,
+            rarity:        document.getElementById('rarity-filter').value,
+            feeder:        document.getElementById('feeder-filter').value,
+            zip:           document.getElementById('zip-filter').value.trim(),
+            favoritesOnly,
         };
+    }
+
+    function toggleFavorites() {
+        favoritesOnly = !favoritesOnly;
+        document.getElementById('fav-toggle').classList.toggle('active', favoritesOnly);
+        renderFeed();
+        if (currentView === 'map')   renderMap();
+        if (currentView === 'stats') renderStats();
+    }
+
+    // ── Species type-ahead ───────────────────────────────────
+    let allSpeciesList  = [];   // full list from data
+    let suggFocusIdx    = -1;
+
+    function updateSpeciesSuggestions() {
+        const input = document.getElementById('species-search');
+        const box   = document.getElementById('species-suggestions');
+        const q     = input.value.trim().toLowerCase();
+
+        // If blank, clear the committed filter and close
+        if (!q) {
+            selectedSpecies = '';
+            box.style.display = 'none';
+            refilter();
+            return;
+        }
+
+        const matches = allSpeciesList.filter(s => s.toLowerCase().includes(q)).slice(0, 12);
+        if (matches.length === 0) { box.style.display = 'none'; return; }
+
+        suggFocusIdx = -1;
+        box.innerHTML = matches.map((s, i) =>
+            `<div class="species-suggestion" data-species="${esc(s)}" data-idx="${i}">${esc(s)}</div>`
+        ).join('');
+        box.style.display = 'block';
+    }
+
+    function commitSpecies(name) {
+        selectedSpecies = name;
+        document.getElementById('species-search').value = name;
+        document.getElementById('species-suggestions').style.display = 'none';
+        refilter();
+    }
+
+    function refilter() {
+        renderFeed();
+        if (currentView === 'map')   renderMap();
+        if (currentView === 'stats') renderStats();
+    }
+
+    document.getElementById('species-search').addEventListener('input', updateSpeciesSuggestions);
+
+    document.getElementById('species-search').addEventListener('keydown', e => {
+        const box   = document.getElementById('species-suggestions');
+        const items = box.querySelectorAll('.species-suggestion');
+        if (!items.length) return;
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            suggFocusIdx = Math.min(suggFocusIdx + 1, items.length - 1);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            suggFocusIdx = Math.max(suggFocusIdx - 1, 0);
+        } else if (e.key === 'Enter' && suggFocusIdx >= 0) {
+            e.preventDefault();
+            commitSpecies(items[suggFocusIdx].dataset.species);
+            return;
+        } else if (e.key === 'Escape') {
+            box.style.display = 'none';
+            return;
+        }
+        items.forEach((el, i) => el.classList.toggle('focused', i === suggFocusIdx));
+    });
+
+    document.getElementById('species-suggestions').addEventListener('click', e => {
+        const item = e.target.closest('.species-suggestion');
+        if (item) commitSpecies(item.dataset.species);
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', e => {
+        if (!e.target.closest('.species-wrap')) {
+            document.getElementById('species-suggestions').style.display = 'none';
+        }
+    });
+
+    // ── Near me (ZIP from geolocation) ───────────────────────
+    function useMyLocation() {
+        if (!navigator.geolocation) { alert('Geolocation is not supported by your browser.'); return; }
+        const btn = document.getElementById('near-me-btn');
+        btn.disabled = true;
+        btn.textContent = '📍 Locating…';
+        navigator.geolocation.getCurrentPosition(
+            async pos => {
+                const { latitude, longitude } = pos.coords;
+                try {
+                    const res  = await fetch(`https://api.zippopotam.us/us/${latitude.toFixed(4)},${longitude.toFixed(4)}`).catch(() => null);
+                    // zippopotam doesn't support reverse geocoding; use a free reverse-geocode API
+                    const res2 = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`);
+                    const data = await res2.json();
+                    const zip  = data?.address?.postcode?.split('-')[0];
+                    if (zip) {
+                        document.getElementById('zip-filter').value = zip;
+                        refilter();
+                    } else {
+                        alert('Could not determine ZIP code for your location.');
+                    }
+                } catch {
+                    alert('Could not determine ZIP code for your location.');
+                }
+                btn.disabled = false;
+                btn.textContent = '📍 Near me';
+            },
+            () => {
+                alert('Location access denied.');
+                btn.disabled = false;
+                btn.textContent = '📍 Near me';
+            },
+            { timeout: 8000 }
+        );
     }
 
     function periodToISO(period) {
@@ -770,25 +1464,48 @@
     }
 
     function applyClientFilters(data) {
-        const { feeder, zip, species } = getFilters();
+        const { feeder, zip, species, rarity, favoritesOnly } = getFilters();
         return data.filter(d => {
-            if (species && d.species             !== species) return false;
-            if (feeder  && d.feeders?.display_name !== feeder) return false;
-            if (zip     && d.zip_code              !== zip)    return false;
+            if (species       && d.species               !== species) return false;
+            if (rarity        && d.rarity                !== rarity)  return false;
+            if (feeder        && d.feeders?.display_name !== feeder)  return false;
+            if (zip           && d.zip_code              !== zip)      return false;
+            if (favoritesOnly && !d.is_favorite)                       return false;
             return true;
         });
     }
 
+    // ── Format detection time with local timezone label ──────
+    function fmtDetectedAt(isoStr) {
+        return new Date(isoStr).toLocaleString('en-US', {
+            timeZone: 'America/New_York',
+            month: 'numeric', day: 'numeric', year: 'numeric',
+            hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
+        });
+    }
+
     // ── Load data ────────────────────────────────────────────
-    async function loadFeed() {
+    const PAGE_SIZE  = 60;
+    let   feedOffset = 0;
+    let   feedExhausted = false;
+    let   feedLoading   = false;
+
+    async function loadFeed(append = false) {
+        if (append && (feedExhausted || feedLoading)) return;
+        feedLoading = true;
+
         const indicator = document.getElementById('refresh-indicator');
-        indicator.classList.add('refreshing');
-        document.getElementById('countdown').textContent = 'Refreshing…';
+        if (!append) {
+            indicator.classList.add('refreshing');
+            document.getElementById('countdown').textContent = 'Refreshing…';
+            feedOffset = 0;
+            feedExhausted = false;
+        }
 
         const { period } = getFilters();
         const since = periodToISO(period);
 
-        let url = `${SUPABASE_URL}/rest/v1/community_detections?select=*,feeders(display_name)&limit=500&order=detected_at.desc`;
+        let url = `${SUPABASE_URL}/rest/v1/community_detections?select=*,feeders(display_name)&limit=${PAGE_SIZE}&offset=${feedOffset}&order=detected_at.desc`;
         if (since) url += `&detected_at=gte.${encodeURIComponent(since)}`;
 
         try {
@@ -796,23 +1513,54 @@
                 headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` }
             });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            allDetections = await res.json();
+            const page = await res.json();
+
+            if (append) {
+                allDetections = [...allDetections, ...page];
+            } else {
+                allDetections = page;
+            }
+            if (page.length < PAGE_SIZE) feedExhausted = true;
+            feedOffset += page.length;
 
             populateFeederDropdown(allDetections);
             populateFeedSpeciesDropdown(allDetections);
             populateMapSpeciesDropdown(allDetections);
+
+            const hadDetections = lastTopId !== null;
+            const prevTop = lastTopId;
             renderFeed();
             if (currentView === 'map')   renderMap();
             if (currentView === 'stats') renderStats();
+            checkForRareNotifications(allDetections);
+            renderBirdOfTheDay(allDetections);
+            // Confetti for brand-new Very Rare detections (even without notifications)
+            if (hadDetections && prevTop !== allDetections[0]?.id) {
+                const newVeryRare = allDetections.find(d => d.id !== prevTop && d.rarity === 'Very Rare');
+                if (newVeryRare) launchConfetti();
+            }
+            if (hadDetections) playChime();
 
         } catch (err) {
-            document.getElementById('feed-view').innerHTML =
-                `<div class="feed-error">Error loading feed: ${err.message}</div>`;
+            if (!append) {
+                document.getElementById('feed-view').innerHTML =
+                    `<div class="feed-error">Error loading feed: ${err.message}</div>`;
+            }
         }
 
-        indicator.classList.remove('refreshing');
-        countdown = REFRESH_SECS;
+        feedLoading = false;
+        if (!append) {
+            indicator.classList.remove('refreshing');
+            countdown = REFRESH_SECS;
+        }
     }
+
+    // ── Infinite scroll via IntersectionObserver ─────────────
+    const feedSentinel = document.getElementById('feed-sentinel');
+    const scrollObserver = new IntersectionObserver(entries => {
+        if (entries[0].isIntersecting && currentView === 'feed') loadFeed(true);
+    }, { rootMargin: '200px' });
+    scrollObserver.observe(feedSentinel);
 
     // ── Feeder dropdown ──────────────────────────────────────
     function populateFeederDropdown(data) {
@@ -825,12 +1573,12 @@
     }
 
     function populateFeedSpeciesDropdown(data) {
-        const sel     = document.getElementById('species-filter');
-        const prev    = sel.value;
-        const species = [...new Set(data.map(d => d.species).filter(Boolean))].sort();
-        sel.innerHTML = '<option value="">All species</option>' +
-            species.map(s => `<option value="${s}">${s}</option>`).join('');
-        if (species.includes(prev)) sel.value = prev;
+        allSpeciesList = [...new Set(data.map(d => d.species).filter(Boolean))].sort();
+        // If current selectedSpecies is no longer in the list, clear it
+        if (selectedSpecies && !allSpeciesList.includes(selectedSpecies)) {
+            selectedSpecies = '';
+            document.getElementById('species-search').value = '';
+        }
     }
 
     // ── Map species dropdown ─────────────────────────────────
@@ -860,32 +1608,71 @@
             return;
         }
 
+        // Compute first-of-season species set (earliest detection per species this year)
+        const thisYear = new Date().getFullYear();
+        const firstOfSeason = new Set();
+        const earliestBySpecies = {};
+        allDetections.forEach(d => {
+            if (!d.species || !d.detected_at) return;
+            const yr = new Date(d.detected_at).getFullYear();
+            if (yr !== thisYear) return;
+            if (!earliestBySpecies[d.species] || d.detected_at < earliestBySpecies[d.species]) {
+                earliestBySpecies[d.species] = d.detected_at;
+            }
+        });
+        visible.forEach(d => {
+            if (d.detected_at && earliestBySpecies[d.species] === d.detected_at) {
+                firstOfSeason.add(d.id);
+            }
+        });
+
         document.getElementById('feed-view').innerHTML = visible.map((d, i) => {
             const rarityClass = d.rarity
                 ? 'rarity-' + d.rarity.toLowerCase().replace(/\s+/g, '-')
                 : '';
             const isNew = hasNew && i === 0;
+            const isFirst = firstOfSeason.has(d.id);
+            const reactions = getReactions(d.id);
 
             return `
-            <div class="card${isNew ? ' new' : ''}">
-                ${d.image_url ? `<img src="${d.image_url}" alt="${esc(d.species)}" loading="lazy">` : ''}
+            <div class="card${isNew ? ' new' : ''}" data-id="${d.id}">
+                ${d.image_url ? `<img src="${d.image_url}" alt="${esc(d.species)}" loading="lazy" data-carousel-species="${esc(d.species)}">` : ''}
                 <div class="card-body">
                     <div class="card-title">
-                        ${d.is_favorite ? '⭐ ' : ''}${esc(d.species)}${d.rarity
-                            ? ` <span class="${rarityClass}">· ${esc(d.rarity)}</span>` : ''}
+                        ${d.is_favorite ? '⭐ ' : ''}<span class="species-link" data-species="${esc(d.species)}" style="cursor:pointer;text-decoration:underline dotted;">${esc(d.species)}</span>${d.rarity
+                            ? ` <span class="${rarityClass}">· ${esc(d.rarity)}</span>` : ''}${isFirst
+                            ? ' <span class="badge-first-season">🌱 First of Season</span>' : ''}
                     </div>
                     <div class="card-meta">
-                        🕐 ${new Date(d.detected_at).toLocaleString()}${d.zip_code
+                        🕐 ${fmtDetectedAt(d.detected_at)}${d.zip_code
                             ? ` · 📍 ${esc(d.zip_code)}` : ''}${d.temperature != null
                             ? ` · 🌡️ ${d.temperature}°F` : ''}
                     </div>
                     ${d.feeders?.display_name ? `<div class="card-feeder">📡 ${esc(d.feeders.display_name)}</div>` : ''}
-                    ${d.video_url
-                        ? `<a class="card-video" href="${d.video_url}" target="_blank" rel="noopener">🎬 Watch video</a>`
-                        : ''}
+                    <div class="card-reactions">
+                        ${['😮','❤️','🎉','🦅'].map(emoji =>
+                            `<button class="reaction-btn${reactions[emoji] ? ' reacted' : ''}" data-reaction-id="${d.id}" data-emoji="${emoji}">${emoji} ${reactions[emoji] || ''}</button>`
+                        ).join('')}
+                    </div>
+                    <div style="display:flex;align-items:center;flex-wrap:wrap;gap:0;">
+                        ${d.video_url
+                            ? `<a class="card-video" href="${d.video_url}" target="_blank" rel="noopener">🎬 Watch video</a>`
+                            : ''}
+                        <button class="card-audio" data-audio-species="${esc(d.species)}" title="Play bird call">🔊 Call</button>
+                        <button class="card-share" data-share-id="${d.id}" title="Copy link to this detection">🔗 Share</button>
+                    </div>
                 </div>
             </div>`;
         }).join('');
+    }
+
+    // ── Map layer toggle ─────────────────────────────────────
+    function setMapLayer(layer, btn) {
+        mapLayer = layer;
+        document.querySelectorAll('#map-layer-pins, #map-layer-heat')
+            .forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        renderMap();
     }
 
     // ── Map rendering ────────────────────────────────────────
@@ -933,11 +1720,11 @@
         return speciesColorMap[species];
     }
 
-    function makeIcon(color, count) {
+    function makeIcon(color, count, pulse = false) {
         const label = count > 99 ? '99+' : String(count);
         return L.divIcon({
             className: '',
-            html: `<div style="
+            html: `<div class="${pulse ? 'marker-new' : ''}" style="
                 background:${color};
                 width:32px;height:32px;border-radius:50%;
                 display:flex;align-items:center;justify-content:center;
@@ -971,6 +1758,7 @@
         const noData  = document.getElementById('map-no-data');
 
         if (markerGroup) { map.removeLayer(markerGroup); markerGroup = null; }
+        if (heatLayer)   { map.removeLayer(heatLayer);   heatLayer   = null; }
         renderLegend([]);
 
         const speciesFilter = document.getElementById('map-species-filter').value;
@@ -1056,50 +1844,71 @@
             }
             noData.style.display = 'none';
 
-            // Drop a colored pin per species per location
-            markerGroup = L.layerGroup().addTo(map);
             const usedSpecies = [...new Set(entries.map(e => e.species))].sort();
+            const bounds = L.latLngBounds(entries.map(e => [e.lat, e.lng]));
 
-            // Slight offset when multiple species share the same lat/lng
-            const locOffset = {};
-            for (const e of entries) {
-                const locKey = `${e.lat.toFixed(3)},${e.lng.toFixed(3)}`;
-                if (!locOffset[locKey]) locOffset[locKey] = 0;
-                const idx    = locOffset[locKey]++;
-                const angle  = (idx * 137.5 * Math.PI) / 180; // golden angle spread
-                const radius = idx === 0 ? 0 : 0.015;
-                const lat    = e.lat + radius * Math.cos(angle);
-                const lng    = e.lng + radius * Math.sin(angle);
+            if (mapLayer === 'heat') {
+                // ── Heatmap layer ──────────────────────────────────
+                const heatPoints = entries.map(e => [e.lat, e.lng, e.count]);
+                heatLayer = L.heatLayer(heatPoints, {
+                    radius: 35, blur: 25, maxZoom: 12,
+                    gradient: { 0.2: '#4575b4', 0.4: '#91cf60', 0.65: '#fee090', 0.85: '#f46d43', 1.0: '#a50026' },
+                }).addTo(map);
+                renderLegend([]);
+            } else {
+                // ── Pin layer ──────────────────────────────────────
+                markerGroup = L.layerGroup().addTo(map);
 
-                const color  = speciesColor(e.species);
-                const marker = L.marker([lat, lng], { icon: makeIcon(color, e.count) });
-
-                const thumbs = e.images.slice(0, 6).map(url =>
-                    `<img src="${url}" style="width:72px;height:54px;object-fit:cover;border-radius:4px;flex-shrink:0;" loading="lazy">`
-                ).join('');
-                const thumbGrid = thumbs
-                    ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;">${thumbs}</div>`
+                // Determine the newest detection's location key for pulse
+                const newestD   = visible.slice().sort((a,b) => new Date(b.detected_at) - new Date(a.detected_at))[0];
+                const newestKey = newestD
+                    ? (newestD.latitude != null
+                        ? `${(+newestD.latitude).toFixed(3)},${(+newestD.longitude).toFixed(3)}`
+                        : newestD.zip_code || '')
                     : '';
 
-                marker.bindPopup(
-                    `<div style="min-width:160px;">` +
-                    `<strong style="font-size:0.95rem;">${esc(e.species)}</strong><br>` +
-                    `<span style="font-size:0.8rem;color:#777;">${e.count} detection${e.count !== 1 ? 's' : ''}</span>` +
-                    thumbGrid +
-                    `</div>`,
-                    { maxWidth: 260 }
-                );
-                marker.addTo(markerGroup);
+                // Slight offset when multiple species share the same lat/lng
+                const locOffset = {};
+                for (const e of entries) {
+                    const locKey  = `${e.lat.toFixed(3)},${e.lng.toFixed(3)}`;
+                    const isNewest = e.locKey === newestKey || locKey === newestKey;
+                    if (!locOffset[locKey]) locOffset[locKey] = 0;
+                    const idx    = locOffset[locKey]++;
+                    const angle  = (idx * 137.5 * Math.PI) / 180; // golden angle spread
+                    const radius = idx === 0 ? 0 : 0.015;
+                    const lat    = e.lat + radius * Math.cos(angle);
+                    const lng    = e.lng + radius * Math.sin(angle);
+
+                    const color  = speciesColor(e.species);
+                    const marker = L.marker([lat, lng], { icon: makeIcon(color, e.count, isNewest) });
+
+                    const thumbs = e.images.slice(0, 6).map(url =>
+                        `<img src="${url}" style="width:72px;height:54px;object-fit:cover;border-radius:4px;flex-shrink:0;" loading="lazy">`
+                    ).join('');
+                    const thumbGrid = thumbs
+                        ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;">${thumbs}</div>`
+                        : '';
+
+                    marker.bindPopup(
+                        `<div style="min-width:160px;">` +
+                        `<strong style="font-size:0.95rem;">${esc(e.species)}</strong><br>` +
+                        `<span style="font-size:0.8rem;color:#777;">${e.count} detection${e.count !== 1 ? 's' : ''}</span>` +
+                        thumbGrid +
+                        `<div style="margin-top:8px;">` +
+                        `<a href="#" style="font-size:0.8rem;color:#2d5a3d;font-weight:600;" ` +
+                        `onclick="event.preventDefault();filterBySpeciesFromMap(${JSON.stringify(e.species)})">` +
+                        `View in feed →</a></div>` +
+                        `</div>`,
+                        { maxWidth: 260 }
+                    );
+                    marker.addTo(markerGroup);
+                }
+                renderLegend(usedSpecies);
             }
 
-            renderLegend(usedSpecies);
-
-            // Fit map to all pins (invalidate first so dimensions are correct)
+            // Fit map to all data points
             map.invalidateSize();
-            map.fitBounds(
-                L.latLngBounds(entries.map(e => [e.lat, e.lng])).pad(0.5),
-                { maxZoom: 12 }
-            );
+            map.fitBounds(bounds.pad(0.5), { maxZoom: 12 });
 
         } catch (err) {
             loading.style.display = 'none';
@@ -1114,7 +1923,7 @@
         document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
         btn.classList.add('active');
 
-        document.getElementById('feed-view').style.display   = view === 'feed'  ? 'block' : 'none';
+        document.getElementById('feed-view').style.display   = view === 'feed'  ? 'grid' : 'none';
         document.getElementById('map-view').style.display    = view === 'map'   ? 'block' : 'none';
         document.getElementById('stats-view').style.display  = view === 'stats' ? 'block' : 'none';
 
@@ -1140,6 +1949,8 @@
         btn.classList.add('active');
         document.querySelectorAll('.stats-panel').forEach(p => p.style.display = 'none');
         document.getElementById('stats-' + tabName).style.display = '';
+        if (tabName === 'compare') renderCompare();
+        if (tabName === 'trend') renderTrend();
     }
 
     function fmtHour(h) {
@@ -1154,6 +1965,24 @@
         const visible = applyClientFilters(allDetections);
         const total   = visible.length;
 
+        // ── Month-over-month helpers ──────────────────────────
+        const now        = new Date();
+        const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+        const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
+        const lastMonthEnd   = thisMonthStart;
+
+        const thisMo = applyClientFilters(allDetections).filter(d => d.detected_at >= thisMonthStart);
+        const lastMo = applyClientFilters(allDetections).filter(d => d.detected_at >= lastMonthStart && d.detected_at < lastMonthEnd);
+
+        function momDelta(curr, prev) {
+            if (!prev) return '';
+            const pct = Math.round(((curr - prev) / prev) * 100);
+            if (pct === 0) return '';
+            const arrow = pct > 0 ? '↑' : '↓';
+            const color = pct > 0 ? '#2d5a3d' : '#c62828';
+            return `<span style="font-size:0.7rem;color:${color};display:block;margin-top:2px;">${arrow}${Math.abs(pct)}% vs last month</span>`;
+        }
+
         // ── Summary KPIs ─────────────────────────────────────
         const uniqueSpecies = new Set(visible.map(d => d.species).filter(Boolean));
         const uniqueZips    = new Set(visible.map(d => d.zip_code).filter(Boolean));
@@ -1162,25 +1991,44 @@
             ? (withTemp.reduce((s, d) => s + d.temperature, 0) / withTemp.length).toFixed(1)
             : null;
 
+        const thisTotal   = thisMo.length;
+        const lastTotal   = lastMo.length;
+        const thisSpecies = new Set(thisMo.map(d => d.species).filter(Boolean)).size;
+        const lastSpecies = new Set(lastMo.map(d => d.species).filter(Boolean)).size;
+
         document.getElementById('stats-summary').innerHTML = `
             <div class="stats-kpi-row">
                 <div class="stats-kpi">
-                    <div class="stats-kpi-value">${total.toLocaleString()}</div>
+                    <div class="stats-kpi-value" id="kpi-total">0</div>
                     <div class="stats-kpi-label">Total Detections</div>
+                    ${momDelta(thisTotal, lastTotal)}
                 </div>
                 <div class="stats-kpi">
-                    <div class="stats-kpi-value">${uniqueSpecies.size}</div>
+                    <div class="stats-kpi-value" id="kpi-species">0</div>
                     <div class="stats-kpi-label">Species Seen</div>
+                    ${momDelta(thisSpecies, lastSpecies)}
                 </div>
                 <div class="stats-kpi">
-                    <div class="stats-kpi-value">${uniqueZips.size}</div>
+                    <div class="stats-kpi-value" id="kpi-locations">0</div>
                     <div class="stats-kpi-label">Locations</div>
                 </div>
                 ${avgTemp !== null ? `<div class="stats-kpi">
-                    <div class="stats-kpi-value">${avgTemp}°F</div>
+                    <div class="stats-kpi-value" id="kpi-temp">0</div>
                     <div class="stats-kpi-label">Avg Temperature</div>
                 </div>` : ''}
             </div>`;
+
+        // Animate KPI values
+        animateCount(document.getElementById('kpi-total'),     total);
+        animateCount(document.getElementById('kpi-species'),   uniqueSpecies.size);
+        animateCount(document.getElementById('kpi-locations'), uniqueZips.size);
+        if (avgTemp !== null) {
+            const tempEl = document.getElementById('kpi-temp');
+            if (tempEl) {
+                animateCount(tempEl, parseFloat(avgTemp));
+                setTimeout(() => { if (tempEl) tempEl.textContent = avgTemp + '°F'; }, 700);
+            }
+        }
 
         // ── Life List ─────────────────────────────────────────
         const spMap = {};
@@ -1325,17 +2173,35 @@
         visible.forEach(d => {
             const name = d.feeders?.display_name;
             if (!name) return;
-            if (!feederStats[name]) feederStats[name] = { count: 0, species: new Set(), rareCount: 0 };
+            if (!feederStats[name]) feederStats[name] = { count: 0, species: new Set(), rareCount: 0, days: new Set() };
             feederStats[name].count++;
             if (d.species) feederStats[name].species.add(d.species);
             if (d.rarity === 'Rare' || d.rarity === 'Very Rare') feederStats[name].rareCount++;
+            feederStats[name].days.add(d.detected_at.slice(0, 10));
         });
+
+        function calcStreak(daysSet) {
+            const sorted = [...daysSet].sort().reverse();
+            if (!sorted.length) return 0;
+            const today     = new Date().toISOString().slice(0, 10);
+            const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+            if (sorted[0] !== today && sorted[0] !== yesterday) return 0;
+            let streak = 1;
+            for (let i = 1; i < sorted.length; i++) {
+                const diff = Math.round((new Date(sorted[i-1]) - new Date(sorted[i])) / 86400000);
+                if (diff === 1) streak++; else break;
+            }
+            return streak;
+        }
+
         const maxFeeder = Math.max(...Object.values(feederStats).map(f => f.count), 1);
         const leaderboard = Object.entries(feederStats)
-            .map(([name, data]) => ({ name, count: data.count, species: data.species.size, rareCount: data.rareCount }))
+            .map(([name, data]) => ({
+                name, count: data.count, species: data.species.size,
+                rareCount: data.rareCount, streak: calcStreak(data.days),
+            }))
             .sort((a, b) => b.count - a.count);
 
-        // Medal icons for top 3
         const medals = ['🥇', '🥈', '🥉'];
 
         document.getElementById('stats-leaderboard').innerHTML = leaderboard.length === 0
@@ -1343,7 +2209,7 @@
             : `<table class="stats-table">
                 <thead><tr>
                     <th>#</th><th>Feeder</th><th>Detections</th>
-                    <th>% of Total</th><th>Species</th><th>Rare / Very Rare</th>
+                    <th>% of Total</th><th>Species</th><th>Streak</th><th>Rare / Very Rare</th>
                 </tr></thead>
                 <tbody>${leaderboard.map((f, i) => `
                     <tr>
@@ -1355,19 +2221,148 @@
                             ${total > 0 ? ((f.count/total)*100).toFixed(1) : '0.0'}%
                         </td>
                         <td class="stats-count">${f.species}</td>
+                        <td class="stats-count">${f.streak >= 7 ? `🔥 ${f.streak}d <span class="streak-badge">HOT</span>` : f.streak > 0 ? `🔥 ${f.streak}d` : '—'}</td>
                         <td class="stats-count">${f.rareCount > 0 ? `<span style="color:#d32f2f;font-weight:600;">${f.rareCount}</span>` : '—'}</td>
                     </tr>`).join('')}
                 </tbody>
             </table>`;
     }
 
+    // ── Trend chart ──────────────────────────────────────────
+    function renderTrend() {
+        const visible = applyClientFilters(allDetections);
+        const panel   = document.getElementById('stats-trend');
+        if (!visible.length) {
+            panel.innerHTML = '<div class="feed-empty">No data for the current filters.</div>';
+            return;
+        }
+
+        // Build daily counts per species (top 5 by total)
+        const spTotals = {};
+        visible.forEach(d => { spTotals[d.species || 'Unknown'] = (spTotals[d.species || 'Unknown'] || 0) + 1; });
+        const topSpecies = Object.entries(spTotals).sort((a,b) => b[1]-a[1]).slice(0, 5).map(e => e[0]);
+
+        // Day buckets: YYYY-MM-DD
+        const dayMap = {};
+        visible.forEach(d => {
+            const day = d.detected_at.slice(0, 10);
+            if (!dayMap[day]) dayMap[day] = {};
+            const sp = d.species || 'Unknown';
+            if (topSpecies.includes(sp)) dayMap[day][sp] = (dayMap[day][sp] || 0) + 1;
+        });
+        const days = Object.keys(dayMap).sort();
+
+        if (days.length < 2) {
+            panel.innerHTML = '<div class="feed-empty">Not enough data to draw a trend (need at least 2 days).</div>';
+            return;
+        }
+
+        // Build a species-selector
+        const spColors = topSpecies.map((s, i) => PALETTE[i % PALETTE.length]);
+
+        // SVG dimensions
+        const W = 700, H = 260, PAD = { top: 20, right: 20, bottom: 50, left: 45 };
+        const chartW = W - PAD.left - PAD.right;
+        const chartH = H - PAD.top  - PAD.bottom;
+
+        const maxVal = Math.max(...topSpecies.map(sp => Math.max(...days.map(d => dayMap[d][sp] || 0))), 1);
+
+        const xScale = i => PAD.left + (i / (days.length - 1)) * chartW;
+        const yScale = v => PAD.top  + chartH - (v / maxVal) * chartH;
+
+        // Y grid lines
+        const yTicks = 4;
+        let gridLines = '', yLabels = '';
+        for (let t = 0; t <= yTicks; t++) {
+            const v = Math.round((t / yTicks) * maxVal);
+            const y = yScale(v);
+            gridLines += `<line x1="${PAD.left}" y1="${y}" x2="${PAD.left + chartW}" y2="${y}" stroke="#e8e4de" stroke-width="1"/>`;
+            yLabels   += `<text x="${PAD.left - 6}" y="${y + 4}" text-anchor="end" font-size="11" fill="#7a756d">${v}</text>`;
+        }
+
+        // X axis labels (show up to 10 evenly spaced day labels)
+        let xLabels = '';
+        const labelStep = Math.max(1, Math.floor(days.length / 10));
+        days.forEach((day, i) => {
+            if (i % labelStep !== 0 && i !== days.length - 1) return;
+            const x = xScale(i);
+            const label = day.slice(5); // MM-DD
+            xLabels += `<text x="${x}" y="${H - PAD.bottom + 16}" text-anchor="middle" font-size="10" fill="#7a756d">${label}</text>`;
+        });
+
+        // Polylines per species
+        let polylines = '', dots = '';
+        topSpecies.forEach((sp, si) => {
+            const color = spColors[si];
+            const pts = days.map((d, i) => `${xScale(i)},${yScale(dayMap[d][sp] || 0)}`).join(' ');
+            polylines += `<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" opacity="0.85"/>`;
+            days.forEach((d, i) => {
+                const v = dayMap[d][sp] || 0;
+                if (v > 0) dots += `<circle cx="${xScale(i)}" cy="${yScale(v)}" r="3.5" fill="${color}" stroke="white" stroke-width="1.5"><title>${sp}: ${v} on ${d}</title></circle>`;
+            });
+        });
+
+        // Legend
+        const legend = topSpecies.map((sp, i) =>
+            `<span style="display:inline-flex;align-items:center;gap:5px;margin-right:14px;font-size:0.8rem;">
+                <span style="display:inline-block;width:18px;height:3px;background:${spColors[i]};border-radius:2px;"></span>${esc(sp)}
+            </span>`
+        ).join('');
+
+        panel.innerHTML = `
+            <div class="stats-section-title">Detections Over Time (top ${topSpecies.length} species)</div>
+            <div style="margin-bottom:0.75rem;">${legend}</div>
+            <div class="trend-svg-wrap">
+                <svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px;display:block;">
+                    ${gridLines}${yLabels}
+                    <line x1="${PAD.left}" y1="${PAD.top}" x2="${PAD.left}" y2="${PAD.top+chartH}" stroke="#d0cbc3" stroke-width="1"/>
+                    <line x1="${PAD.left}" y1="${PAD.top+chartH}" x2="${PAD.left+chartW}" y2="${PAD.top+chartH}" stroke="#d0cbc3" stroke-width="1"/>
+                    ${xLabels}${polylines}${dots}
+                </svg>
+            </div>`;
+    }
+
+    // ── CSV export ───────────────────────────────────────────
+    function exportCSV() {
+        const visible = applyClientFilters(allDetections);
+        if (!visible.length) { alert('No detections to export.'); return; }
+        const cols = ['detected_at', 'species', 'rarity', 'zip_code', 'temperature', 'feeder', 'is_favorite', 'image_url', 'video_url'];
+        const header = cols.join(',');
+        const rows = visible.map(d => [
+            d.detected_at,
+            d.species || '',
+            d.rarity || '',
+            d.zip_code || '',
+            d.temperature != null ? d.temperature : '',
+            d.feeders?.display_name || '',
+            d.is_favorite ? 'true' : 'false',
+            d.image_url || '',
+            d.video_url || '',
+        ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(','));
+        const csv  = [header, ...rows].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href     = url;
+        a.download = `birdwatchai-detections-${new Date().toISOString().slice(0,10)}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    function filterBySpeciesFromMap(speciesName) {
+        selectedSpecies = speciesName;
+        document.getElementById('species-search').value = speciesName;
+        switchView('feed', document.querySelector('.view-tab'));
+    }
+
     function filterBySpecies(btn) {
         const speciesName = btn.dataset.species;
-        document.getElementById('species-filter').value = speciesName;
+        selectedSpecies = speciesName;
+        document.getElementById('species-search').value = speciesName;
         currentView = 'feed';
         document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
         document.querySelector('.view-tab').classList.add('active');
-        document.getElementById('feed-view').style.display   = '';
+        document.getElementById('feed-view').style.display   = 'grid';
         document.getElementById('map-view').style.display    = 'none';
         document.getElementById('stats-view').style.display  = 'none';
         renderFeed();
@@ -1382,7 +2377,7 @@
         });
     });
 
-    document.getElementById('species-filter').addEventListener('change', () => {
+    document.getElementById('rarity-filter').addEventListener('change', () => {
         renderFeed();
         if (currentView === 'map')   renderMap();
         if (currentView === 'stats') renderStats();
@@ -1407,14 +2402,20 @@
     function clearFilters() {
         document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
         document.querySelector('.period-btn[data-period=""]').classList.add('active');
-        document.getElementById('species-filter').value = '';
+        selectedSpecies = '';
+        document.getElementById('species-search').value = '';
+        document.getElementById('species-suggestions').style.display = 'none';
+        document.getElementById('rarity-filter').value  = '';
         document.getElementById('feeder-filter').value  = '';
         document.getElementById('zip-filter').value     = '';
+        favoritesOnly = false;
+        document.getElementById('fav-toggle').classList.remove('active');
         loadFeed();
     }
 
     // ── Auto-refresh ─────────────────────────────────────────
     setInterval(() => {
+        if (document.hidden) return;   // don't tick while tab is hidden
         countdown--;
         if (countdown <= 0) {
             loadFeed();
@@ -1422,6 +2423,17 @@
             document.getElementById('countdown').textContent = `Refreshing in ${countdown}s`;
         }
     }, 1000);
+
+    // When user returns to tab, refresh immediately if overdue
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && tabHiddenAt !== null) {
+            const secondsAway = (Date.now() - tabHiddenAt) / 1000;
+            tabHiddenAt = null;
+            if (secondsAway >= REFRESH_SECS) loadFeed();
+        } else if (document.hidden) {
+            tabHiddenAt = Date.now();
+        }
+    });
 
     // ── Lightbox ─────────────────────────────────────────────
     const lightbox     = document.getElementById('lightbox');
@@ -1441,14 +2453,207 @@
     lightbox.addEventListener('click', closeLightbox);
     lightboxImg.addEventListener('click', e => e.stopPropagation());
     document.getElementById('lightbox-close').addEventListener('click', closeLightbox);
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
 
-    // Delegate clicks on feed card images
+    // Delegate clicks on feed cards
     document.getElementById('feed-view').addEventListener('click', e => {
+        // Image → lightbox
         if (e.target.tagName === 'IMG' && e.target.closest('.card')) {
             openLightbox(e.target.src, e.target.alt);
+            return;
+        }
+        // Share button
+        const shareBtn = e.target.closest('[data-share-id]');
+        if (shareBtn) { shareDetection(shareBtn.dataset.shareId, shareBtn.closest('.card')); return; }
+        // Audio button
+        const audioBtn = e.target.closest('[data-audio-species]');
+        if (audioBtn) {
+            if (audioBtn.classList.contains('playing')) {
+                stopBirdCall(audioBtn);
+            } else {
+                playBirdCall(audioBtn.dataset.audioSpecies, audioBtn);
+            }
+            return;
+        }
+        // Reaction button
+        const rxBtn = e.target.closest('[data-reaction-id]');
+        if (rxBtn) { toggleReaction(rxBtn.dataset.reactionId, rxBtn.dataset.emoji, rxBtn); return; }
+        // Species name → photo carousel
+        const speciesLink = e.target.closest('.species-link');
+        if (speciesLink) { openCarousel(speciesLink.dataset.species); return; }
+        // Card body (not a button/link) → detail modal
+        const card = e.target.closest('.card');
+        if (card && !e.target.closest('button, a')) {
+            openDetailModal(card.dataset.id);
+            return;
         }
     });
+
+    // ── Bird call audio (xeno-canto) ─────────────────────────
+    const audioCache = {};
+    let currentAudio = null;
+
+    async function playBirdCall(species, btn) {
+        if (!species) return;
+        if (currentAudio) { currentAudio.pause(); currentAudio.currentTime = 0; currentAudio = null; }
+        document.querySelectorAll('.card-audio.playing').forEach(b => { b.classList.remove('playing'); b.textContent = '🔊 Call'; });
+
+        btn.classList.add('loading');
+        try {
+            if (!audioCache[species]) {
+                const q   = encodeURIComponent(species);
+                const res = await fetch(`https://xeno-canto.org/api/2/recordings?query=${q}`);
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                const rec  = data.recordings?.[0];
+                if (!rec?.file) {
+                    btn.classList.remove('loading');
+                    showToast('Opening bird call search…');
+                    window.open(`https://search.macaulaylibrary.org/catalog?q=${encodeURIComponent(species)}&mediaType=a`, '_blank');
+                    return;
+                }
+                audioCache[species] = (rec.file.startsWith('http') ? '' : 'https:') + rec.file;
+            }
+            const audio = new Audio(audioCache[species]);
+            currentAudio = audio;
+            btn.classList.remove('loading');
+            btn.classList.add('playing');
+            btn.textContent = '⏹ Stop';
+            audio.play();
+            audio.addEventListener('ended', () => { btn.classList.remove('playing'); btn.textContent = '🔊 Call'; currentAudio = null; });
+            audio.addEventListener('error', () => { btn.classList.remove('playing', 'loading'); btn.textContent = '🔊 Call'; showToast('Could not load audio'); });
+        } catch (_) {
+            btn.classList.remove('loading', 'playing');
+            btn.textContent = '🔊 Call';
+            showToast('Opening bird call search…');
+            window.open(`https://search.macaulaylibrary.org/catalog?q=${encodeURIComponent(species)}&mediaType=a`, '_blank');
+        }
+    }
+
+    function stopBirdCall(btn) {
+        if (currentAudio) { currentAudio.pause(); currentAudio.currentTime = 0; currentAudio = null; }
+        btn.classList.remove('playing');
+        btn.textContent = '🔊 Call';
+    }
+
+    // ── Emoji reactions (localStorage) ───────────────────────
+    const REACTIONS_KEY = 'bwai-reactions';
+
+    function getAllReactions() {
+        try { return JSON.parse(localStorage.getItem(REACTIONS_KEY)) || {}; } catch { return {}; }
+    }
+
+    function getReactions(detectionId) {
+        const all = getAllReactions();
+        return all[detectionId] || {};
+    }
+
+    function toggleReaction(detectionId, emoji, btn) {
+        const all = getAllReactions();
+        if (!all[detectionId]) all[detectionId] = {};
+        const cur = all[detectionId][emoji] || 0;
+        if (btn.classList.contains('reacted')) {
+            // un-react
+            all[detectionId][emoji] = Math.max(0, cur - 1);
+            if (!all[detectionId][emoji]) delete all[detectionId][emoji];
+            btn.classList.remove('reacted');
+        } else {
+            all[detectionId][emoji] = cur + 1;
+            btn.classList.add('reacted');
+        }
+        localStorage.setItem(REACTIONS_KEY, JSON.stringify(all));
+        const count = all[detectionId]?.[emoji] || '';
+        btn.textContent = emoji + (count ? ' ' + count : '');
+    }
+
+    // ── Species photo carousel ────────────────────────────────
+    const carouselModal = document.getElementById('carousel-modal');
+    document.getElementById('carousel-close').addEventListener('click', () => carouselModal.classList.remove('open'));
+    carouselModal.addEventListener('click', e => { if (e.target === carouselModal) carouselModal.classList.remove('open'); });
+
+    function openCarousel(species) {
+        if (!species) return;
+        const photos = allDetections.filter(d => d.species === species && d.image_url);
+        document.getElementById('carousel-title').textContent = `📸 ${species} — ${photos.length} photo${photos.length !== 1 ? 's' : ''}`;
+        const grid = document.getElementById('carousel-grid');
+        if (!photos.length) {
+            grid.innerHTML = '<p class="carousel-empty">No photos found for this species.</p>';
+        } else {
+            grid.innerHTML = photos.map(d =>
+                `<img src="${d.image_url}" alt="${esc(d.species)}" loading="lazy" title="${fmtDetectedAt(d.detected_at)}">`
+            ).join('');
+            // Clicking a carousel photo opens the full lightbox
+            grid.querySelectorAll('img').forEach(img => img.addEventListener('click', () => {
+                carouselModal.classList.remove('open');
+                openLightbox(img.src, img.alt);
+            }));
+        }
+        carouselModal.classList.add('open');
+        document.body.style.overflow = 'hidden';
+        carouselModal.addEventListener('transitionend', () => {
+            if (!carouselModal.classList.contains('open')) document.body.style.overflow = '';
+        }, { once: true });
+    }
+
+    // ── Species comparison (Stats tab) ────────────────────────
+    function renderCompare() {
+        const species = [...new Set(allDetections.map(d => d.species).filter(Boolean))].sort();
+        const panel   = document.getElementById('stats-compare');
+        if (species.length < 2) {
+            panel.innerHTML = '<p style="color:var(--color-gray-500);padding:1rem;">Not enough species data to compare.</p>';
+            return;
+        }
+        const sel = (id, label, defaultIdx) => `
+            <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:140px;">
+                <label style="font-size:0.8rem;font-weight:600;color:var(--color-gray-500);">${label}</label>
+                <select id="${id}" class="filter-select" onchange="updateCompare()">
+                    ${species.map((s, i) => `<option value="${s}"${i === defaultIdx ? ' selected' : ''}>${s}</option>`).join('')}
+                </select>
+            </div>`;
+        panel.innerHTML = `
+            <div class="compare-selects">
+                ${sel('compare-a', 'Species A', 0)}
+                <div style="padding-top:20px;font-size:1.25rem;color:var(--color-gray-500);">⚖️</div>
+                ${sel('compare-b', 'Species B', 1)}
+            </div>
+            <div id="compare-result"></div>`;
+        updateCompare();
+    }
+
+    function updateCompare() {
+        const a = document.getElementById('compare-a')?.value;
+        const b = document.getElementById('compare-b')?.value;
+        if (!a || !b) return;
+        const statsFor = sp => {
+            const rows = allDetections.filter(d => d.species === sp);
+            const days = new Set(rows.map(d => d.detected_at?.slice(0, 10))).size;
+            const feeders = new Set(rows.map(d => d.feeders?.display_name).filter(Boolean)).size;
+            const temps = rows.map(d => d.temperature).filter(t => t != null);
+            const avgTemp = temps.length ? (temps.reduce((s, t) => s + t, 0) / temps.length).toFixed(1) : '—';
+            const hours = rows.map(d => new Date(d.detected_at).getHours());
+            const peakHour = hours.length ? hours.reduce((a, b, _, arr) => {
+                const freq = v => arr.filter(x => x === v).length;
+                return freq(a) >= freq(b) ? a : b;
+            }) : null;
+            const peakStr = peakHour !== null ? `${peakHour}:00–${peakHour + 1}:00` : '—';
+            return { count: rows.length, days, feeders, avgTemp, peakStr };
+        };
+        const sa = statsFor(a), sb = statsFor(b);
+        const win = (va, vb) => va > vb ? ['compare-winner', ''] : va < vb ? ['', 'compare-winner'] : ['', ''];
+        const [wa1, wb1] = win(sa.count, sb.count);
+        const [wa2, wb2] = win(sa.days, sb.days);
+        const [wa3, wb3] = win(sa.feeders, sb.feeders);
+        document.getElementById('compare-result').innerHTML = `
+            <table class="compare-table">
+                <thead><tr><th>Metric</th><th>${esc(a)}</th><th>${esc(b)}</th></tr></thead>
+                <tbody>
+                    <tr><td>Total detections</td><td class="${wa1}">${sa.count}</td><td class="${wb1}">${sb.count}</td></tr>
+                    <tr><td>Active days</td><td class="${wa2}">${sa.days}</td><td class="${wb2}">${sb.days}</td></tr>
+                    <tr><td>Feeders visited</td><td class="${wa3}">${sa.feeders}</td><td class="${wb3}">${sb.feeders}</td></tr>
+                    <tr><td>Avg temperature</td><td>${sa.avgTemp}${sa.avgTemp !== '—' ? '°F' : ''}</td><td>${sb.avgTemp}${sb.avgTemp !== '—' ? '°F' : ''}</td></tr>
+                    <tr><td>Peak hour</td><td>${sa.peakStr}</td><td>${sb.peakStr}</td></tr>
+                </tbody>
+            </table>`;
+    }
 
     // ── Helpers ──────────────────────────────────────────────
     function esc(str) {
@@ -1457,8 +2662,444 @@
                   .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
     }
 
+    // ── Push notifications for rare birds ────────────────────
+    let notificationsEnabled = false;
+    const seenRareIds = new Set();   // track which rare detections we've already notified
+
+    function updateNotifBtn() {
+        const btn = document.getElementById('notif-toggle');
+        if (notificationsEnabled) {
+            btn.textContent  = '🔔 Notifying';
+            btn.style.background = '#2d5a3d';
+        } else {
+            btn.textContent  = '🔔 Notify rare';
+            btn.style.background = 'var(--color-gray-500)';
+        }
+    }
+
+    async function requestNotifPermission() {
+        if (!('Notification' in window)) { alert('Notifications are not supported in this browser.'); return; }
+        const perm = await Notification.requestPermission();
+        if (perm === 'granted') {
+            notificationsEnabled = true;
+            document.getElementById('notif-banner').style.display = 'none';
+            updateNotifBtn();
+        }
+    }
+
+    function toggleNotifications() {
+        if (!('Notification' in window)) { alert('Notifications are not supported in this browser.'); return; }
+        if (Notification.permission === 'denied') {
+            alert('Notification permission was denied. Please enable it in your browser settings and reload.');
+            return;
+        }
+        if (!notificationsEnabled) {
+            if (Notification.permission === 'granted') {
+                notificationsEnabled = true;
+                updateNotifBtn();
+            } else {
+                // Show the inline banner asking for permission
+                document.getElementById('notif-banner').style.display = 'flex';
+            }
+        } else {
+            notificationsEnabled = false;
+            updateNotifBtn();
+        }
+    }
+
+    function checkForRareNotifications(detections) {
+        if (!notificationsEnabled || Notification.permission !== 'granted') return;
+        const rare = detections.filter(d =>
+            (d.rarity === 'Rare' || d.rarity === 'Very Rare') && !seenRareIds.has(d.id)
+        );
+        rare.forEach(d => {
+            seenRareIds.add(d.id);
+            if (d.rarity === 'Very Rare') launchConfetti();
+            const notif = new Notification(`${d.rarity} bird detected! 🐦`, {
+                body: `${d.species}${d.feeders?.display_name ? ' at ' + d.feeders.display_name : ''}${d.zip_code ? ' (' + d.zip_code + ')' : ''}`,
+                icon: d.image_url || '',
+                tag:  String(d.id),
+            });
+            notif.onclick = () => { window.focus(); notif.close(); };
+        });
+    }
+
+    // Offer notifications if not yet decided
+    window.addEventListener('load', () => {
+        if ('Notification' in window && Notification.permission === 'default') {
+            setTimeout(() => {
+                document.getElementById('notif-banner').style.display = 'flex';
+            }, 4000);
+        }
+    });
+
+    // ── Animated KPI counter ─────────────────────────────────
+    function animateCount(el, target, duration = 600) {
+        const start    = performance.now();
+        const from     = parseInt(el.textContent.replace(/\D/g, '')) || 0;
+        const isFloat  = String(target).includes('.');
+        const decimals = isFloat ? 1 : 0;
+        function step(now) {
+            const t   = Math.min((now - start) / duration, 1);
+            const ease = 1 - Math.pow(1 - t, 3);   // ease-out cubic
+            const val  = from + (target - from) * ease;
+            el.textContent = isFloat ? val.toFixed(decimals) : Math.round(val).toLocaleString();
+            if (t < 1) requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+    }
+
+    // ── Very Rare confetti burst ─────────────────────────────
+    const CONFETTI_COLORS = ['#2d5a3d','#d4a574','#e74c3c','#3498db','#f39c12','#9b59b6','#fff'];
+
+    function launchConfetti(count = 80) {
+        for (let i = 0; i < count; i++) {
+            const el = document.createElement('div');
+            el.className = 'confetti-piece';
+            el.style.left     = Math.random() * 100 + 'vw';
+            el.style.top      = '-10px';
+            el.style.background = CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)];
+            el.style.animationDuration = (1.2 + Math.random() * 1.6) + 's';
+            el.style.animationDelay   = (Math.random() * 0.6) + 's';
+            document.body.appendChild(el);
+            el.addEventListener('animationend', () => el.remove());
+        }
+    }
+
+    // ── Shareable detection links ─────────────────────────────
+    function shareDetection(id, cardEl) {
+        const url     = `${location.origin}${location.pathname}?id=${id}`;
+        // Read from the card DOM directly — reliable even after auto-refresh replaces allDetections
+        const species = cardEl?.querySelector('.card-title')?.childNodes[0]?.textContent?.trim() || '';
+        const feeder  = cardEl?.querySelector('.card-feeder')?.textContent?.replace('📡','').trim() || '';
+        const title   = species ? `${species} — BirdWatchAI` : 'BirdWatchAI Detection';
+        const text    = species
+            ? `Check out this ${species}${feeder ? ' spotted at ' + feeder : ''}!`
+            : 'Check out this bird detection!';
+
+        function promptFallback() {
+            prompt('Copy this link:', url);
+        }
+
+        function clipboardFallback() {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(url)
+                    .then(() => showToast('Link copied!'))
+                    .catch(promptFallback);
+            } else {
+                promptFallback();
+            }
+        }
+
+        // Web Share API — native share sheet on iOS / Android
+        if (navigator.share) {
+            try {
+                navigator.share({ title, text, url })
+                    .then(() => {})
+                    .catch(err => {
+                        if (!err || err.name !== 'AbortError') {
+                            showToast('Share error: ' + (err?.name || err));
+                            clipboardFallback();
+                        }
+                    });
+            } catch (syncErr) {
+                // navigator.share threw synchronously
+                showToast('Share failed: ' + syncErr.message);
+                clipboardFallback();
+            }
+            return;
+        }
+
+        // navigator.share not available — show why and fall back
+        showToast('Share API unavailable — copying link');
+        clipboardFallback();
+    }
+
+    function showToast(msg) {
+        let t = document.getElementById('share-toast');
+        if (!t) {
+            t = document.createElement('div');
+            t.id = 'share-toast';
+            t.style.cssText = 'position:fixed;bottom:5rem;left:50%;transform:translateX(-50%);' +
+                'background:#2d5a3d;color:white;padding:8px 18px;border-radius:20px;font-size:0.875rem;' +
+                'z-index:9998;pointer-events:none;opacity:0;transition:opacity 0.2s;';
+            document.body.appendChild(t);
+        }
+        t.textContent = msg;
+        t.style.opacity = '1';
+        clearTimeout(t._timer);
+        t._timer = setTimeout(() => { t.style.opacity = '0'; }, 4000);
+    }
+
+    // ── Handle URL query params on load ──────────────────────
+    // ?feeder=Name  → pre-select that feeder in the dropdown
+    (function handleUrlParams() {
+        const params = new URLSearchParams(location.search);
+        const feeder = params.get('feeder');
+        if (feeder) {
+            // Wait for feeder dropdown to be populated, then select
+            const trySelect = () => {
+                const sel = document.getElementById('feeder-filter');
+                const opt = [...sel.options].find(o => o.value === feeder);
+                if (opt) { sel.value = feeder; renderFeed(); }
+                else setTimeout(trySelect, 300);
+            };
+            setTimeout(trySelect, 600);
+        }
+    })();
+
+    // Scroll to and highlight a shared detection on page load
+    async function handleSharedId() {
+        const id = new URLSearchParams(location.search).get('id');
+        if (!id) return;
+
+        function scrollToCard(card) {
+            card.classList.add('shared-highlight');
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        // Resets filter UI and re-renders WITHOUT re-fetching
+        // (clearFilters() calls loadFeed() async which would clobber allDetections)
+        function resetFiltersAndRender() {
+            document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector('.period-btn[data-period=""]').classList.add('active');
+            selectedSpecies = '';
+            document.getElementById('species-search').value = '';
+            document.getElementById('species-suggestions').style.display = 'none';
+            document.getElementById('rarity-filter').value  = '';
+            document.getElementById('feeder-filter').value  = '';
+            document.getElementById('zip-filter').value     = '';
+            favoritesOnly = false;
+            document.getElementById('fav-toggle').classList.remove('active');
+            renderFeed();
+        }
+
+        // 1. Already in the rendered DOM
+        let card = document.querySelector(`.card[data-id="${id}"]`);
+        if (card) { scrollToCard(card); return; }
+
+        // 2. In allDetections but hidden by active filters — reset and re-render
+        if (allDetections.find(x => String(x.id) === id)) {
+            resetFiltersAndRender();
+            card = document.querySelector(`.card[data-id="${id}"]`);
+            if (card) { scrollToCard(card); return; }
+        }
+
+        // 3. Not in the current batch — fetch just this one record
+        try {
+            const res = await fetch(
+                `${SUPABASE_URL}/rest/v1/community_detections?select=*,feeders(display_name)&id=eq.${encodeURIComponent(id)}`,
+                { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` } }
+            );
+            const rows = await res.json();
+            if (!Array.isArray(rows) || !rows.length) { showToast('Detection not found'); return; }
+            allDetections = [...rows, ...allDetections];
+            resetFiltersAndRender();
+            card = document.querySelector(`.card[data-id="${id}"]`);
+            if (card) scrollToCard(card);
+        } catch (e) { showToast('fetch error: ' + e.message); }
+    }
+
+    // ── Dark mode ────────────────────────────────────────────
+    (function initTheme() {
+        const saved = localStorage.getItem('bwai-theme');
+        if (saved) document.documentElement.setAttribute('data-theme', saved);
+    })();
+
+    function toggleTheme() {
+        const current = document.documentElement.getAttribute('data-theme');
+        const next    = current === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        localStorage.setItem('bwai-theme', next);
+        document.getElementById('theme-toggle').textContent = next === 'dark' ? '☀️' : '🌙';
+    }
+
+    // Set initial icon based on current theme
+    window.addEventListener('DOMContentLoaded', () => {
+        const theme = document.documentElement.getAttribute('data-theme') ||
+            (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.getElementById('theme-toggle').textContent = theme === 'dark' ? '☀️' : '🌙';
+    });
+
+    // ── Bird of the Day ──────────────────────────────────────
+    function renderBirdOfTheDay(detections) {
+        // Pick today's rarest detection (Very Rare > Rare > most-detected species)
+        const today  = new Date().toISOString().slice(0, 10);
+        const todays = detections.filter(d => d.detected_at.slice(0, 10) === today);
+        if (!todays.length) return;
+
+        const byRarity = r => r === 'Very Rare' ? 3 : r === 'Rare' ? 2 : r === 'Uncommon' ? 1 : 0;
+        const best = todays.slice().sort((a, b) => byRarity(b.rarity) - byRarity(a.rarity))[0];
+
+        document.getElementById('botd-species').textContent = best.species || 'Unknown';
+        document.getElementById('botd-meta').textContent =
+            [best.rarity, best.feeders?.display_name, best.zip_code].filter(Boolean).join(' · ');
+
+        const img = document.getElementById('botd-img');
+        if (best.image_url) { img.src = best.image_url; img.alt = best.species || ''; img.style.display = ''; }
+        else                { img.style.display = 'none'; }
+
+        document.getElementById('botd-banner').classList.add('visible');
+    }
+
+    // ── Sound on new detection ────────────────────────────────
+    let soundEnabled = false;
+    let audioCtx     = null;
+
+    function toggleSound() {
+        soundEnabled = !soundEnabled;
+        const btn = document.getElementById('sound-toggle');
+        btn.textContent      = soundEnabled ? '🔊 Sound' : '🔇 Sound';
+        btn.style.background = soundEnabled ? '#2d5a3d' : 'var(--color-gray-500)';
+        if (soundEnabled && !audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+
+    function playChime() {
+        if (!soundEnabled || !audioCtx) return;
+        // Simple two-tone pleasant chime using Web Audio API
+        [880, 1108].forEach((freq, i) => {
+            const osc  = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.type      = 'sine';
+            osc.frequency.value = freq;
+            const t = audioCtx.currentTime + i * 0.18;
+            gain.gain.setValueAtTime(0, t);
+            gain.gain.linearRampToValueAtTime(0.18, t + 0.04);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+            osc.start(t); osc.stop(t + 0.65);
+        });
+    }
+
+    // ── Keyboard shortcuts ────────────────────────────────────
+    let kbdHintVisible = false;
+
+    function toggleKbdHint() {
+        kbdHintVisible = !kbdHintVisible;
+        document.getElementById('kbd-hint').classList.toggle('visible', kbdHintVisible);
+    }
+
+    // Card focus tracking for j/k navigation
+    let focusedCardIdx = -1;
+    function getCards() { return [...document.querySelectorAll('#feed-view .card')]; }
+
+    function focusCard(idx) {
+        const cards = getCards();
+        if (!cards.length) return;
+        focusedCardIdx = Math.max(0, Math.min(idx, cards.length - 1));
+        cards.forEach((c, i) => c.style.outline = i === focusedCardIdx ? '2px solid var(--color-primary)' : '');
+        cards[focusedCardIdx].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    document.addEventListener('keydown', e => {
+        // Skip shortcuts when typing in an input
+        if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
+
+        if (e.key === 'Escape') {
+            closeLightbox();
+            kbdHintVisible = false;
+            document.getElementById('kbd-hint').classList.remove('visible');
+            return;
+        }
+        if (e.key === 'j') { focusCard(focusedCardIdx + 1); return; }
+        if (e.key === 'k') { focusCard(focusedCardIdx - 1); return; }
+        if (e.key === 'f') { toggleFavorites(); return; }
+        if (e.key === 'r') { loadFeed(); return; }
+        if (e.key === '1') { switchView('feed',  document.querySelectorAll('.view-tab')[0]); return; }
+        if (e.key === '2') { switchView('map',   document.querySelectorAll('.view-tab')[1]); return; }
+        if (e.key === '3') { switchView('stats', document.querySelectorAll('.view-tab')[2]); return; }
+    });
+
+    // ── Service Worker registration ───────────────────────────
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/docs/sw.js').catch(() => {});
+        });
+    }
+
+    // ── Detection detail modal ────────────────────────────────
+    const detailModal = document.getElementById('detail-modal');
+    document.getElementById('detail-close').addEventListener('click', () => {
+        detailModal.classList.remove('open');
+        document.body.style.overflow = '';
+    });
+    detailModal.addEventListener('click', e => {
+        if (e.target === detailModal) { detailModal.classList.remove('open'); document.body.style.overflow = ''; }
+    });
+
+    function openDetailModal(id) {
+        const d = allDetections.find(x => String(x.id) === String(id));
+        if (!d) return;
+
+        const img = document.getElementById('detail-img');
+        if (d.image_url) { img.src = d.image_url; img.alt = d.species; img.style.display = ''; }
+        else img.style.display = 'none';
+
+        const rarityClass = d.rarity ? 'rarity-' + d.rarity.toLowerCase().replace(/\s+/g, '-') : '';
+        document.getElementById('detail-title').innerHTML =
+            `${esc(d.species)}${d.rarity ? ` <span class="${rarityClass}" style="font-size:0.9rem;">· ${esc(d.rarity)}</span>` : ''}`;
+
+        const time = new Date(d.detected_at).toLocaleString('en-US', {
+            timeZone: 'America/New_York',
+            month: 'long', day: 'numeric', year: 'numeric',
+            hour: 'numeric', minute: '2-digit', timeZoneName: 'short'
+        });
+        const metaRows = [
+            `<span>🕐 ${time}</span>`,
+            d.feeders?.display_name ? `<span>📡 ${esc(d.feeders.display_name)}</span>` : '',
+            d.zip_code              ? `<span>📍 ZIP ${esc(d.zip_code)}</span>` : '',
+            d.temperature != null   ? `<span>🌡️ ${d.temperature}°F</span>` : '',
+        ].filter(Boolean).join('');
+        document.getElementById('detail-meta').innerHTML = metaRows;
+
+        const actions = document.getElementById('detail-actions');
+        actions.innerHTML = '';
+        if (d.video_url) {
+            const a = document.createElement('a');
+            a.href = d.video_url; a.target = '_blank'; a.rel = 'noopener';
+            a.textContent = '🎬 Watch video'; actions.appendChild(a);
+        }
+        const shareBtn = document.createElement('button');
+        shareBtn.textContent = '🔗 Share';
+        shareBtn.onclick = () => { detailModal.classList.remove('open'); document.body.style.overflow = ''; shareDetection(d.id, null); };
+        actions.appendChild(shareBtn);
+        const audioBtn = document.createElement('button');
+        audioBtn.textContent = '🔊 Play call';
+        audioBtn.onclick = () => playBirdCall(d.species, audioBtn);
+        actions.appendChild(audioBtn);
+
+        document.body.style.overflow = 'hidden';
+        detailModal.classList.add('open');
+    }
+
+    // ── Nearby ZIP auto-detect on first visit ─────────────────
+    (function initNearbyZip() {
+        const saved = localStorage.getItem('bwai-nearby-zip');
+        const zipInput = document.getElementById('zip-filter');
+        // If user already has a zip saved and hasn't set a filter yet, pre-fill it
+        if (saved && !zipInput.value) {
+            zipInput.value = saved;
+            // Let the debounce handler pick it up naturally on first render
+        }
+        // On first-ever visit (no saved zip, no ?id= param), ask for location silently
+        if (!saved && !new URLSearchParams(location.search).get('id') && navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(async pos => {
+                try {
+                    const { latitude: lat, longitude: lng } = pos.coords;
+                    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
+                    const j = await r.json();
+                    const zip = j.address?.postcode?.split('-')[0];
+                    if (zip && /^\d{5}$/.test(zip)) {
+                        localStorage.setItem('bwai-nearby-zip', zip);
+                        if (!zipInput.value) { zipInput.value = zip; renderFeed(); if (currentView === 'map') renderMap(); }
+                    }
+                } catch {}
+            }, () => {}, { timeout: 6000 });
+        }
+    })();
+
     // ── Init ─────────────────────────────────────────────────
-    loadFeed();
+    loadFeed().then(handleSharedId);
 
     // Eagerly initialize the map off-screen so it's ready when the tab is clicked.
     // We temporarily make it visible (but off-screen) so Leaflet can measure it.

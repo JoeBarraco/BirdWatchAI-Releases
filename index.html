@@ -12,7 +12,15 @@
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="icon" type="image/png" href="images/favicon.png">
+    <!-- Apply saved theme before first paint to prevent flash -->
+    <script>
+        (function() {
+            const t = localStorage.getItem('bwai-theme');
+            if (t) document.documentElement.setAttribute('data-theme', t);
+        })();
+    </script>
 </head>
 <body>
     <!-- Navigation -->
@@ -27,9 +35,10 @@
                 <a href="#how-it-works">How It Works</a>
                 <a href="#pricing">Pricing</a>
                 <a href="#requirements">Requirements</a>
-                <a href="docs/community.html" class="nav-live">🔴 Live Detections</a>
+                <a href="docs/community.html" class="nav-live">🔴 Live Community Feed</a>
                 <a href="#download" class="btn btn-nav">Download Free Trial</a>
             </div>
+            <button id="theme-toggle-main" onclick="toggleMainTheme()" aria-label="Toggle dark mode" style="background:none;border:none;cursor:pointer;font-size:1.25rem;padding:4px 8px;line-height:1;margin-right:4px;" title="Toggle dark mode">🌙</button>
             <button class="nav-mobile-toggle" aria-label="Toggle menu">
                 <span></span>
                 <span></span>
@@ -37,6 +46,11 @@
             </button>
         </div>
     </nav>
+
+    <!-- Live Detection Ticker -->
+    <div id="live-ticker" style="display:none;background:var(--color-primary);color:white;font-size:0.8125rem;padding:6px 0;overflow:hidden;white-space:nowrap;">
+        <div id="ticker-inner" style="display:inline-block;animation:ticker-scroll 30s linear infinite;padding-left:100%;"></div>
+    </div>
 
     <!-- Hero Section -->
     <header class="hero">
@@ -85,6 +99,59 @@
                     <span class="stat-label">Local & Private</span>
                 </div>
             </div>
+        </div>
+    </section>
+
+    <!-- Recent Sightings Gallery -->
+    <section class="recent-sightings">
+        <div class="container">
+            <div class="section-header">
+                <h2>Live From the Community</h2>
+                <p>Real birds, real feeders — spotted by BirdWatchAI users right now.</p>
+            </div>
+            <div id="sightings-grid" class="sightings-grid">
+                <div class="sightings-loading">Loading recent sightings…</div>
+            </div>
+            <div style="text-align:center;margin-top:1.5rem;">
+                <a href="docs/community.html" class="btn btn-secondary">View Full Community Feed →</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- This Week's Highlights -->
+    <section id="highlights" class="highlights-section">
+        <div class="container">
+            <div class="section-header">
+                <h2>This Week's Highlights</h2>
+                <p>The best moments from community feeders over the past 7 days.</p>
+            </div>
+            <div id="highlights-grid" class="highlights-grid">
+                <div class="highlights-loading">Loading highlights…</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Seasonal Migration Status -->
+    <section id="migration" class="migration-section">
+        <div class="container">
+            <div class="section-header">
+                <h2>Migration Pulse</h2>
+                <p>Species detected this month — see what's passing through right now.</p>
+            </div>
+            <div id="migration-content" class="migration-content">
+                <div class="highlights-loading">Loading migration data…</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Interactive Community Map -->
+    <section id="community-map-section" class="community-map-section">
+        <div class="container">
+            <div class="section-header">
+                <h2>Detection Hotspots</h2>
+                <p>Where birds are being spotted by BirdWatchAI feeders across the country.</p>
+            </div>
+            <div id="community-map" style="height:420px;border-radius:12px;overflow:hidden;box-shadow:var(--shadow-md);"></div>
         </div>
     </section>
 
@@ -211,6 +278,39 @@
                 <div class="gallery-item gallery-item-full">
                     <img src="images/screenshot-debug-log.png" alt="Debug Log diagnostics window with motion detection details">
                 </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Feeder Directory -->
+    <section id="feeder-directory" class="feeder-directory-section">
+        <div class="container">
+            <div class="section-header">
+                <h2>Community Feeders</h2>
+                <p>Active BirdWatchAI feeders sharing their detections with the world.</p>
+            </div>
+            <div id="feeder-dir-grid" class="feeder-dir-grid">
+                <div class="highlights-loading">Loading feeders…</div>
+            </div>
+            <div style="text-align:center;margin-top:1.5rem;">
+                <a href="docs/community.html" class="btn btn-secondary">Browse All Detections →</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Email Digest Signup -->
+    <section id="newsletter" class="newsletter-section">
+        <div class="container">
+            <div class="newsletter-box">
+                <div class="newsletter-icon">📬</div>
+                <h2>Weekly Bird Digest</h2>
+                <p>Get a curated summary of the rarest sightings, most active feeders, and top species every week — delivered to your inbox.</p>
+                <form id="newsletter-form" class="newsletter-form" onsubmit="submitNewsletter(event)">
+                    <input type="email" id="newsletter-email" placeholder="your@email.com" required class="newsletter-input">
+                    <button type="submit" class="btn btn-primary newsletter-btn">Subscribe Free</button>
+                </form>
+                <p class="newsletter-fine">No spam, unsubscribe anytime. Sent every Sunday morning.</p>
+                <div id="newsletter-msg" style="display:none;margin-top:0.75rem;font-weight:600;color:var(--color-primary);"></div>
             </div>
         </div>
     </section>
@@ -439,6 +539,305 @@
         </div>
     </footer>
 
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="js/main.js"></script>
+    <script>
+    function toggleMainTheme() {
+        const current = document.documentElement.getAttribute('data-theme');
+        const next    = current === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        localStorage.setItem('bwai-theme', next);
+        const btn = document.getElementById('theme-toggle-main');
+        if (btn) btn.textContent = next === 'dark' ? '☀️' : '🌙';
+    }
+    // Set correct icon on load
+    document.addEventListener('DOMContentLoaded', () => {
+        const theme = document.documentElement.getAttribute('data-theme') ||
+            (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        const btn = document.getElementById('theme-toggle-main');
+        if (btn) btn.textContent = theme === 'dark' ? '☀️' : '🌙';
+    });
+    </script>
+    <script>
+    // ── Live recent sightings gallery ─────────────────────────
+    (async () => {
+        const SUPABASE_URL = 'https://lsamggztfizmkyljdgwq.supabase.co';
+        const ANON_KEY     = 'sb_publishable_-80LQjkx2s82XnURj2DfQQ_d7ARz3js';
+        const grid         = document.getElementById('sightings-grid');
+        try {
+            const url = `${SUPABASE_URL}/rest/v1/community_detections` +
+                `?select=id,species,rarity,detected_at,image_url,zip_code,feeders(display_name)` +
+                `&image_url=not.is.null&order=detected_at.desc&limit=12`;
+            const res  = await fetch(url, { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` } });
+            const data = await res.json();
+            if (!data.length) { grid.innerHTML = '<div class="sightings-loading">No recent sightings yet.</div>'; return; }
+
+            function esc(s) {
+                if (!s) return '';
+                return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+            }
+
+            grid.innerHTML = data.map(d => {
+                const rarityClass = d.rarity === 'Very Rare' ? 'sighting-rarity-very-rare'
+                                  : d.rarity === 'Rare'      ? 'sighting-rarity-rare' : '';
+                const meta = [
+                    d.rarity ? `<span class="${rarityClass}">${esc(d.rarity)}</span>` : null,
+                    d.feeders?.display_name ? esc(d.feeders.display_name) : (d.zip_code ? esc(d.zip_code) : null),
+                ].filter(Boolean).join(' · ');
+
+                return `<a class="sighting-card" href="docs/community.html?id=${d.id}" title="${esc(d.species)}">
+                    <img src="${esc(d.image_url)}" alt="${esc(d.species)}" loading="lazy">
+                    <div class="sighting-overlay">
+                        <span class="sighting-species">${esc(d.species)}</span>
+                        ${meta ? `<div class="sighting-meta">${meta}</div>` : ''}
+                    </div>
+                </a>`;
+            }).join('');
+        } catch {
+            grid.innerHTML = '<div class="sightings-loading">Could not load recent sightings.</div>';
+        }
+    })();
+    </script>
+    <script>
+    // ── Shared config ─────────────────────────────────────────
+    const _SB_URL  = 'https://lsamggztfizmkyljdgwq.supabase.co';
+    const _SB_KEY  = 'sb_publishable_-80LQjkx2s82XnURj2DfQQ_d7ARz3js';
+    const _headers = { apikey: _SB_KEY, Authorization: `Bearer ${_SB_KEY}` };
+    function _esc(s) { return s ? s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') : ''; }
+
+    // ── Live Ticker ───────────────────────────────────────────
+    (async () => {
+        try {
+            const res  = await fetch(`${_SB_URL}/rest/v1/community_detections?select=species,rarity,detected_at,feeders(display_name)&order=detected_at.desc&limit=20`, { headers: _headers });
+            const data = await res.json();
+            if (!data.length) return;
+            const items = data.map(d => {
+                const ago  = Math.round((Date.now() - new Date(d.detected_at)) / 60000);
+                const when = ago < 1 ? 'just now' : ago < 60 ? `${ago}m ago` : `${Math.round(ago/60)}h ago`;
+                const where = d.feeders?.display_name ? ` at ${_esc(d.feeders.display_name)}` : '';
+                const rare = d.rarity && d.rarity !== 'Common' ? ` · <em>${_esc(d.rarity)}</em>` : '';
+                return `<span class="ticker-item">🐦 <strong>${_esc(d.species)}</strong>${where}${rare} <span class="ticker-sep">·</span> ${when}</span>`;
+            }).join('<span class="ticker-sep">|</span>');
+            const inner = document.getElementById('ticker-inner');
+            inner.innerHTML = items + '<span style="padding:0 4rem;"></span>' + items;
+            const ticker = document.getElementById('live-ticker');
+            ticker.style.display = 'block';
+            // Adjust animation speed based on content width
+            const duration = Math.max(20, Math.round(inner.scrollWidth / 80));
+            inner.style.animationDuration = duration + 's';
+        } catch (_) {}
+    })();
+
+    // ── This Week's Highlights ────────────────────────────────
+    (async () => {
+        const panel = document.getElementById('highlights-grid');
+        try {
+            const since = new Date(Date.now() - 7 * 86400000).toISOString();
+            const res   = await fetch(`${_SB_URL}/rest/v1/community_detections?select=species,rarity,detected_at,image_url,feeders(display_name)&detected_at=gte.${encodeURIComponent(since)}&limit=500&order=detected_at.desc`, { headers: _headers });
+            const data  = await res.json();
+            if (!data.length) { panel.innerHTML = '<div class="highlights-loading">No data yet this week.</div>'; return; }
+
+            // Rarest bird
+            const rarityRank = { 'Very Rare': 3, 'Rare': 2, 'Uncommon': 1, 'Common': 0 };
+            const rarest = [...data].sort((a,b) => (rarityRank[b.rarity]||0) - (rarityRank[a.rarity]||0))[0];
+            // Most active feeder
+            const feederCounts = {};
+            data.forEach(d => { const n = d.feeders?.display_name; if (n) feederCounts[n] = (feederCounts[n]||0)+1; });
+            const topFeeder = Object.entries(feederCounts).sort((a,b)=>b[1]-a[1])[0];
+            // Total detections
+            const uniqueSpecies = new Set(data.map(d=>d.species)).size;
+            // Peak day
+            const dayCounts = {};
+            data.forEach(d => { const day = d.detected_at?.slice(0,10); if(day) dayCounts[day]=(dayCounts[day]||0)+1; });
+            const peakDay = Object.entries(dayCounts).sort((a,b)=>b[1]-a[1])[0];
+            const peakDayStr = peakDay ? new Date(peakDay[0]).toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'}) : '—';
+            // New species this week vs prior week
+            const priorSince = new Date(Date.now() - 14*86400000).toISOString();
+            const res2 = await fetch(`${_SB_URL}/rest/v1/community_detections?select=species,detected_at&detected_at=gte.${encodeURIComponent(priorSince)}&detected_at=lt.${encodeURIComponent(since)}&limit=500`, { headers: _headers });
+            const priorData = await res2.json();
+            const priorSpecies = new Set(priorData.map(d=>d.species));
+            const newThisWeek = [...new Set(data.map(d=>d.species))].filter(s=>!priorSpecies.has(s)).length;
+
+            panel.innerHTML = [
+                { icon:'🏆', label:'Rarest This Week', value: rarest ? _esc(rarest.species) : '—', sub: rarest?.rarity || '' },
+                { icon:'📡', label:'Most Active Feeder', value: topFeeder ? _esc(topFeeder[0]) : '—', sub: topFeeder ? `${topFeeder[1]} detections` : '' },
+                { icon:'🐦', label:'Unique Species', value: uniqueSpecies, sub: `detected this week` },
+                { icon:'📅', label:'Busiest Day', value: peakDayStr, sub: peakDay ? `${peakDay[1]} detections` : '' },
+                { icon:'🌟', label:'New Species', value: newThisWeek, sub: `not seen the week before` },
+                { icon:'📊', label:'Total Detections', value: data.length.toLocaleString(), sub: `in the last 7 days` },
+            ].map(h => `
+                <div class="highlight-card">
+                    <div class="highlight-icon">${h.icon}</div>
+                    <div class="highlight-label">${h.label}</div>
+                    <div class="highlight-value">${h.value}</div>
+                    ${h.sub ? `<div class="highlight-sub">${h.sub}</div>` : ''}
+                </div>`).join('');
+        } catch {
+            panel.innerHTML = '<div class="highlights-loading">Could not load highlights.</div>';
+        }
+    })();
+
+    // ── Migration Pulse ───────────────────────────────────────
+    (async () => {
+        const panel = document.getElementById('migration-content');
+        try {
+            const since = new Date(Date.now() - 30*86400000).toISOString();
+            const res   = await fetch(`${_SB_URL}/rest/v1/community_detections?select=species,detected_at,image_url&detected_at=gte.${encodeURIComponent(since)}&limit=500&order=detected_at.desc`, { headers: _headers });
+            const data  = await res.json();
+            if (!data.length) { panel.innerHTML = '<div class="highlights-loading">No data for this month.</div>'; return; }
+
+            // Count by species, pick top 12, attach a sample image
+            const spMap = {};
+            data.forEach(d => {
+                if (!d.species) return;
+                if (!spMap[d.species]) spMap[d.species] = { count: 0, img: null };
+                spMap[d.species].count++;
+                if (!spMap[d.species].img && d.image_url) spMap[d.species].img = d.image_url;
+            });
+            const top = Object.entries(spMap).sort((a,b)=>b[1].count-a[1].count).slice(0,12);
+            const maxCount = top[0]?.[1]?.count || 1;
+            const monthName = new Date().toLocaleDateString('en-US',{month:'long'});
+
+            panel.innerHTML = `<p style="color:var(--color-gray-500);font-size:0.875rem;margin-bottom:0.75rem;">Top species detected in <strong>${monthName}</strong> across all community feeders:</p>
+                <div class="migration-grid">
+                    ${top.map(([sp, info]) => `
+                        <a href="docs/community.html" class="migration-card" style="text-decoration:none;">
+                            ${info.img ? `<img src="${_esc(info.img)}" alt="${_esc(sp)}" loading="lazy">` : `<div style="width:52px;height:52px;background:var(--color-gray-100);border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1.5rem;">🐦</div>`}
+                            <div class="migration-card-info">
+                                <div class="migration-species">${_esc(sp)}</div>
+                                <div class="migration-count">${info.count} detection${info.count!==1?'s':''}</div>
+                                <div class="migration-bar-wrap"><div class="migration-bar" style="width:${(info.count/maxCount*100).toFixed(1)}%"></div></div>
+                            </div>
+                        </a>`).join('')}
+                </div>`;
+        } catch {
+            panel.innerHTML = '<div class="highlights-loading">Could not load migration data.</div>';
+        }
+    })();
+
+    // ── Community Detection Map ───────────────────────────────
+    (async () => {
+        try {
+            const since = new Date(Date.now() - 30*86400000).toISOString();
+            const res   = await fetch(`${_SB_URL}/rest/v1/community_detections?select=species,rarity,detected_at,zip_code,image_url&detected_at=gte.${encodeURIComponent(since)}&zip_code=not.is.null&limit=500&order=detected_at.desc`, { headers: _headers });
+            const data  = await res.json();
+            if (!data.length) return;
+
+            // Geocode unique zip codes
+            const zips = [...new Set(data.map(d=>d.zip_code).filter(Boolean))].slice(0,80);
+            const coords = {};
+            await Promise.allSettled(zips.map(async zip => {
+                try {
+                    const r = await fetch(`https://api.zippopotam.us/us/${zip}`);
+                    if (!r.ok) return;
+                    const j = await r.json();
+                    coords[zip] = [parseFloat(j.places[0].latitude), parseFloat(j.places[0].longitude)];
+                } catch {}
+            }));
+
+            const map = L.map('community-map', { scrollWheelZoom: false }).setView([39.5, -98.35], 4);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors', maxZoom: 13
+            }).addTo(map);
+
+            // Group by zip, add circle markers
+            const zipGroups = {};
+            data.forEach(d => {
+                if (!d.zip_code || !coords[d.zip_code]) return;
+                if (!zipGroups[d.zip_code]) zipGroups[d.zip_code] = [];
+                zipGroups[d.zip_code].push(d);
+            });
+
+            Object.entries(zipGroups).forEach(([zip, items]) => {
+                const [lat, lng] = coords[zip];
+                const radius = Math.min(6 + Math.sqrt(items.length) * 3, 24);
+                const hasRare = items.some(d => d.rarity === 'Rare' || d.rarity === 'Very Rare');
+                const color   = hasRare ? '#c0392b' : '#2d5a3d';
+                const sample  = items.find(d => d.image_url);
+                const popupHtml = `<div style="font-family:sans-serif;font-size:13px;max-width:180px;">
+                    ${sample?.image_url ? `<img src="${_esc(sample.image_url)}" style="width:100%;border-radius:6px;margin-bottom:6px;">` : ''}
+                    <strong>${items.length} detection${items.length!==1?'s':''}</strong> near ${zip}<br>
+                    <span style="color:#666;">${[...new Set(items.map(d=>d.species))].slice(0,3).join(', ')}${items.length>3?'…':''}</span>
+                </div>`;
+                L.circleMarker([lat, lng], { radius, color, fillColor: color, fillOpacity: 0.55, weight: 2 })
+                    .bindPopup(popupHtml)
+                    .addTo(map);
+            });
+        } catch (_) {}
+    })();
+
+    // ── Feeder Directory ─────────────────────────────────────
+    (async () => {
+        const panel = document.getElementById('feeder-dir-grid');
+        try {
+            const since = new Date(Date.now() - 30*86400000).toISOString();
+            const res   = await fetch(`${_SB_URL}/rest/v1/community_detections?select=species,detected_at,image_url,feeders(display_name)&detected_at=gte.${encodeURIComponent(since)}&limit=500&order=detected_at.desc`, { headers: _headers });
+            const data  = await res.json();
+            if (!data.length) { panel.innerHTML = '<div class="highlights-loading">No feeders found.</div>'; return; }
+
+            // Group by feeder
+            const feeders = {};
+            data.forEach(d => {
+                const name = d.feeders?.display_name;
+                if (!name) return;
+                if (!feeders[name]) feeders[name] = { count: 0, species: new Set(), images: [], lastSeen: null };
+                feeders[name].count++;
+                if (d.species) feeders[name].species.add(d.species);
+                if (d.image_url && feeders[name].images.length < 3) feeders[name].images.push(d.image_url);
+                if (!feeders[name].lastSeen || d.detected_at > feeders[name].lastSeen) feeders[name].lastSeen = d.detected_at;
+            });
+
+            const sorted = Object.entries(feeders).sort((a,b) => b[1].count - a[1].count).slice(0, 12);
+
+            panel.innerHTML = sorted.map(([name, info]) => {
+                const ago = Math.round((Date.now() - new Date(info.lastSeen)) / 60000);
+                const lastStr = ago < 1 ? 'just now' : ago < 60 ? `${ago}m ago` : ago < 1440 ? `${Math.round(ago/60)}h ago` : `${Math.round(ago/1440)}d ago`;
+                const topSp = [...info.species].slice(0, 3).join(', ');
+                const imgs = info.images.map(u => `<img src="${_esc(u)}" alt="" loading="lazy">`).join('');
+                return `<a class="feeder-dir-card" href="docs/community.html?feeder=${encodeURIComponent(name)}">
+                    ${imgs ? `<div class="feeder-dir-img">${imgs}</div>` : ''}
+                    <div class="feeder-dir-name">${_esc(name)}</div>
+                    <div class="feeder-dir-stats">
+                        <span class="feeder-dir-stat"><strong>${info.count}</strong> detections</span>
+                        <span class="feeder-dir-stat"><strong>${info.species.size}</strong> species</span>
+                    </div>
+                    ${topSp ? `<div class="feeder-dir-species">${_esc(topSp)}…</div>` : ''}
+                    <div class="feeder-dir-last">Last seen: ${lastStr}</div>
+                </a>`;
+            }).join('');
+        } catch {
+            panel.innerHTML = '<div class="highlights-loading">Could not load feeders.</div>';
+        }
+    })();
+
+    // ── Newsletter signup ─────────────────────────────────────
+    async function submitNewsletter(e) {
+        e.preventDefault();
+        const email = document.getElementById('newsletter-email').value.trim();
+        const msg   = document.getElementById('newsletter-msg');
+        const btn   = e.target.querySelector('button[type=submit]');
+        if (!email) return;
+        btn.disabled = true; btn.textContent = 'Subscribing…';
+        try {
+            const res = await fetch(`${_SB_URL}/rest/v1/newsletter_signups`, {
+                method: 'POST',
+                headers: { ..._headers, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+                body: JSON.stringify({ email })
+            });
+            if (res.ok || res.status === 409) {  // 409 = already subscribed
+                msg.textContent = res.status === 409 ? 'You\'re already subscribed!' : '🎉 Subscribed! See you Sunday.';
+                msg.style.display = 'block';
+                document.getElementById('newsletter-form').style.display = 'none';
+            } else {
+                throw new Error('HTTP ' + res.status);
+            }
+        } catch {
+            msg.textContent = 'Something went wrong — please try again.';
+            msg.style.color = '#e74c3c';
+            msg.style.display = 'block';
+            btn.disabled = false; btn.textContent = 'Subscribe Free';
+        }
+    }
+    </script>
 </body>
 </html>
