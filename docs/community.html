@@ -1042,15 +1042,17 @@
     const ANON_KEY     = 'sb_publishable_-80LQjkx2s82XnURj2DfQQ_d7ARz3js';
     const REFRESH_SECS = 30;
 
-    // ── TEMP: early URL debug banner (remove after diagnosing share link) ──
-    (function() {
-        const b = document.createElement('div');
-        b.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#c0392b;color:#fff;' +
-            'font-size:11px;font-family:monospace;padding:6px 10px;z-index:99999;word-break:break-all;';
-        b.textContent = 'URL: ' + location.href;
-        document.body.appendChild(b);
-        b.addEventListener('click', () => b.remove());
-    })();
+    // ── TEMP: early URL debug banner — only shown when ?id= is in URL ──
+    if (location.search) {
+        (function() {
+            const b = document.createElement('div');
+            b.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#c0392b;color:#fff;' +
+                'font-size:11px;font-family:monospace;padding:6px 10px;z-index:99999;word-break:break-all;';
+            b.textContent = 'URL: ' + location.href;
+            document.body.appendChild(b);
+            b.addEventListener('click', () => b.remove());
+        })();
+    }
 
     let countdown      = REFRESH_SECS;
     let tabHiddenAt    = null;   // timestamp when tab was hidden
