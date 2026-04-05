@@ -2318,7 +2318,7 @@
         t.textContent = msg;
         t.style.opacity = '1';
         clearTimeout(t._timer);
-        t._timer = setTimeout(() => { t.style.opacity = '0'; }, 2000);
+        t._timer = setTimeout(() => { t.style.opacity = '0'; }, 4000);
     }
 
     // Scroll to and highlight a shared detection on page load
@@ -2347,32 +2347,40 @@
             renderFeed(); // synchronous — DOM is updated before next line runs
         }
 
+        showToast('DBG: looking for id=' + id);
+
         // 1. Already in the rendered DOM
         let card = document.querySelector(`.card[data-id="${id}"]`);
-        if (card) { scrollToCard(card); return; }
+        if (card) { showToast('DBG: found in DOM, scrolling'); scrollToCard(card); return; }
+
+        showToast('DBG: not in DOM, allDetections.length=' + allDetections.length);
 
         // 2. In allDetections but hidden by active filters — reset and re-render
-        if (allDetections.find(x => String(x.id) === id)) {
+        const inData = allDetections.find(x => String(x.id) === id);
+        if (inData) {
+            showToast('DBG: found in data, resetting filters');
             resetFiltersAndRender();
             card = document.querySelector(`.card[data-id="${id}"]`);
             if (card) { scrollToCard(card); return; }
+            showToast('DBG: still not in DOM after render');
         }
 
         // 3. Not in the current batch — fetch just this one record
+        showToast('DBG: fetching from server...');
         try {
             const res = await fetch(
                 `${SUPABASE_URL}/rest/v1/community_detections?select=*,feeders(display_name)&id=eq.${encodeURIComponent(id)}`,
                 { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` } }
             );
             const rows = await res.json();
+            showToast('DBG: fetch returned ' + rows.length + ' rows');
             if (!rows.length) { showToast('Detection not found'); return; }
-            // Prepend to in-memory list and re-render without re-fetching
             allDetections = [...rows, ...allDetections];
             resetFiltersAndRender();
             card = document.querySelector(`.card[data-id="${id}"]`);
             if (card) scrollToCard(card);
-            else showToast('Could not display detection');
-        } catch (_) { showToast('Error loading detection'); }
+            else showToast('DBG: card still missing after fetch+render');
+        } catch (e) { showToast('DBG fetch error: ' + e.message); }
     }
 
     // ── Dark mode ────────────────────────────────────────────
