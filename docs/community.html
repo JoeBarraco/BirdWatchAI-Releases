@@ -1343,7 +1343,7 @@
                         ${d.video_url
                             ? `<a class="card-video" href="${d.video_url}" target="_blank" rel="noopener">🎬 Watch video</a>`
                             : ''}
-                        <button class="card-share" onclick="shareDetection(${d.id})" title="Copy link to this detection">🔗 Share</button>
+                        <button class="card-share" data-share-id="${d.id}" title="Copy link to this detection">🔗 Share</button>
                     </div>
                 </div>
             </div>`;
@@ -2137,10 +2137,15 @@
     lightboxImg.addEventListener('click', e => e.stopPropagation());
     document.getElementById('lightbox-close').addEventListener('click', closeLightbox);
 
-    // Delegate clicks on feed card images
+    // Delegate clicks on feed cards (images → lightbox, share btn → share)
     document.getElementById('feed-view').addEventListener('click', e => {
         if (e.target.tagName === 'IMG' && e.target.closest('.card')) {
             openLightbox(e.target.src, e.target.alt);
+            return;
+        }
+        const shareBtn = e.target.closest('[data-share-id]');
+        if (shareBtn) {
+            shareDetection(Number(shareBtn.dataset.shareId));
         }
     });
 
