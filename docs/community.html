@@ -2347,40 +2347,48 @@
             renderFeed(); // synchronous — DOM is updated before next line runs
         }
 
-        showToast('DBG: looking for id=' + id);
+        // Debug panel — accumulates all messages, stays visible until tapped
+        const dbg = document.createElement('div');
+        dbg.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);width:90vw;max-width:420px;' +
+            'background:#1a1a1a;color:#0f0;font-family:monospace;font-size:13px;padding:12px 16px;border-radius:10px;' +
+            'z-index:99999;white-space:pre-wrap;line-height:1.6;box-shadow:0 4px 20px rgba(0,0,0,0.5);';
+        dbg.textContent = 'DBG: looking for id=' + id + '\n';
+        document.body.appendChild(dbg);
+        const log = msg => { dbg.textContent += msg + '\n'; };
+        dbg.addEventListener('click', () => dbg.remove());
 
         // 1. Already in the rendered DOM
         let card = document.querySelector(`.card[data-id="${id}"]`);
-        if (card) { showToast('DBG: found in DOM, scrolling'); scrollToCard(card); return; }
+        if (card) { log('found in DOM → scrolling'); scrollToCard(card); return; }
 
-        showToast('DBG: not in DOM, allDetections.length=' + allDetections.length);
+        log('not in DOM | allDetections.length=' + allDetections.length);
 
         // 2. In allDetections but hidden by active filters — reset and re-render
         const inData = allDetections.find(x => String(x.id) === id);
         if (inData) {
-            showToast('DBG: found in data, resetting filters');
+            log('found in data → resetting filters');
             resetFiltersAndRender();
             card = document.querySelector(`.card[data-id="${id}"]`);
-            if (card) { scrollToCard(card); return; }
-            showToast('DBG: still not in DOM after render');
+            if (card) { log('card found after render → scrolling'); scrollToCard(card); return; }
+            log('still not in DOM after render');
         }
 
         // 3. Not in the current batch — fetch just this one record
-        showToast('DBG: fetching from server...');
+        log('fetching from server…');
         try {
             const res = await fetch(
                 `${SUPABASE_URL}/rest/v1/community_detections?select=*,feeders(display_name)&id=eq.${encodeURIComponent(id)}`,
                 { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` } }
             );
             const rows = await res.json();
-            showToast('DBG: fetch returned ' + rows.length + ' rows');
-            if (!rows.length) { showToast('Detection not found'); return; }
+            log('fetch returned ' + rows.length + ' rows');
+            if (!rows.length) { log('Detection not found on server'); return; }
             allDetections = [...rows, ...allDetections];
             resetFiltersAndRender();
             card = document.querySelector(`.card[data-id="${id}"]`);
-            if (card) scrollToCard(card);
-            else showToast('DBG: card still missing after fetch+render');
-        } catch (e) { showToast('DBG fetch error: ' + e.message); }
+            if (card) { log('card found → scrolling'); scrollToCard(card); }
+            else log('card STILL missing after fetch+render');
+        } catch (e) { log('fetch error: ' + e.message); }
     }
 
     // ── Dark mode ────────────────────────────────────────────
