@@ -10,14 +10,19 @@
   "icons": [
     {
       "src": "../images/favicon.png",
-      "sizes": "any",
+      "sizes": "64x64",
+      "type": "image/png"
+    },
+    {
+      "src": "../images/logo.png",
+      "sizes": "200x200",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "../images/logo.png",
+      "src": "../images/logo.svg",
       "sizes": "any",
-      "type": "image/png",
+      "type": "image/svg+xml",
       "purpose": "any maskable"
     }
   ],
