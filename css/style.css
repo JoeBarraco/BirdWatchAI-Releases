@@ -8,14 +8,14 @@
     --color-primary: #2d5a3d;          /* Deep forest green */
     --color-primary-light: #3d7a52;
     --color-primary-dark: #1e3d29;
-    
+
     --color-secondary: #8fbc8f;        /* Soft sage */
     --color-accent: #d4a574;           /* Warm wood/branch */
     --color-accent-light: #e8c9a0;
-    
+
     --color-sky: #87ceeb;              /* Sky blue */
     --color-sky-light: #b0e0e6;
-    
+
     /* Neutrals */
     --color-cream: #faf8f5;
     --color-white: #ffffff;
@@ -25,6 +25,10 @@
     --color-gray-500: #7a756d;
     --color-gray-700: #4a4640;
     --color-gray-900: #2a2825;
+
+    /* Surface tokens (used for dark mode overrides) */
+    --nav-bg: rgba(250, 248, 245, 0.95);
+    --sighting-card-bg: #e8e4de;
     
     /* Typography */
     --font-display: 'Fraunces', Georgia, serif;
@@ -56,6 +60,50 @@
 }
 
 /* ==========================================================================
+   Dark Mode
+   ========================================================================== */
+
+[data-theme="dark"] {
+    --color-primary:       #5aab72;
+    --color-primary-light: #6dc489;
+    --color-primary-dark:  #3d8a55;
+    --color-cream:         #1a1a18;
+    --color-white:         #242420;
+    --color-gray-100:      #2e2e2a;
+    --color-gray-200:      #3a3a34;
+    --color-gray-300:      #4a4642;
+    --color-gray-500:      #9a9590;
+    --color-gray-700:      #ccc8c2;
+    --color-gray-900:      #f0ede8;
+    --shadow-sm:           0 2px 8px rgba(0,0,0,0.3);
+    --shadow-md:           0 4px 20px rgba(0,0,0,0.4);
+    --shadow-lg:           0 8px 40px rgba(0,0,0,0.5);
+    --nav-bg:              rgba(26, 26, 24, 0.95);
+    --sighting-card-bg:    #2e2e2a;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --color-primary:       #5aab72;
+        --color-primary-light: #6dc489;
+        --color-primary-dark:  #3d8a55;
+        --color-cream:         #1a1a18;
+        --color-white:         #242420;
+        --color-gray-100:      #2e2e2a;
+        --color-gray-200:      #3a3a34;
+        --color-gray-300:      #4a4642;
+        --color-gray-500:      #9a9590;
+        --color-gray-700:      #ccc8c2;
+        --color-gray-900:      #f0ede8;
+        --shadow-sm:           0 2px 8px rgba(0,0,0,0.3);
+        --shadow-md:           0 4px 20px rgba(0,0,0,0.4);
+        --shadow-lg:           0 8px 40px rgba(0,0,0,0.5);
+        --nav-bg:              rgba(26, 26, 24, 0.95);
+        --sighting-card-bg:    #2e2e2a;
+    }
+}
+
+/* ==========================================================================
    Base Styles
    ========================================================================== */
 
@@ -78,6 +126,7 @@ body {
     background-color: var(--color-cream);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    transition: background-color 0.25s, color 0.25s;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -202,7 +251,7 @@ ul {
     left: 0;
     right: 0;
     z-index: 1000;
-    background: rgba(250, 248, 245, 0.95);
+    background: var(--nav-bg);
     backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--color-gray-200);
 }
@@ -1131,7 +1180,7 @@ section {
     border-radius: 10px;
     overflow: hidden;
     aspect-ratio: 4/3;
-    background: #e8e4de;
+    background: var(--sighting-card-bg);
     cursor: pointer;
     transition: transform 0.2s, box-shadow 0.2s;
 }

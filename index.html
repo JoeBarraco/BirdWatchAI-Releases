@@ -13,6 +13,13 @@
     
     <link rel="stylesheet" href="css/style.css">
     <link rel="icon" type="image/png" href="images/favicon.png">
+    <!-- Apply saved theme before first paint to prevent flash -->
+    <script>
+        (function() {
+            const t = localStorage.getItem('bwai-theme');
+            if (t) document.documentElement.setAttribute('data-theme', t);
+        })();
+    </script>
 </head>
 <body>
     <!-- Navigation -->
@@ -30,6 +37,7 @@
                 <a href="docs/community.html" class="nav-live">🔴 Live Community Feed</a>
                 <a href="#download" class="btn btn-nav">Download Free Trial</a>
             </div>
+            <button id="theme-toggle-main" onclick="toggleMainTheme()" aria-label="Toggle dark mode" style="background:none;border:none;cursor:pointer;font-size:1.25rem;padding:4px 8px;line-height:1;margin-right:4px;" title="Toggle dark mode">🌙</button>
             <button class="nav-mobile-toggle" aria-label="Toggle menu">
                 <span></span>
                 <span></span>
@@ -456,6 +464,23 @@
     </footer>
 
     <script src="js/main.js"></script>
+    <script>
+    function toggleMainTheme() {
+        const current = document.documentElement.getAttribute('data-theme');
+        const next    = current === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        localStorage.setItem('bwai-theme', next);
+        const btn = document.getElementById('theme-toggle-main');
+        if (btn) btn.textContent = next === 'dark' ? '☀️' : '🌙';
+    }
+    // Set correct icon on load
+    document.addEventListener('DOMContentLoaded', () => {
+        const theme = document.documentElement.getAttribute('data-theme') ||
+            (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        const btn = document.getElementById('theme-toggle-main');
+        if (btn) btn.textContent = theme === 'dark' ? '☀️' : '🌙';
+    });
+    </script>
     <script>
     // ── Live recent sightings gallery ─────────────────────────
     (async () => {
