@@ -18,6 +18,45 @@
             --color-gray-500: #7a756d;
             --color-gray-700: #4a4640;
             --color-gray-900: #2a2825;
+            /* surfaces */
+            --bg-page:   #faf8f5;
+            --bg-card:   #ffffff;
+            --bg-input:  #ffffff;
+            --border:    #e8e4de;
+            --border-input: #d0cbc3;
+        }
+
+        /* ── Dark mode overrides ────────────────────────────── */
+        [data-theme="dark"] {
+            --color-primary:       #5aab72;
+            --color-primary-light: #6dc489;
+            --color-cream:         #1a1a18;
+            --color-gray-100:      #242420;
+            --color-gray-500:      #9a9590;
+            --color-gray-700:      #ccc8c2;
+            --color-gray-900:      #f0ede8;
+            --bg-page:             #1a1a18;
+            --bg-card:             #242420;
+            --bg-input:            #2e2e2a;
+            --border:              #3a3a34;
+            --border-input:        #4a4a42;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root:not([data-theme="light"]) {
+                --color-primary:       #5aab72;
+                --color-primary-light: #6dc489;
+                --color-cream:         #1a1a18;
+                --color-gray-100:      #242420;
+                --color-gray-500:      #9a9590;
+                --color-gray-700:      #ccc8c2;
+                --color-gray-900:      #f0ede8;
+                --bg-page:             #1a1a18;
+                --bg-card:             #242420;
+                --bg-input:            #2e2e2a;
+                --border:              #3a3a34;
+                --border-input:        #4a4a42;
+            }
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -27,8 +66,9 @@
             font-size: 1.0625rem;
             line-height: 1.7;
             color: var(--color-gray-700);
-            background: var(--color-cream);
+            background: var(--bg-page);
             padding: 2rem 1rem;
+            transition: background 0.25s, color 0.25s;
         }
 
         .container {
@@ -63,8 +103,8 @@
 
         /* ── Filter bar ─────────────────────────────────── */
         .filter-bar {
-            background: white;
-            border: 1px solid #e8e4de;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
             border-radius: 10px;
             padding: 1rem 1.25rem;
             margin-bottom: 1rem;
@@ -100,9 +140,9 @@
             font-family: inherit;
             font-size: 0.8125rem;
             padding: 4px 12px;
-            border: 1px solid #d0cbc3;
+            border: 1px solid var(--border-input);
             border-radius: 20px;
-            background: white;
+            background: var(--bg-input);
             color: var(--color-gray-700);
             cursor: pointer;
             transition: all 0.15s;
@@ -120,9 +160,9 @@
             font-family: inherit;
             font-size: 0.875rem;
             padding: 5px 10px;
-            border: 1px solid #d0cbc3;
+            border: 1px solid var(--border-input);
             border-radius: 6px;
-            background: white;
+            background: var(--bg-input);
             color: var(--color-gray-700);
             min-width: 140px;
         }
@@ -135,9 +175,9 @@
             font-family: inherit;
             font-size: 0.8125rem;
             padding: 5px 12px;
-            border: 1px solid #d0cbc3;
+            border: 1px solid var(--border-input);
             border-radius: 6px;
-            background: white;
+            background: var(--bg-input);
             color: var(--color-gray-500);
             cursor: pointer;
             transition: all 0.15s;
@@ -156,19 +196,19 @@
             font-size: 0.9375rem;
             font-weight: 500;
             padding: 8px 20px;
-            border: 2px solid #e8e4de;
+            border: 2px solid var(--border);
             border-radius: 8px 8px 0 0;
-            background: white;
+            background: var(--bg-card);
             color: var(--color-gray-500);
             cursor: pointer;
             transition: all 0.15s;
         }
         .view-tab.active {
             border-color: var(--color-primary);
-            border-bottom-color: var(--color-cream);
+            border-bottom-color: var(--bg-page);
             color: var(--color-primary);
             font-weight: 600;
-            background: var(--color-cream);
+            background: var(--bg-page);
         }
 
         /* ── Status bar ─────────────────────────────────── */
@@ -180,8 +220,8 @@
             color: var(--color-gray-500);
             margin-bottom: 1rem;
             padding: 0.625rem 1rem;
-            background: white;
-            border: 1px solid #e8e4de;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
             border-radius: 8px;
         }
 
@@ -228,18 +268,18 @@
         }
 
         .card {
-            border: 1px solid #e8e4de;
+            border: 1px solid var(--border);
             border-radius: 8px;
             padding: 14px;
             display: flex;
             gap: 14px;
             align-items: flex-start;
-            background: white;
+            background: var(--bg-card);
             transition: background 0.4s, box-shadow 0.2s, border-color 0.2s;
         }
         .card:hover {
             box-shadow: 0 4px 16px rgba(0,0,0,0.09);
-            border-color: #c0bbb3;
+            border-color: var(--color-gray-500);
         }
         .card.new { background: #f0fff4; }
 
@@ -341,7 +381,7 @@
 
         .map-wrap {
             border-radius: 10px;
-            border: 1px solid #e8e4de;
+            border: 1px solid var(--border);
             overflow: hidden;
         }
 
@@ -403,8 +443,8 @@
         }
 
         .stats-kpi {
-            background: white;
-            border: 1px solid #e8e4de;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
             border-radius: 10px;
             padding: 1rem 1.5rem;
             min-width: 110px;
@@ -441,9 +481,9 @@
             font-size: 0.875rem;
             font-weight: 500;
             padding: 6px 16px;
-            border: 1px solid #d0cbc3;
+            border: 1px solid var(--border-input);
             border-radius: 6px;
-            background: white;
+            background: var(--bg-input);
             color: var(--color-gray-500);
             cursor: pointer;
             transition: all 0.15s;
@@ -456,8 +496,8 @@
         }
 
         .stats-panel {
-            background: white;
-            border: 1px solid #e8e4de;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
             border-radius: 10px;
             padding: 1.25rem;
             min-height: 200px;
@@ -481,7 +521,7 @@
         .stats-table th {
             text-align: left;
             padding: 8px 12px;
-            border-bottom: 2px solid #e8e4de;
+            border-bottom: 2px solid var(--border);
             font-size: 0.72rem;
             font-weight: 600;
             text-transform: uppercase;
@@ -492,12 +532,12 @@
 
         .stats-table td {
             padding: 8px 12px;
-            border-bottom: 1px solid #f0ece6;
+            border-bottom: 1px solid var(--border);
             vertical-align: middle;
         }
 
         .stats-table tr:last-child td { border-bottom: none; }
-        .stats-table tr:hover td { background: #faf8f5; }
+        .stats-table tr:hover td { background: var(--color-gray-100); }
 
         .stats-rank {
             color: var(--color-gray-500);
@@ -523,7 +563,7 @@
             display: inline-block;
             width: 80px;
             height: 8px;
-            background: #f0ece6;
+            background: var(--color-gray-100);
             border-radius: 4px;
             overflow: hidden;
             flex-shrink: 0;
@@ -593,7 +633,7 @@
         .bar-track {
             flex: 1;
             height: 18px;
-            background: #f0ece6;
+            background: var(--color-gray-100);
             border-radius: 4px;
             overflow: hidden;
         }
@@ -648,8 +688,8 @@
             top: calc(100% + 4px);
             left: 0;
             min-width: 200px;
-            background: white;
-            border: 1px solid #d0cbc3;
+            background: var(--bg-card);
+            border: 1px solid var(--border-input);
             border-radius: 6px;
             box-shadow: 0 4px 16px rgba(0,0,0,0.12);
             z-index: 999;
@@ -665,6 +705,7 @@
         .species-suggestion:hover, .species-suggestion.focused {
             background: var(--color-gray-100);
             color: var(--color-primary);
+            color: var(--color-primary);
         }
 
         /* ── Near me button ─────────────────────────────────── */
@@ -672,9 +713,9 @@
             font-family: inherit;
             font-size: 0.8125rem;
             padding: 5px 10px;
-            border: 1px solid #d0cbc3;
+            border: 1px solid var(--border-input);
             border-radius: 6px;
-            background: white;
+            background: var(--bg-input);
             color: var(--color-gray-500);
             cursor: pointer;
             transition: all 0.15s;
@@ -688,9 +729,9 @@
             font-family: inherit;
             font-size: 0.8125rem;
             padding: 4px 12px;
-            border: 1px solid #d0cbc3;
+            border: 1px solid var(--border-input);
             border-radius: 20px;
-            background: white;
+            background: var(--bg-input);
             color: var(--color-gray-700);
             cursor: pointer;
             transition: all 0.15s;
@@ -868,6 +909,7 @@
         <span id="countdown">Refreshing in 30s</span>
         <span id="feed-count"></span>
         <button class="refresh-btn" style="margin-left:auto;" onclick="loadFeed()">Refresh now</button>
+        <button id="theme-toggle" class="refresh-btn" style="background:var(--color-gray-500);" onclick="toggleTheme()" title="Toggle dark mode">🌙</button>
         <button id="sound-toggle" class="refresh-btn" style="background:var(--color-gray-500);" onclick="toggleSound()" title="Toggle sound on new detection">🔇 Sound</button>
         <button id="notif-toggle" class="refresh-btn" style="background:var(--color-gray-500);" onclick="toggleNotifications()" title="Toggle rare bird notifications">🔔 Notify rare</button>
         <button class="refresh-btn" style="background:var(--color-gray-500);" onclick="exportCSV()" title="Download filtered detections as CSV">⬇ CSV</button>
@@ -2050,6 +2092,27 @@
                 document.getElementById('notif-banner').style.display = 'flex';
             }, 4000);
         }
+    });
+
+    // ── Dark mode ────────────────────────────────────────────
+    (function initTheme() {
+        const saved = localStorage.getItem('bwai-theme');
+        if (saved) document.documentElement.setAttribute('data-theme', saved);
+    })();
+
+    function toggleTheme() {
+        const current = document.documentElement.getAttribute('data-theme');
+        const next    = current === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        localStorage.setItem('bwai-theme', next);
+        document.getElementById('theme-toggle').textContent = next === 'dark' ? '☀️' : '🌙';
+    }
+
+    // Set initial icon based on current theme
+    window.addEventListener('DOMContentLoaded', () => {
+        const theme = document.documentElement.getAttribute('data-theme') ||
+            (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.getElementById('theme-toggle').textContent = theme === 'dark' ? '☀️' : '🌙';
     });
 
     // ── Bird of the Day ──────────────────────────────────────
