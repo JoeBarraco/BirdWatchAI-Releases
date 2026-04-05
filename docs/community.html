@@ -816,8 +816,70 @@
             transition: color 0.15s;
         }
         .card-audio:hover { color: var(--color-primary); }
-        .card-audio.playing { color: var(--color-primary); }
+        .card-audio.playing { color: var(--color-primary); animation: sound-pulse 1s ease-in-out infinite; }
         .card-audio.loading { opacity: 0.6; cursor: wait; }
+        @keyframes sound-pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50%       { opacity: 0.6; transform: scale(1.15); }
+        }
+
+        /* ── Detection detail modal ──────────────────────────── */
+        #detail-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.75);
+            z-index: 10001;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+        #detail-modal.open { display: flex; }
+        .detail-box {
+            background: var(--bg-card);
+            border-radius: 14px;
+            max-width: 560px;
+            width: 100%;
+            max-height: 92vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+            position: relative;
+        }
+        .detail-img {
+            width: 100%;
+            aspect-ratio: 4/3;
+            object-fit: cover;
+            border-radius: 14px 14px 0 0;
+            display: block;
+        }
+        .detail-body { padding: 1.25rem; }
+        .detail-title { font-family: var(--font-display); font-size: 1.4rem; font-weight: 700; margin-bottom: 0.25rem; color: var(--color-gray-900); }
+        [data-theme="dark"] .detail-title { color: var(--color-cream); }
+        .detail-meta { font-size: 0.875rem; color: var(--color-gray-500); display: flex; flex-direction: column; gap: 4px; margin-bottom: 1rem; }
+        .detail-meta span { display: flex; align-items: center; gap: 6px; }
+        .detail-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+        .detail-actions a, .detail-actions button {
+            font-family: inherit; font-size: 0.875rem; padding: 6px 16px;
+            border-radius: 6px; cursor: pointer; text-decoration: none;
+            border: 1px solid var(--border-input);
+            background: var(--bg-input); color: var(--color-gray-700);
+            transition: all 0.15s;
+        }
+        .detail-actions a:hover, .detail-actions button:hover { border-color: var(--color-primary); color: var(--color-primary); }
+        .detail-close {
+            position: absolute; top: 10px; right: 10px;
+            background: rgba(0,0,0,0.45); color: white; border: none;
+            width: 32px; height: 32px; border-radius: 50%; font-size: 1rem;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            z-index: 1;
+        }
+
+        /* ── Infinite scroll sentinel ────────────────────────── */
+        #feed-sentinel { height: 1px; }
+        .load-more-spinner {
+            text-align: center; padding: 1.5rem; color: var(--color-gray-500);
+            font-size: 0.875rem; grid-column: 1 / -1;
+        }
 
         /* ── First-of-season badge ───────────────────────────── */
         .badge-first-season {
@@ -1141,6 +1203,7 @@
     <div id="feed-view">
         <div class="feed-loading">Loading detections…</div>
     </div>
+    <div id="feed-sentinel"></div>
 
     <!-- Map view -->
     <div id="map-view">
@@ -1197,6 +1260,19 @@
     <kbd>r</kbd> &nbsp;Refresh feed<br>
     <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> &nbsp;Switch Feed / Map / Stats<br>
     <kbd>Esc</kbd> &nbsp;Close lightbox / hints
+</div>
+
+<!-- Detection detail modal -->
+<div id="detail-modal" role="dialog" aria-modal="true">
+    <div class="detail-box">
+        <button class="detail-close" id="detail-close" aria-label="Close">✕</button>
+        <img class="detail-img" id="detail-img" src="" alt="" style="display:none;">
+        <div class="detail-body">
+            <div class="detail-title" id="detail-title"></div>
+            <div class="detail-meta" id="detail-meta"></div>
+            <div class="detail-actions" id="detail-actions"></div>
+        </div>
+    </div>
 </div>
 
 <!-- Species photo carousel modal -->
@@ -1401,22 +1477,35 @@
 
     // ── Format detection time with local timezone label ──────
     function fmtDetectedAt(isoStr) {
-        return new Date(isoStr).toLocaleString(undefined, {
+        return new Date(isoStr).toLocaleString('en-US', {
+            timeZone: 'America/New_York',
             month: 'numeric', day: 'numeric', year: 'numeric',
             hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
         });
     }
 
     // ── Load data ────────────────────────────────────────────
-    async function loadFeed() {
+    const PAGE_SIZE  = 60;
+    let   feedOffset = 0;
+    let   feedExhausted = false;
+    let   feedLoading   = false;
+
+    async function loadFeed(append = false) {
+        if (append && (feedExhausted || feedLoading)) return;
+        feedLoading = true;
+
         const indicator = document.getElementById('refresh-indicator');
-        indicator.classList.add('refreshing');
-        document.getElementById('countdown').textContent = 'Refreshing…';
+        if (!append) {
+            indicator.classList.add('refreshing');
+            document.getElementById('countdown').textContent = 'Refreshing…';
+            feedOffset = 0;
+            feedExhausted = false;
+        }
 
         const { period } = getFilters();
         const since = periodToISO(period);
 
-        let url = `${SUPABASE_URL}/rest/v1/community_detections?select=*,feeders(display_name)&limit=500&order=detected_at.desc`;
+        let url = `${SUPABASE_URL}/rest/v1/community_detections?select=*,feeders(display_name)&limit=${PAGE_SIZE}&offset=${feedOffset}&order=detected_at.desc`;
         if (since) url += `&detected_at=gte.${encodeURIComponent(since)}`;
 
         try {
@@ -1424,7 +1513,15 @@
                 headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` }
             });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            allDetections = await res.json();
+            const page = await res.json();
+
+            if (append) {
+                allDetections = [...allDetections, ...page];
+            } else {
+                allDetections = page;
+            }
+            if (page.length < PAGE_SIZE) feedExhausted = true;
+            feedOffset += page.length;
 
             populateFeederDropdown(allDetections);
             populateFeedSpeciesDropdown(allDetections);
@@ -1445,13 +1542,25 @@
             if (hadDetections) playChime();
 
         } catch (err) {
-            document.getElementById('feed-view').innerHTML =
-                `<div class="feed-error">Error loading feed: ${err.message}</div>`;
+            if (!append) {
+                document.getElementById('feed-view').innerHTML =
+                    `<div class="feed-error">Error loading feed: ${err.message}</div>`;
+            }
         }
 
-        indicator.classList.remove('refreshing');
-        countdown = REFRESH_SECS;
+        feedLoading = false;
+        if (!append) {
+            indicator.classList.remove('refreshing');
+            countdown = REFRESH_SECS;
+        }
     }
+
+    // ── Infinite scroll via IntersectionObserver ─────────────
+    const feedSentinel = document.getElementById('feed-sentinel');
+    const scrollObserver = new IntersectionObserver(entries => {
+        if (entries[0].isIntersecting && currentView === 'feed') loadFeed(true);
+    }, { rootMargin: '200px' });
+    scrollObserver.observe(feedSentinel);
 
     // ── Feeder dropdown ──────────────────────────────────────
     function populateFeederDropdown(data) {
@@ -2357,13 +2466,26 @@
         if (shareBtn) { shareDetection(shareBtn.dataset.shareId, shareBtn.closest('.card')); return; }
         // Audio button
         const audioBtn = e.target.closest('[data-audio-species]');
-        if (audioBtn) { playBirdCall(audioBtn.dataset.audioSpecies, audioBtn); return; }
+        if (audioBtn) {
+            if (audioBtn.classList.contains('playing')) {
+                stopBirdCall(audioBtn);
+            } else {
+                playBirdCall(audioBtn.dataset.audioSpecies, audioBtn);
+            }
+            return;
+        }
         // Reaction button
         const rxBtn = e.target.closest('[data-reaction-id]');
         if (rxBtn) { toggleReaction(rxBtn.dataset.reactionId, rxBtn.dataset.emoji, rxBtn); return; }
         // Species name → photo carousel
         const speciesLink = e.target.closest('.species-link');
         if (speciesLink) { openCarousel(speciesLink.dataset.species); return; }
+        // Card body (not a button/link) → detail modal
+        const card = e.target.closest('.card');
+        if (card && !e.target.closest('button, a')) {
+            openDetailModal(card.dataset.id);
+            return;
+        }
     });
 
     // ── Bird call audio (xeno-canto) ─────────────────────────
@@ -2372,23 +2494,21 @@
 
     async function playBirdCall(species, btn) {
         if (!species) return;
-        if (currentAudio) { currentAudio.pause(); currentAudio.currentTime = 0; }
-        document.querySelectorAll('.card-audio.playing').forEach(b => b.classList.remove('playing'));
+        if (currentAudio) { currentAudio.pause(); currentAudio.currentTime = 0; currentAudio = null; }
+        document.querySelectorAll('.card-audio.playing').forEach(b => { b.classList.remove('playing'); b.textContent = '🔊 Call'; });
 
         btn.classList.add('loading');
         try {
             if (!audioCache[species]) {
-                // xeno-canto API v2 — no extra filter params, just the species name query
                 const q   = encodeURIComponent(species);
                 const res = await fetch(`https://xeno-canto.org/api/2/recordings?query=${q}`);
                 if (!res.ok) throw new Error('HTTP ' + res.status);
                 const data = await res.json();
                 const rec  = data.recordings?.[0];
                 if (!rec?.file) {
-                    // Fallback: open Macaulay Library search in new tab
                     btn.classList.remove('loading');
                     showToast('Opening bird call search…');
-                    window.open(`https://search.macaulaylibrary.org/catalog?taxonCode=&q=${encodeURIComponent(species)}&mediaType=a`, '_blank');
+                    window.open(`https://search.macaulaylibrary.org/catalog?q=${encodeURIComponent(species)}&mediaType=a`, '_blank');
                     return;
                 }
                 audioCache[species] = (rec.file.startsWith('http') ? '' : 'https:') + rec.file;
@@ -2397,15 +2517,22 @@
             currentAudio = audio;
             btn.classList.remove('loading');
             btn.classList.add('playing');
+            btn.textContent = '⏹ Stop';
             audio.play();
-            audio.addEventListener('ended', () => { btn.classList.remove('playing'); currentAudio = null; });
-            audio.addEventListener('error', () => { btn.classList.remove('playing', 'loading'); showToast('Could not load audio'); });
+            audio.addEventListener('ended', () => { btn.classList.remove('playing'); btn.textContent = '🔊 Call'; currentAudio = null; });
+            audio.addEventListener('error', () => { btn.classList.remove('playing', 'loading'); btn.textContent = '🔊 Call'; showToast('Could not load audio'); });
         } catch (_) {
             btn.classList.remove('loading', 'playing');
-            // API unreachable — fall back to Macaulay Library search
+            btn.textContent = '🔊 Call';
             showToast('Opening bird call search…');
             window.open(`https://search.macaulaylibrary.org/catalog?q=${encodeURIComponent(species)}&mediaType=a`, '_blank');
         }
+    }
+
+    function stopBirdCall(btn) {
+        if (currentAudio) { currentAudio.pause(); currentAudio.currentTime = 0; currentAudio = null; }
+        btn.classList.remove('playing');
+        btn.textContent = '🔊 Call';
     }
 
     // ── Emoji reactions (localStorage) ───────────────────────
@@ -2872,6 +2999,87 @@
             navigator.serviceWorker.register('/docs/sw.js').catch(() => {});
         });
     }
+
+    // ── Detection detail modal ────────────────────────────────
+    const detailModal = document.getElementById('detail-modal');
+    document.getElementById('detail-close').addEventListener('click', () => {
+        detailModal.classList.remove('open');
+        document.body.style.overflow = '';
+    });
+    detailModal.addEventListener('click', e => {
+        if (e.target === detailModal) { detailModal.classList.remove('open'); document.body.style.overflow = ''; }
+    });
+
+    function openDetailModal(id) {
+        const d = allDetections.find(x => String(x.id) === String(id));
+        if (!d) return;
+
+        const img = document.getElementById('detail-img');
+        if (d.image_url) { img.src = d.image_url; img.alt = d.species; img.style.display = ''; }
+        else img.style.display = 'none';
+
+        const rarityClass = d.rarity ? 'rarity-' + d.rarity.toLowerCase().replace(/\s+/g, '-') : '';
+        document.getElementById('detail-title').innerHTML =
+            `${esc(d.species)}${d.rarity ? ` <span class="${rarityClass}" style="font-size:0.9rem;">· ${esc(d.rarity)}</span>` : ''}`;
+
+        const time = new Date(d.detected_at).toLocaleString('en-US', {
+            timeZone: 'America/New_York',
+            month: 'long', day: 'numeric', year: 'numeric',
+            hour: 'numeric', minute: '2-digit', timeZoneName: 'short'
+        });
+        const metaRows = [
+            `<span>🕐 ${time}</span>`,
+            d.feeders?.display_name ? `<span>📡 ${esc(d.feeders.display_name)}</span>` : '',
+            d.zip_code              ? `<span>📍 ZIP ${esc(d.zip_code)}</span>` : '',
+            d.temperature != null   ? `<span>🌡️ ${d.temperature}°F</span>` : '',
+        ].filter(Boolean).join('');
+        document.getElementById('detail-meta').innerHTML = metaRows;
+
+        const actions = document.getElementById('detail-actions');
+        actions.innerHTML = '';
+        if (d.video_url) {
+            const a = document.createElement('a');
+            a.href = d.video_url; a.target = '_blank'; a.rel = 'noopener';
+            a.textContent = '🎬 Watch video'; actions.appendChild(a);
+        }
+        const shareBtn = document.createElement('button');
+        shareBtn.textContent = '🔗 Share';
+        shareBtn.onclick = () => { detailModal.classList.remove('open'); document.body.style.overflow = ''; shareDetection(d.id, null); };
+        actions.appendChild(shareBtn);
+        const audioBtn = document.createElement('button');
+        audioBtn.textContent = '🔊 Play call';
+        audioBtn.onclick = () => playBirdCall(d.species, audioBtn);
+        actions.appendChild(audioBtn);
+
+        document.body.style.overflow = 'hidden';
+        detailModal.classList.add('open');
+    }
+
+    // ── Nearby ZIP auto-detect on first visit ─────────────────
+    (function initNearbyZip() {
+        const saved = localStorage.getItem('bwai-nearby-zip');
+        const zipInput = document.getElementById('zip-filter');
+        // If user already has a zip saved and hasn't set a filter yet, pre-fill it
+        if (saved && !zipInput.value) {
+            zipInput.value = saved;
+            // Let the debounce handler pick it up naturally on first render
+        }
+        // On first-ever visit (no saved zip, no ?id= param), ask for location silently
+        if (!saved && !new URLSearchParams(location.search).get('id') && navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(async pos => {
+                try {
+                    const { latitude: lat, longitude: lng } = pos.coords;
+                    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
+                    const j = await r.json();
+                    const zip = j.address?.postcode?.split('-')[0];
+                    if (zip && /^\d{5}$/.test(zip)) {
+                        localStorage.setItem('bwai-nearby-zip', zip);
+                        if (!zipInput.value) { zipInput.value = zip; renderFeed(); if (currentView === 'map') renderMap(); }
+                    }
+                } catch {}
+            }, () => {}, { timeout: 6000 });
+        }
+    })();
 
     // ── Init ─────────────────────────────────────────────────
     loadFeed().then(handleSharedId);
