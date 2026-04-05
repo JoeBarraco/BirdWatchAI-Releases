@@ -1643,6 +1643,24 @@
         const visible = applyClientFilters(allDetections);
         const total   = visible.length;
 
+        // ── Month-over-month helpers ──────────────────────────
+        const now        = new Date();
+        const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+        const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
+        const lastMonthEnd   = thisMonthStart;
+
+        const thisMo = applyClientFilters(allDetections).filter(d => d.detected_at >= thisMonthStart);
+        const lastMo = applyClientFilters(allDetections).filter(d => d.detected_at >= lastMonthStart && d.detected_at < lastMonthEnd);
+
+        function momDelta(curr, prev) {
+            if (!prev) return '';
+            const pct = Math.round(((curr - prev) / prev) * 100);
+            if (pct === 0) return '';
+            const arrow = pct > 0 ? '↑' : '↓';
+            const color = pct > 0 ? '#2d5a3d' : '#c62828';
+            return `<span style="font-size:0.7rem;color:${color};display:block;margin-top:2px;">${arrow}${Math.abs(pct)}% vs last month</span>`;
+        }
+
         // ── Summary KPIs ─────────────────────────────────────
         const uniqueSpecies = new Set(visible.map(d => d.species).filter(Boolean));
         const uniqueZips    = new Set(visible.map(d => d.zip_code).filter(Boolean));
@@ -1651,15 +1669,22 @@
             ? (withTemp.reduce((s, d) => s + d.temperature, 0) / withTemp.length).toFixed(1)
             : null;
 
+        const thisTotal   = thisMo.length;
+        const lastTotal   = lastMo.length;
+        const thisSpecies = new Set(thisMo.map(d => d.species).filter(Boolean)).size;
+        const lastSpecies = new Set(lastMo.map(d => d.species).filter(Boolean)).size;
+
         document.getElementById('stats-summary').innerHTML = `
             <div class="stats-kpi-row">
                 <div class="stats-kpi">
                     <div class="stats-kpi-value" id="kpi-total">0</div>
                     <div class="stats-kpi-label">Total Detections</div>
+                    ${momDelta(thisTotal, lastTotal)}
                 </div>
                 <div class="stats-kpi">
                     <div class="stats-kpi-value" id="kpi-species">0</div>
                     <div class="stats-kpi-label">Species Seen</div>
+                    ${momDelta(thisSpecies, lastSpecies)}
                 </div>
                 <div class="stats-kpi">
                     <div class="stats-kpi-value" id="kpi-locations">0</div>
@@ -1679,7 +1704,6 @@
             const tempEl = document.getElementById('kpi-temp');
             if (tempEl) {
                 animateCount(tempEl, parseFloat(avgTemp));
-                tempEl.addEventListener('animationend', () => { tempEl.textContent = avgTemp + '°F'; }, { once: true });
                 setTimeout(() => { if (tempEl) tempEl.textContent = avgTemp + '°F'; }, 700);
             }
         }
@@ -1827,17 +1851,35 @@
         visible.forEach(d => {
             const name = d.feeders?.display_name;
             if (!name) return;
-            if (!feederStats[name]) feederStats[name] = { count: 0, species: new Set(), rareCount: 0 };
+            if (!feederStats[name]) feederStats[name] = { count: 0, species: new Set(), rareCount: 0, days: new Set() };
             feederStats[name].count++;
             if (d.species) feederStats[name].species.add(d.species);
             if (d.rarity === 'Rare' || d.rarity === 'Very Rare') feederStats[name].rareCount++;
+            feederStats[name].days.add(d.detected_at.slice(0, 10));
         });
+
+        function calcStreak(daysSet) {
+            const sorted = [...daysSet].sort().reverse();
+            if (!sorted.length) return 0;
+            const today     = new Date().toISOString().slice(0, 10);
+            const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+            if (sorted[0] !== today && sorted[0] !== yesterday) return 0;
+            let streak = 1;
+            for (let i = 1; i < sorted.length; i++) {
+                const diff = Math.round((new Date(sorted[i-1]) - new Date(sorted[i])) / 86400000);
+                if (diff === 1) streak++; else break;
+            }
+            return streak;
+        }
+
         const maxFeeder = Math.max(...Object.values(feederStats).map(f => f.count), 1);
         const leaderboard = Object.entries(feederStats)
-            .map(([name, data]) => ({ name, count: data.count, species: data.species.size, rareCount: data.rareCount }))
+            .map(([name, data]) => ({
+                name, count: data.count, species: data.species.size,
+                rareCount: data.rareCount, streak: calcStreak(data.days),
+            }))
             .sort((a, b) => b.count - a.count);
 
-        // Medal icons for top 3
         const medals = ['🥇', '🥈', '🥉'];
 
         document.getElementById('stats-leaderboard').innerHTML = leaderboard.length === 0
@@ -1845,7 +1887,7 @@
             : `<table class="stats-table">
                 <thead><tr>
                     <th>#</th><th>Feeder</th><th>Detections</th>
-                    <th>% of Total</th><th>Species</th><th>Rare / Very Rare</th>
+                    <th>% of Total</th><th>Species</th><th>Streak</th><th>Rare / Very Rare</th>
                 </tr></thead>
                 <tbody>${leaderboard.map((f, i) => `
                     <tr>
@@ -1857,6 +1899,7 @@
                             ${total > 0 ? ((f.count/total)*100).toFixed(1) : '0.0'}%
                         </td>
                         <td class="stats-count">${f.species}</td>
+                        <td class="stats-count">${f.streak > 0 ? `🔥 ${f.streak}d` : '—'}</td>
                         <td class="stats-count">${f.rareCount > 0 ? `<span style="color:#d32f2f;font-weight:600;">${f.rareCount}</span>` : '—'}</td>
                     </tr>`).join('')}
                 </tbody>
