@@ -2352,8 +2352,11 @@
         let card = document.querySelector(`.card[data-id="${id}"]`);
         if (card) { scrollToCard(card); return; }
 
+        showToast(`id=${id.slice(0,8)}… not in DOM (${allDetections.length} loaded)`);
+
         // 2. In allDetections but hidden by active filters — reset and re-render
         if (allDetections.find(x => String(x.id) === id)) {
+            showToast('found in data, re-rendering…');
             resetFiltersAndRender();
             card = document.querySelector(`.card[data-id="${id}"]`);
             if (card) { scrollToCard(card); return; }
@@ -2361,17 +2364,16 @@
 
         // 3. Not in the current batch — fetch just this one record
         try {
-            const res = await fetch(
-                `${SUPABASE_URL}/rest/v1/community_detections?select=*,feeders(display_name)&id=eq.${encodeURIComponent(id)}`,
-                { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` } }
-            );
+            const fetchUrl = `${SUPABASE_URL}/rest/v1/community_detections?select=*,feeders(display_name)&id=eq.${encodeURIComponent(id)}`;
+            const res = await fetch(fetchUrl, { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` } });
             const rows = await res.json();
-            if (!rows.length) { showToast('Detection not found'); return; }
+            showToast(`status:${res.status} rows:${Array.isArray(rows)?rows.length:JSON.stringify(rows).slice(0,40)}`);
+            if (!Array.isArray(rows) || !rows.length) { showToast('Detection not found'); return; }
             allDetections = [...rows, ...allDetections];
             resetFiltersAndRender();
             card = document.querySelector(`.card[data-id="${id}"]`);
             if (card) scrollToCard(card);
-        } catch (_) { /* silent */ }
+        } catch (e) { showToast('fetch error: ' + e.message); }
     }
 
     // ── Dark mode ────────────────────────────────────────────
