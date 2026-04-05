@@ -2146,7 +2146,7 @@
         }
         const shareBtn = e.target.closest('[data-share-id]');
         if (shareBtn) {
-            shareDetection(shareBtn.dataset.shareId);
+            shareDetection(shareBtn.dataset.shareId, shareBtn.closest('.card'));
         }
     });
 
@@ -2262,11 +2262,15 @@
     }
 
     // ── Shareable detection links ─────────────────────────────
-    function shareDetection(id) {
-        const url   = `${location.origin}${location.pathname}?id=${id}`;
-        const det   = allDetections.find(x => String(x.id) === String(id));
-        const title = det ? `${det.species} — BirdWatchAI` : 'BirdWatchAI Detection';
-        const text  = det ? `Check out this ${det.species} spotted${det.feeders?.display_name ? ' at ' + det.feeders.display_name : ''}!` : 'Check out this bird detection!';
+    function shareDetection(id, cardEl) {
+        const url     = `${location.origin}${location.pathname}?id=${id}`;
+        // Read from the card DOM directly — reliable even after auto-refresh replaces allDetections
+        const species = cardEl?.querySelector('.card-title')?.childNodes[0]?.textContent?.trim() || '';
+        const feeder  = cardEl?.querySelector('.card-feeder')?.textContent?.replace('📡','').trim() || '';
+        const title   = species ? `${species} — BirdWatchAI` : 'BirdWatchAI Detection';
+        const text    = species
+            ? `Check out this ${species}${feeder ? ' spotted at ' + feeder : ''}!`
+            : 'Check out this bird detection!';
 
         function promptFallback() {
             prompt('Copy this link:', url);
@@ -2352,11 +2356,8 @@
         let card = document.querySelector(`.card[data-id="${id}"]`);
         if (card) { scrollToCard(card); return; }
 
-        showToast(`id=${id.slice(0,8)}… not in DOM (${allDetections.length} loaded)`);
-
         // 2. In allDetections but hidden by active filters — reset and re-render
         if (allDetections.find(x => String(x.id) === id)) {
-            showToast('found in data, re-rendering…');
             resetFiltersAndRender();
             card = document.querySelector(`.card[data-id="${id}"]`);
             if (card) { scrollToCard(card); return; }
@@ -2364,10 +2365,11 @@
 
         // 3. Not in the current batch — fetch just this one record
         try {
-            const fetchUrl = `${SUPABASE_URL}/rest/v1/community_detections?select=*,feeders(display_name)&id=eq.${encodeURIComponent(id)}`;
-            const res = await fetch(fetchUrl, { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` } });
+            const res = await fetch(
+                `${SUPABASE_URL}/rest/v1/community_detections?select=*,feeders(display_name)&id=eq.${encodeURIComponent(id)}`,
+                { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` } }
+            );
             const rows = await res.json();
-            showToast(`status:${res.status} rows:${Array.isArray(rows)?rows.length:JSON.stringify(rows).slice(0,40)}`);
             if (!Array.isArray(rows) || !rows.length) { showToast('Detection not found'); return; }
             allDetections = [...rows, ...allDetections];
             resetFiltersAndRender();
