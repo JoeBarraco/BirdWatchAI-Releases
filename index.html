@@ -88,6 +88,22 @@
         </div>
     </section>
 
+    <!-- Recent Sightings Gallery -->
+    <section class="recent-sightings">
+        <div class="container">
+            <div class="section-header">
+                <h2>Live From the Community</h2>
+                <p>Real birds, real feeders — spotted by BirdWatchAI users right now.</p>
+            </div>
+            <div id="sightings-grid" class="sightings-grid">
+                <div class="sightings-loading">Loading recent sightings…</div>
+            </div>
+            <div style="text-align:center;margin-top:1.5rem;">
+                <a href="docs/community.html" class="btn btn-secondary">View Full Community Feed →</a>
+            </div>
+        </div>
+    </section>
+
     <!-- Features Section -->
     <section id="features" class="features">
         <div class="container">
@@ -440,5 +456,45 @@
     </footer>
 
     <script src="js/main.js"></script>
+    <script>
+    // ── Live recent sightings gallery ─────────────────────────
+    (async () => {
+        const SUPABASE_URL = 'https://lsamggztfizmkyljdgwq.supabase.co';
+        const ANON_KEY     = 'sb_publishable_-80LQjkx2s82XnURj2DfQQ_d7ARz3js';
+        const grid         = document.getElementById('sightings-grid');
+        try {
+            const url = `${SUPABASE_URL}/rest/v1/community_detections` +
+                `?select=id,species,rarity,detected_at,image_url,zip_code,feeders(display_name)` +
+                `&image_url=not.is.null&order=detected_at.desc&limit=12`;
+            const res  = await fetch(url, { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` } });
+            const data = await res.json();
+            if (!data.length) { grid.innerHTML = '<div class="sightings-loading">No recent sightings yet.</div>'; return; }
+
+            function esc(s) {
+                if (!s) return '';
+                return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+            }
+
+            grid.innerHTML = data.map(d => {
+                const rarityClass = d.rarity === 'Very Rare' ? 'sighting-rarity-very-rare'
+                                  : d.rarity === 'Rare'      ? 'sighting-rarity-rare' : '';
+                const meta = [
+                    d.rarity ? `<span class="${rarityClass}">${esc(d.rarity)}</span>` : null,
+                    d.feeders?.display_name ? esc(d.feeders.display_name) : (d.zip_code ? esc(d.zip_code) : null),
+                ].filter(Boolean).join(' · ');
+
+                return `<a class="sighting-card" href="docs/community.html?id=${d.id}" title="${esc(d.species)}">
+                    <img src="${esc(d.image_url)}" alt="${esc(d.species)}" loading="lazy">
+                    <div class="sighting-overlay">
+                        <span class="sighting-species">${esc(d.species)}</span>
+                        ${meta ? `<div class="sighting-meta">${meta}</div>` : ''}
+                    </div>
+                </a>`;
+            }).join('');
+        } catch {
+            grid.innerHTML = '<div class="sightings-loading">Could not load recent sightings.</div>';
+        }
+    })();
+    </script>
 </body>
 </html>
