@@ -2345,24 +2345,31 @@
     });
 
     // ── Bird call audio (xeno-canto) ─────────────────────────
-    const audioCache = {};   // species → { url, audio }
+    const audioCache = {};
     let currentAudio = null;
 
     async function playBirdCall(species, btn) {
         if (!species) return;
-        // Stop any currently playing audio
         if (currentAudio) { currentAudio.pause(); currentAudio.currentTime = 0; }
         document.querySelectorAll('.card-audio.playing').forEach(b => b.classList.remove('playing'));
 
         btn.classList.add('loading');
         try {
             if (!audioCache[species]) {
-                const q  = encodeURIComponent(species);
-                const res = await fetch(`https://xeno-canto.org/api/2/recordings?query=${q}&cnt=1`);
+                // xeno-canto API v2 — no extra filter params, just the species name query
+                const q   = encodeURIComponent(species);
+                const res = await fetch(`https://xeno-canto.org/api/2/recordings?query=${q}`);
+                if (!res.ok) throw new Error('HTTP ' + res.status);
                 const data = await res.json();
                 const rec  = data.recordings?.[0];
-                if (!rec) { showToast(`No call found for ${species}`); btn.classList.remove('loading'); return; }
-                audioCache[species] = 'https:' + rec.file;
+                if (!rec?.file) {
+                    // Fallback: open Macaulay Library search in new tab
+                    btn.classList.remove('loading');
+                    showToast('Opening bird call search…');
+                    window.open(`https://search.macaulaylibrary.org/catalog?taxonCode=&q=${encodeURIComponent(species)}&mediaType=a`, '_blank');
+                    return;
+                }
+                audioCache[species] = (rec.file.startsWith('http') ? '' : 'https:') + rec.file;
             }
             const audio = new Audio(audioCache[species]);
             currentAudio = audio;
@@ -2373,7 +2380,9 @@
             audio.addEventListener('error', () => { btn.classList.remove('playing', 'loading'); showToast('Could not load audio'); });
         } catch (_) {
             btn.classList.remove('loading', 'playing');
-            showToast('Could not fetch bird call');
+            // API unreachable — fall back to Macaulay Library search
+            showToast('Opening bird call search…');
+            window.open(`https://search.macaulaylibrary.org/catalog?q=${encodeURIComponent(species)}&mediaType=a`, '_blank');
         }
     }
 
