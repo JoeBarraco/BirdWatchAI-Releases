@@ -782,6 +782,152 @@
             50%       { background: #e8f5ee; }
         }
 
+        /* ── Bird call audio button ─────────────────────────── */
+        .card-audio {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 6px;
+            font-size: 12px;
+            color: var(--color-gray-500);
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-family: inherit;
+            padding: 0;
+            transition: color 0.15s;
+        }
+        .card-audio:hover { color: var(--color-primary); }
+        .card-audio.playing { color: var(--color-primary); }
+        .card-audio.loading { opacity: 0.6; cursor: wait; }
+
+        /* ── First-of-season badge ───────────────────────────── */
+        .badge-first-season {
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            color: white;
+            border-radius: 4px;
+            padding: 1px 5px;
+            margin-left: 4px;
+            vertical-align: middle;
+            letter-spacing: 0.02em;
+        }
+
+        /* ── Emoji reactions ─────────────────────────────────── */
+        .card-reactions {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+            margin-top: 6px;
+        }
+        .reaction-btn {
+            font-size: 13px;
+            padding: 2px 7px;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            background: var(--bg-input);
+            cursor: pointer;
+            transition: all 0.15s;
+            font-family: inherit;
+            color: var(--color-gray-700);
+            white-space: nowrap;
+        }
+        .reaction-btn:hover { border-color: var(--color-primary); background: var(--bg-card); }
+        .reaction-btn.reacted { border-color: var(--color-primary); background: rgba(45,90,61,0.08); font-weight: 600; }
+
+        /* ── Species photo carousel modal ────────────────────── */
+        #carousel-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.82);
+            z-index: 10000;
+            overflow-y: auto;
+            padding: 2rem 1rem;
+        }
+        #carousel-modal.open { display: flex; flex-direction: column; align-items: center; }
+        .carousel-header {
+            color: white;
+            font-size: 1.25rem;
+            font-family: var(--font-display);
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            width: 100%;
+            max-width: 900px;
+        }
+        .carousel-close {
+            margin-left: auto;
+            background: rgba(255,255,255,0.15);
+            border: none;
+            color: white;
+            font-size: 1.25rem;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .carousel-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            width: 100%;
+            max-width: 900px;
+        }
+        .carousel-grid img {
+            width: 100%;
+            aspect-ratio: 4/3;
+            object-fit: cover;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.15s;
+        }
+        .carousel-grid img:hover { transform: scale(1.03); }
+        .carousel-empty { color: rgba(255,255,255,0.6); margin-top: 2rem; font-size: 0.9rem; }
+
+        /* ── Species comparison panel ────────────────────────── */
+        .compare-selects {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+            align-items: center;
+        }
+        .compare-selects select { flex: 1; min-width: 140px; }
+        .compare-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+        .compare-table th, .compare-table td {
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border);
+            text-align: left;
+        }
+        .compare-table th { font-weight: 600; color: var(--color-gray-700); background: var(--bg-input); }
+        .compare-table td:first-child { color: var(--color-gray-500); font-size: 0.8rem; }
+        .compare-winner { color: var(--color-primary); font-weight: 700; }
+
+        /* ── Streak badge in leaderboard ─────────────────────── */
+        .streak-badge {
+            display: inline-block;
+            font-size: 11px;
+            background: #fff3cd;
+            color: #856404;
+            border-radius: 4px;
+            padding: 1px 6px;
+            margin-left: 6px;
+            font-weight: 600;
+        }
+        [data-theme="dark"] .streak-badge { background: #3d2e00; color: #ffc107; }
+
         /* ── Copy link button on cards ──────────────────────── */
         .card-share {
             display: inline-block;
@@ -1008,6 +1154,7 @@
             <button class="stats-tab" onclick="switchStatsTab('temperature', this)">🌡️ Temperature</button>
             <button class="stats-tab" onclick="switchStatsTab('leaderboard', this)">🏆 Leaderboard</button>
             <button class="stats-tab" onclick="switchStatsTab('trend', this)">📈 Trend</button>
+            <button class="stats-tab" onclick="switchStatsTab('compare', this)">⚖️ Compare</button>
         </div>
 
         <div id="stats-life-list"  class="stats-panel"></div>
@@ -1016,6 +1163,7 @@
         <div id="stats-temperature" class="stats-panel" style="display:none;"></div>
         <div id="stats-leaderboard" class="stats-panel" style="display:none;"></div>
         <div id="stats-trend"      class="stats-panel" style="display:none;"></div>
+        <div id="stats-compare"    class="stats-panel" style="display:none;"></div>
     </div>
 </div>
 
@@ -1027,6 +1175,15 @@
     <kbd>r</kbd> &nbsp;Refresh feed<br>
     <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> &nbsp;Switch Feed / Map / Stats<br>
     <kbd>Esc</kbd> &nbsp;Close lightbox / hints
+</div>
+
+<!-- Species photo carousel modal -->
+<div id="carousel-modal" role="dialog" aria-modal="true">
+    <div class="carousel-header">
+        <span id="carousel-title"></span>
+        <button class="carousel-close" id="carousel-close" aria-label="Close">✕</button>
+    </div>
+    <div class="carousel-grid" id="carousel-grid"></div>
 </div>
 
 <!-- Lightbox -->
@@ -1320,19 +1477,40 @@
             return;
         }
 
+        // Compute first-of-season species set (earliest detection per species this year)
+        const thisYear = new Date().getFullYear();
+        const firstOfSeason = new Set();
+        const earliestBySpecies = {};
+        allDetections.forEach(d => {
+            if (!d.species || !d.detected_at) return;
+            const yr = new Date(d.detected_at).getFullYear();
+            if (yr !== thisYear) return;
+            if (!earliestBySpecies[d.species] || d.detected_at < earliestBySpecies[d.species]) {
+                earliestBySpecies[d.species] = d.detected_at;
+            }
+        });
+        visible.forEach(d => {
+            if (d.detected_at && earliestBySpecies[d.species] === d.detected_at) {
+                firstOfSeason.add(d.id);
+            }
+        });
+
         document.getElementById('feed-view').innerHTML = visible.map((d, i) => {
             const rarityClass = d.rarity
                 ? 'rarity-' + d.rarity.toLowerCase().replace(/\s+/g, '-')
                 : '';
             const isNew = hasNew && i === 0;
+            const isFirst = firstOfSeason.has(d.id);
+            const reactions = getReactions(d.id);
 
             return `
             <div class="card${isNew ? ' new' : ''}" data-id="${d.id}">
-                ${d.image_url ? `<img src="${d.image_url}" alt="${esc(d.species)}" loading="lazy">` : ''}
+                ${d.image_url ? `<img src="${d.image_url}" alt="${esc(d.species)}" loading="lazy" data-carousel-species="${esc(d.species)}">` : ''}
                 <div class="card-body">
                     <div class="card-title">
-                        ${d.is_favorite ? '⭐ ' : ''}${esc(d.species)}${d.rarity
-                            ? ` <span class="${rarityClass}">· ${esc(d.rarity)}</span>` : ''}
+                        ${d.is_favorite ? '⭐ ' : ''}<span class="species-link" data-species="${esc(d.species)}" style="cursor:pointer;text-decoration:underline dotted;">${esc(d.species)}</span>${d.rarity
+                            ? ` <span class="${rarityClass}">· ${esc(d.rarity)}</span>` : ''}${isFirst
+                            ? ' <span class="badge-first-season">🌱 First of Season</span>' : ''}
                     </div>
                     <div class="card-meta">
                         🕐 ${fmtDetectedAt(d.detected_at)}${d.zip_code
@@ -1340,10 +1518,16 @@
                             ? ` · 🌡️ ${d.temperature}°F` : ''}
                     </div>
                     ${d.feeders?.display_name ? `<div class="card-feeder">📡 ${esc(d.feeders.display_name)}</div>` : ''}
+                    <div class="card-reactions">
+                        ${['😮','❤️','🎉','🦅'].map(emoji =>
+                            `<button class="reaction-btn${reactions[emoji] ? ' reacted' : ''}" data-reaction-id="${d.id}" data-emoji="${emoji}">${emoji} ${reactions[emoji] || ''}</button>`
+                        ).join('')}
+                    </div>
                     <div style="display:flex;align-items:center;flex-wrap:wrap;gap:0;">
                         ${d.video_url
                             ? `<a class="card-video" href="${d.video_url}" target="_blank" rel="noopener">🎬 Watch video</a>`
                             : ''}
+                        <button class="card-audio" data-audio-species="${esc(d.species)}" title="Play bird call">🔊 Call</button>
                         <button class="card-share" data-share-id="${d.id}" title="Copy link to this detection">🔗 Share</button>
                     </div>
                 </div>
@@ -1634,6 +1818,7 @@
         btn.classList.add('active');
         document.querySelectorAll('.stats-panel').forEach(p => p.style.display = 'none');
         document.getElementById('stats-' + tabName).style.display = '';
+        if (tabName === 'compare') renderCompare();
         if (tabName === 'trend') renderTrend();
     }
 
@@ -1905,7 +2090,7 @@
                             ${total > 0 ? ((f.count/total)*100).toFixed(1) : '0.0'}%
                         </td>
                         <td class="stats-count">${f.species}</td>
-                        <td class="stats-count">${f.streak > 0 ? `🔥 ${f.streak}d` : '—'}</td>
+                        <td class="stats-count">${f.streak >= 7 ? `🔥 ${f.streak}d <span class="streak-badge">HOT</span>` : f.streak > 0 ? `🔥 ${f.streak}d` : '—'}</td>
                         <td class="stats-count">${f.rareCount > 0 ? `<span style="color:#d32f2f;font-weight:600;">${f.rareCount}</span>` : '—'}</td>
                     </tr>`).join('')}
                 </tbody>
@@ -2138,17 +2323,179 @@
     lightboxImg.addEventListener('click', e => e.stopPropagation());
     document.getElementById('lightbox-close').addEventListener('click', closeLightbox);
 
-    // Delegate clicks on feed cards (images → lightbox, share btn → share)
+    // Delegate clicks on feed cards
     document.getElementById('feed-view').addEventListener('click', e => {
+        // Image → lightbox
         if (e.target.tagName === 'IMG' && e.target.closest('.card')) {
             openLightbox(e.target.src, e.target.alt);
             return;
         }
+        // Share button
         const shareBtn = e.target.closest('[data-share-id]');
-        if (shareBtn) {
-            shareDetection(shareBtn.dataset.shareId, shareBtn.closest('.card'));
-        }
+        if (shareBtn) { shareDetection(shareBtn.dataset.shareId, shareBtn.closest('.card')); return; }
+        // Audio button
+        const audioBtn = e.target.closest('[data-audio-species]');
+        if (audioBtn) { playBirdCall(audioBtn.dataset.audioSpecies, audioBtn); return; }
+        // Reaction button
+        const rxBtn = e.target.closest('[data-reaction-id]');
+        if (rxBtn) { toggleReaction(rxBtn.dataset.reactionId, rxBtn.dataset.emoji, rxBtn); return; }
+        // Species name → photo carousel
+        const speciesLink = e.target.closest('.species-link');
+        if (speciesLink) { openCarousel(speciesLink.dataset.species); return; }
     });
+
+    // ── Bird call audio (xeno-canto) ─────────────────────────
+    const audioCache = {};   // species → { url, audio }
+    let currentAudio = null;
+
+    async function playBirdCall(species, btn) {
+        if (!species) return;
+        // Stop any currently playing audio
+        if (currentAudio) { currentAudio.pause(); currentAudio.currentTime = 0; }
+        document.querySelectorAll('.card-audio.playing').forEach(b => b.classList.remove('playing'));
+
+        btn.classList.add('loading');
+        try {
+            if (!audioCache[species]) {
+                const q  = encodeURIComponent(species);
+                const res = await fetch(`https://xeno-canto.org/api/2/recordings?query=${q}&cnt=1`);
+                const data = await res.json();
+                const rec  = data.recordings?.[0];
+                if (!rec) { showToast(`No call found for ${species}`); btn.classList.remove('loading'); return; }
+                audioCache[species] = 'https:' + rec.file;
+            }
+            const audio = new Audio(audioCache[species]);
+            currentAudio = audio;
+            btn.classList.remove('loading');
+            btn.classList.add('playing');
+            audio.play();
+            audio.addEventListener('ended', () => { btn.classList.remove('playing'); currentAudio = null; });
+            audio.addEventListener('error', () => { btn.classList.remove('playing', 'loading'); showToast('Could not load audio'); });
+        } catch (_) {
+            btn.classList.remove('loading', 'playing');
+            showToast('Could not fetch bird call');
+        }
+    }
+
+    // ── Emoji reactions (localStorage) ───────────────────────
+    const REACTIONS_KEY = 'bwai-reactions';
+
+    function getAllReactions() {
+        try { return JSON.parse(localStorage.getItem(REACTIONS_KEY)) || {}; } catch { return {}; }
+    }
+
+    function getReactions(detectionId) {
+        const all = getAllReactions();
+        return all[detectionId] || {};
+    }
+
+    function toggleReaction(detectionId, emoji, btn) {
+        const all = getAllReactions();
+        if (!all[detectionId]) all[detectionId] = {};
+        const cur = all[detectionId][emoji] || 0;
+        if (btn.classList.contains('reacted')) {
+            // un-react
+            all[detectionId][emoji] = Math.max(0, cur - 1);
+            if (!all[detectionId][emoji]) delete all[detectionId][emoji];
+            btn.classList.remove('reacted');
+        } else {
+            all[detectionId][emoji] = cur + 1;
+            btn.classList.add('reacted');
+        }
+        localStorage.setItem(REACTIONS_KEY, JSON.stringify(all));
+        const count = all[detectionId]?.[emoji] || '';
+        btn.textContent = emoji + (count ? ' ' + count : '');
+    }
+
+    // ── Species photo carousel ────────────────────────────────
+    const carouselModal = document.getElementById('carousel-modal');
+    document.getElementById('carousel-close').addEventListener('click', () => carouselModal.classList.remove('open'));
+    carouselModal.addEventListener('click', e => { if (e.target === carouselModal) carouselModal.classList.remove('open'); });
+
+    function openCarousel(species) {
+        if (!species) return;
+        const photos = allDetections.filter(d => d.species === species && d.image_url);
+        document.getElementById('carousel-title').textContent = `📸 ${species} — ${photos.length} photo${photos.length !== 1 ? 's' : ''}`;
+        const grid = document.getElementById('carousel-grid');
+        if (!photos.length) {
+            grid.innerHTML = '<p class="carousel-empty">No photos found for this species.</p>';
+        } else {
+            grid.innerHTML = photos.map(d =>
+                `<img src="${d.image_url}" alt="${esc(d.species)}" loading="lazy" title="${fmtDetectedAt(d.detected_at)}">`
+            ).join('');
+            // Clicking a carousel photo opens the full lightbox
+            grid.querySelectorAll('img').forEach(img => img.addEventListener('click', () => {
+                carouselModal.classList.remove('open');
+                openLightbox(img.src, img.alt);
+            }));
+        }
+        carouselModal.classList.add('open');
+        document.body.style.overflow = 'hidden';
+        carouselModal.addEventListener('transitionend', () => {
+            if (!carouselModal.classList.contains('open')) document.body.style.overflow = '';
+        }, { once: true });
+    }
+
+    // ── Species comparison (Stats tab) ────────────────────────
+    function renderCompare() {
+        const species = [...new Set(allDetections.map(d => d.species).filter(Boolean))].sort();
+        const panel   = document.getElementById('stats-compare');
+        if (species.length < 2) {
+            panel.innerHTML = '<p style="color:var(--color-gray-500);padding:1rem;">Not enough species data to compare.</p>';
+            return;
+        }
+        const sel = (id, label, defaultIdx) => `
+            <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:140px;">
+                <label style="font-size:0.8rem;font-weight:600;color:var(--color-gray-500);">${label}</label>
+                <select id="${id}" class="filter-select" onchange="updateCompare()">
+                    ${species.map((s, i) => `<option value="${s}"${i === defaultIdx ? ' selected' : ''}>${s}</option>`).join('')}
+                </select>
+            </div>`;
+        panel.innerHTML = `
+            <div class="compare-selects">
+                ${sel('compare-a', 'Species A', 0)}
+                <div style="padding-top:20px;font-size:1.25rem;color:var(--color-gray-500);">⚖️</div>
+                ${sel('compare-b', 'Species B', 1)}
+            </div>
+            <div id="compare-result"></div>`;
+        updateCompare();
+    }
+
+    function updateCompare() {
+        const a = document.getElementById('compare-a')?.value;
+        const b = document.getElementById('compare-b')?.value;
+        if (!a || !b) return;
+        const statsFor = sp => {
+            const rows = allDetections.filter(d => d.species === sp);
+            const days = new Set(rows.map(d => d.detected_at?.slice(0, 10))).size;
+            const feeders = new Set(rows.map(d => d.feeders?.display_name).filter(Boolean)).size;
+            const temps = rows.map(d => d.temperature).filter(t => t != null);
+            const avgTemp = temps.length ? (temps.reduce((s, t) => s + t, 0) / temps.length).toFixed(1) : '—';
+            const hours = rows.map(d => new Date(d.detected_at).getHours());
+            const peakHour = hours.length ? hours.reduce((a, b, _, arr) => {
+                const freq = v => arr.filter(x => x === v).length;
+                return freq(a) >= freq(b) ? a : b;
+            }) : null;
+            const peakStr = peakHour !== null ? `${peakHour}:00–${peakHour + 1}:00` : '—';
+            return { count: rows.length, days, feeders, avgTemp, peakStr };
+        };
+        const sa = statsFor(a), sb = statsFor(b);
+        const win = (va, vb) => va > vb ? ['compare-winner', ''] : va < vb ? ['', 'compare-winner'] : ['', ''];
+        const [wa1, wb1] = win(sa.count, sb.count);
+        const [wa2, wb2] = win(sa.days, sb.days);
+        const [wa3, wb3] = win(sa.feeders, sb.feeders);
+        document.getElementById('compare-result').innerHTML = `
+            <table class="compare-table">
+                <thead><tr><th>Metric</th><th>${esc(a)}</th><th>${esc(b)}</th></tr></thead>
+                <tbody>
+                    <tr><td>Total detections</td><td class="${wa1}">${sa.count}</td><td class="${wb1}">${sb.count}</td></tr>
+                    <tr><td>Active days</td><td class="${wa2}">${sa.days}</td><td class="${wb2}">${sb.days}</td></tr>
+                    <tr><td>Feeders visited</td><td class="${wa3}">${sa.feeders}</td><td class="${wb3}">${sb.feeders}</td></tr>
+                    <tr><td>Avg temperature</td><td>${sa.avgTemp}${sa.avgTemp !== '—' ? '°F' : ''}</td><td>${sb.avgTemp}${sb.avgTemp !== '—' ? '°F' : ''}</td></tr>
+                    <tr><td>Peak hour</td><td>${sa.peakStr}</td><td>${sb.peakStr}</td></tr>
+                </tbody>
+            </table>`;
+    }
 
     // ── Helpers ──────────────────────────────────────────────
     function esc(str) {
