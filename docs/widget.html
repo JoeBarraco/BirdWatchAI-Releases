@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BirdWatchAI Widget</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #fff;
+    color: #2a2825;
+    font-size: 13px;
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+    body { background: #1a1e1b; color: #e8e4de; }
+    .card { background: #222822; border-color: #2e3830; }
+    .header { background: #1a2e22; border-bottom-color: #2e3830; }
+    .meta { color: #8a8580; }
+    .footer { background: #1a2e22; border-top-color: #2e3830; color: #6a8070; }
+}
+
+.header {
+    background: #2d5a3d;
+    color: white;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 13px;
+}
+.header .dot {
+    width: 8px; height: 8px;
+    background: #4ade80;
+    border-radius: 50%;
+    animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse {
+    0%, 100% { opacity: 1; } 50% { opacity: 0.4; }
+}
+
+.feed { overflow-y: auto; max-height: calc(100vh - 52px - 32px); }
+
+.card {
+    display: flex;
+    gap: 10px;
+    padding: 10px 12px;
+    border-bottom: 1px solid #e8e4de;
+    text-decoration: none;
+    color: inherit;
+    transition: background 0.12s;
+}
+.card:hover { background: #f5f3f0; }
+@media (prefers-color-scheme: dark) { .card:hover { background: #1e2820; } }
+
+.card img {
+    width: 52px;
+    height: 52px;
+    object-fit: cover;
+    border-radius: 6px;
+    flex-shrink: 0;
+}
+.card-placeholder {
+    width: 52px; height: 52px;
+    border-radius: 6px;
+    background: #e8e4de;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+}
+
+.card-body { flex: 1; min-width: 0; }
+.species { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rarity-badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    border-radius: 3px;
+    padding: 1px 4px;
+    margin-left: 4px;
+    vertical-align: middle;
+}
+.rarity-rare      { background: #fff3cd; color: #856404; }
+.rarity-very-rare { background: #fde8e8; color: #b71c1c; }
+.meta { font-size: 11px; color: #7a756d; margin-top: 2px; }
+
+.footer {
+    background: #f5f3f0;
+    border-top: 1px solid #e8e4de;
+    padding: 6px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.footer a { color: #2d5a3d; text-decoration: none; font-weight: 600; font-size: 11px; }
+.footer a:hover { text-decoration: underline; }
+.footer-brand { font-size: 10px; color: #9a958d; }
+
+.loading { padding: 20px; text-align: center; color: #9a958d; }
+</style>
+</head>
+<body>
+
+<div class="header">
+    <div class="dot"></div>
+    <span id="widget-title">Live Bird Detections</span>
+</div>
+
+<div class="feed" id="widget-feed">
+    <div class="loading">Loading…</div>
+</div>
+
+<div class="footer">
+    <a href="https://joebarraco.github.io/BirdWatchAI-Releases/docs/community.html" target="_blank">View full feed →</a>
+    <span class="footer-brand">BirdWatchAI</span>
+</div>
+
+<script>
+(async () => {
+    const SUPABASE_URL = 'https://lsamggztfizmkyljdgwq.supabase.co';
+    const ANON_KEY     = 'sb_publishable_-80LQjkx2s82XnURj2DfQQ_d7ARz3js';
+
+    // Read optional query params: ?feeder=MyFeeder&limit=8
+    const params  = new URLSearchParams(location.search);
+    const feeder  = params.get('feeder');
+    const limit   = Math.min(parseInt(params.get('limit') || '8', 10), 20);
+    const title   = params.get('title');
+
+    if (title) document.getElementById('widget-title').textContent = title;
+    else if (feeder) document.getElementById('widget-title').textContent = feeder + ' · Live';
+
+    function esc(s) { return s ? s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') : ''; }
+    function timeAgo(iso) {
+        const mins = Math.round((Date.now() - new Date(iso)) / 60000);
+        if (mins < 1)  return 'just now';
+        if (mins < 60) return mins + 'm ago';
+        const hrs = Math.round(mins / 60);
+        if (hrs < 24)  return hrs + 'h ago';
+        return Math.round(hrs / 24) + 'd ago';
+    }
+
+    async function loadWidget() {
+        const feed = document.getElementById('widget-feed');
+        try {
+            let url = `${SUPABASE_URL}/rest/v1/community_detections?select=id,species,rarity,detected_at,image_url,feeders(display_name)&order=detected_at.desc&limit=${limit}`;
+            if (feeder) url += `&feeders.display_name=eq.${encodeURIComponent(feeder)}`;
+            const res  = await fetch(url, { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` } });
+            const data = await res.json();
+            if (!Array.isArray(data) || !data.length) {
+                feed.innerHTML = '<div class="loading">No recent detections.</div>';
+                return;
+            }
+            feed.innerHTML = data.map(d => {
+                const rarityBadge = d.rarity === 'Very Rare' ? `<span class="rarity-badge rarity-very-rare">Very Rare</span>`
+                                  : d.rarity === 'Rare'      ? `<span class="rarity-badge rarity-rare">Rare</span>` : '';
+                const img = d.image_url
+                    ? `<img src="${esc(d.image_url)}" alt="${esc(d.species)}" loading="lazy">`
+                    : `<div class="card-placeholder">🐦</div>`;
+                const feederName = d.feeders?.display_name ? ` · ${esc(d.feeders.display_name)}` : '';
+                return `<a class="card" href="https://joebarraco.github.io/BirdWatchAI-Releases/docs/community.html?id=${d.id}" target="_blank">
+                    ${img}
+                    <div class="card-body">
+                        <div class="species">${esc(d.species)}${rarityBadge}</div>
+                        <div class="meta">${timeAgo(d.detected_at)}${feederName}</div>
+                    </div>
+                </a>`;
+            }).join('');
+        } catch {
+            feed.innerHTML = '<div class="loading">Could not load detections.</div>';
+        }
+    }
+
+    loadWidget();
+    setInterval(loadWidget, 60000);  // refresh every minute
+})();
+</script>
+</body>
+</html>
