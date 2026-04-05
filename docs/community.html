@@ -2322,19 +2322,44 @@
     }
 
     // Scroll to and highlight a shared detection on page load
-    function handleSharedId() {
+    async function handleSharedId() {
         const id = new URLSearchParams(location.search).get('id');
         if (!id) return;
-        // Try immediately, then retry once feed renders
-        const tryHighlight = () => {
-            const card = document.querySelector(`.card[data-id="${id}"]`);
-            if (card) {
-                card.classList.add('shared-highlight');
-                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-        };
-        setTimeout(tryHighlight, 800);
-        setTimeout(tryHighlight, 2000);
+
+        function scrollTo(card) {
+            card.classList.add('shared-highlight');
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        // 1. Already in the rendered DOM
+        let card = document.querySelector(`.card[data-id="${id}"]`);
+        if (card) { scrollTo(card); return; }
+
+        // 2. In allDetections but hidden by active filters — clear and re-render
+        if (allDetections.find(x => String(x.id) === id)) {
+            clearFilters();
+            setTimeout(() => {
+                card = document.querySelector(`.card[data-id="${id}"]`);
+                if (card) scrollTo(card);
+            }, 150);
+            return;
+        }
+
+        // 3. Not in the current batch — fetch just this one record directly
+        try {
+            const res = await fetch(
+                `${SUPABASE_URL}/rest/v1/community_detections?select=*,feeders(display_name)&id=eq.${encodeURIComponent(id)}`,
+                { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` } }
+            );
+            const rows = await res.json();
+            if (!rows.length) { showToast('Detection not found'); return; }
+            allDetections = [...rows, ...allDetections];
+            clearFilters();
+            setTimeout(() => {
+                card = document.querySelector(`.card[data-id="${id}"]`);
+                if (card) scrollTo(card);
+            }, 150);
+        } catch (_) { /* silent fail */ }
     }
 
     // ── Dark mode ────────────────────────────────────────────
