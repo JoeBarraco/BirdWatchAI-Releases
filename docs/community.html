@@ -2257,24 +2257,33 @@
 
     // ── Shareable detection links ─────────────────────────────
     function shareDetection(id) {
-        const url  = `${location.origin}${location.pathname}?id=${id}`;
-        const d    = allDetections.find(d => d.id === id);
-        const title = d ? `${d.species} detected on BirdWatchAI` : 'Bird detection on BirdWatchAI';
+        const url   = `${location.origin}${location.pathname}?id=${id}`;
+        const det   = allDetections.find(x => x.id === id);
+        const title = det ? `${det.species} — BirdWatchAI` : 'BirdWatchAI Detection';
+        const text  = det ? `Check out this ${det.species} spotted${det.feeders?.display_name ? ' at ' + det.feeders.display_name : ''}!` : 'Check out this bird detection!';
 
-        // Web Share API — native share sheet on iOS/Android
+        function clipboardFallback() {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(url)
+                    .then(() => showToast('Link copied!'))
+                    .catch(() => prompt('Copy this link:', url));
+            } else {
+                prompt('Copy this link:', url);
+            }
+        }
+
+        // Web Share API — native share sheet on iOS / Android
         if (navigator.share) {
-            navigator.share({ title, url }).catch(() => {});
+            navigator.share({ title, text, url })
+                .catch(err => {
+                    // AbortError = user dismissed the sheet — that's fine, do nothing
+                    // Anything else = fall through to clipboard
+                    if (err && err.name !== 'AbortError') clipboardFallback();
+                });
             return;
         }
-        // Clipboard API — desktop browsers on HTTPS
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(url)
-                .then(() => showToast('Link copied!'))
-                .catch(() => { prompt('Copy this link:', url); });
-            return;
-        }
-        // Last resort fallback
-        prompt('Copy this link:', url);
+
+        clipboardFallback();
     }
 
     function showToast(msg) {
