@@ -758,6 +758,40 @@
             100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
         }
 
+        /* ── Map marker pulse (newest detections) ───────────── */
+        @keyframes marker-pulse {
+            0%   { box-shadow: 0 0 0 0 rgba(255,255,255,0.8); }
+            70%  { box-shadow: 0 0 0 12px rgba(255,255,255,0); }
+            100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
+        }
+        .marker-new { animation: marker-pulse 1.2s ease-out 3; }
+
+        /* ── Shared detection highlight ─────────────────────── */
+        .card.shared-highlight {
+            outline: 3px solid var(--color-primary);
+            box-shadow: 0 0 0 6px rgba(45,90,61,0.15);
+            animation: shared-flash 1s ease-out 2;
+        }
+        @keyframes shared-flash {
+            0%, 100% { background: var(--bg-card); }
+            50%       { background: #e8f5ee; }
+        }
+
+        /* ── Copy link button on cards ──────────────────────── */
+        .card-share {
+            display: inline-block;
+            margin-top: 6px;
+            margin-left: 8px;
+            font-size: 12px;
+            color: var(--color-gray-500);
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-family: inherit;
+            padding: 0;
+        }
+        .card-share:hover { color: var(--color-primary); }
+
         /* ── Bird of the Day banner ─────────────────────────── */
         #botd-banner {
             display: none;
@@ -1287,7 +1321,7 @@
             const isNew = hasNew && i === 0;
 
             return `
-            <div class="card${isNew ? ' new' : ''}">
+            <div class="card${isNew ? ' new' : ''}" data-id="${d.id}">
                 ${d.image_url ? `<img src="${d.image_url}" alt="${esc(d.species)}" loading="lazy">` : ''}
                 <div class="card-body">
                     <div class="card-title">
@@ -1300,9 +1334,12 @@
                             ? ` · 🌡️ ${d.temperature}°F` : ''}
                     </div>
                     ${d.feeders?.display_name ? `<div class="card-feeder">📡 ${esc(d.feeders.display_name)}</div>` : ''}
-                    ${d.video_url
-                        ? `<a class="card-video" href="${d.video_url}" target="_blank" rel="noopener">🎬 Watch video</a>`
-                        : ''}
+                    <div style="display:flex;align-items:center;flex-wrap:wrap;gap:0;">
+                        ${d.video_url
+                            ? `<a class="card-video" href="${d.video_url}" target="_blank" rel="noopener">🎬 Watch video</a>`
+                            : ''}
+                        <button class="card-share" onclick="shareDetection(${d.id})" title="Copy link to this detection">🔗 Share</button>
+                    </div>
                 </div>
             </div>`;
         }).join('');
@@ -1362,11 +1399,11 @@
         return speciesColorMap[species];
     }
 
-    function makeIcon(color, count) {
+    function makeIcon(color, count, pulse = false) {
         const label = count > 99 ? '99+' : String(count);
         return L.divIcon({
             className: '',
-            html: `<div style="
+            html: `<div class="${pulse ? 'marker-new' : ''}" style="
                 background:${color};
                 width:32px;height:32px;border-radius:50%;
                 display:flex;align-items:center;justify-content:center;
@@ -1501,10 +1538,19 @@
                 // ── Pin layer ──────────────────────────────────────
                 markerGroup = L.layerGroup().addTo(map);
 
+                // Determine the newest detection's location key for pulse
+                const newestD   = visible.slice().sort((a,b) => new Date(b.detected_at) - new Date(a.detected_at))[0];
+                const newestKey = newestD
+                    ? (newestD.latitude != null
+                        ? `${(+newestD.latitude).toFixed(3)},${(+newestD.longitude).toFixed(3)}`
+                        : newestD.zip_code || '')
+                    : '';
+
                 // Slight offset when multiple species share the same lat/lng
                 const locOffset = {};
                 for (const e of entries) {
-                    const locKey = `${e.lat.toFixed(3)},${e.lng.toFixed(3)}`;
+                    const locKey  = `${e.lat.toFixed(3)},${e.lng.toFixed(3)}`;
+                    const isNewest = e.locKey === newestKey || locKey === newestKey;
                     if (!locOffset[locKey]) locOffset[locKey] = 0;
                     const idx    = locOffset[locKey]++;
                     const angle  = (idx * 137.5 * Math.PI) / 180; // golden angle spread
@@ -1513,7 +1559,7 @@
                     const lng    = e.lng + radius * Math.sin(angle);
 
                     const color  = speciesColor(e.species);
-                    const marker = L.marker([lat, lng], { icon: makeIcon(color, e.count) });
+                    const marker = L.marker([lat, lng], { icon: makeIcon(color, e.count, isNewest) });
 
                     const thumbs = e.images.slice(0, 6).map(url =>
                         `<img src="${url}" style="width:72px;height:54px;object-fit:cover;border-radius:4px;flex-shrink:0;" loading="lazy">`
@@ -2161,6 +2207,48 @@
         }
     }
 
+    // ── Shareable detection links ─────────────────────────────
+    function shareDetection(id) {
+        const url = `${location.origin}${location.pathname}?id=${id}`;
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(url).then(() => showToast('Link copied!'));
+        } else {
+            prompt('Copy this link:', url);
+        }
+    }
+
+    function showToast(msg) {
+        let t = document.getElementById('share-toast');
+        if (!t) {
+            t = document.createElement('div');
+            t.id = 'share-toast';
+            t.style.cssText = 'position:fixed;bottom:5rem;left:50%;transform:translateX(-50%);' +
+                'background:#2d5a3d;color:white;padding:8px 18px;border-radius:20px;font-size:0.875rem;' +
+                'z-index:9998;pointer-events:none;opacity:0;transition:opacity 0.2s;';
+            document.body.appendChild(t);
+        }
+        t.textContent = msg;
+        t.style.opacity = '1';
+        clearTimeout(t._timer);
+        t._timer = setTimeout(() => { t.style.opacity = '0'; }, 2000);
+    }
+
+    // Scroll to and highlight a shared detection on page load
+    function handleSharedId() {
+        const id = new URLSearchParams(location.search).get('id');
+        if (!id) return;
+        // Try immediately, then retry once feed renders
+        const tryHighlight = () => {
+            const card = document.querySelector(`.card[data-id="${id}"]`);
+            if (card) {
+                card.classList.add('shared-highlight');
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        };
+        setTimeout(tryHighlight, 800);
+        setTimeout(tryHighlight, 2000);
+    }
+
     // ── Dark mode ────────────────────────────────────────────
     (function initTheme() {
         const saved = localStorage.getItem('bwai-theme');
@@ -2272,7 +2360,7 @@
     });
 
     // ── Init ─────────────────────────────────────────────────
-    loadFeed();
+    loadFeed().then(handleSharedId);
 
     // Eagerly initialize the map off-screen so it's ready when the tab is clicked.
     // We temporarily make it visible (but off-screen) so Leaflet can measure it.
