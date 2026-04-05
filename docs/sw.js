@@ -1,7 +1,6 @@
 // BirdWatchAI Community Feed — Service Worker
-const CACHE   = 'bwai-v3';
+const CACHE   = 'bwai-v4';
 const PRECACHE = [
-    '/docs/community.html',
     'https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Source+Sans+3:wght@400;500;600&display=swap',
     'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
     'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
@@ -22,11 +21,10 @@ self.addEventListener('activate', e => {
     );
 });
 
-// Network-first for API calls, cache-first for static assets
 self.addEventListener('fetch', e => {
     const url = e.request.url;
 
-    // Always go network-first for Supabase data
+    // Always network-first for API calls
     if (url.includes('supabase.co') || url.includes('zippopotam') || url.includes('nominatim')) {
         e.respondWith(
             fetch(e.request).catch(() => new Response(JSON.stringify([]), {
@@ -36,7 +34,15 @@ self.addEventListener('fetch', e => {
         return;
     }
 
-    // Cache-first for everything else (HTML, fonts, Leaflet)
+    // Network-first for HTML — always get fresh markup
+    if (e.request.mode === 'navigate' || url.endsWith('.html')) {
+        e.respondWith(
+            fetch(e.request).catch(() => caches.match(e.request))
+        );
+        return;
+    }
+
+    // Cache-first for static assets (fonts, Leaflet JS/CSS)
     e.respondWith(
         caches.match(e.request).then(cached => {
             if (cached) return cached;
