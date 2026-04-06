@@ -1780,34 +1780,47 @@
             } else {
                 document.getElementById('countdown').textContent = 'Auto-refresh off';
             }
-            // Load remaining pages in background so dropdowns are complete
-            loadRemainingInBackground();
+            // Fetch all species/feeder names so dropdowns are complete
+            loadAllDropdownOptions();
         }
     }
 
-    // ── Background-load remaining pages (for complete dropdowns) ──
-    async function loadRemainingInBackground() {
-        if (feedExhausted) return;
+    // ── Load all species/feeder names for complete dropdowns ──
+    async function loadAllDropdownOptions() {
         const { period } = getFilters();
         const since = periodToISO(period);
-        while (!feedExhausted) {
-            let url = `${SUPABASE_URL}/rest/v1/community_detections?select=*,feeders(display_name)&limit=${PAGE_SIZE}&offset=${feedOffset}&order=detected_at.desc`;
-            if (since) url += `&detected_at=gte.${encodeURIComponent(since)}`;
-            try {
-                const res = await fetch(url, {
-                    headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` }
-                });
-                if (!res.ok) break;
-                const page = await res.json();
-                allDetections = [...allDetections, ...page];
-                feedOffset += page.length;
-                if (page.length < PAGE_SIZE) feedExhausted = true;
-                // Update dropdowns as new species arrive
-                populateFeederDropdown(allDetections);
-                populateFeedSpeciesDropdown(allDetections);
-                populateMapSpeciesDropdown(allDetections);
-            } catch (e) { break; }
-        }
+        let url = `${SUPABASE_URL}/rest/v1/community_detections?select=species,feeders(display_name)&order=species`;
+        if (since) url += `&detected_at=gte.${encodeURIComponent(since)}`;
+        try {
+            const res = await fetch(url, {
+                headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` }
+            });
+            if (!res.ok) return;
+            const rows = await res.json();
+            const species = [...new Set(rows.map(r => r.species).filter(Boolean))].sort();
+            const feeders = [...new Set(rows.map(r => r.feeders?.display_name).filter(Boolean))].sort();
+
+            // Update species dropdown
+            const specSel = document.getElementById('species-filter');
+            const prevSpec = selectedSpecies;
+            specSel.innerHTML = '<option value="">All species</option>' +
+                species.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+            if (species.includes(prevSpec)) specSel.value = prevSpec;
+
+            // Update map species dropdown
+            const mapSel = document.getElementById('map-species-filter');
+            const prevMap = mapSel.value;
+            mapSel.innerHTML = '<option value="">All species</option>' +
+                species.map(s => `<option value="${s}">${s}</option>`).join('');
+            if (species.includes(prevMap)) mapSel.value = prevMap;
+
+            // Update feeder dropdown
+            const feederSel = document.getElementById('feeder-filter');
+            const prevFeeder = feederSel.value;
+            feederSel.innerHTML = '<option value="">All feeders</option>' +
+                feeders.map(f => `<option value="${esc(f)}">${esc(f)}</option>`).join('');
+            if (feeders.includes(prevFeeder)) feederSel.value = prevFeeder;
+        } catch (e) { /* dropdowns stay populated from loaded data */ }
     }
 
     // ── Infinite scroll via IntersectionObserver ─────────────
@@ -2224,7 +2237,29 @@
     }
 
     async function loadAllThenRenderStats() {
-        await loadRemainingInBackground();
+        // Fetch all remaining pages so stats reflect complete data
+        if (!feedExhausted) {
+            const { period } = getFilters();
+            const since = periodToISO(period);
+            // Use a separate offset to avoid disrupting infinite scroll
+            let statsOffset = allDetections.length;
+            let done = false;
+            while (!done) {
+                let url = `${SUPABASE_URL}/rest/v1/community_detections?select=*,feeders(display_name)&limit=${PAGE_SIZE}&offset=${statsOffset}&order=detected_at.desc`;
+                if (since) url += `&detected_at=gte.${encodeURIComponent(since)}`;
+                try {
+                    const res = await fetch(url, {
+                        headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` }
+                    });
+                    if (!res.ok) break;
+                    const page = await res.json();
+                    allDetections = [...allDetections, ...page];
+                    statsOffset += page.length;
+                    feedOffset = statsOffset;
+                    if (page.length < PAGE_SIZE) { feedExhausted = true; done = true; }
+                } catch (e) { done = true; }
+            }
+        }
         renderStats();
     }
 
