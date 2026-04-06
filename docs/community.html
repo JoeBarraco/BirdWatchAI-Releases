@@ -2750,6 +2750,16 @@
         }
     });
 
+    // ── Scroll lock helpers (shared by all modals) ─────────
+    function lockScroll() {
+        document.body.style.overflow = 'hidden';
+        document.documentElement.style.overflow = 'hidden';
+    }
+    function unlockScroll() {
+        document.body.style.overflow = '';
+        document.documentElement.style.overflow = '';
+    }
+
     // ── Lightbox ─────────────────────────────────────────────
     const lightbox     = document.getElementById('lightbox');
     const lightboxImg  = document.getElementById('lightbox-img');
@@ -2758,11 +2768,11 @@
         lightboxImg.src = src;
         lightboxImg.alt = alt || '';
         lightbox.classList.add('open');
-        document.body.style.overflow = 'hidden';
+        lockScroll();
     }
     function closeLightbox() {
         lightbox.classList.remove('open');
-        document.body.style.overflow = '';
+        unlockScroll();
     }
 
     lightbox.addEventListener('click', closeLightbox);
@@ -2880,8 +2890,14 @@
 
     // ── Species photo carousel ────────────────────────────────
     const carouselModal = document.getElementById('carousel-modal');
-    document.getElementById('carousel-close').addEventListener('click', () => { carouselModal.classList.remove('open'); document.body.style.overflow = ''; });
-    carouselModal.addEventListener('click', e => { if (e.target === carouselModal) { carouselModal.classList.remove('open'); document.body.style.overflow = ''; } });
+
+    function closeCarousel() {
+        carouselModal.classList.remove('open');
+        unlockScroll();
+    }
+
+    document.getElementById('carousel-close').addEventListener('click', closeCarousel);
+    carouselModal.addEventListener('click', e => { if (e.target === carouselModal) closeCarousel(); });
 
     function openCarousel(species) {
         if (!species) return;
@@ -2896,13 +2912,12 @@
             ).join('');
             // Clicking a carousel photo opens the full lightbox
             grid.querySelectorAll('img').forEach(img => img.addEventListener('click', () => {
-                carouselModal.classList.remove('open');
-                document.body.style.overflow = '';
+                closeCarousel();
                 openLightbox(img.src, img.alt);
             }));
         }
         carouselModal.classList.add('open');
-        document.body.style.overflow = 'hidden';
+        lockScroll();
     }
 
     // ── Species comparison (Stats tab) ────────────────────────
@@ -3309,6 +3324,8 @@
 
         if (e.key === 'Escape') {
             closeLightbox();
+            closeCarousel();
+            closeDetailModal();
             kbdHintVisible = false;
             document.getElementById('kbd-hint').classList.remove('visible');
             return;
@@ -3331,12 +3348,15 @@
 
     // ── Detection detail modal ────────────────────────────────
     const detailModal = document.getElementById('detail-modal');
-    document.getElementById('detail-close').addEventListener('click', () => {
+
+    function closeDetailModal() {
         detailModal.classList.remove('open');
-        document.body.style.overflow = '';
-    });
+        unlockScroll();
+    }
+
+    document.getElementById('detail-close').addEventListener('click', closeDetailModal);
     detailModal.addEventListener('click', e => {
-        if (e.target === detailModal) { detailModal.classList.remove('open'); document.body.style.overflow = ''; }
+        if (e.target === detailModal) closeDetailModal();
     });
 
     function openDetailModal(id) {
@@ -3373,7 +3393,7 @@
         }
         const shareBtn = document.createElement('button');
         shareBtn.textContent = '🔗 Share';
-        shareBtn.onclick = () => { detailModal.classList.remove('open'); document.body.style.overflow = ''; shareDetection(d.id, null); };
+        shareBtn.onclick = () => { closeDetailModal(); shareDetection(d.id, null); };
         actions.appendChild(shareBtn);
         const audioBtn = document.createElement('button');
         audioBtn.textContent = '🔊 Play call';
@@ -3385,18 +3405,18 @@
             editBtn.textContent = '✏️ Edit';
             editBtn.style.borderColor = '#e67e22';
             editBtn.style.color = '#e67e22';
-            editBtn.onclick = () => { detailModal.classList.remove('open'); document.body.style.overflow = ''; openModEdit(d.id); };
+            editBtn.onclick = () => { closeDetailModal(); openModEdit(d.id); };
             actions.appendChild(editBtn);
 
             const delBtn = document.createElement('button');
             delBtn.textContent = '🗑️ Delete';
             delBtn.style.borderColor = '#e74c3c';
             delBtn.style.color = '#e74c3c';
-            delBtn.onclick = () => { detailModal.classList.remove('open'); document.body.style.overflow = ''; confirmModDelete(d.id); };
+            delBtn.onclick = () => { closeDetailModal(); confirmModDelete(d.id); };
             actions.appendChild(delBtn);
         }
 
-        document.body.style.overflow = 'hidden';
+        lockScroll();
         detailModal.classList.add('open');
     }
 

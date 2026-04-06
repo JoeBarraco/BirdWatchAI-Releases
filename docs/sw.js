@@ -1,5 +1,5 @@
 // BirdWatchAI Community Feed — Service Worker
-const CACHE        = 'bwai-v5';
+const CACHE        = 'bwai-v6';
 const FEED_CACHE   = 'bwai-feed-v1';   // separate cache for API responses
 const PRECACHE = [
     'https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Source+Sans+3:wght@400;500;600&display=swap',
