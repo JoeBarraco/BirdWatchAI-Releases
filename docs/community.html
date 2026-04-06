@@ -1636,7 +1636,18 @@
         refilter();
     }
 
-    function refilter() {
+    async function refilter() {
+        const hasFilter = selectedSpecies ||
+            document.getElementById('rarity-filter').value ||
+            document.getElementById('feeder-filter').value ||
+            document.getElementById('zip-filter').value.trim() ||
+            favoritesOnly;
+        if (hasFilter && !feedExhausted) {
+            // Load all data so filtered results are complete
+            document.getElementById('feed-view').innerHTML =
+                '<div class="feed-loading">Loading all detections…</div>';
+            await loadAllDetections();
+        }
         renderFeed();
         if (currentView === 'map')   renderMap();
         if (currentView === 'stats') renderStats();
@@ -2283,30 +2294,31 @@
         return (h - 12) + 'pm';
     }
 
-    async function loadAllThenRenderStats() {
-        // Fetch all remaining pages so stats reflect complete data
-        if (!feedExhausted) {
-            const { period } = getFilters();
-            const since = periodToISO(period);
-            // Use a separate offset to avoid disrupting infinite scroll
-            let statsOffset = allDetections.length;
-            let done = false;
-            while (!done) {
-                let url = `${SUPABASE_URL}/rest/v1/community_detections?select=*,feeders(display_name)&limit=${PAGE_SIZE}&offset=${statsOffset}&order=detected_at.desc`;
-                if (since) url += `&detected_at=gte.${encodeURIComponent(since)}`;
-                try {
-                    const res = await fetch(url, {
-                        headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` }
-                    });
-                    if (!res.ok) break;
-                    const page = await res.json();
-                    allDetections = [...allDetections, ...page];
-                    statsOffset += page.length;
-                    feedOffset = statsOffset;
-                    if (page.length < PAGE_SIZE) { feedExhausted = true; done = true; }
-                } catch (e) { done = true; }
-            }
+    async function loadAllDetections() {
+        if (feedExhausted) return;
+        const { period } = getFilters();
+        const since = periodToISO(period);
+        let offset = allDetections.length;
+        let done = false;
+        while (!done) {
+            let url = `${SUPABASE_URL}/rest/v1/community_detections?select=*,feeders(display_name)&limit=${PAGE_SIZE}&offset=${offset}&order=detected_at.desc`;
+            if (since) url += `&detected_at=gte.${encodeURIComponent(since)}`;
+            try {
+                const res = await fetch(url, {
+                    headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` }
+                });
+                if (!res.ok) break;
+                const page = await res.json();
+                allDetections = [...allDetections, ...page];
+                offset += page.length;
+                feedOffset = offset;
+                if (page.length < PAGE_SIZE) { feedExhausted = true; done = true; }
+            } catch (e) { done = true; }
         }
+    }
+
+    async function loadAllThenRenderStats() {
+        await loadAllDetections();
         renderStats();
     }
 
