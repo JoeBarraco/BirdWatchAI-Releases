@@ -3256,6 +3256,12 @@
             return;
         }
 
+        // Wire up reaction button clicks in the likes table
+        panel.onclick = (e) => {
+            const rxBtn = e.target.closest('[data-reaction-id]');
+            if (rxBtn) { toggleReaction(rxBtn.dataset.reactionId, rxBtn.dataset.emoji, rxBtn); return; }
+        };
+
         panel.innerHTML = `<table class="stats-table" style="table-layout:auto;">
             <thead><tr>
                 <th>#</th>
@@ -3278,6 +3284,10 @@
                 const videoBtn = r.d.video_url
                     ? `<a href="${r.d.video_url}" target="_blank" rel="noopener" title="Watch video" style="font-size:1.75rem;vertical-align:middle;text-decoration:none;">🎬</a>`
                     : '';
+                const rxBtn = (emoji, emojiKey, count) => {
+                    const reacted = isReacted(r.d.id, emoji);
+                    return `<button class="reaction-btn${reacted ? ' reacted' : ''}" data-reaction-id="${r.d.id}" data-emoji="${emoji}" style="font-size:0.85rem;padding:2px 6px;">${emoji}${count ? ' ' + count : ''}</button>`;
+                };
                 return `<tr>
                     <td class="stats-rank">${i + 1}</td>
                     <td class="stats-species-name" style="white-space:nowrap;">${esc(r.d.species || 'Unknown')}${r.d.rarity
@@ -3285,10 +3295,10 @@
                     <td style="white-space:nowrap;">${r.d.feeders?.display_name ? esc(r.d.feeders.display_name) : ''}</td>
                     <td>${r.d.zip_code ? esc(r.d.zip_code) : ''}</td>
                     <td style="white-space:nowrap;">${fmtDetectedAt(r.d.detected_at)}</td>
-                    <td style="text-align:center;">${r.wow || ''}</td>
-                    <td style="text-align:center;">${r.liked || ''}</td>
-                    <td style="text-align:center;">${r.celebrate || ''}</td>
-                    <td style="text-align:center;">${r.bird || ''}</td>
+                    <td style="text-align:center;">${rxBtn('😮', 'wow', r.wow)}</td>
+                    <td style="text-align:center;">${rxBtn('❤️', 'liked', r.liked)}</td>
+                    <td style="text-align:center;">${rxBtn('🎉', 'celebrate', r.celebrate)}</td>
+                    <td style="text-align:center;">${rxBtn('🦅', 'bird', r.bird)}</td>
                     <td style="text-align:center;font-weight:600;">${r.total}</td>
                     <td style="text-align:center;white-space:nowrap;">${photoBtn} ${videoBtn}</td>
                 </tr>`;
