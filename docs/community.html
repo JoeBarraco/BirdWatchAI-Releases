@@ -1536,8 +1536,12 @@
             renderBirdOfTheDay(allDetections);
             // Confetti for brand-new Very Rare detections (even without notifications)
             if (hadDetections && prevTop !== allDetections[0]?.id) {
-                const newVeryRare = allDetections.find(d => d.id !== prevTop && d.rarity === 'Very Rare');
-                if (newVeryRare) launchConfetti();
+                const newVeryRare = allDetections.find(d => d.id !== prevTop && d.rarity === 'Very Rare' && !seenRareIds.has(d.id));
+                if (newVeryRare) {
+                    seenRareIds.add(newVeryRare.id);
+                    localStorage.setItem('bwai-seen-rare', JSON.stringify([...seenRareIds]));
+                    launchConfetti();
+                }
             }
             if (hadDetections) playChime();
 
@@ -2507,8 +2511,7 @@
                 const rec  = data.recordings?.[0];
                 if (!rec?.file) {
                     btn.classList.remove('loading');
-                    showToast('Opening bird call search…');
-                    window.open(`https://search.macaulaylibrary.org/catalog?q=${encodeURIComponent(species)}&mediaType=a`, '_blank');
+                    showToast('No audio available for this species');
                     return;
                 }
                 audioCache[species] = (rec.file.startsWith('http') ? '' : 'https:') + rec.file;
@@ -2524,8 +2527,7 @@
         } catch (_) {
             btn.classList.remove('loading', 'playing');
             btn.textContent = '🔊 Call';
-            showToast('Opening bird call search…');
-            window.open(`https://search.macaulaylibrary.org/catalog?q=${encodeURIComponent(species)}&mediaType=a`, '_blank');
+            showToast('Could not load bird call audio');
         }
     }
 
@@ -2664,7 +2666,7 @@
 
     // ── Push notifications for rare birds ────────────────────
     let notificationsEnabled = false;
-    const seenRareIds = new Set();   // track which rare detections we've already notified
+    const seenRareIds = new Set(JSON.parse(localStorage.getItem('bwai-seen-rare') || '[]'));
 
     function updateNotifBtn() {
         const btn = document.getElementById('notif-toggle');
@@ -2714,6 +2716,7 @@
         );
         rare.forEach(d => {
             seenRareIds.add(d.id);
+            localStorage.setItem('bwai-seen-rare', JSON.stringify([...seenRareIds]));
             if (d.rarity === 'Very Rare') launchConfetti();
             const notif = new Notification(`${d.rarity} bird detected! 🐦`, {
                 body: `${d.species}${d.feeders?.display_name ? ' at ' + d.feeders.display_name : ''}${d.zip_code ? ' (' + d.zip_code + ')' : ''}`,
@@ -3076,10 +3079,11 @@
     (function initNearbyZip() {
         const saved = localStorage.getItem('bwai-nearby-zip');
         const zipInput = document.getElementById('zip-filter');
-        // If user already has a zip saved and hasn't set a filter yet, pre-fill it
-        if (saved && !zipInput.value) {
+        // Only auto-fill the zip on the very first tab/session load, not on every refresh
+        const alreadyLoaded = sessionStorage.getItem('bwai-zip-loaded');
+        if (saved && !zipInput.value && !alreadyLoaded) {
             zipInput.value = saved;
-            // Let the debounce handler pick it up naturally on first render
+            sessionStorage.setItem('bwai-zip-loaded', '1');
         }
         // On first-ever visit (no saved zip, no ?id= param), ask for location silently
         if (!saved && !new URLSearchParams(location.search).get('id') && navigator.geolocation) {
@@ -3091,6 +3095,7 @@
                     const zip = j.address?.postcode?.split('-')[0];
                     if (zip && /^\d{5}$/.test(zip)) {
                         localStorage.setItem('bwai-nearby-zip', zip);
+                        sessionStorage.setItem('bwai-zip-loaded', '1');
                         if (!zipInput.value) { zipInput.value = zip; renderFeed(); if (currentView === 'map') renderMap(); }
                     }
                 } catch {}
