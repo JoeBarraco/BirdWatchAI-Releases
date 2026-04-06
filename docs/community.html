@@ -76,6 +76,68 @@
             transition: background 0.25s, color 0.25s;
         }
 
+        /* ── Top navbar ─────────────────────────────────── */
+        .top-navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 48px;
+            background: var(--color-primary);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1.25rem;
+            z-index: 9000;
+            font-size: 0.85rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+        .top-navbar a { color: #fff; text-decoration: none; }
+        .top-navbar a:hover { text-decoration: underline; }
+        .top-navbar .navbar-left {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-weight: 600;
+        }
+        .top-navbar .navbar-right {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .top-navbar .navbar-user {
+            font-size: 0.8rem;
+            opacity: 0.9;
+            margin-right: 0.25rem;
+        }
+        .navbar-btn {
+            font-family: inherit;
+            font-size: 0.8rem;
+            padding: 4px 12px;
+            border: 1px solid rgba(255,255,255,0.4);
+            border-radius: 4px;
+            background: transparent;
+            color: #fff;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background 0.15s;
+        }
+        .navbar-btn:hover { background: rgba(255,255,255,0.15); }
+        .navbar-btn.navbar-btn-danger {
+            background: #e74c3c;
+            border-color: #e74c3c;
+        }
+        .navbar-btn.navbar-btn-danger:hover { background: #c0392b; }
+
+        body { padding-top: 56px; }
+
+        @media (max-width: 640px) {
+            .top-navbar { padding: 0 0.75rem; font-size: 0.78rem; }
+            .navbar-btn { font-size: 0.72rem; padding: 3px 8px; }
+            .top-navbar .navbar-user { display: none; }
+        }
+
         .container {
             max-width: 1600px;
             margin: 0 auto;
@@ -1237,8 +1299,23 @@
     </style>
 </head>
 <body>
+<!-- Top navbar with auth controls -->
+<nav class="top-navbar">
+    <div class="navbar-left">
+        <a href="../index.html">← BirdWatchAI</a>
+        <span>|</span>
+        <span>Community Feed</span>
+    </div>
+    <div class="navbar-right">
+        <span id="navbar-user" class="navbar-user" style="display:none;"></span>
+        <button id="navbar-login-btn" class="navbar-btn" onclick="toggleModLogin()" title="Moderator login">🔒 Login</button>
+        <button id="navbar-logout-btn" class="navbar-btn navbar-btn-danger" onclick="toggleModLogin()" title="Log out" style="display:none;">Logout</button>
+        <button id="navbar-changepw-btn" class="navbar-btn" onclick="showChangePassword()" title="Change password" style="display:none;">🔑 Password</button>
+        <button id="navbar-admin-btn" class="navbar-btn" onclick="openAdminPanel()" title="Manage moderators" style="display:none;">👥 Moderators</button>
+    </div>
+</nav>
+
 <div class="container">
-    <a href="../index.html" class="back-link">← Back to BirdWatchAI</a>
 
     <h1>🐦 Community Feed</h1>
     <p class="page-subtitle">Live bird detections shared by BirdWatchAI users around the world.</p>
@@ -1333,9 +1410,6 @@
             <button id="notif-toggle" class="refresh-btn" style="background:var(--color-gray-500);" onclick="toggleNotifications()" title="Rare bird alerts">🔔</button>
             <button class="refresh-btn" style="background:var(--color-gray-500);" onclick="exportCSV()" title="Download CSV">⬇ CSV</button>
             <button class="refresh-btn" style="background:var(--color-gray-500);" onclick="toggleKbdHint()" title="Keyboard shortcuts">⌨</button>
-            <button id="mod-toggle" class="refresh-btn" style="background:var(--color-gray-500);" onclick="toggleModLogin()" title="Moderator login">🔒</button>
-            <button id="mod-changepw-btn" class="refresh-btn" style="background:var(--color-gray-500);display:none;" onclick="showChangePassword()" title="Change password">🔑</button>
-            <button id="mod-admin-btn" class="refresh-btn" style="background:#e74c3c;display:none;" onclick="openAdminPanel()" title="Manage moderators">👥</button>
         </div>
     </div>
 
@@ -3375,10 +3449,23 @@
     function updateModUI() {
         const loggedIn = isModLoggedIn();
         const admin = isAdmin();
-        document.getElementById('mod-toggle').textContent = loggedIn ? '🔓' : '🔒';
-        document.getElementById('mod-toggle').style.background = loggedIn ? '#e74c3c' : 'var(--color-gray-500)';
-        document.getElementById('mod-changepw-btn').style.display = loggedIn ? '' : 'none';
-        document.getElementById('mod-admin-btn').style.display = admin ? '' : 'none';
+        // Navbar auth buttons
+        document.getElementById('navbar-login-btn').style.display = loggedIn ? 'none' : '';
+        document.getElementById('navbar-logout-btn').style.display = loggedIn ? '' : 'none';
+        document.getElementById('navbar-changepw-btn').style.display = loggedIn ? '' : 'none';
+        document.getElementById('navbar-admin-btn').style.display = (loggedIn && admin) ? '' : 'none';
+        // Show logged-in user
+        const userEl = document.getElementById('navbar-user');
+        if (loggedIn) {
+            const email = sessionStorage.getItem('bwai-mod-user');
+            const role = sessionStorage.getItem('bwai-mod-role');
+            const label = role === 'admin' ? 'Admin' : 'Moderator';
+            userEl.textContent = `${label}: ${email}`;
+            userEl.style.display = '';
+        } else {
+            userEl.style.display = 'none';
+            userEl.textContent = '';
+        }
     }
 
     function toggleModLogin() {
@@ -3427,7 +3514,7 @@
             sessionStorage.setItem('bwai-mod-role', data.role);
             updateModUI();
             closeModLogin();
-            showToast(`Logged in as ${data.role}`);
+            showToast(`Logged in as ${data.role}: ${email}`);
             renderFeed();
 
             // Force password change if using a temporary password
