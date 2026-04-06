@@ -1832,9 +1832,14 @@
             populateFeedSpeciesDropdown(allDetections);
             populateMapSpeciesDropdown(allDetections);
 
-            // If sorting by most liked, load all detections and reaction data before rendering
+            // If active filters or sorting by most liked, load all detections so results are complete
             const sortOrder = document.getElementById('sort-filter')?.value || 'recent';
-            if (!append && sortOrder === 'liked' && !feedExhausted) {
+            const hasActiveFilter = selectedSpecies ||
+                document.getElementById('rarity-filter').value ||
+                document.getElementById('feeder-filter').value ||
+                document.getElementById('zip-filter').value.trim() ||
+                favoritesOnly;
+            if (!append && !feedExhausted && (sortOrder === 'liked' || hasActiveFilter)) {
                 await loadAllDetections();
             }
 
@@ -1983,9 +1988,9 @@
             species.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
         if (species.includes(prev)) {
             sel.value = prev;
-        } else {
-            selectedSpecies = '';
         }
+        // Don't clear selectedSpecies — full dropdown options load later
+        // and the filter should persist across refreshes
     }
 
     // ── Map species dropdown ─────────────────────────────────
