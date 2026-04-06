@@ -1328,7 +1328,7 @@
             <div id="botd-species" class="botd-species"></div>
             <div id="botd-meta"    class="botd-meta"></div>
         </div>
-        <button class="botd-close" onclick="document.getElementById('botd-banner').classList.remove('visible')" title="Dismiss">✕</button>
+        <button class="botd-close" onclick="dismissBotd()" title="Dismiss">✕</button>
     </div>
 
     <!-- Filter bar -->
@@ -1400,11 +1400,18 @@
     <div id="status-bar">
         <div class="status-info">
             <span id="refresh-indicator"></span>
-            <span id="countdown">Refreshing in 30s</span>
+            <span id="countdown"></span>
             <span id="feed-count"></span>
         </div>
         <div class="status-btns">
             <button class="refresh-btn" onclick="loadFeed()">↺ Refresh</button>
+            <select id="refresh-interval" class="refresh-btn" style="background:var(--color-gray-500);cursor:pointer;padding:2px 6px;" onchange="changeRefreshInterval(this.value)" title="Auto-refresh interval">
+                <option value="0">Auto: Off</option>
+                <option value="15">Auto: 15s</option>
+                <option value="30" selected>Auto: 30s</option>
+                <option value="60">Auto: 60s</option>
+                <option value="300">Auto: 5m</option>
+            </select>
             <button id="theme-toggle" class="refresh-btn" style="background:var(--color-gray-500);" onclick="toggleTheme()" title="Toggle dark mode">🌙</button>
             <button id="sound-toggle" class="refresh-btn" style="background:var(--color-gray-500);" onclick="toggleSound()" title="Toggle sound">🔇</button>
             <button id="notif-toggle" class="refresh-btn" style="background:var(--color-gray-500);" onclick="toggleNotifications()" title="Rare bird alerts">🔔</button>
@@ -1602,10 +1609,10 @@
 <script>
     const SUPABASE_URL = 'https://lsamggztfizmkyljdgwq.supabase.co';
     const ANON_KEY     = 'sb_publishable_-80LQjkx2s82XnURj2DfQQ_d7ARz3js';
-    const REFRESH_SECS = 30;
+    let REFRESH_SECS = parseInt(localStorage.getItem('bwai-refresh-interval') ?? '30', 10);
 
 
-    let countdown      = REFRESH_SECS;
+    let countdown      = REFRESH_SECS || 30;
     let tabHiddenAt    = null;   // timestamp when tab was hidden
     let lastTopId      = null;
     let allDetections  = [];   // raw data from server
@@ -1862,7 +1869,11 @@
         feedLoading = false;
         if (!append) {
             indicator.classList.remove('refreshing');
-            countdown = REFRESH_SECS;
+            if (REFRESH_SECS > 0) {
+                countdown = REFRESH_SECS;
+            } else {
+                document.getElementById('countdown').textContent = 'Auto-refresh off';
+            }
         }
     }
 
@@ -2251,7 +2262,7 @@
                 renderMap();
             }));
         } else if (view === 'stats') {
-            renderStats();
+            loadAllThenRenderStats();
         }
     }
 
@@ -2273,6 +2284,30 @@
         if (h < 12)   return h + 'am';
         if (h === 12) return '12pm';
         return (h - 12) + 'pm';
+    }
+
+    async function loadAllThenRenderStats() {
+        if (!feedExhausted && !feedLoading) {
+            // Fetch remaining pages so stats reflect all detections
+            const { period } = getFilters();
+            const since = periodToISO(period);
+            let loading = true;
+            while (loading) {
+                let url = `${SUPABASE_URL}/rest/v1/community_detections?select=*,feeders(display_name)&limit=${PAGE_SIZE}&offset=${feedOffset}&order=detected_at.desc`;
+                if (since) url += `&detected_at=gte.${encodeURIComponent(since)}`;
+                try {
+                    const res = await fetch(url, {
+                        headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` }
+                    });
+                    if (!res.ok) break;
+                    const page = await res.json();
+                    allDetections = [...allDetections, ...page];
+                    feedOffset += page.length;
+                    if (page.length < PAGE_SIZE) { feedExhausted = true; loading = false; }
+                } catch (e) { loading = false; }
+            }
+        }
+        renderStats();
     }
 
     function renderStats() {
@@ -2729,8 +2764,36 @@
     }
 
     // ── Auto-refresh ─────────────────────────────────────────
+    function changeRefreshInterval(val) {
+        REFRESH_SECS = parseInt(val, 10);
+        localStorage.setItem('bwai-refresh-interval', REFRESH_SECS);
+        if (REFRESH_SECS > 0) {
+            countdown = REFRESH_SECS;
+            document.getElementById('countdown').textContent = `Refreshing in ${countdown}s`;
+        } else {
+            document.getElementById('countdown').textContent = 'Auto-refresh off';
+        }
+    }
+
+    // Restore saved interval on load
+    (function initRefreshSelect() {
+        const sel = document.getElementById('refresh-interval');
+        if (sel) {
+            const saved = String(REFRESH_SECS);
+            const opt = sel.querySelector(`option[value="${saved}"]`);
+            if (opt) { sel.value = saved; }
+        }
+        const cdEl = document.getElementById('countdown');
+        if (REFRESH_SECS === 0) {
+            cdEl.textContent = 'Auto-refresh off';
+        } else {
+            cdEl.textContent = `Refreshing in ${countdown}s`;
+        }
+    })();
+
     setInterval(() => {
-        if (document.hidden) return;   // don't tick while tab is hidden
+        if (REFRESH_SECS === 0) return;  // auto-refresh disabled
+        if (document.hidden) return;     // don't tick while tab is hidden
         countdown--;
         if (countdown <= 0) {
             loadFeed();
@@ -2744,7 +2807,7 @@
         if (!document.hidden && tabHiddenAt !== null) {
             const secondsAway = (Date.now() - tabHiddenAt) / 1000;
             tabHiddenAt = null;
-            if (secondsAway >= REFRESH_SECS) loadFeed();
+            if (REFRESH_SECS > 0 && secondsAway >= REFRESH_SECS) loadFeed();
         } else if (document.hidden) {
             tabHiddenAt = Date.now();
         }
@@ -3249,9 +3312,19 @@
     });
 
     // ── Bird of the Day ──────────────────────────────────────
+    function dismissBotd() {
+        const today = new Date().toISOString().slice(0, 10);
+        localStorage.setItem('bwai-botd-dismissed', today);
+        document.getElementById('botd-banner').classList.remove('visible');
+    }
+
     function renderBirdOfTheDay(detections) {
         // Pick today's rarest detection (Very Rare > Rare > most-detected species)
         const today  = new Date().toISOString().slice(0, 10);
+
+        // Don't re-show if user already dismissed today
+        if (localStorage.getItem('bwai-botd-dismissed') === today) return;
+
         const todays = detections.filter(d => d.detected_at.slice(0, 10) === today);
         if (!todays.length) return;
 
