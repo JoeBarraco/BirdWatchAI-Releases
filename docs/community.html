@@ -2350,6 +2350,9 @@
         document.getElementById('map-view').style.display    = view === 'map'   ? 'block' : 'none';
         document.getElementById('stats-view').style.display  = view === 'stats' ? 'block' : 'none';
 
+        // Stop likes polling when leaving stats view
+        if (view !== 'stats') stopLikesPoll();
+
         if (view === 'map') {
             // Double rAF: wait for the browser to actually paint the div
             // before Leaflet measures its dimensions
@@ -2366,6 +2369,24 @@
     // ── Stats ────────────────────────────────────────────────
     let activeStatsTab = 'life-list';
 
+    function stopLikesPoll() {
+        clearInterval(likesPollInterval);
+        likesPollInterval = null;
+        clearTimeout(likesResortTimer);
+        likesResortTimer = null;
+    }
+
+    function startLikesPoll() {
+        stopLikesPoll();
+        likesPollInterval = setInterval(() => {
+            // Don't poll if user just clicked (debounce timer is active)
+            if (likesResortTimer) return;
+            // Don't poll if tab is hidden
+            if (document.hidden) return;
+            resortLikesPanel();
+        }, 3000);
+    }
+
     function switchStatsTab(tabName, btn) {
         activeStatsTab = tabName;
         document.querySelectorAll('.stats-tab').forEach(t => t.classList.remove('active'));
@@ -2374,7 +2395,11 @@
         document.getElementById('stats-' + tabName).style.display = '';
         if (tabName === 'compare') renderCompare();
         if (tabName === 'trend') renderTrend();
-        if (tabName === 'likes') renderLikesPanel();
+        if (tabName === 'likes') {
+            renderLikesPanel().then(() => startLikesPoll());
+        } else {
+            stopLikesPoll();
+        }
     }
 
     function fmtHour(h) {
@@ -3254,6 +3279,7 @@
 
     // ── Liked Detections (Stats tab) ─────────────────────────
     let likesResortTimer = null;
+    let likesPollInterval = null;
 
     function buildLikesRows() {
         const visible = applyClientFilters(allDetections);
