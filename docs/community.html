@@ -3256,10 +3256,29 @@
             return;
         }
 
-        // Wire up reaction button clicks in the likes table
+        // Wire up reaction button clicks in the likes table.
+        // Update the total cell in-place on click, then debounce a full
+        // re-sort/re-render so rows don't jump while the user is clicking.
+        let likesResortTimer = null;
         panel.onclick = (e) => {
             const rxBtn = e.target.closest('[data-reaction-id]');
-            if (rxBtn) { toggleReaction(rxBtn.dataset.reactionId, rxBtn.dataset.emoji, rxBtn); return; }
+            if (!rxBtn) return;
+            toggleReaction(rxBtn.dataset.reactionId, rxBtn.dataset.emoji, rxBtn);
+            // Update the total cell in the same row immediately
+            const row = rxBtn.closest('tr');
+            if (row) {
+                const countCells = row.querySelectorAll('[data-reaction-id]');
+                let total = 0;
+                countCells.forEach(btn => {
+                    const txt = btn.textContent.replace(/[^\d]/g, '');
+                    total += parseInt(txt, 10) || 0;
+                });
+                const totalCell = row.querySelector('.likes-total');
+                if (totalCell) totalCell.textContent = total;
+            }
+            // Debounce full re-render (re-sort) after 3 seconds of inactivity
+            clearTimeout(likesResortTimer);
+            likesResortTimer = setTimeout(() => renderLikesPanel(), 3000);
         };
 
         panel.innerHTML = `<table class="stats-table" style="table-layout:auto;">
@@ -3299,7 +3318,7 @@
                     <td style="text-align:center;">${rxBtn('❤️', 'liked', r.liked)}</td>
                     <td style="text-align:center;">${rxBtn('🎉', 'celebrate', r.celebrate)}</td>
                     <td style="text-align:center;">${rxBtn('🦅', 'bird', r.bird)}</td>
-                    <td style="text-align:center;font-weight:600;">${r.total}</td>
+                    <td class="likes-total" style="text-align:center;font-weight:600;">${r.total}</td>
                     <td style="text-align:center;white-space:nowrap;">${photoBtn} ${videoBtn}</td>
                 </tr>`;
             }).join('')}
