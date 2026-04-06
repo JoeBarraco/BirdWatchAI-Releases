@@ -10,5 +10,6 @@ TO DO LIST
 - ~~When the refresh occurs, it brings the bird of the day back if I dismissed it.~~ DONE
 - ~~Would like to be able to disable auto refresh, or adjust the refresh frequency.~~ DONE
 - ~~Would like to allow users to like detections, then be able to sort by most liked. Currently I dont think the likes are seen by others.~~ DONE
+- Favorited detection uploads should translate to "Liked" by the uploaded
 - Need to provide some photos of the bird feeder (both types) so we can price "The full nest" option. I am thinking the Full Nest should be $150 and the software half that ($75).
      - Need to update pricing on "Gumroad" first, as well as add Full nest to gumroad.
