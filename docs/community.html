@@ -1755,6 +1755,16 @@
     let   feedLoading   = false;
     let   refiltering   = false;
 
+    // Deduplicate allDetections by ID (handles race between infinite scroll and filter loading)
+    function deduplicateDetections() {
+        const seen = new Set();
+        allDetections = allDetections.filter(d => {
+            if (seen.has(d.id)) return false;
+            seen.add(d.id);
+            return true;
+        });
+    }
+
     async function loadFeed(append = false) {
         if (refiltering) return;   // don't auto-refresh while a filter is being applied
         if (append && (feedExhausted || feedLoading)) return;
@@ -1783,6 +1793,7 @@
 
             if (append) {
                 allDetections = [...allDetections, ...page];
+                deduplicateDetections();
             } else {
                 allDetections = page;
             }
@@ -2343,6 +2354,7 @@
                 if (!res.ok) break;
                 const page = await res.json();
                 allDetections = [...allDetections, ...page];
+                deduplicateDetections();
                 offset += page.length;
                 feedOffset = offset;
                 if (page.length < PAGE_SIZE) { feedExhausted = true; done = true; }
