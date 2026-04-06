@@ -3516,7 +3516,11 @@
             const functionsUrl = SUPABASE_URL.replace('.supabase.co', '.supabase.co/functions/v1');
             const res = await fetch(`${functionsUrl}/send-temp-password`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    apikey: ANON_KEY,
+                    Authorization: `Bearer ${ANON_KEY}`,
+                },
                 body: JSON.stringify({
                     action: 'invite',
                     admin_email: email,
@@ -3701,7 +3705,11 @@
             const functionsUrl = SUPABASE_URL.replace('.supabase.co', '.supabase.co/functions/v1');
             const res = await fetch(`${functionsUrl}/send-temp-password`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    apikey: ANON_KEY,
+                    Authorization: `Bearer ${ANON_KEY}`,
+                },
                 body: JSON.stringify({ action: 'reset', email: emailVal }),
             });
             const data = await res.json();
