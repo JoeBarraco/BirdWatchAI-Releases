@@ -1654,6 +1654,14 @@
                 '<div class="feed-loading">Loading all detections…</div>';
             await loadAllDetections();
         }
+        // Ensure reaction totals are loaded when sorting by most liked
+        const sortOrder = document.getElementById('sort-filter')?.value;
+        if (sortOrder === 'liked') {
+            await loadReactionTotals();
+            // Also load counts for visible detections so buttons show correct numbers
+            const ids = allDetections.map(d => d.id);
+            if (ids.length) await loadReactionCounts(ids);
+        }
         renderFeed();
         if (currentView === 'map')   renderMap();
         if (currentView === 'stats') renderStats();
@@ -1743,7 +1751,8 @@
     let   feedLoading   = false;
 
     async function loadFeed(append = false) {
-        if (append && (feedExhausted || feedLoading)) return;
+        if (feedLoading) return;
+        if (append && feedExhausted) return;
         feedLoading = true;
 
         const indicator = document.getElementById('refresh-indicator');
@@ -1779,10 +1788,10 @@
             populateFeedSpeciesDropdown(allDetections);
             populateMapSpeciesDropdown(allDetections);
 
-            // Load reaction data from Supabase
+            // Load reaction data from Supabase (non-blocking to avoid race with auto-refresh)
             const ids = page.map(d => d.id);
-            await loadReactionCounts(ids);
-            if (!append) await loadReactionTotals();
+            loadReactionCounts(ids).then(() => renderFeed());
+            if (!append) loadReactionTotals().then(() => renderFeed());
 
             const hadDetections = lastTopId !== null;
             const prevTop = lastTopId;
