@@ -1,0 +1,17 @@
+# Install Supabase CLI (if not already installed)
+npm install -g supabase
+
+# Log in
+supabase login
+
+# Link to your project (get project ref from Supabase Dashboard → Settings → General)
+supabase link --project-ref YOUR_PROJECT_REF
+
+# Deploy both functions
+supabase functions deploy weekly-digest
+supabase functions deploy unsubscribe
+
+# Set the secrets
+supabase secrets set RESEND_API_KEY=re_NZFNyYPo_65EWNoew82LcAUHFHoVppchA
+supabase secrets set DIGEST_FROM_EMAIL="BirdWatchAI Weekly <digest@birdwatchai.com>"
+supabase secrets set SITE_URL=https://joebarraco.github.io/birdwatchai-releases
