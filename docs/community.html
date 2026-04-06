@@ -2880,8 +2880,8 @@
 
     // ── Species photo carousel ────────────────────────────────
     const carouselModal = document.getElementById('carousel-modal');
-    document.getElementById('carousel-close').addEventListener('click', () => carouselModal.classList.remove('open'));
-    carouselModal.addEventListener('click', e => { if (e.target === carouselModal) carouselModal.classList.remove('open'); });
+    document.getElementById('carousel-close').addEventListener('click', () => { carouselModal.classList.remove('open'); document.body.style.overflow = ''; });
+    carouselModal.addEventListener('click', e => { if (e.target === carouselModal) { carouselModal.classList.remove('open'); document.body.style.overflow = ''; } });
 
     function openCarousel(species) {
         if (!species) return;
@@ -2897,14 +2897,12 @@
             // Clicking a carousel photo opens the full lightbox
             grid.querySelectorAll('img').forEach(img => img.addEventListener('click', () => {
                 carouselModal.classList.remove('open');
+                document.body.style.overflow = '';
                 openLightbox(img.src, img.alt);
             }));
         }
         carouselModal.classList.add('open');
         document.body.style.overflow = 'hidden';
-        carouselModal.addEventListener('transitionend', () => {
-            if (!carouselModal.classList.contains('open')) document.body.style.overflow = '';
-        }, { once: true });
     }
 
     // ── Species comparison (Stats tab) ────────────────────────
