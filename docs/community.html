@@ -1809,10 +1809,22 @@
             populateFeedSpeciesDropdown(allDetections);
             populateMapSpeciesDropdown(allDetections);
 
-            // Load reaction data from Supabase (non-blocking to avoid race with auto-refresh)
-            const ids = page.map(d => d.id);
-            loadReactionCounts(ids).then(() => renderFeed());
-            if (!append) loadReactionTotals().then(() => renderFeed());
+            // If sorting by most liked, load all detections and reaction data before rendering
+            const sortOrder = document.getElementById('sort-filter')?.value || 'recent';
+            if (!append && sortOrder === 'liked' && !feedExhausted) {
+                await loadAllDetections();
+            }
+
+            // Load reaction data from Supabase
+            const ids = allDetections.map(d => d.id);
+            if (sortOrder === 'liked') {
+                await loadReactionTotals();
+                await loadReactionCounts(ids);
+            } else {
+                const pageIds = page.map(d => d.id);
+                loadReactionCounts(pageIds).then(() => renderFeed());
+                if (!append) loadReactionTotals().then(() => renderFeed());
+            }
 
             const hadDetections = lastTopId !== null;
             const prevTop = lastTopId;
