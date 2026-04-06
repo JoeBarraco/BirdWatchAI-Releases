@@ -3256,23 +3256,41 @@
             return;
         }
 
-        panel.innerHTML = `<table class="stats-table">
+        panel.innerHTML = `<table class="stats-table" style="table-layout:auto;">
             <thead><tr>
-                <th>#</th><th>Species</th><th>Detected</th>
-                <th>😮</th><th>❤️</th><th>🎉</th><th>🦅</th><th>Total</th>
+                <th>#</th>
+                <th>Species</th>
+                <th>Feeder</th>
+                <th>ZIP</th>
+                <th>Detected</th>
+                <th style="text-align:center;">😮</th>
+                <th style="text-align:center;">❤️</th>
+                <th style="text-align:center;">🎉</th>
+                <th style="text-align:center;">🦅</th>
+                <th style="text-align:center;">Total</th>
+                <th style="text-align:center;">Media</th>
             </tr></thead>
             <tbody>${rows.map((r, i) => {
                 const rarityClass = r.d.rarity ? 'rarity-' + r.d.rarity.toLowerCase().replace(/\s+/g, '-') : '';
+                const photoBtn = r.d.image_url
+                    ? `<img src="${r.d.image_url}" alt="${esc(r.d.species)}" style="width:32px;height:32px;object-fit:cover;border-radius:4px;cursor:pointer;vertical-align:middle;" onclick="openLightbox('${r.d.image_url}','${esc(r.d.species)}')">`
+                    : '';
+                const videoBtn = r.d.video_url
+                    ? `<a href="${r.d.video_url}" target="_blank" rel="noopener" title="Watch video" style="vertical-align:middle;">🎬</a>`
+                    : '';
                 return `<tr>
                     <td class="stats-rank">${i + 1}</td>
-                    <td class="stats-species-name">${esc(r.d.species || 'Unknown')}${r.d.rarity
+                    <td class="stats-species-name" style="white-space:nowrap;">${esc(r.d.species || 'Unknown')}${r.d.rarity
                         ? ` <span class="rarity-badge ${rarityClass}">${esc(r.d.rarity)}</span>` : ''}</td>
+                    <td style="white-space:nowrap;">${r.d.feeders?.display_name ? esc(r.d.feeders.display_name) : ''}</td>
+                    <td>${r.d.zip_code ? esc(r.d.zip_code) : ''}</td>
                     <td style="white-space:nowrap;">${fmtDetectedAt(r.d.detected_at)}</td>
-                    <td class="stats-count">${r.wow || ''}</td>
-                    <td class="stats-count">${r.liked || ''}</td>
-                    <td class="stats-count">${r.celebrate || ''}</td>
-                    <td class="stats-count">${r.bird || ''}</td>
-                    <td class="stats-count" style="font-weight:600;">${r.total}</td>
+                    <td style="text-align:center;">${r.wow || ''}</td>
+                    <td style="text-align:center;">${r.liked || ''}</td>
+                    <td style="text-align:center;">${r.celebrate || ''}</td>
+                    <td style="text-align:center;">${r.bird || ''}</td>
+                    <td style="text-align:center;font-weight:600;">${r.total}</td>
+                    <td style="text-align:center;white-space:nowrap;">${photoBtn} ${videoBtn}</td>
                 </tr>`;
             }).join('')}
             </tbody>
