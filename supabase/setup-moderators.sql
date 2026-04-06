@@ -6,18 +6,36 @@
 -- Enable pgcrypto for password hashing
 create extension if not exists pgcrypto;
 
--- 1. Create moderators table
+-- 1. Create moderators table (email-based authentication)
 create table if not exists moderators (
-  id            uuid primary key default gen_random_uuid(),
-  username      text unique not null,
-  password_hash text not null,
-  role          text not null default 'moderator' check (role in ('admin', 'moderator')),
-  created_at    timestamptz default now()
+  id                   uuid primary key default gen_random_uuid(),
+  email                text unique not null,
+  password_hash        text not null,
+  role                 text not null default 'moderator' check (role in ('admin', 'moderator')),
+  must_change_password boolean not null default false,
+  created_at           timestamptz default now()
 );
 
--- Add role column if table already exists without it
+-- Migration helpers: add new columns if table already exists
 alter table moderators
   add column if not exists role text not null default 'moderator' check (role in ('admin', 'moderator'));
+alter table moderators
+  add column if not exists must_change_password boolean not null default false;
+
+-- If migrating from username-based auth, rename column
+-- (Skip if column already named 'email')
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_name = 'moderators' and column_name = 'username'
+  ) and not exists (
+    select 1 from information_schema.columns
+    where table_name = 'moderators' and column_name = 'email'
+  ) then
+    alter table moderators rename column username to email;
+  end if;
+end $$;
 
 -- 2. Row-level security: no public access to moderators table
 alter table moderators enable row level security;
@@ -27,18 +45,23 @@ create policy "Service role full access" on moderators
   to service_role using (true) with check (true);
 
 -- 3. RPC: Validate moderator credentials
---    Returns the moderator's id and role if valid, null otherwise.
-create or replace function moderator_login(p_username text, p_password text)
+--    Returns the moderator's id, role, email, and must_change_password flag.
+create or replace function moderator_login(p_email text, p_password text)
 returns json
 language plpgsql security definer
 as $$
 declare
   result json;
 begin
-  select json_build_object('id', id, 'role', role, 'username', username)
+  select json_build_object(
+    'id', id,
+    'role', role,
+    'email', email,
+    'must_change_password', must_change_password
+  )
   into result
   from moderators
-  where username = p_username
+  where email = lower(trim(p_email))
     and password_hash = crypt(p_password, password_hash);
   return result;
 end;
@@ -46,7 +69,7 @@ $$;
 
 -- 4. RPC: Update a detection (rename species, adjust rarity)
 create or replace function moderator_update_detection(
-  p_username     text,
+  p_email        text,
   p_password     text,
   p_detection_id uuid,
   p_species      text default null,
@@ -60,7 +83,7 @@ declare
 begin
   select id into mod_id
   from moderators
-  where username = p_username
+  where email = lower(trim(p_email))
     and password_hash = crypt(p_password, password_hash);
 
   if mod_id is null then
@@ -79,7 +102,7 @@ $$;
 
 -- 5. RPC: Delete a detection
 create or replace function moderator_delete_detection(
-  p_username     text,
+  p_email        text,
   p_password     text,
   p_detection_id uuid
 )
@@ -91,7 +114,7 @@ declare
 begin
   select id into mod_id
   from moderators
-  where username = p_username
+  where email = lower(trim(p_email))
     and password_hash = crypt(p_password, password_hash);
 
   if mod_id is null then
@@ -104,7 +127,7 @@ end;
 $$;
 
 -- 6. RPC: List all moderators (admin only)
-create or replace function moderator_list_users(p_username text, p_password text)
+create or replace function moderator_list_users(p_email text, p_password text)
 returns json
 language plpgsql security definer
 as $$
@@ -114,7 +137,7 @@ declare
 begin
   select role into admin_role
   from moderators
-  where username = p_username
+  where email = lower(trim(p_email))
     and password_hash = crypt(p_password, password_hash);
 
   if admin_role is null or admin_role <> 'admin' then
@@ -122,7 +145,7 @@ begin
   end if;
 
   select json_agg(json_build_object(
-    'id', id, 'username', username, 'role', role, 'created_at', created_at
+    'id', id, 'email', email, 'role', role, 'created_at', created_at
   ) order by created_at)
   into result
   from moderators;
@@ -132,23 +155,25 @@ end;
 $$;
 
 -- 7. RPC: Add a moderator (admin only, via GUI)
+--    Generates a random temporary password and returns it so the
+--    caller can trigger the email edge function.
 create or replace function moderator_add_user(
-  p_username      text,
+  p_email         text,
   p_password      text,
-  p_new_username  text,
-  p_new_password  text,
+  p_new_email     text,
   p_new_role      text default 'moderator'
 )
-returns uuid
+returns json
 language plpgsql security definer
 as $$
 declare
-  admin_role text;
-  new_id uuid;
+  admin_role  text;
+  new_id      uuid;
+  temp_pass   text;
 begin
   select role into admin_role
   from moderators
-  where username = p_username
+  where email = lower(trim(p_email))
     and password_hash = crypt(p_password, password_hash);
 
   if admin_role is null or admin_role <> 'admin' then
@@ -159,19 +184,27 @@ begin
     raise exception 'Invalid role. Must be admin or moderator.';
   end if;
 
-  insert into moderators (username, password_hash, role)
-  values (p_new_username, crypt(p_new_password, gen_salt('bf')), p_new_role)
+  -- Generate a random 12-character temporary password
+  temp_pass := encode(gen_random_bytes(9), 'base64');
+
+  insert into moderators (email, password_hash, role, must_change_password)
+  values (
+    lower(trim(p_new_email)),
+    crypt(temp_pass, gen_salt('bf')),
+    p_new_role,
+    true
+  )
   returning id into new_id;
 
-  return new_id;
+  return json_build_object('id', new_id, 'temp_password', temp_pass);
 end;
 $$;
 
 -- 8. RPC: Remove a moderator (admin only, via GUI)
 create or replace function moderator_remove_user(
-  p_username     text,
-  p_password     text,
-  p_target_id    uuid
+  p_email      text,
+  p_password   text,
+  p_target_id  uuid
 )
 returns boolean
 language plpgsql security definer
@@ -182,7 +215,7 @@ declare
 begin
   select id, role into admin_id, admin_role
   from moderators
-  where username = p_username
+  where email = lower(trim(p_email))
     and password_hash = crypt(p_password, password_hash);
 
   if admin_role is null or admin_role <> 'admin' then
@@ -199,35 +232,105 @@ begin
 end;
 $$;
 
--- 9. Grant anon access to call the RPC functions
+-- 9. RPC: Change own password (any logged-in moderator)
+create or replace function moderator_change_password(
+  p_email        text,
+  p_password     text,
+  p_new_password text
+)
+returns boolean
+language plpgsql security definer
+as $$
+declare
+  mod_id uuid;
+begin
+  if length(p_new_password) < 8 then
+    raise exception 'Password must be at least 8 characters';
+  end if;
+
+  select id into mod_id
+  from moderators
+  where email = lower(trim(p_email))
+    and password_hash = crypt(p_password, password_hash);
+
+  if mod_id is null then
+    raise exception 'Invalid credentials';
+  end if;
+
+  update moderators
+  set password_hash = crypt(p_new_password, gen_salt('bf')),
+      must_change_password = false
+  where id = mod_id;
+
+  return true;
+end;
+$$;
+
+-- 10. RPC: Request password reset (generates temp password, returns it)
+--     Called by the send-temp-password edge function (service role).
+--     Returns null if email not found (to avoid leaking user existence).
+create or replace function moderator_reset_password(p_target_email text)
+returns json
+language plpgsql security definer
+as $$
+declare
+  mod_id    uuid;
+  temp_pass text;
+begin
+  select id into mod_id
+  from moderators
+  where email = lower(trim(p_target_email));
+
+  if mod_id is null then
+    return null;
+  end if;
+
+  temp_pass := encode(gen_random_bytes(9), 'base64');
+
+  update moderators
+  set password_hash = crypt(temp_pass, gen_salt('bf')),
+      must_change_password = true
+  where id = mod_id;
+
+  return json_build_object('id', mod_id, 'temp_password', temp_pass);
+end;
+$$;
+
+-- 11. Grant anon access to call the RPC functions
 grant execute on function moderator_login(text, text) to anon;
 grant execute on function moderator_update_detection(text, text, uuid, text, text) to anon;
 grant execute on function moderator_delete_detection(text, text, uuid) to anon;
 grant execute on function moderator_list_users(text, text) to anon;
-grant execute on function moderator_add_user(text, text, text, text, text) to anon;
+grant execute on function moderator_add_user(text, text, text, text) to anon;
 grant execute on function moderator_remove_user(text, text, uuid) to anon;
+grant execute on function moderator_change_password(text, text, text) to anon;
+
+-- moderator_reset_password should only be called by service role (via edge function)
+revoke execute on function moderator_reset_password(text) from anon;
+revoke execute on function moderator_reset_password(text) from authenticated;
 
 -- ============================================================
--- 10. Bootstrap: Create the first admin account
+-- 12. Bootstrap: Create the first admin account
 --     Run this ONCE in SQL Editor to create your admin user,
 --     then manage all other users from the GUI.
 --
 --     Usage:
---       select add_moderator('joe', 'secure-password-here', 'admin');
+--       select add_moderator('admin@example.com', 'secure-password-here', 'admin');
 -- ============================================================
 
--- Drop old 2-parameter version if it exists (from previous setup)
+-- Drop old versions if they exist (from previous setup)
 drop function if exists add_moderator(text, text);
+drop function if exists add_moderator(text, text, text);
 
-create or replace function add_moderator(p_username text, p_password text, p_role text default 'moderator')
+create or replace function add_moderator(p_email text, p_password text, p_role text default 'moderator')
 returns uuid
 language plpgsql security definer
 as $$
 declare
   new_id uuid;
 begin
-  insert into moderators (username, password_hash, role)
-  values (p_username, crypt(p_password, gen_salt('bf')), p_role)
+  insert into moderators (email, password_hash, role)
+  values (lower(trim(p_email)), crypt(p_password, gen_salt('bf')), p_role)
   returning id into new_id;
   return new_id;
 end;

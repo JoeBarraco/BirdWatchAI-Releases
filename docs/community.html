@@ -1334,6 +1334,7 @@
             <button class="refresh-btn" style="background:var(--color-gray-500);" onclick="exportCSV()" title="Download CSV">⬇ CSV</button>
             <button class="refresh-btn" style="background:var(--color-gray-500);" onclick="toggleKbdHint()" title="Keyboard shortcuts">⌨</button>
             <button id="mod-toggle" class="refresh-btn" style="background:var(--color-gray-500);" onclick="toggleModLogin()" title="Moderator login">🔒</button>
+            <button id="mod-changepw-btn" class="refresh-btn" style="background:var(--color-gray-500);display:none;" onclick="showChangePassword()" title="Change password">🔑</button>
             <button id="mod-admin-btn" class="refresh-btn" style="background:#e74c3c;display:none;" onclick="openAdminPanel()" title="Manage moderators">👥</button>
         </div>
     </div>
@@ -1406,11 +1407,45 @@
     <div class="mod-login-box">
         <h3>Moderator Login</h3>
         <div id="mod-login-error" class="mod-login-error">Invalid credentials.</div>
-        <input type="text" id="mod-username" placeholder="Username" autocomplete="username">
+        <input type="email" id="mod-username" placeholder="Email address" autocomplete="email">
         <input type="password" id="mod-password" placeholder="Password" autocomplete="current-password">
         <div class="mod-btn-row">
             <button class="mod-btn-cancel" onclick="closeModLogin()">Cancel</button>
             <button class="mod-btn-primary" onclick="doModLogin()">Log in</button>
+        </div>
+        <div style="text-align:center;margin-top:0.75rem;">
+            <a href="#" onclick="showForgotPassword();return false;" style="font-size:0.8rem;color:var(--color-primary);">Forgot password?</a>
+        </div>
+    </div>
+</div>
+
+<!-- Forgot password modal -->
+<div id="mod-forgot-modal" role="dialog" aria-modal="true" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9510;justify-content:center;align-items:center;">
+    <div class="mod-login-box">
+        <h3>Reset Password</h3>
+        <p style="font-size:0.85rem;color:var(--color-gray-500);margin-bottom:1rem;">Enter your email address and we'll send you a temporary password.</p>
+        <div id="mod-forgot-error" class="mod-login-error"></div>
+        <div id="mod-forgot-success" style="color:#2eaa4f;font-size:0.85rem;margin-bottom:0.5rem;display:none;"></div>
+        <input type="email" id="mod-forgot-email" placeholder="Email address" autocomplete="email">
+        <div class="mod-btn-row">
+            <button class="mod-btn-cancel" onclick="closeForgotPassword()">Cancel</button>
+            <button class="mod-btn-primary" onclick="doForgotPassword()">Send Reset Email</button>
+        </div>
+    </div>
+</div>
+
+<!-- Change password modal -->
+<div id="mod-changepw-modal" role="dialog" aria-modal="true" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9520;justify-content:center;align-items:center;">
+    <div class="mod-login-box">
+        <h3 id="mod-changepw-title">Change Password</h3>
+        <p id="mod-changepw-msg" style="font-size:0.85rem;color:var(--color-gray-500);margin-bottom:1rem;">Enter your current password and choose a new one.</p>
+        <div id="mod-changepw-error" class="mod-login-error"></div>
+        <input type="password" id="mod-changepw-current" placeholder="Current password" autocomplete="current-password">
+        <input type="password" id="mod-changepw-new" placeholder="New password (min 8 characters)" autocomplete="new-password">
+        <input type="password" id="mod-changepw-confirm" placeholder="Confirm new password" autocomplete="new-password">
+        <div class="mod-btn-row">
+            <button class="mod-btn-cancel" id="mod-changepw-cancel" onclick="closeChangePassword()">Cancel</button>
+            <button class="mod-btn-primary" onclick="doChangePassword()">Change Password</button>
         </div>
     </div>
 </div>
@@ -1423,15 +1458,16 @@
             <li style="color:var(--color-gray-500)">Loading...</li>
         </ul>
         <h4 style="font-size:0.9rem;margin-bottom:0.5rem;color:var(--color-gray-900);">Add New User</h4>
+        <p style="font-size:0.8rem;color:var(--color-gray-500);margin-bottom:0.5rem;">A temporary password will be emailed to them.</p>
         <div class="mod-add-form">
-            <input type="text" id="mod-add-username" placeholder="Username">
-            <input type="password" id="mod-add-password" placeholder="Password">
+            <input type="email" id="mod-add-email" placeholder="Email address">
             <select id="mod-add-role">
                 <option value="moderator">Moderator</option>
                 <option value="admin">Admin</option>
             </select>
-            <button onclick="doAdminAddUser()">+ Add</button>
+            <button onclick="doAdminAddUser()">+ Invite</button>
         </div>
+        <div id="mod-add-status" style="font-size:0.8rem;margin-top:0.5rem;display:none;"></div>
         <div class="mod-btn-row" style="margin-top:1.25rem;">
             <button class="mod-btn-cancel" onclick="closeAdminPanel()">Close</button>
         </div>
@@ -3331,7 +3367,7 @@
 
     function getModCreds() {
         return {
-            username: sessionStorage.getItem('bwai-mod-user'),
+            email: sessionStorage.getItem('bwai-mod-user'),
             password: sessionStorage.getItem('bwai-mod-pass'),
         };
     }
@@ -3341,6 +3377,7 @@
         const admin = isAdmin();
         document.getElementById('mod-toggle').textContent = loggedIn ? '🔓' : '🔒';
         document.getElementById('mod-toggle').style.background = loggedIn ? '#e74c3c' : 'var(--color-gray-500)';
+        document.getElementById('mod-changepw-btn').style.display = loggedIn ? '' : 'none';
         document.getElementById('mod-admin-btn').style.display = admin ? '' : 'none';
     }
 
@@ -3366,9 +3403,9 @@
     }
 
     async function doModLogin() {
-        const username = document.getElementById('mod-username').value.trim();
+        const email = document.getElementById('mod-username').value.trim();
         const password = document.getElementById('mod-password').value;
-        if (!username || !password) return;
+        if (!email || !password) return;
 
         try {
             const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/moderator_login`, {
@@ -3378,20 +3415,25 @@
                     Authorization: `Bearer ${ANON_KEY}`,
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ p_username: username, p_password: password }),
+                body: JSON.stringify({ p_email: email, p_password: password }),
             });
             const data = await res.json();
             if (!data || !data.id) {
                 document.getElementById('mod-login-error').style.display = 'block';
                 return;
             }
-            sessionStorage.setItem('bwai-mod-user', username);
+            sessionStorage.setItem('bwai-mod-user', email);
             sessionStorage.setItem('bwai-mod-pass', password);
             sessionStorage.setItem('bwai-mod-role', data.role);
             updateModUI();
             closeModLogin();
             showToast(`Logged in as ${data.role}`);
             renderFeed();
+
+            // Force password change if using a temporary password
+            if (data.must_change_password) {
+                showMustChangePassword();
+            }
         } catch (err) {
             document.getElementById('mod-login-error').textContent = 'Login failed: ' + err.message;
             document.getElementById('mod-login-error').style.display = 'block';
@@ -3424,7 +3466,7 @@
     });
 
     async function refreshModUserList() {
-        const { username, password } = getModCreds();
+        const { email, password } = getModCreds();
         const list = document.getElementById('mod-user-list');
         try {
             const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/moderator_list_users`, {
@@ -3434,7 +3476,7 @@
                     Authorization: `Bearer ${ANON_KEY}`,
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ p_username: username, p_password: password }),
+                body: JSON.stringify({ p_email: email, p_password: password }),
             });
             if (!res.ok) throw new Error('Failed to load');
             const users = await res.json();
@@ -3445,11 +3487,11 @@
             list.innerHTML = users.map(u => `
                 <li>
                     <div class="mod-user-info">
-                        <strong>${esc(u.username)}</strong>
+                        <strong>${esc(u.email)}</strong>
                         <span class="mod-role-tag ${u.role}">${u.role}</span>
                     </div>
-                    ${u.username !== username
-                        ? `<button class="mod-remove-btn" onclick="doAdminRemoveUser('${u.id}', '${esc(u.username)}')">Remove</button>`
+                    ${u.email !== email
+                        ? `<button class="mod-remove-btn" onclick="doAdminRemoveUser('${u.id}', '${esc(u.email)}')">Remove</button>`
                         : '<span style="font-size:0.75rem;color:var(--color-gray-500);">you</span>'}
                 </li>
             `).join('');
@@ -3459,45 +3501,53 @@
     }
 
     async function doAdminAddUser() {
-        const { username, password } = getModCreds();
-        const newUsername = document.getElementById('mod-add-username').value.trim();
-        const newPassword = document.getElementById('mod-add-password').value;
+        const { email, password } = getModCreds();
+        const newEmail = document.getElementById('mod-add-email').value.trim();
         const newRole = document.getElementById('mod-add-role').value;
+        const statusEl = document.getElementById('mod-add-status');
 
-        if (!newUsername || !newPassword) { showToast('Username and password are required'); return; }
+        if (!newEmail) { showToast('Email address is required'); return; }
+
+        statusEl.textContent = 'Sending invite...';
+        statusEl.style.color = 'var(--color-gray-500)';
+        statusEl.style.display = 'block';
 
         try {
-            const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/moderator_add_user`, {
+            const functionsUrl = SUPABASE_URL.replace('.supabase.co', '.supabase.co/functions/v1');
+            const res = await fetch(`${functionsUrl}/send-temp-password`, {
                 method: 'POST',
-                headers: {
-                    apikey: ANON_KEY,
-                    Authorization: `Bearer ${ANON_KEY}`,
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    p_username: username,
-                    p_password: password,
-                    p_new_username: newUsername,
-                    p_new_password: newPassword,
-                    p_new_role: newRole,
+                    action: 'invite',
+                    admin_email: email,
+                    admin_password: password,
+                    new_email: newEmail,
+                    new_role: newRole,
                 }),
             });
-            if (!res.ok) {
-                const err = await res.json();
-                throw new Error(err.message || 'Failed to add user');
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Failed to add user');
+
+            document.getElementById('mod-add-email').value = '';
+            if (data.email_sent) {
+                statusEl.textContent = `Invite sent to ${newEmail}`;
+                statusEl.style.color = '#2eaa4f';
+            } else {
+                statusEl.textContent = `User created but email could not be sent. Share temp password manually.`;
+                statusEl.style.color = '#e6a817';
             }
-            document.getElementById('mod-add-username').value = '';
-            document.getElementById('mod-add-password').value = '';
-            showToast(`Added ${newRole}: ${newUsername}`);
+            showToast(`Invited ${newRole}: ${newEmail}`);
             await refreshModUserList();
         } catch (err) {
+            statusEl.textContent = 'Error: ' + err.message;
+            statusEl.style.color = '#e74c3c';
             showToast('Error: ' + err.message);
         }
     }
 
     async function doAdminRemoveUser(targetId, targetName) {
         if (!confirm(`Remove moderator "${targetName}"?`)) return;
-        const { username, password } = getModCreds();
+        const { email, password } = getModCreds();
 
         try {
             const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/moderator_remove_user`, {
@@ -3508,7 +3558,7 @@
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    p_username: username,
+                    p_email: email,
                     p_password: password,
                     p_target_id: targetId,
                 }),
@@ -3543,7 +3593,7 @@
     });
 
     async function doModSave() {
-        const { username, password } = getModCreds();
+        const { email, password } = getModCreds();
         const detectionId = document.getElementById('mod-edit-id').value;
         const species = document.getElementById('mod-edit-species').value.trim();
         const rarity = document.getElementById('mod-edit-rarity').value;
@@ -3559,7 +3609,7 @@
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    p_username: username,
+                    p_email: email,
                     p_password: password,
                     p_detection_id: detectionId,
                     p_species: species,
@@ -3586,7 +3636,7 @@
         if (!d) return;
         if (!confirm(`Delete detection of "${d.species}"?\nThis cannot be undone.`)) return;
 
-        const { username, password } = getModCreds();
+        const { email, password } = getModCreds();
         try {
             const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/moderator_delete_detection`, {
                 method: 'POST',
@@ -3596,7 +3646,7 @@
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    p_username: username,
+                    p_email: email,
                     p_password: password,
                     p_detection_id: detectionId,
                 }),
@@ -3611,6 +3661,152 @@
             showToast('Detection deleted');
         } catch (err) {
             showToast('Error: ' + err.message);
+        }
+    }
+
+    // ── Forgot password ────────────────────────────────────────
+    function showForgotPassword() {
+        closeModLogin();
+        document.getElementById('mod-forgot-modal').style.display = 'flex';
+        document.getElementById('mod-forgot-email').focus();
+    }
+
+    function closeForgotPassword() {
+        document.getElementById('mod-forgot-modal').style.display = 'none';
+        document.getElementById('mod-forgot-error').style.display = 'none';
+        document.getElementById('mod-forgot-success').style.display = 'none';
+        document.getElementById('mod-forgot-email').value = '';
+    }
+
+    document.getElementById('mod-forgot-modal').addEventListener('click', e => {
+        if (e.target.id === 'mod-forgot-modal') closeForgotPassword();
+    });
+
+    document.getElementById('mod-forgot-email').addEventListener('keydown', e => {
+        if (e.key === 'Enter') doForgotPassword();
+    });
+
+    async function doForgotPassword() {
+        const emailInput = document.getElementById('mod-forgot-email');
+        const errorEl = document.getElementById('mod-forgot-error');
+        const successEl = document.getElementById('mod-forgot-success');
+        const emailVal = emailInput.value.trim();
+
+        if (!emailVal) return;
+
+        errorEl.style.display = 'none';
+        successEl.style.display = 'none';
+
+        try {
+            const functionsUrl = SUPABASE_URL.replace('.supabase.co', '.supabase.co/functions/v1');
+            const res = await fetch(`${functionsUrl}/send-temp-password`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'reset', email: emailVal }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Request failed');
+
+            successEl.textContent = 'If that email is registered, a temporary password has been sent. Check your inbox.';
+            successEl.style.display = 'block';
+            emailInput.value = '';
+        } catch (err) {
+            errorEl.textContent = 'Error: ' + err.message;
+            errorEl.style.display = 'block';
+        }
+    }
+
+    // ── Change password ──────────────────────────────────────────
+    function showChangePassword() {
+        const modal = document.getElementById('mod-changepw-modal');
+        document.getElementById('mod-changepw-title').textContent = 'Change Password';
+        document.getElementById('mod-changepw-msg').textContent = 'Enter your current password and choose a new one.';
+        document.getElementById('mod-changepw-cancel').style.display = '';
+        modal.style.display = 'flex';
+        document.getElementById('mod-changepw-current').focus();
+    }
+
+    function showMustChangePassword() {
+        const modal = document.getElementById('mod-changepw-modal');
+        document.getElementById('mod-changepw-title').textContent = 'Set Your Password';
+        document.getElementById('mod-changepw-msg').textContent = 'You are using a temporary password. Please set a new password to continue.';
+        document.getElementById('mod-changepw-cancel').style.display = 'none';
+        modal.style.display = 'flex';
+        document.getElementById('mod-changepw-current').value = sessionStorage.getItem('bwai-mod-pass') || '';
+        document.getElementById('mod-changepw-new').focus();
+    }
+
+    function closeChangePassword() {
+        document.getElementById('mod-changepw-modal').style.display = 'none';
+        document.getElementById('mod-changepw-error').style.display = 'none';
+        document.getElementById('mod-changepw-current').value = '';
+        document.getElementById('mod-changepw-new').value = '';
+        document.getElementById('mod-changepw-confirm').value = '';
+    }
+
+    document.getElementById('mod-changepw-modal').addEventListener('click', e => {
+        if (e.target.id === 'mod-changepw-modal') {
+            // Only allow closing via backdrop if cancel button is visible
+            if (document.getElementById('mod-changepw-cancel').style.display !== 'none') {
+                closeChangePassword();
+            }
+        }
+    });
+
+    document.getElementById('mod-changepw-confirm').addEventListener('keydown', e => {
+        if (e.key === 'Enter') doChangePassword();
+    });
+
+    async function doChangePassword() {
+        const { email } = getModCreds();
+        const currentPw = document.getElementById('mod-changepw-current').value;
+        const newPw = document.getElementById('mod-changepw-new').value;
+        const confirmPw = document.getElementById('mod-changepw-confirm').value;
+        const errorEl = document.getElementById('mod-changepw-error');
+
+        errorEl.style.display = 'none';
+
+        if (!currentPw || !newPw || !confirmPw) {
+            errorEl.textContent = 'All fields are required.';
+            errorEl.style.display = 'block';
+            return;
+        }
+        if (newPw.length < 8) {
+            errorEl.textContent = 'Password must be at least 8 characters.';
+            errorEl.style.display = 'block';
+            return;
+        }
+        if (newPw !== confirmPw) {
+            errorEl.textContent = 'Passwords do not match.';
+            errorEl.style.display = 'block';
+            return;
+        }
+
+        try {
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/moderator_change_password`, {
+                method: 'POST',
+                headers: {
+                    apikey: ANON_KEY,
+                    Authorization: `Bearer ${ANON_KEY}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    p_email: email,
+                    p_password: currentPw,
+                    p_new_password: newPw,
+                }),
+            });
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.message || 'Failed to change password');
+            }
+            // Update stored password
+            sessionStorage.setItem('bwai-mod-pass', newPw);
+            closeChangePassword();
+            showToast('Password changed successfully');
+        } catch (err) {
+            errorEl.textContent = err.message;
+            errorEl.style.display = 'block';
         }
     }
 
