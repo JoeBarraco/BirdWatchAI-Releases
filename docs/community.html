@@ -1097,6 +1097,92 @@
             font-size: 0.7rem;
         }
 
+        /* ── Moderator UI ─────────────────────────────────────── */
+        .mod-badge {
+            display: inline-flex; align-items: center; gap: 4px;
+            background: #e74c3c; color: white; font-size: 0.7rem;
+            padding: 2px 8px; border-radius: 10px; font-weight: 600;
+            margin-left: 6px; vertical-align: middle;
+        }
+        #mod-login-modal {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.5); z-index: 9500;
+            justify-content: center; align-items: center;
+        }
+        #mod-login-modal.open { display: flex; }
+        .mod-login-box {
+            background: var(--bg-card); border-radius: 12px;
+            padding: 2rem; width: 340px; max-width: 90vw;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+        .mod-login-box h3 {
+            font-family: 'Fraunces', serif; margin-bottom: 1rem;
+            color: var(--color-gray-900); font-size: 1.25rem;
+        }
+        .mod-login-box input {
+            width: 100%; padding: 8px 12px; margin-bottom: 0.75rem;
+            border: 1px solid var(--border-input); border-radius: 6px;
+            font-family: inherit; font-size: 0.9rem;
+            background: var(--bg-input); color: var(--color-gray-700);
+        }
+        .mod-login-box .mod-btn-row {
+            display: flex; gap: 8px; margin-top: 0.5rem;
+        }
+        .mod-login-box button {
+            flex: 1; padding: 8px 14px; border-radius: 6px;
+            border: 1px solid var(--border); cursor: pointer;
+            font-family: inherit; font-size: 0.875rem; font-weight: 600;
+        }
+        .mod-login-box .mod-btn-primary {
+            background: var(--color-primary); color: white; border-color: var(--color-primary);
+        }
+        .mod-login-box .mod-btn-cancel {
+            background: var(--bg-card); color: var(--color-gray-700);
+        }
+        .mod-login-error {
+            color: #e74c3c; font-size: 0.8rem; margin-bottom: 0.5rem; display: none;
+        }
+
+        /* Edit modal (rename / rarity) */
+        #mod-edit-modal {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.5); z-index: 9600;
+            justify-content: center; align-items: center;
+        }
+        #mod-edit-modal.open { display: flex; }
+        .mod-edit-box {
+            background: var(--bg-card); border-radius: 12px;
+            padding: 2rem; width: 380px; max-width: 90vw;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+        .mod-edit-box h3 {
+            font-family: 'Fraunces', serif; margin-bottom: 1rem;
+            color: var(--color-gray-900); font-size: 1.25rem;
+        }
+        .mod-edit-box label {
+            display: block; font-size: 0.8rem; font-weight: 600;
+            color: var(--color-gray-500); margin-bottom: 4px;
+        }
+        .mod-edit-box input, .mod-edit-box select {
+            width: 100%; padding: 8px 12px; margin-bottom: 0.75rem;
+            border: 1px solid var(--border-input); border-radius: 6px;
+            font-family: inherit; font-size: 0.9rem;
+            background: var(--bg-input); color: var(--color-gray-700);
+        }
+
+        /* Mod action buttons on cards */
+        .mod-actions {
+            display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap;
+        }
+        .mod-actions button {
+            font-family: inherit; font-size: 0.75rem; padding: 3px 10px;
+            border-radius: 5px; border: 1px solid var(--border);
+            cursor: pointer; background: var(--bg-card); color: var(--color-gray-700);
+            transition: border-color 0.15s, color 0.15s;
+        }
+        .mod-actions button:hover { border-color: var(--color-primary); color: var(--color-primary); }
+        .mod-actions .mod-delete-btn:hover { border-color: #e74c3c; color: #e74c3c; }
+
     </style>
 </head>
 <body>
@@ -1196,6 +1282,7 @@
             <button id="notif-toggle" class="refresh-btn" style="background:var(--color-gray-500);" onclick="toggleNotifications()" title="Rare bird alerts">🔔</button>
             <button class="refresh-btn" style="background:var(--color-gray-500);" onclick="exportCSV()" title="Download CSV">⬇ CSV</button>
             <button class="refresh-btn" style="background:var(--color-gray-500);" onclick="toggleKbdHint()" title="Keyboard shortcuts">⌨</button>
+            <button id="mod-toggle" class="refresh-btn" style="background:var(--color-gray-500);" onclick="toggleModLogin()" title="Moderator login">🔒</button>
         </div>
     </div>
 
@@ -1260,6 +1347,41 @@
     <kbd>r</kbd> &nbsp;Refresh feed<br>
     <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> &nbsp;Switch Feed / Map / Stats<br>
     <kbd>Esc</kbd> &nbsp;Close lightbox / hints
+</div>
+
+<!-- Moderator login modal -->
+<div id="mod-login-modal" role="dialog" aria-modal="true">
+    <div class="mod-login-box">
+        <h3>Moderator Login</h3>
+        <div id="mod-login-error" class="mod-login-error">Invalid credentials.</div>
+        <input type="text" id="mod-username" placeholder="Username" autocomplete="username">
+        <input type="password" id="mod-password" placeholder="Password" autocomplete="current-password">
+        <div class="mod-btn-row">
+            <button class="mod-btn-cancel" onclick="closeModLogin()">Cancel</button>
+            <button class="mod-btn-primary" onclick="doModLogin()">Log in</button>
+        </div>
+    </div>
+</div>
+
+<!-- Moderator edit detection modal -->
+<div id="mod-edit-modal" role="dialog" aria-modal="true">
+    <div class="mod-edit-box">
+        <h3>Edit Detection</h3>
+        <input type="hidden" id="mod-edit-id">
+        <label for="mod-edit-species">Species</label>
+        <input type="text" id="mod-edit-species" placeholder="Species name">
+        <label for="mod-edit-rarity">Rarity</label>
+        <select id="mod-edit-rarity">
+            <option value="Common">Common</option>
+            <option value="Uncommon">Uncommon</option>
+            <option value="Rare">Rare</option>
+            <option value="Very Rare">Very Rare</option>
+        </select>
+        <div class="mod-btn-row">
+            <button class="mod-btn-cancel" onclick="closeModEdit()">Cancel</button>
+            <button class="mod-btn-primary" onclick="doModSave()">Save</button>
+        </div>
+    </div>
 </div>
 
 <!-- Detection detail modal -->
@@ -1665,6 +1787,10 @@
                         <button class="card-audio" data-audio-species="${esc(d.species)}" title="Play bird call">🔊 Call</button>
                         <button class="card-share" data-share-id="${d.id}" title="Copy link to this detection">🔗 Share</button>
                     </div>
+                    ${isModLoggedIn() ? `<div class="mod-actions">
+                        <button onclick="openModEdit('${d.id}')">✏️ Edit</button>
+                        <button class="mod-delete-btn" onclick="confirmModDelete('${d.id}')">🗑️ Delete</button>
+                    </div>` : ''}
                 </div>
             </div>`;
         }).join('');
@@ -3071,6 +3197,22 @@
         audioBtn.onclick = () => playBirdCall(d.species, audioBtn);
         actions.appendChild(audioBtn);
 
+        if (isModLoggedIn()) {
+            const editBtn = document.createElement('button');
+            editBtn.textContent = '✏️ Edit';
+            editBtn.style.borderColor = '#e67e22';
+            editBtn.style.color = '#e67e22';
+            editBtn.onclick = () => { detailModal.classList.remove('open'); document.body.style.overflow = ''; openModEdit(d.id); };
+            actions.appendChild(editBtn);
+
+            const delBtn = document.createElement('button');
+            delBtn.textContent = '🗑️ Delete';
+            delBtn.style.borderColor = '#e74c3c';
+            delBtn.style.color = '#e74c3c';
+            delBtn.onclick = () => { detailModal.classList.remove('open'); document.body.style.overflow = ''; confirmModDelete(d.id); };
+            actions.appendChild(delBtn);
+        }
+
         document.body.style.overflow = 'hidden';
         detailModal.classList.add('open');
     }
@@ -3102,6 +3244,178 @@
             }, () => {}, { timeout: 6000 });
         }
     })();
+
+    // ── Moderator system ───────────────────────────────────────
+    function isModLoggedIn() {
+        return !!sessionStorage.getItem('bwai-mod-user');
+    }
+
+    function getModCreds() {
+        return {
+            username: sessionStorage.getItem('bwai-mod-user'),
+            password: sessionStorage.getItem('bwai-mod-pass'),
+        };
+    }
+
+    function toggleModLogin() {
+        if (isModLoggedIn()) {
+            sessionStorage.removeItem('bwai-mod-user');
+            sessionStorage.removeItem('bwai-mod-pass');
+            document.getElementById('mod-toggle').textContent = '🔒';
+            document.getElementById('mod-toggle').style.background = 'var(--color-gray-500)';
+            showToast('Moderator logged out');
+            renderFeed();
+            return;
+        }
+        document.getElementById('mod-login-modal').classList.add('open');
+        document.getElementById('mod-username').focus();
+    }
+
+    function closeModLogin() {
+        document.getElementById('mod-login-modal').classList.remove('open');
+        document.getElementById('mod-login-error').style.display = 'none';
+        document.getElementById('mod-username').value = '';
+        document.getElementById('mod-password').value = '';
+    }
+
+    async function doModLogin() {
+        const username = document.getElementById('mod-username').value.trim();
+        const password = document.getElementById('mod-password').value;
+        if (!username || !password) return;
+
+        try {
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/moderator_login`, {
+                method: 'POST',
+                headers: {
+                    apikey: ANON_KEY,
+                    Authorization: `Bearer ${ANON_KEY}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ p_username: username, p_password: password }),
+            });
+            const modId = await res.json();
+            if (!modId) {
+                document.getElementById('mod-login-error').style.display = 'block';
+                return;
+            }
+            sessionStorage.setItem('bwai-mod-user', username);
+            sessionStorage.setItem('bwai-mod-pass', password);
+            document.getElementById('mod-toggle').textContent = '🔓';
+            document.getElementById('mod-toggle').style.background = '#e74c3c';
+            closeModLogin();
+            showToast('Logged in as moderator');
+            renderFeed();
+        } catch (err) {
+            document.getElementById('mod-login-error').textContent = 'Login failed: ' + err.message;
+            document.getElementById('mod-login-error').style.display = 'block';
+        }
+    }
+
+    // Allow Enter key in login modal
+    document.getElementById('mod-password').addEventListener('keydown', e => {
+        if (e.key === 'Enter') doModLogin();
+    });
+
+    // Close login modal on backdrop click
+    document.getElementById('mod-login-modal').addEventListener('click', e => {
+        if (e.target.id === 'mod-login-modal') closeModLogin();
+    });
+
+    function openModEdit(detectionId) {
+        const d = allDetections.find(x => String(x.id) === String(detectionId));
+        if (!d) return;
+        document.getElementById('mod-edit-id').value = d.id;
+        document.getElementById('mod-edit-species').value = d.species || '';
+        document.getElementById('mod-edit-rarity').value = d.rarity || 'Common';
+        document.getElementById('mod-edit-modal').classList.add('open');
+        document.getElementById('mod-edit-species').focus();
+    }
+
+    function closeModEdit() {
+        document.getElementById('mod-edit-modal').classList.remove('open');
+    }
+
+    document.getElementById('mod-edit-modal').addEventListener('click', e => {
+        if (e.target.id === 'mod-edit-modal') closeModEdit();
+    });
+
+    async function doModSave() {
+        const { username, password } = getModCreds();
+        const detectionId = document.getElementById('mod-edit-id').value;
+        const species = document.getElementById('mod-edit-species').value.trim();
+        const rarity = document.getElementById('mod-edit-rarity').value;
+
+        if (!species) { showToast('Species name is required'); return; }
+
+        try {
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/moderator_update_detection`, {
+                method: 'POST',
+                headers: {
+                    apikey: ANON_KEY,
+                    Authorization: `Bearer ${ANON_KEY}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    p_username: username,
+                    p_password: password,
+                    p_detection_id: detectionId,
+                    p_species: species,
+                    p_rarity: rarity,
+                }),
+            });
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.message || 'Update failed');
+            }
+            // Update local data
+            const d = allDetections.find(x => String(x.id) === String(detectionId));
+            if (d) { d.species = species; d.rarity = rarity; }
+            closeModEdit();
+            renderFeed();
+            showToast('Detection updated');
+        } catch (err) {
+            showToast('Error: ' + err.message);
+        }
+    }
+
+    async function confirmModDelete(detectionId) {
+        const d = allDetections.find(x => String(x.id) === String(detectionId));
+        if (!d) return;
+        if (!confirm(`Delete detection of "${d.species}"?\nThis cannot be undone.`)) return;
+
+        const { username, password } = getModCreds();
+        try {
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/moderator_delete_detection`, {
+                method: 'POST',
+                headers: {
+                    apikey: ANON_KEY,
+                    Authorization: `Bearer ${ANON_KEY}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    p_username: username,
+                    p_password: password,
+                    p_detection_id: detectionId,
+                }),
+            });
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.message || 'Delete failed');
+            }
+            // Remove from local data
+            allDetections = allDetections.filter(x => String(x.id) !== String(detectionId));
+            renderFeed();
+            showToast('Detection deleted');
+        } catch (err) {
+            showToast('Error: ' + err.message);
+        }
+    }
+
+    // Restore moderator UI state on page load
+    if (isModLoggedIn()) {
+        document.getElementById('mod-toggle').textContent = '🔓';
+        document.getElementById('mod-toggle').style.background = '#e74c3c';
+    }
 
     // ── Init ─────────────────────────────────────────────────
     loadFeed().then(handleSharedId);
