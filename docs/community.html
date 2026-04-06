@@ -319,6 +319,12 @@
             animation: pulse 0.6s ease-in-out infinite;
         }
 
+        .loading-count {
+            animation: pulse 1s ease-in-out infinite;
+            color: #ff9800;
+            font-weight: 600;
+        }
+
         @keyframes pulse {
             0%, 100% { opacity: 1; }
             50%       { opacity: 0.3; }
@@ -1794,7 +1800,18 @@
     }
 
     // ── Load all species/feeder names for complete dropdowns ──
+    let dropdownsReady = false;
+
     async function loadAllDropdownOptions() {
+        dropdownsReady = false;
+        const countEl = document.getElementById('feed-count');
+        const specSel = document.getElementById('species-filter');
+
+        // Show loading state
+        countEl.innerHTML = `<span class="loading-count">${allDetections.length} detections — loading all…</span>`;
+        specSel.innerHTML = '<option value="">Loading species…</option>';
+        specSel.disabled = true;
+
         const { period } = getFilters();
         const since = periodToISO(period);
         let url = `${SUPABASE_URL}/rest/v1/community_detections?select=species,feeders(display_name)&order=species`;
@@ -1809,10 +1826,10 @@
             const feeders = [...new Set(rows.map(r => r.feeders?.display_name).filter(Boolean))].sort();
 
             // Update species dropdown
-            const specSel = document.getElementById('species-filter');
             const prevSpec = selectedSpecies;
             specSel.innerHTML = '<option value="">All species</option>' +
                 species.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+            specSel.disabled = false;
             if (species.includes(prevSpec)) specSel.value = prevSpec;
 
             // Update map species dropdown
@@ -1828,7 +1845,14 @@
             feederSel.innerHTML = '<option value="">All feeders</option>' +
                 feeders.map(f => `<option value="${esc(f)}">${esc(f)}</option>`).join('');
             if (feeders.includes(prevFeeder)) feederSel.value = prevFeeder;
-        } catch (e) { /* dropdowns stay populated from loaded data */ }
+
+            // Update total count
+            countEl.innerHTML = `${rows.length} total detection${rows.length !== 1 ? 's' : ''}`;
+            dropdownsReady = true;
+        } catch (e) {
+            specSel.disabled = false;
+            dropdownsReady = true;
+        }
     }
 
     // ── Infinite scroll via IntersectionObserver ─────────────
