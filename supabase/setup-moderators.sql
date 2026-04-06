@@ -44,6 +44,17 @@ drop policy if exists "Service role full access" on moderators;
 create policy "Service role full access" on moderators
   to service_role using (true) with check (true);
 
+-- 2b. Drop old functions (parameter names changed from p_username to p_email)
+drop function if exists moderator_login(text, text);
+drop function if exists moderator_update_detection(text, text, uuid, text, text);
+drop function if exists moderator_delete_detection(text, text, uuid);
+drop function if exists moderator_list_users(text, text);
+drop function if exists moderator_add_user(text, text, text, text, text);
+drop function if exists moderator_add_user(text, text, text, text);
+drop function if exists moderator_remove_user(text, text, uuid);
+drop function if exists moderator_change_password(text, text, text);
+drop function if exists moderator_reset_password(text);
+
 -- 3. RPC: Validate moderator credentials
 --    Returns the moderator's id, role, email, and must_change_password flag.
 create or replace function moderator_login(p_email text, p_password text)
