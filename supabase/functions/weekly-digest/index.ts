@@ -1,12 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const RESEND_API_KEY          = Deno.env.get('RESEND_API_KEY')!;
-const SUPABASE_URL            = Deno.env.get('SUPABASE_URL')!;
-const SUPABASE_SERVICE_ROLE   = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const FROM_EMAIL              = Deno.env.get('DIGEST_FROM_EMAIL') ?? 'BirdWatchAI Weekly <digest@birdwatchai.com>';
-const SITE_URL                = Deno.env.get('SITE_URL') ?? 'https://joebarraco.github.io/birdwatchai-releases';
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
+// All env vars and the supabase client are initialised inside the handler
+// so that Deno.env is fully populated before they are read.
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -132,6 +127,14 @@ function buildHtml(opts: {
 // ── Main handler ──────────────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
+  // Initialise inside handler so Deno.env is ready
+  const RESEND_API_KEY        = Deno.env.get('RESEND_API_KEY') ?? '';
+  const SUPABASE_URL          = Deno.env.get('SUPABASE_URL') ?? '';
+  const SUPABASE_SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+  const FROM_EMAIL            = Deno.env.get('DIGEST_FROM_EMAIL') ?? 'BirdWatchAI Weekly <digest@birdwatchai.com>';
+  const SITE_URL              = Deno.env.get('SITE_URL') ?? 'https://joebarraco.github.io/birdwatchai-releases';
+  const supabase              = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
+
   // Only allow POST; cron invocations from Supabase pass the service role key
   if (req.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
 
