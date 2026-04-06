@@ -1283,6 +1283,7 @@
         <span>Community Feed</span>
     </div>
     <div class="navbar-right">
+        <button id="theme-toggle" class="navbar-btn" onclick="toggleTheme()" title="Toggle dark mode">🌙 Theme</button>
         <span id="navbar-user" class="navbar-user" style="display:none;"></span>
         <button id="navbar-login-btn" class="navbar-btn" onclick="toggleModLogin()" title="Moderator login">🔒 Login</button>
         <button id="navbar-logout-btn" class="navbar-btn navbar-btn-danger" onclick="toggleModLogin()" title="Log out" style="display:none;">Logout</button>
@@ -1387,7 +1388,7 @@
                 <option value="60">Auto: 60s</option>
                 <option value="300">Auto: 5m</option>
             </select>
-            <button id="theme-toggle" class="refresh-btn" style="background:var(--color-gray-500);" onclick="toggleTheme()" title="Toggle dark mode">🌙 Theme</button>
+
             <button id="sound-toggle" class="refresh-btn" style="background:var(--color-gray-500);" onclick="toggleSound()" title="Toggle sound">🔇</button>
             <button id="notif-toggle" class="refresh-btn" style="background:var(--color-gray-500);" onclick="toggleNotifications()" title="Rare bird alerts">🔔</button>
             <button class="refresh-btn" style="background:var(--color-gray-500);" onclick="exportCSV()" title="Download CSV">⬇ CSV</button>
