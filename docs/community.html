@@ -1624,16 +1624,14 @@
     function toggleFavorites() {
         favoritesOnly = !favoritesOnly;
         document.getElementById('fav-toggle').classList.toggle('active', favoritesOnly);
-        renderFeed();
-        if (currentView === 'map')   renderMap();
-        if (currentView === 'stats') renderStats();
+        refilter();
     }
 
     // ── Species filter dropdown ─────────────────────────────
-    function commitSpecies(name) {
+    async function commitSpecies(name) {
         selectedSpecies = name;
         document.getElementById('species-filter').value = name;
-        refilter();
+        await refilter();
     }
 
     async function refilter() {
@@ -2801,26 +2799,13 @@
         });
     });
 
-    document.getElementById('rarity-filter').addEventListener('change', () => {
-        renderFeed();
-        if (currentView === 'map')   renderMap();
-        if (currentView === 'stats') renderStats();
-    });
-
-    document.getElementById('feeder-filter').addEventListener('change', () => {
-        renderFeed();
-        if (currentView === 'map')   renderMap();
-        if (currentView === 'stats') renderStats();
-    });
+    document.getElementById('rarity-filter').addEventListener('change', () => refilter());
+    document.getElementById('feeder-filter').addEventListener('change', () => refilter());
 
     let zipDebounce;
     document.getElementById('zip-filter').addEventListener('input', () => {
         clearTimeout(zipDebounce);
-        zipDebounce = setTimeout(() => {
-            renderFeed();
-            if (currentView === 'map')   renderMap();
-            if (currentView === 'stats') renderStats();
-        }, 400);
+        zipDebounce = setTimeout(() => refilter(), 400);
     });
 
     function clearFilters() {
