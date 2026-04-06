@@ -215,6 +215,10 @@ grant execute on function moderator_remove_user(text, text, uuid) to anon;
 --     Usage:
 --       select add_moderator('joe', 'secure-password-here', 'admin');
 -- ============================================================
+
+-- Drop old 2-parameter version if it exists (from previous setup)
+drop function if exists add_moderator(text, text);
+
 create or replace function add_moderator(p_username text, p_password text, p_role text default 'moderator')
 returns uuid
 language plpgsql security definer
