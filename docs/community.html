@@ -1183,6 +1183,57 @@
         .mod-actions button:hover { border-color: var(--color-primary); color: var(--color-primary); }
         .mod-actions .mod-delete-btn:hover { border-color: #e74c3c; color: #e74c3c; }
 
+        /* Admin panel modal */
+        #mod-admin-modal {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.5); z-index: 9550;
+            justify-content: center; align-items: center;
+        }
+        #mod-admin-modal.open { display: flex; }
+        .mod-admin-box {
+            background: var(--bg-card); border-radius: 12px;
+            padding: 2rem; width: 480px; max-width: 90vw;
+            max-height: 80vh; overflow-y: auto;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+        .mod-admin-box h3 {
+            font-family: 'Fraunces', serif; margin-bottom: 1rem;
+            color: var(--color-gray-900); font-size: 1.25rem;
+        }
+        .mod-user-list { list-style: none; margin-bottom: 1.25rem; }
+        .mod-user-list li {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 8px 0; border-bottom: 1px solid var(--border);
+            font-size: 0.9rem; color: var(--color-gray-700);
+        }
+        .mod-user-list li:last-child { border-bottom: none; }
+        .mod-user-info { display: flex; align-items: center; gap: 8px; }
+        .mod-role-tag {
+            font-size: 0.7rem; padding: 1px 7px; border-radius: 8px;
+            font-weight: 600; text-transform: uppercase;
+        }
+        .mod-role-tag.admin { background: #e74c3c; color: white; }
+        .mod-role-tag.moderator { background: var(--color-primary); color: white; }
+        .mod-remove-btn {
+            font-family: inherit; font-size: 0.75rem; padding: 3px 10px;
+            border-radius: 5px; border: 1px solid var(--border);
+            cursor: pointer; background: var(--bg-card); color: var(--color-gray-500);
+        }
+        .mod-remove-btn:hover { border-color: #e74c3c; color: #e74c3c; }
+        .mod-add-form { display: flex; gap: 6px; flex-wrap: wrap; align-items: flex-end; }
+        .mod-add-form input, .mod-add-form select {
+            padding: 6px 10px; border: 1px solid var(--border-input); border-radius: 6px;
+            font-family: inherit; font-size: 0.85rem;
+            background: var(--bg-input); color: var(--color-gray-700); flex: 1; min-width: 100px;
+        }
+        .mod-add-form button {
+            padding: 6px 14px; border-radius: 6px; border: none;
+            background: var(--color-primary); color: white;
+            font-family: inherit; font-size: 0.85rem; font-weight: 600;
+            cursor: pointer; white-space: nowrap;
+        }
+        .mod-add-form button:hover { background: var(--color-primary-light); }
+
     </style>
 </head>
 <body>
@@ -1283,6 +1334,7 @@
             <button class="refresh-btn" style="background:var(--color-gray-500);" onclick="exportCSV()" title="Download CSV">⬇ CSV</button>
             <button class="refresh-btn" style="background:var(--color-gray-500);" onclick="toggleKbdHint()" title="Keyboard shortcuts">⌨</button>
             <button id="mod-toggle" class="refresh-btn" style="background:var(--color-gray-500);" onclick="toggleModLogin()" title="Moderator login">🔒</button>
+            <button id="mod-admin-btn" class="refresh-btn" style="background:#e74c3c;display:none;" onclick="openAdminPanel()" title="Manage moderators">👥</button>
         </div>
     </div>
 
@@ -1359,6 +1411,29 @@
         <div class="mod-btn-row">
             <button class="mod-btn-cancel" onclick="closeModLogin()">Cancel</button>
             <button class="mod-btn-primary" onclick="doModLogin()">Log in</button>
+        </div>
+    </div>
+</div>
+
+<!-- Admin: manage moderators modal -->
+<div id="mod-admin-modal" role="dialog" aria-modal="true">
+    <div class="mod-admin-box">
+        <h3>Manage Moderators</h3>
+        <ul id="mod-user-list" class="mod-user-list">
+            <li style="color:var(--color-gray-500)">Loading...</li>
+        </ul>
+        <h4 style="font-size:0.9rem;margin-bottom:0.5rem;color:var(--color-gray-900);">Add New User</h4>
+        <div class="mod-add-form">
+            <input type="text" id="mod-add-username" placeholder="Username">
+            <input type="password" id="mod-add-password" placeholder="Password">
+            <select id="mod-add-role">
+                <option value="moderator">Moderator</option>
+                <option value="admin">Admin</option>
+            </select>
+            <button onclick="doAdminAddUser()">+ Add</button>
+        </div>
+        <div class="mod-btn-row" style="margin-top:1.25rem;">
+            <button class="mod-btn-cancel" onclick="closeAdminPanel()">Close</button>
         </div>
     </div>
 </div>
@@ -3250,6 +3325,10 @@
         return !!sessionStorage.getItem('bwai-mod-user');
     }
 
+    function isAdmin() {
+        return sessionStorage.getItem('bwai-mod-role') === 'admin';
+    }
+
     function getModCreds() {
         return {
             username: sessionStorage.getItem('bwai-mod-user'),
@@ -3257,12 +3336,20 @@
         };
     }
 
+    function updateModUI() {
+        const loggedIn = isModLoggedIn();
+        const admin = isAdmin();
+        document.getElementById('mod-toggle').textContent = loggedIn ? '🔓' : '🔒';
+        document.getElementById('mod-toggle').style.background = loggedIn ? '#e74c3c' : 'var(--color-gray-500)';
+        document.getElementById('mod-admin-btn').style.display = admin ? '' : 'none';
+    }
+
     function toggleModLogin() {
         if (isModLoggedIn()) {
             sessionStorage.removeItem('bwai-mod-user');
             sessionStorage.removeItem('bwai-mod-pass');
-            document.getElementById('mod-toggle').textContent = '🔒';
-            document.getElementById('mod-toggle').style.background = 'var(--color-gray-500)';
+            sessionStorage.removeItem('bwai-mod-role');
+            updateModUI();
             showToast('Moderator logged out');
             renderFeed();
             return;
@@ -3293,17 +3380,17 @@
                 },
                 body: JSON.stringify({ p_username: username, p_password: password }),
             });
-            const modId = await res.json();
-            if (!modId) {
+            const data = await res.json();
+            if (!data || !data.id) {
                 document.getElementById('mod-login-error').style.display = 'block';
                 return;
             }
             sessionStorage.setItem('bwai-mod-user', username);
             sessionStorage.setItem('bwai-mod-pass', password);
-            document.getElementById('mod-toggle').textContent = '🔓';
-            document.getElementById('mod-toggle').style.background = '#e74c3c';
+            sessionStorage.setItem('bwai-mod-role', data.role);
+            updateModUI();
             closeModLogin();
-            showToast('Logged in as moderator');
+            showToast(`Logged in as ${data.role}`);
             renderFeed();
         } catch (err) {
             document.getElementById('mod-login-error').textContent = 'Login failed: ' + err.message;
@@ -3320,6 +3407,122 @@
     document.getElementById('mod-login-modal').addEventListener('click', e => {
         if (e.target.id === 'mod-login-modal') closeModLogin();
     });
+
+    // ── Admin: manage moderators ─────────────────────────────
+    async function openAdminPanel() {
+        if (!isAdmin()) return;
+        document.getElementById('mod-admin-modal').classList.add('open');
+        await refreshModUserList();
+    }
+
+    function closeAdminPanel() {
+        document.getElementById('mod-admin-modal').classList.remove('open');
+    }
+
+    document.getElementById('mod-admin-modal').addEventListener('click', e => {
+        if (e.target.id === 'mod-admin-modal') closeAdminPanel();
+    });
+
+    async function refreshModUserList() {
+        const { username, password } = getModCreds();
+        const list = document.getElementById('mod-user-list');
+        try {
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/moderator_list_users`, {
+                method: 'POST',
+                headers: {
+                    apikey: ANON_KEY,
+                    Authorization: `Bearer ${ANON_KEY}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ p_username: username, p_password: password }),
+            });
+            if (!res.ok) throw new Error('Failed to load');
+            const users = await res.json();
+            if (!users || !users.length) {
+                list.innerHTML = '<li style="color:var(--color-gray-500)">No moderators found.</li>';
+                return;
+            }
+            list.innerHTML = users.map(u => `
+                <li>
+                    <div class="mod-user-info">
+                        <strong>${esc(u.username)}</strong>
+                        <span class="mod-role-tag ${u.role}">${u.role}</span>
+                    </div>
+                    ${u.username !== username
+                        ? `<button class="mod-remove-btn" onclick="doAdminRemoveUser('${u.id}', '${esc(u.username)}')">Remove</button>`
+                        : '<span style="font-size:0.75rem;color:var(--color-gray-500);">you</span>'}
+                </li>
+            `).join('');
+        } catch (err) {
+            list.innerHTML = `<li style="color:#e74c3c">Error: ${esc(err.message)}</li>`;
+        }
+    }
+
+    async function doAdminAddUser() {
+        const { username, password } = getModCreds();
+        const newUsername = document.getElementById('mod-add-username').value.trim();
+        const newPassword = document.getElementById('mod-add-password').value;
+        const newRole = document.getElementById('mod-add-role').value;
+
+        if (!newUsername || !newPassword) { showToast('Username and password are required'); return; }
+
+        try {
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/moderator_add_user`, {
+                method: 'POST',
+                headers: {
+                    apikey: ANON_KEY,
+                    Authorization: `Bearer ${ANON_KEY}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    p_username: username,
+                    p_password: password,
+                    p_new_username: newUsername,
+                    p_new_password: newPassword,
+                    p_new_role: newRole,
+                }),
+            });
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.message || 'Failed to add user');
+            }
+            document.getElementById('mod-add-username').value = '';
+            document.getElementById('mod-add-password').value = '';
+            showToast(`Added ${newRole}: ${newUsername}`);
+            await refreshModUserList();
+        } catch (err) {
+            showToast('Error: ' + err.message);
+        }
+    }
+
+    async function doAdminRemoveUser(targetId, targetName) {
+        if (!confirm(`Remove moderator "${targetName}"?`)) return;
+        const { username, password } = getModCreds();
+
+        try {
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/moderator_remove_user`, {
+                method: 'POST',
+                headers: {
+                    apikey: ANON_KEY,
+                    Authorization: `Bearer ${ANON_KEY}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    p_username: username,
+                    p_password: password,
+                    p_target_id: targetId,
+                }),
+            });
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.message || 'Failed to remove user');
+            }
+            showToast(`Removed: ${targetName}`);
+            await refreshModUserList();
+        } catch (err) {
+            showToast('Error: ' + err.message);
+        }
+    }
 
     function openModEdit(detectionId) {
         const d = allDetections.find(x => String(x.id) === String(detectionId));
@@ -3412,10 +3615,7 @@
     }
 
     // Restore moderator UI state on page load
-    if (isModLoggedIn()) {
-        document.getElementById('mod-toggle').textContent = '🔓';
-        document.getElementById('mod-toggle').style.background = '#e74c3c';
-    }
+    updateModUI();
 
     // ── Init ─────────────────────────────────────────────────
     loadFeed().then(handleSharedId);
