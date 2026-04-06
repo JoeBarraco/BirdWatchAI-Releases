@@ -940,6 +940,25 @@
             letter-spacing: 0.02em;
         }
 
+        /* ── Likes table animations ─────────────────────────── */
+        .likes-row-flip {
+            transition: transform 0.5s ease;
+        }
+        .likes-score-changed {
+            animation: scoreFlash 0.6s ease;
+        }
+        @keyframes scoreFlash {
+            0%   { background: rgba(45,90,61,0.3); }
+            100% { background: transparent; }
+        }
+        .likes-row-new {
+            animation: rowFadeIn 0.5s ease;
+        }
+        @keyframes rowFadeIn {
+            0%   { opacity: 0; background: rgba(45,90,61,0.15); }
+            100% { opacity: 1; background: transparent; }
+        }
+
         /* ── Emoji reactions ─────────────────────────────────── */
         .card-reactions {
             display: flex;
@@ -3227,20 +3246,11 @@
     }
 
     // ── Liked Detections (Stats tab) ─────────────────────────
-    async function renderLikesPanel() {
-        const panel = document.getElementById('stats-likes');
-        panel.innerHTML = '<div class="feed-loading">Loading reaction data…</div>';
+    let likesResortTimer = null;
 
-        // Ensure all detections and reaction data are loaded
-        if (!feedExhausted) await loadAllDetections();
-        await loadReactionTotals();
-        const ids = allDetections.map(d => d.id);
-        if (ids.length) await loadReactionCounts(ids);
-
+    function buildLikesRows() {
         const visible = applyClientFilters(allDetections);
-
-        // Build rows: only detections that have at least one reaction
-        const rows = visible.map(d => {
+        return visible.map(d => {
             const data = reactionCache[d.id] || {};
             const wow       = data.wow?.count || 0;
             const liked     = data.liked?.count || 0;
@@ -3250,38 +3260,38 @@
             return { d, wow, liked, celebrate, bird, total };
         }).filter(r => r.total > 0)
           .sort((a, b) => b.total - a.total);
+    }
 
-        if (rows.length === 0) {
-            panel.innerHTML = '<div class="feed-empty">No reactions yet. Like some detections to see stats here!</div>';
-            return;
-        }
-
-        // Wire up reaction button clicks in the likes table.
-        // Update the total cell in-place on click, then debounce a full
-        // re-sort/re-render so rows don't jump while the user is clicking.
-        let likesResortTimer = null;
-        panel.onclick = (e) => {
-            const rxBtn = e.target.closest('[data-reaction-id]');
-            if (!rxBtn) return;
-            toggleReaction(rxBtn.dataset.reactionId, rxBtn.dataset.emoji, rxBtn);
-            // Update the total cell in the same row immediately
-            const row = rxBtn.closest('tr');
-            if (row) {
-                const countCells = row.querySelectorAll('[data-reaction-id]');
-                let total = 0;
-                countCells.forEach(btn => {
-                    const txt = btn.textContent.replace(/[^\d]/g, '');
-                    total += parseInt(txt, 10) || 0;
-                });
-                const totalCell = row.querySelector('.likes-total');
-                if (totalCell) totalCell.textContent = total;
-            }
-            // Debounce full re-render (re-sort) after 3 seconds of inactivity
-            clearTimeout(likesResortTimer);
-            likesResortTimer = setTimeout(() => renderLikesPanel(), 3000);
+    function likesRowHtml(r, rank) {
+        const rarityClass = r.d.rarity ? 'rarity-' + r.d.rarity.toLowerCase().replace(/\s+/g, '-') : '';
+        const photoBtn = r.d.image_url
+            ? `<img src="${r.d.image_url}" alt="${esc(r.d.species)}" style="width:32px;height:32px;object-fit:cover;border-radius:4px;cursor:pointer;vertical-align:middle;" onclick="openLightbox('${r.d.image_url}','${esc(r.d.species)}')">`
+            : '';
+        const videoBtn = r.d.video_url
+            ? `<a href="${r.d.video_url}" target="_blank" rel="noopener" title="Watch video" style="font-size:1.75rem;vertical-align:middle;text-decoration:none;">🎬</a>`
+            : '';
+        const rxBtn = (emoji, count) => {
+            const reacted = isReacted(r.d.id, emoji);
+            return `<button class="reaction-btn${reacted ? ' reacted' : ''}" data-reaction-id="${r.d.id}" data-emoji="${emoji}" style="font-size:0.85rem;padding:2px 6px;">${emoji}${count ? ' ' + count : ''}</button>`;
         };
+        return `<tr data-likes-id="${r.d.id}">
+            <td class="stats-rank likes-rank">${rank}</td>
+            <td class="stats-species-name" style="white-space:nowrap;">${esc(r.d.species || 'Unknown')}${r.d.rarity
+                ? ` <span class="rarity-badge ${rarityClass}">${esc(r.d.rarity)}</span>` : ''}</td>
+            <td style="white-space:nowrap;">${r.d.feeders?.display_name ? esc(r.d.feeders.display_name) : ''}</td>
+            <td>${r.d.zip_code ? esc(r.d.zip_code) : ''}</td>
+            <td style="white-space:nowrap;">${fmtDetectedAt(r.d.detected_at)}</td>
+            <td style="text-align:center;">${rxBtn('😮', r.wow)}</td>
+            <td style="text-align:center;">${rxBtn('❤️', r.liked)}</td>
+            <td style="text-align:center;">${rxBtn('🎉', r.celebrate)}</td>
+            <td style="text-align:center;">${rxBtn('🦅', r.bird)}</td>
+            <td class="likes-total" data-total="${r.total}" style="text-align:center;font-weight:600;">${r.total}</td>
+            <td style="text-align:center;white-space:nowrap;">${photoBtn} ${videoBtn}</td>
+        </tr>`;
+    }
 
-        panel.innerHTML = `<table class="stats-table" style="table-layout:auto;">
+    function likesTableHtml(rows) {
+        return `<table class="stats-table" style="table-layout:auto;">
             <thead><tr>
                 <th>#</th>
                 <th>Species</th>
@@ -3295,35 +3305,132 @@
                 <th style="text-align:center;">Total</th>
                 <th style="text-align:center;">Media</th>
             </tr></thead>
-            <tbody>${rows.map((r, i) => {
-                const rarityClass = r.d.rarity ? 'rarity-' + r.d.rarity.toLowerCase().replace(/\s+/g, '-') : '';
-                const photoBtn = r.d.image_url
-                    ? `<img src="${r.d.image_url}" alt="${esc(r.d.species)}" style="width:32px;height:32px;object-fit:cover;border-radius:4px;cursor:pointer;vertical-align:middle;" onclick="openLightbox('${r.d.image_url}','${esc(r.d.species)}')">`
-                    : '';
-                const videoBtn = r.d.video_url
-                    ? `<a href="${r.d.video_url}" target="_blank" rel="noopener" title="Watch video" style="font-size:1.75rem;vertical-align:middle;text-decoration:none;">🎬</a>`
-                    : '';
-                const rxBtn = (emoji, emojiKey, count) => {
-                    const reacted = isReacted(r.d.id, emoji);
-                    return `<button class="reaction-btn${reacted ? ' reacted' : ''}" data-reaction-id="${r.d.id}" data-emoji="${emoji}" style="font-size:0.85rem;padding:2px 6px;">${emoji}${count ? ' ' + count : ''}</button>`;
-                };
-                return `<tr>
-                    <td class="stats-rank">${i + 1}</td>
-                    <td class="stats-species-name" style="white-space:nowrap;">${esc(r.d.species || 'Unknown')}${r.d.rarity
-                        ? ` <span class="rarity-badge ${rarityClass}">${esc(r.d.rarity)}</span>` : ''}</td>
-                    <td style="white-space:nowrap;">${r.d.feeders?.display_name ? esc(r.d.feeders.display_name) : ''}</td>
-                    <td>${r.d.zip_code ? esc(r.d.zip_code) : ''}</td>
-                    <td style="white-space:nowrap;">${fmtDetectedAt(r.d.detected_at)}</td>
-                    <td style="text-align:center;">${rxBtn('😮', 'wow', r.wow)}</td>
-                    <td style="text-align:center;">${rxBtn('❤️', 'liked', r.liked)}</td>
-                    <td style="text-align:center;">${rxBtn('🎉', 'celebrate', r.celebrate)}</td>
-                    <td style="text-align:center;">${rxBtn('🦅', 'bird', r.bird)}</td>
-                    <td class="likes-total" style="text-align:center;font-weight:600;">${r.total}</td>
-                    <td style="text-align:center;white-space:nowrap;">${photoBtn} ${videoBtn}</td>
-                </tr>`;
-            }).join('')}
-            </tbody>
+            <tbody>${rows.map((r, i) => likesRowHtml(r, i + 1)).join('')}</tbody>
         </table>`;
+    }
+
+    async function renderLikesPanel() {
+        const panel = document.getElementById('stats-likes');
+        panel.innerHTML = '<div class="feed-loading">Loading reaction data…</div>';
+
+        if (!feedExhausted) await loadAllDetections();
+        await loadReactionTotals();
+        const ids = allDetections.map(d => d.id);
+        if (ids.length) await loadReactionCounts(ids);
+
+        const rows = buildLikesRows();
+        if (rows.length === 0) {
+            panel.innerHTML = '<div class="feed-empty">No reactions yet. Like some detections to see stats here!</div>';
+            return;
+        }
+
+        // Wire up click handler (event delegation)
+        panel.onclick = (e) => {
+            const rxBtn = e.target.closest('[data-reaction-id]');
+            if (!rxBtn) return;
+            toggleReaction(rxBtn.dataset.reactionId, rxBtn.dataset.emoji, rxBtn);
+            // Update total cell in-place
+            const row = rxBtn.closest('tr');
+            if (row) {
+                const countCells = row.querySelectorAll('[data-reaction-id]');
+                let total = 0;
+                countCells.forEach(btn => {
+                    const txt = btn.textContent.replace(/[^\d]/g, '');
+                    total += parseInt(txt, 10) || 0;
+                });
+                const totalCell = row.querySelector('.likes-total');
+                if (totalCell) { totalCell.textContent = total; totalCell.dataset.total = total; }
+            }
+            // Debounce animated re-sort after 3s of inactivity
+            clearTimeout(likesResortTimer);
+            likesResortTimer = setTimeout(() => resortLikesPanel(), 3000);
+        };
+
+        panel.innerHTML = likesTableHtml(rows);
+    }
+
+    async function resortLikesPanel() {
+        const panel = document.getElementById('stats-likes');
+        const tbody = panel.querySelector('tbody');
+        if (!tbody) return;
+
+        // Save scroll position
+        const scrollY = window.scrollY;
+
+        // Snapshot old row positions and scores
+        const oldRows = tbody.querySelectorAll('tr[data-likes-id]');
+        const oldPositions = {};
+        const oldScores = {};
+        oldRows.forEach(tr => {
+            const id = tr.dataset.likesId;
+            oldPositions[id] = tr.getBoundingClientRect();
+            const totalCell = tr.querySelector('.likes-total');
+            oldScores[id] = parseInt(totalCell?.dataset.total, 10) || 0;
+        });
+
+        // Fetch fresh data from server
+        await loadReactionTotals();
+        const ids = allDetections.map(d => d.id);
+        if (ids.length) await loadReactionCounts(ids);
+
+        // Build new sorted rows
+        const rows = buildLikesRows();
+        if (rows.length === 0) {
+            panel.innerHTML = '<div class="feed-empty">No reactions yet. Like some detections to see stats here!</div>';
+            return;
+        }
+
+        // Replace tbody content
+        tbody.innerHTML = rows.map((r, i) => likesRowHtml(r, i + 1)).join('');
+
+        // Restore scroll position
+        window.scrollTo(0, scrollY);
+
+        // FLIP animation: move new rows from old positions
+        const newRows = tbody.querySelectorAll('tr[data-likes-id]');
+        newRows.forEach(tr => {
+            const id = tr.dataset.likesId;
+            const newRect = tr.getBoundingClientRect();
+
+            if (oldPositions[id]) {
+                const deltaY = oldPositions[id].top - newRect.top;
+                if (Math.abs(deltaY) > 1) {
+                    // Invert: place at old position
+                    tr.style.transform = `translateY(${deltaY}px)`;
+                    tr.style.transition = 'none';
+                    // Play: animate to new position
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() => {
+                            tr.classList.add('likes-row-flip');
+                            tr.style.transform = '';
+                            tr.addEventListener('transitionend', () => {
+                                tr.classList.remove('likes-row-flip');
+                                tr.style.transition = '';
+                            }, { once: true });
+                        });
+                    });
+                }
+            } else {
+                // New row that wasn't in the table before
+                tr.classList.add('likes-row-new');
+                tr.addEventListener('animationend', () => tr.classList.remove('likes-row-new'), { once: true });
+            }
+
+            // Flash score cells that changed
+            const newTotal = parseInt(tr.querySelector('.likes-total')?.dataset.total, 10) || 0;
+            if (oldScores[id] !== undefined && oldScores[id] !== newTotal) {
+                const totalCell = tr.querySelector('.likes-total');
+                if (totalCell) {
+                    totalCell.classList.add('likes-score-changed');
+                    totalCell.addEventListener('animationend', () => totalCell.classList.remove('likes-score-changed'), { once: true });
+                }
+                // Also flash individual emoji cells that changed
+                tr.querySelectorAll('[data-reaction-id]').forEach(btn => {
+                    btn.closest('td')?.classList.add('likes-score-changed');
+                    btn.closest('td')?.addEventListener('animationend', function() { this.classList.remove('likes-score-changed'); }, { once: true });
+                });
+            }
+        });
     }
 
     // ── Species comparison (Stats tab) ────────────────────────
