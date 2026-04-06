@@ -1659,6 +1659,11 @@
             // Ensure reaction totals are loaded when sorting by most liked
             const sortOrder = document.getElementById('sort-filter')?.value;
             if (sortOrder === 'liked') {
+                if (!feedExhausted) {
+                    document.getElementById('feed-view').innerHTML =
+                        '<div class="feed-loading">Loading all detections…</div>';
+                    await loadAllDetections();
+                }
                 await loadReactionTotals();
                 const ids = allDetections.map(d => d.id);
                 if (ids.length) await loadReactionCounts(ids);
