@@ -760,37 +760,6 @@
         }
         .trend-svg-wrap svg text { font-family: 'Source Sans 3', sans-serif; }
 
-        /* ── Species type-ahead ────────────────────────────── */
-        .species-wrap {
-            position: relative;
-        }
-        .species-wrap input {
-            min-width: 160px;
-        }
-        #species-suggestions {
-            display: none;
-            position: absolute;
-            top: calc(100% + 4px);
-            left: 0;
-            min-width: 200px;
-            background: var(--bg-card);
-            border: 1px solid var(--border-input);
-            border-radius: 6px;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
-            z-index: 999;
-            max-height: 220px;
-            overflow-y: auto;
-        }
-        .species-suggestion {
-            padding: 7px 12px;
-            font-size: 0.875rem;
-            cursor: pointer;
-            color: var(--color-gray-700);
-        }
-        .species-suggestion:hover, .species-suggestion.focused {
-            background: var(--color-gray-100);
-            color: var(--color-primary);
-        }
 
         /* ── Near me button ─────────────────────────────────── */
         .near-me-btn {
@@ -1346,10 +1315,9 @@
 
         <div class="filter-group">
             <span class="filter-label">Species</span>
-            <div class="species-wrap">
-                <input id="species-search" class="filter-input" type="text" placeholder="Search species…" autocomplete="off">
-                <div id="species-suggestions"></div>
-            </div>
+            <select id="species-filter" class="filter-select" onchange="commitSpecies(this.value)">
+                <option value="">All species</option>
+            </select>
         </div>
 
         <div class="filter-group">
@@ -1646,37 +1614,10 @@
         if (currentView === 'stats') renderStats();
     }
 
-    // ── Species type-ahead ───────────────────────────────────
-    let allSpeciesList  = [];   // full list from data
-    let suggFocusIdx    = -1;
-
-    function updateSpeciesSuggestions() {
-        const input = document.getElementById('species-search');
-        const box   = document.getElementById('species-suggestions');
-        const q     = input.value.trim().toLowerCase();
-
-        // If blank, clear the committed filter and close
-        if (!q) {
-            selectedSpecies = '';
-            box.style.display = 'none';
-            refilter();
-            return;
-        }
-
-        const matches = allSpeciesList.filter(s => s.toLowerCase().includes(q)).slice(0, 12);
-        if (matches.length === 0) { box.style.display = 'none'; return; }
-
-        suggFocusIdx = -1;
-        box.innerHTML = matches.map((s, i) =>
-            `<div class="species-suggestion" data-species="${esc(s)}" data-idx="${i}">${esc(s)}</div>`
-        ).join('');
-        box.style.display = 'block';
-    }
-
+    // ── Species filter dropdown ─────────────────────────────
     function commitSpecies(name) {
         selectedSpecies = name;
-        document.getElementById('species-search').value = name;
-        document.getElementById('species-suggestions').style.display = 'none';
+        document.getElementById('species-filter').value = name;
         refilter();
     }
 
@@ -1685,41 +1626,6 @@
         if (currentView === 'map')   renderMap();
         if (currentView === 'stats') renderStats();
     }
-
-    document.getElementById('species-search').addEventListener('input', updateSpeciesSuggestions);
-
-    document.getElementById('species-search').addEventListener('keydown', e => {
-        const box   = document.getElementById('species-suggestions');
-        const items = box.querySelectorAll('.species-suggestion');
-        if (!items.length) return;
-        if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            suggFocusIdx = Math.min(suggFocusIdx + 1, items.length - 1);
-        } else if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            suggFocusIdx = Math.max(suggFocusIdx - 1, 0);
-        } else if (e.key === 'Enter' && suggFocusIdx >= 0) {
-            e.preventDefault();
-            commitSpecies(items[suggFocusIdx].dataset.species);
-            return;
-        } else if (e.key === 'Escape') {
-            box.style.display = 'none';
-            return;
-        }
-        items.forEach((el, i) => el.classList.toggle('focused', i === suggFocusIdx));
-    });
-
-    document.getElementById('species-suggestions').addEventListener('click', e => {
-        const item = e.target.closest('.species-suggestion');
-        if (item) commitSpecies(item.dataset.species);
-    });
-
-    // Close dropdown when clicking outside
-    document.addEventListener('click', e => {
-        if (!e.target.closest('.species-wrap')) {
-            document.getElementById('species-suggestions').style.display = 'none';
-        }
-    });
 
     // ── Near me (ZIP from geolocation) ───────────────────────
     function useMyLocation() {
@@ -1895,11 +1801,15 @@
     }
 
     function populateFeedSpeciesDropdown(data) {
-        allSpeciesList = [...new Set(data.map(d => d.species).filter(Boolean))].sort();
-        // If current selectedSpecies is no longer in the list, clear it
-        if (selectedSpecies && !allSpeciesList.includes(selectedSpecies)) {
+        const sel = document.getElementById('species-filter');
+        const prev = selectedSpecies;
+        const species = [...new Set(data.map(d => d.species).filter(Boolean))].sort();
+        sel.innerHTML = '<option value="">All species</option>' +
+            species.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+        if (species.includes(prev)) {
+            sel.value = prev;
+        } else {
             selectedSpecies = '';
-            document.getElementById('species-search').value = '';
         }
     }
 
@@ -2701,14 +2611,14 @@
 
     function filterBySpeciesFromMap(speciesName) {
         selectedSpecies = speciesName;
-        document.getElementById('species-search').value = speciesName;
+        document.getElementById('species-filter').value = speciesName;
         switchView('feed', document.querySelector('.view-tab'));
     }
 
     function filterBySpecies(btn) {
         const speciesName = btn.dataset.species;
         selectedSpecies = speciesName;
-        document.getElementById('species-search').value = speciesName;
+        document.getElementById('species-filter').value = speciesName;
         currentView = 'feed';
         document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
         document.querySelector('.view-tab').classList.add('active');
@@ -2753,8 +2663,7 @@
         document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
         document.querySelector('.period-btn[data-period=""]').classList.add('active');
         selectedSpecies = '';
-        document.getElementById('species-search').value = '';
-        document.getElementById('species-suggestions').style.display = 'none';
+        document.getElementById('species-filter').value = '';
         document.getElementById('rarity-filter').value  = '';
         document.getElementById('feeder-filter').value  = '';
         document.getElementById('zip-filter').value     = '';
@@ -3254,8 +3163,7 @@
             document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
             document.querySelector('.period-btn[data-period=""]').classList.add('active');
             selectedSpecies = '';
-            document.getElementById('species-search').value = '';
-            document.getElementById('species-suggestions').style.display = 'none';
+            document.getElementById('species-filter').value = '';
             document.getElementById('rarity-filter').value  = '';
             document.getElementById('feeder-filter').value  = '';
             document.getElementById('zip-filter').value     = '';
