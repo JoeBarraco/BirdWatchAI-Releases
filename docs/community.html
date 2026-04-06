@@ -1359,6 +1359,14 @@
         </div>
 
         <div class="filter-group">
+            <span class="filter-label">Sort</span>
+            <select id="sort-filter" class="filter-select" onchange="refilter()">
+                <option value="recent">Most Recent</option>
+                <option value="liked">Most Liked</option>
+            </select>
+        </div>
+
+        <div class="filter-group">
             <button id="fav-toggle" class="toggle-btn" onclick="toggleFavorites()">⭐ Favorites only</button>
         </div>
 
@@ -1771,6 +1779,11 @@
             populateFeedSpeciesDropdown(allDetections);
             populateMapSpeciesDropdown(allDetections);
 
+            // Load reaction data from Supabase
+            const ids = page.map(d => d.id);
+            await loadReactionCounts(ids);
+            if (!append) await loadReactionTotals();
+
             const hadDetections = lastTopId !== null;
             const prevTop = lastTopId;
             renderFeed();
@@ -1922,7 +1935,13 @@
 
     // ── Render feed ──────────────────────────────────────────
     function renderFeed() {
-        const visible = applyClientFilters(allDetections);
+        let visible = applyClientFilters(allDetections);
+
+        // Apply sort order
+        const sortOrder = document.getElementById('sort-filter')?.value || 'recent';
+        if (sortOrder === 'liked') {
+            visible = [...visible].sort((a, b) => getReactionTotal(b.id) - getReactionTotal(a.id));
+        }
 
         const newTopId = visible[0]?.id ?? null;
         const hasNew   = lastTopId !== null && newTopId !== lastTopId;
@@ -1978,9 +1997,11 @@
                     </div>
                     ${d.feeders?.display_name ? `<div class="card-feeder">📡 ${esc(d.feeders.display_name)}</div>` : ''}
                     <div class="card-reactions">
-                        ${['😮','❤️','🎉','🦅'].map(emoji =>
-                            `<button class="reaction-btn${reactions[emoji] ? ' reacted' : ''}" data-reaction-id="${d.id}" data-emoji="${emoji}">${emoji} ${reactions[emoji] || ''}</button>`
-                        ).join('')}
+                        ${EMOJI_LIST.map(emoji => {
+                            const count = reactions[emoji] || 0;
+                            const reacted = isReacted(d.id, emoji);
+                            return `<button class="reaction-btn${reacted ? ' reacted' : ''}" data-reaction-id="${d.id}" data-emoji="${emoji}">${emoji}${count ? ' ' + count : ''}</button>`;
+                        }).join('')}
                     </div>
                     <div style="display:flex;align-items:center;flex-wrap:wrap;gap:0;">
                         ${d.video_url
@@ -2816,6 +2837,7 @@
         document.getElementById('rarity-filter').value  = '';
         document.getElementById('feeder-filter').value  = '';
         document.getElementById('zip-filter').value     = '';
+        document.getElementById('sort-filter').value   = 'recent';
         favoritesOnly = false;
         document.getElementById('fav-toggle').classList.remove('active');
         loadFeed();
@@ -2979,34 +3001,151 @@
         btn.textContent = '🔊 Call';
     }
 
-    // ── Emoji reactions (localStorage) ───────────────────────
-    const REACTIONS_KEY = 'bwai-reactions';
+    // ── Emoji reactions (Supabase-backed, shared across users) ──
+    const EMOJI_MAP = { '😮': 'wow', '❤️': 'liked', '🎉': 'celebrate', '🦅': 'bird' };
+    const EMOJI_REVERSE = Object.fromEntries(Object.entries(EMOJI_MAP).map(([k,v]) => [v,k]));
+    const EMOJI_LIST = ['😮','❤️','🎉','🦅'];
 
-    function getAllReactions() {
-        try { return JSON.parse(localStorage.getItem(REACTIONS_KEY)) || {}; } catch { return {}; }
+    // Anonymous user ID (persisted in localStorage)
+    function getAnonUserId() {
+        let id = localStorage.getItem('bwai-user-id');
+        if (!id) {
+            id = crypto.randomUUID();
+            localStorage.setItem('bwai-user-id', id);
+        }
+        return id;
     }
+    const ANON_USER_ID = getAnonUserId();
+
+    // In-memory cache of reaction data: { detectionId: { emojiKey: { count, reacted } } }
+    let reactionCache = {};
+    // Totals cache for sorting: { detectionId: totalCount }
+    let reactionTotals = {};
 
     function getReactions(detectionId) {
-        const all = getAllReactions();
-        return all[detectionId] || {};
+        // Returns { emoji: count } for display, where emoji is the actual emoji character
+        const data = reactionCache[detectionId] || {};
+        const result = {};
+        for (const [key, info] of Object.entries(data)) {
+            const emoji = EMOJI_REVERSE[key];
+            if (emoji) result[emoji] = info.count;
+        }
+        return result;
     }
 
-    function toggleReaction(detectionId, emoji, btn) {
-        const all = getAllReactions();
-        if (!all[detectionId]) all[detectionId] = {};
-        const cur = all[detectionId][emoji] || 0;
-        if (btn.classList.contains('reacted')) {
-            // un-react
-            all[detectionId][emoji] = Math.max(0, cur - 1);
-            if (!all[detectionId][emoji]) delete all[detectionId][emoji];
-            btn.classList.remove('reacted');
-        } else {
-            all[detectionId][emoji] = cur + 1;
-            btn.classList.add('reacted');
-        }
-        localStorage.setItem(REACTIONS_KEY, JSON.stringify(all));
-        const count = all[detectionId]?.[emoji] || '';
-        btn.textContent = emoji + (count ? ' ' + count : '');
+    function isReacted(detectionId, emoji) {
+        const key = EMOJI_MAP[emoji];
+        return reactionCache[detectionId]?.[key]?.reacted || false;
+    }
+
+    function getReactionTotal(detectionId) {
+        return reactionTotals[detectionId] || 0;
+    }
+
+    async function loadReactionCounts(detectionIds) {
+        if (!detectionIds.length) return;
+        try {
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_reaction_counts`, {
+                method: 'POST',
+                headers: {
+                    apikey: ANON_KEY,
+                    Authorization: `Bearer ${ANON_KEY}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ p_detection_ids: detectionIds, p_user_id: ANON_USER_ID }),
+            });
+            if (!res.ok) return;
+            const data = await res.json();
+            if (data && typeof data === 'object') {
+                Object.assign(reactionCache, data);
+                // Update totals
+                for (const [did, emojis] of Object.entries(data)) {
+                    let total = 0;
+                    for (const info of Object.values(emojis)) total += info.count;
+                    reactionTotals[did] = total;
+                }
+            }
+        } catch (_) { /* silently fail — reactions are non-critical */ }
+    }
+
+    async function loadReactionTotals() {
+        try {
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_reaction_totals`, {
+                method: 'POST',
+                headers: {
+                    apikey: ANON_KEY,
+                    Authorization: `Bearer ${ANON_KEY}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({}),
+            });
+            if (!res.ok) return;
+            const data = await res.json();
+            if (data && typeof data === 'object') {
+                reactionTotals = {};
+                for (const [did, total] of Object.entries(data)) {
+                    reactionTotals[did] = total;
+                }
+            }
+        } catch (_) { /* silently fail */ }
+    }
+
+    async function toggleReaction(detectionId, emoji, btn) {
+        const emojiKey = EMOJI_MAP[emoji];
+        if (!emojiKey) return;
+
+        // Optimistic UI update
+        const wasReacted = btn.classList.contains('reacted');
+        const cached = reactionCache[detectionId]?.[emojiKey];
+        const oldCount = cached?.count || 0;
+        const newCount = wasReacted ? Math.max(0, oldCount - 1) : oldCount + 1;
+
+        if (!reactionCache[detectionId]) reactionCache[detectionId] = {};
+        reactionCache[detectionId][emojiKey] = { count: newCount, reacted: !wasReacted };
+
+        // Update totals
+        const oldTotal = reactionTotals[detectionId] || 0;
+        reactionTotals[detectionId] = wasReacted ? Math.max(0, oldTotal - 1) : oldTotal + 1;
+
+        btn.classList.toggle('reacted', !wasReacted);
+        btn.textContent = emoji + (newCount ? ' ' + newCount : '');
+
+        // Server call
+        try {
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/toggle_reaction`, {
+                method: 'POST',
+                headers: {
+                    apikey: ANON_KEY,
+                    Authorization: `Bearer ${ANON_KEY}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ p_detection_id: detectionId, p_user_id: ANON_USER_ID, p_emoji: emojiKey }),
+            });
+            if (res.ok) {
+                const serverData = await res.json();
+                if (serverData && typeof serverData === 'object') {
+                    reactionCache[detectionId] = serverData;
+                    // Recalculate total
+                    let total = 0;
+                    for (const info of Object.values(serverData)) total += info.count;
+                    reactionTotals[detectionId] = total;
+                    // Re-render this card's reaction buttons from server truth
+                    updateCardReactions(detectionId);
+                }
+            }
+        } catch (_) { /* keep optimistic state */ }
+    }
+
+    function updateCardReactions(detectionId) {
+        document.querySelectorAll(`[data-reaction-id="${detectionId}"]`).forEach(btn => {
+            const emoji = btn.dataset.emoji;
+            const emojiKey = EMOJI_MAP[emoji];
+            const info = reactionCache[detectionId]?.[emojiKey];
+            const count = info?.count || 0;
+            const reacted = info?.reacted || false;
+            btn.classList.toggle('reacted', reacted);
+            btn.textContent = emoji + (count ? ' ' + count : '');
+        });
     }
 
     // ── Species photo carousel ────────────────────────────────
@@ -3529,6 +3668,24 @@
         audioBtn.textContent = '🔊 Play call';
         audioBtn.onclick = () => playBirdCall(d.species, audioBtn);
         actions.appendChild(audioBtn);
+
+        // Reactions in detail modal
+        const rxDiv = document.createElement('div');
+        rxDiv.className = 'card-reactions';
+        rxDiv.style.marginTop = '0.75rem';
+        const reactions = getReactions(d.id);
+        EMOJI_LIST.forEach(emoji => {
+            const count = reactions[emoji] || 0;
+            const reacted = isReacted(d.id, emoji);
+            const btn = document.createElement('button');
+            btn.className = 'reaction-btn' + (reacted ? ' reacted' : '');
+            btn.dataset.reactionId = d.id;
+            btn.dataset.emoji = emoji;
+            btn.textContent = emoji + (count ? ' ' + count : '');
+            btn.onclick = () => toggleReaction(d.id, emoji, btn);
+            rxDiv.appendChild(btn);
+        });
+        actions.parentElement.appendChild(rxDiv);
 
         if (isModLoggedIn()) {
             const editBtn = document.createElement('button');
