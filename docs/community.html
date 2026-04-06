@@ -1452,6 +1452,7 @@
             <button class="stats-tab" onclick="switchStatsTab('leaderboard', this)">🏆 Leaderboard</button>
             <button class="stats-tab" onclick="switchStatsTab('trend', this)">📈 Trend</button>
             <button class="stats-tab" onclick="switchStatsTab('compare', this)">⚖️ Compare</button>
+            <button class="stats-tab" onclick="switchStatsTab('likes', this)">❤️ Likes</button>
         </div>
 
         <div id="stats-life-list"  class="stats-panel"></div>
@@ -1461,6 +1462,7 @@
         <div id="stats-leaderboard" class="stats-panel" style="display:none;"></div>
         <div id="stats-trend"      class="stats-panel" style="display:none;"></div>
         <div id="stats-compare"    class="stats-panel" style="display:none;"></div>
+        <div id="stats-likes"      class="stats-panel" style="display:none;"></div>
     </div>
 </div>
 
@@ -2346,6 +2348,7 @@
         document.getElementById('stats-' + tabName).style.display = '';
         if (tabName === 'compare') renderCompare();
         if (tabName === 'trend') renderTrend();
+        if (tabName === 'likes') renderLikesPanel();
     }
 
     function fmtHour(h) {
@@ -3221,6 +3224,59 @@
         }
         carouselModal.classList.add('open');
         lockScroll();
+    }
+
+    // ── Liked Detections (Stats tab) ─────────────────────────
+    async function renderLikesPanel() {
+        const panel = document.getElementById('stats-likes');
+        panel.innerHTML = '<div class="feed-loading">Loading reaction data…</div>';
+
+        // Ensure all detections and reaction data are loaded
+        if (!feedExhausted) await loadAllDetections();
+        await loadReactionTotals();
+        const ids = allDetections.map(d => d.id);
+        if (ids.length) await loadReactionCounts(ids);
+
+        const visible = applyClientFilters(allDetections);
+
+        // Build rows: only detections that have at least one reaction
+        const rows = visible.map(d => {
+            const data = reactionCache[d.id] || {};
+            const wow       = data.wow?.count || 0;
+            const liked     = data.liked?.count || 0;
+            const celebrate = data.celebrate?.count || 0;
+            const bird      = data.bird?.count || 0;
+            const total     = wow + liked + celebrate + bird;
+            return { d, wow, liked, celebrate, bird, total };
+        }).filter(r => r.total > 0)
+          .sort((a, b) => b.total - a.total);
+
+        if (rows.length === 0) {
+            panel.innerHTML = '<div class="feed-empty">No reactions yet. Like some detections to see stats here!</div>';
+            return;
+        }
+
+        panel.innerHTML = `<table class="stats-table">
+            <thead><tr>
+                <th>#</th><th>Species</th><th>Detected</th>
+                <th>😮</th><th>❤️</th><th>🎉</th><th>🦅</th><th>Total</th>
+            </tr></thead>
+            <tbody>${rows.map((r, i) => {
+                const rarityClass = r.d.rarity ? 'rarity-' + r.d.rarity.toLowerCase().replace(/\s+/g, '-') : '';
+                return `<tr>
+                    <td class="stats-rank">${i + 1}</td>
+                    <td class="stats-species-name">${esc(r.d.species || 'Unknown')}${r.d.rarity
+                        ? ` <span class="rarity-badge ${rarityClass}">${esc(r.d.rarity)}</span>` : ''}</td>
+                    <td style="white-space:nowrap;">${fmtDetectedAt(r.d.detected_at)}</td>
+                    <td class="stats-count">${r.wow || ''}</td>
+                    <td class="stats-count">${r.liked || ''}</td>
+                    <td class="stats-count">${r.celebrate || ''}</td>
+                    <td class="stats-count">${r.bird || ''}</td>
+                    <td class="stats-count" style="font-weight:600;">${r.total}</td>
+                </tr>`;
+            }).join('')}
+            </tbody>
+        </table>`;
     }
 
     // ── Species comparison (Stats tab) ────────────────────────
