@@ -942,20 +942,22 @@
 
         /* ── Likes table animations ─────────────────────────── */
         .likes-row-flip {
-            transition: transform 0.5s ease;
+            transition: transform 1.2s cubic-bezier(0.25, 0.1, 0.25, 1);
         }
         .likes-score-changed {
-            animation: scoreFlash 0.6s ease;
+            animation: scoreFlash 1.5s ease;
         }
         @keyframes scoreFlash {
-            0%   { background: rgba(45,90,61,0.3); }
+            0%   { background: rgba(45,90,61,0.4); }
+            60%  { background: rgba(45,90,61,0.2); }
             100% { background: transparent; }
         }
         .likes-row-new {
-            animation: rowFadeIn 0.5s ease;
+            animation: rowFadeIn 1.2s ease;
         }
         @keyframes rowFadeIn {
-            0%   { opacity: 0; background: rgba(45,90,61,0.15); }
+            0%   { opacity: 0; background: rgba(45,90,61,0.25); }
+            50%  { opacity: 1; background: rgba(45,90,61,0.15); }
             100% { opacity: 1; background: transparent; }
         }
 
