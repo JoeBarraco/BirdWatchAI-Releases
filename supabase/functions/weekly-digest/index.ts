@@ -22,8 +22,9 @@ function buildHtml(opts: {
   rarestSighting: { species: string; feeder: string | null; detected_at: string; image_url: string | null } | null;
   firstOfSeason: { species: string; feeder: string | null; detected_at: string } | null;
   unsubscribeUrl: string;
+  siteUrl: string;
 }) {
-  const { weekLabel, totalDetections, topSpecies, rarestSighting, firstOfSeason, unsubscribeUrl } = opts;
+  const { weekLabel, totalDetections, topSpecies, rarestSighting, firstOfSeason, unsubscribeUrl, siteUrl: SITE_URL } = opts;
   const maxCount = topSpecies[0]?.[1] ?? 1;
 
   const topSpeciesRows = topSpecies.map(([species, count], i) => {
@@ -216,6 +217,7 @@ Deno.serve(async (req) => {
             ? { ...firstOfSeason, feeder: (firstOfSeason.feeders as any)?.display_name ?? null }
             : null,
           unsubscribeUrl: unsubUrl,
+          siteUrl: SITE_URL,
         });
 
         return {
