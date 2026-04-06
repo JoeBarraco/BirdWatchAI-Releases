@@ -674,6 +674,13 @@
         .rarity-badge.rarity-rare      { background: #fff3e0; color: #e65100; }
         .rarity-badge.rarity-very-rare { background: #ffebee; color: #c62828; }
         .rarity-badge.rarity-uncommon  { background: #f5f5f5; color: #616161; }
+        .rarity-badge.rarity-common    { background: #e8f5e9; color: #2e7d32; }
+
+        [data-theme="dark"] .rarity-badge                  { background: #3a3a34; color: #ccc8c2; }
+        [data-theme="dark"] .rarity-badge.rarity-rare      { background: #4a3520; color: #ffb74d; }
+        [data-theme="dark"] .rarity-badge.rarity-very-rare { background: #4a2020; color: #ef9a9a; }
+        [data-theme="dark"] .rarity-badge.rarity-uncommon  { background: #3a3a34; color: #b0aaa2; }
+        [data-theme="dark"] .rarity-badge.rarity-common    { background: #1e3a1e; color: #81c784; }
 
         .stats-view-btn {
             font-family: inherit;
@@ -1380,7 +1387,7 @@
                 <option value="60">Auto: 60s</option>
                 <option value="300">Auto: 5m</option>
             </select>
-            <button id="theme-toggle" class="refresh-btn" style="background:var(--color-gray-500);" onclick="toggleTheme()" title="Toggle dark mode">🌙</button>
+            <button id="theme-toggle" class="refresh-btn" style="background:var(--color-gray-500);" onclick="toggleTheme()" title="Toggle dark mode">🌙 Theme</button>
             <button id="sound-toggle" class="refresh-btn" style="background:var(--color-gray-500);" onclick="toggleSound()" title="Toggle sound">🔇</button>
             <button id="notif-toggle" class="refresh-btn" style="background:var(--color-gray-500);" onclick="toggleNotifications()" title="Rare bird alerts">🔔</button>
             <button class="refresh-btn" style="background:var(--color-gray-500);" onclick="exportCSV()" title="Download CSV">⬇ CSV</button>
@@ -3314,14 +3321,14 @@
         const next    = current === 'dark' ? 'light' : 'dark';
         document.documentElement.setAttribute('data-theme', next);
         localStorage.setItem('bwai-theme', next);
-        document.getElementById('theme-toggle').textContent = next === 'dark' ? '☀️' : '🌙';
+        document.getElementById('theme-toggle').textContent = next === 'dark' ? '☀️ Theme' : '🌙 Theme';
     }
 
     // Set initial icon based on current theme
     window.addEventListener('DOMContentLoaded', () => {
         const theme = document.documentElement.getAttribute('data-theme') ||
             (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-        document.getElementById('theme-toggle').textContent = theme === 'dark' ? '☀️' : '🌙';
+        document.getElementById('theme-toggle').textContent = theme === 'dark' ? '☀️ Theme' : '🌙 Theme';
     });
 
     // ── Bird of the Day ──────────────────────────────────────
