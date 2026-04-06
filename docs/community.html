@@ -1801,20 +1801,34 @@
 
     // ── Load all species/feeder names for complete dropdowns ──
     let dropdownsReady = false;
+    let totalDetectionCount = null;   // total from lightweight query
+
+    function updateFeedCount() {
+        const countEl = document.getElementById('feed-count');
+        const visible = applyClientFilters(allDetections);
+        if (!dropdownsReady && totalDetectionCount === null) {
+            countEl.innerHTML = `<span class="loading-count">${visible.length} detections — loading all…</span>`;
+        } else if (totalDetectionCount !== null && !feedExhausted) {
+            countEl.textContent = `${visible.length} of ${totalDetectionCount} detections`;
+        } else {
+            countEl.textContent = visible.length ? `${visible.length} detection${visible.length !== 1 ? 's' : ''}` : '';
+        }
+    }
 
     async function loadAllDropdownOptions() {
         dropdownsReady = false;
-        const countEl = document.getElementById('feed-count');
+        totalDetectionCount = null;
         const specSel = document.getElementById('species-filter');
 
         // Show loading state
-        countEl.innerHTML = `<span class="loading-count">${allDetections.length} detections — loading all…</span>`;
+        updateFeedCount();
         specSel.innerHTML = '<option value="">Loading species…</option>';
         specSel.disabled = true;
 
         const { period } = getFilters();
         const since = periodToISO(period);
-        let url = `${SUPABASE_URL}/rest/v1/community_detections?select=species,feeders(display_name)&order=species`;
+        // Use Prefer: count=exact header to get total count, and a high limit to fetch all rows
+        let url = `${SUPABASE_URL}/rest/v1/community_detections?select=species,feeders(display_name)&order=species&limit=50000`;
         if (since) url += `&detected_at=gte.${encodeURIComponent(since)}`;
         try {
             const res = await fetch(url, {
@@ -1822,12 +1836,13 @@
             });
             if (!res.ok) return;
             const rows = await res.json();
+            totalDetectionCount = rows.length;
             const species = [...new Set(rows.map(r => r.species).filter(Boolean))].sort();
             const feeders = [...new Set(rows.map(r => r.feeders?.display_name).filter(Boolean))].sort();
 
             // Update species dropdown
             const prevSpec = selectedSpecies;
-            specSel.innerHTML = '<option value="">All species</option>' +
+            specSel.innerHTML = '<option value="">All species (' + species.length + ')</option>' +
                 species.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
             specSel.disabled = false;
             if (species.includes(prevSpec)) specSel.value = prevSpec;
@@ -1846,12 +1861,12 @@
                 feeders.map(f => `<option value="${esc(f)}">${esc(f)}</option>`).join('');
             if (feeders.includes(prevFeeder)) feederSel.value = prevFeeder;
 
-            // Update total count
-            countEl.innerHTML = `${rows.length} total detection${rows.length !== 1 ? 's' : ''}`;
             dropdownsReady = true;
+            updateFeedCount();
         } catch (e) {
             specSel.disabled = false;
             dropdownsReady = true;
+            updateFeedCount();
         }
     }
 
@@ -1903,8 +1918,7 @@
         const hasNew   = lastTopId !== null && newTopId !== lastTopId;
         lastTopId      = newTopId;
 
-        document.getElementById('feed-count').textContent =
-            visible.length ? `${visible.length} detection${visible.length !== 1 ? 's' : ''}` : '';
+        updateFeedCount();
 
         if (visible.length === 0) {
             document.getElementById('feed-view').innerHTML =
