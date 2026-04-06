@@ -1643,28 +1643,32 @@
     }
 
     async function refilter() {
-        const hasFilter = selectedSpecies ||
-            document.getElementById('rarity-filter').value ||
-            document.getElementById('feeder-filter').value ||
-            document.getElementById('zip-filter').value.trim() ||
-            favoritesOnly;
-        if (hasFilter && !feedExhausted) {
-            // Load all data so filtered results are complete
-            document.getElementById('feed-view').innerHTML =
-                '<div class="feed-loading">Loading all detections…</div>';
-            await loadAllDetections();
+        refiltering = true;
+        try {
+            const hasFilter = selectedSpecies ||
+                document.getElementById('rarity-filter').value ||
+                document.getElementById('feeder-filter').value ||
+                document.getElementById('zip-filter').value.trim() ||
+                favoritesOnly;
+            if (hasFilter && !feedExhausted) {
+                // Load all data so filtered results are complete
+                document.getElementById('feed-view').innerHTML =
+                    '<div class="feed-loading">Loading all detections…</div>';
+                await loadAllDetections();
+            }
+            // Ensure reaction totals are loaded when sorting by most liked
+            const sortOrder = document.getElementById('sort-filter')?.value;
+            if (sortOrder === 'liked') {
+                await loadReactionTotals();
+                const ids = allDetections.map(d => d.id);
+                if (ids.length) await loadReactionCounts(ids);
+            }
+            renderFeed();
+            if (currentView === 'map')   renderMap();
+            if (currentView === 'stats') renderStats();
+        } finally {
+            refiltering = false;
         }
-        // Ensure reaction totals are loaded when sorting by most liked
-        const sortOrder = document.getElementById('sort-filter')?.value;
-        if (sortOrder === 'liked') {
-            await loadReactionTotals();
-            // Also load counts for visible detections so buttons show correct numbers
-            const ids = allDetections.map(d => d.id);
-            if (ids.length) await loadReactionCounts(ids);
-        }
-        renderFeed();
-        if (currentView === 'map')   renderMap();
-        if (currentView === 'stats') renderStats();
     }
 
     // ── Near me (ZIP from geolocation) ───────────────────────
@@ -1749,10 +1753,11 @@
     let   feedOffset = 0;
     let   feedExhausted = false;
     let   feedLoading   = false;
+    let   refiltering   = false;
 
     async function loadFeed(append = false) {
-        if (feedLoading) return;
-        if (append && feedExhausted) return;
+        if (refiltering) return;   // don't auto-refresh while a filter is being applied
+        if (append && (feedExhausted || feedLoading)) return;
         feedLoading = true;
 
         const indicator = document.getElementById('refresh-indicator');
