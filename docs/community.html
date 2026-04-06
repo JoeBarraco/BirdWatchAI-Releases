@@ -1780,6 +1780,33 @@
             } else {
                 document.getElementById('countdown').textContent = 'Auto-refresh off';
             }
+            // Load remaining pages in background so dropdowns are complete
+            loadRemainingInBackground();
+        }
+    }
+
+    // ── Background-load remaining pages (for complete dropdowns) ──
+    async function loadRemainingInBackground() {
+        if (feedExhausted) return;
+        const { period } = getFilters();
+        const since = periodToISO(period);
+        while (!feedExhausted) {
+            let url = `${SUPABASE_URL}/rest/v1/community_detections?select=*,feeders(display_name)&limit=${PAGE_SIZE}&offset=${feedOffset}&order=detected_at.desc`;
+            if (since) url += `&detected_at=gte.${encodeURIComponent(since)}`;
+            try {
+                const res = await fetch(url, {
+                    headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` }
+                });
+                if (!res.ok) break;
+                const page = await res.json();
+                allDetections = [...allDetections, ...page];
+                feedOffset += page.length;
+                if (page.length < PAGE_SIZE) feedExhausted = true;
+                // Update dropdowns as new species arrive
+                populateFeederDropdown(allDetections);
+                populateFeedSpeciesDropdown(allDetections);
+                populateMapSpeciesDropdown(allDetections);
+            } catch (e) { break; }
         }
     }
 
@@ -2197,26 +2224,7 @@
     }
 
     async function loadAllThenRenderStats() {
-        if (!feedExhausted && !feedLoading) {
-            // Fetch remaining pages so stats reflect all detections
-            const { period } = getFilters();
-            const since = periodToISO(period);
-            let loading = true;
-            while (loading) {
-                let url = `${SUPABASE_URL}/rest/v1/community_detections?select=*,feeders(display_name)&limit=${PAGE_SIZE}&offset=${feedOffset}&order=detected_at.desc`;
-                if (since) url += `&detected_at=gte.${encodeURIComponent(since)}`;
-                try {
-                    const res = await fetch(url, {
-                        headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` }
-                    });
-                    if (!res.ok) break;
-                    const page = await res.json();
-                    allDetections = [...allDetections, ...page];
-                    feedOffset += page.length;
-                    if (page.length < PAGE_SIZE) { feedExhausted = true; loading = false; }
-                } catch (e) { loading = false; }
-            }
-        }
+        await loadRemainingInBackground();
         renderStats();
     }
 
