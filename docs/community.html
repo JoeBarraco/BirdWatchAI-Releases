@@ -3276,7 +3276,7 @@
                     ? `<img src="${r.d.image_url}" alt="${esc(r.d.species)}" style="width:32px;height:32px;object-fit:cover;border-radius:4px;cursor:pointer;vertical-align:middle;" onclick="openLightbox('${r.d.image_url}','${esc(r.d.species)}')">`
                     : '';
                 const videoBtn = r.d.video_url
-                    ? `<a href="${r.d.video_url}" target="_blank" rel="noopener" title="Watch video" style="vertical-align:middle;">🎬</a>`
+                    ? `<a href="${r.d.video_url}" target="_blank" rel="noopener" title="Watch video" style="font-size:1.75rem;vertical-align:middle;text-decoration:none;">🎬</a>`
                     : '';
                 return `<tr>
                     <td class="stats-rank">${i + 1}</td>
