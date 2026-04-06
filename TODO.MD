@@ -6,6 +6,7 @@ TO DO LIST
 - ~~Remove the "Debug log" screenshot from the "See it in action" section of the main page.~~ DONE
 - ~~Allow moderators and administrators the ability to change their passwords.~~ DONE
 - ~~Need to finalize mailing list with Resend.~~ DONE
+- Not all detections are showing in the statistics panel. I know there are woodpeckers, blue birds, and squirrel that do not show there.
 - When the refresh occurs, it brings the bird of the day back if I dismissed it.
 - Would like to be able to disable auto refresh, or adjust the refresh frequency.
 - Would like to allow users to like detections, then be able to sort by most liked. Currently I dont think the likes are seen by others.
