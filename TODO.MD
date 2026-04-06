@@ -6,5 +6,6 @@ TO DO LIST
 - ~~Remove the "Debug log" screenshot from the "See it in action" section of the main page.~~ DONE
 - ~~Allow moderators and administrators the ability to change their passwords.~~ DONE
 - ~~Need to finalize mailing list with Resend.~~ DONE
+- Would like to allow users to like detections, then be able to sort by most liked. Currently I dont think the likes are seen by others.
 - Need to provide some photos of the bird feeder (both types) so we can price "The full nest" option. I am thinking the Full Nest should be $150 and the software half that ($75).
      - Need to update pricing on "Gumroad" first, as well as add Full nest to gumroad.
