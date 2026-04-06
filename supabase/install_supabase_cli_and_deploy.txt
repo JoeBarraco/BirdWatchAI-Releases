@@ -12,6 +12,6 @@ supabase functions deploy weekly-digest
 supabase functions deploy unsubscribe
 
 # Set the secrets
-supabase secrets set RESEND_API_KEY=re_YOUR_KEY_HERE
+supabase secrets set RESEND_API_KEY=re_NZFNyYPo_65EWNoew82LcAUHFHoVppchA
 supabase secrets set DIGEST_FROM_EMAIL="BirdWatchAI Weekly <digest@birdwatchai.com>"
 supabase secrets set SITE_URL=https://joebarraco.github.io/birdwatchai-releases
