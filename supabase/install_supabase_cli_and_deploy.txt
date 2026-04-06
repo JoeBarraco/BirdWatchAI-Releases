@@ -5,7 +5,7 @@ npm install -g supabase
 supabase login
 
 # Link to your project (get project ref from Supabase Dashboard → Settings → General)
-supabase link --project-ref YOUR_PROJECT_REF
+supabase link --project-ref https://lsamggztfizmkyljdgwq.supabase.co
 
 # Deploy both functions
 supabase functions deploy weekly-digest
