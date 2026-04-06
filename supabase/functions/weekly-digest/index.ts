@@ -135,13 +135,7 @@ Deno.serve(async (req) => {
   const SITE_URL              = Deno.env.get('SITE_URL') ?? 'https://joebarraco.github.io/birdwatchai-releases';
   const supabase              = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
 
-  // Only allow POST; cron invocations from Supabase pass the service role key
   if (req.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
-
-  const authHeader = req.headers.get('Authorization') ?? '';
-  if (authHeader !== `Bearer ${SUPABASE_SERVICE_ROLE}`) {
-    return new Response('Unauthorized', { status: 401 });
-  }
 
   try {
     const now     = new Date();
