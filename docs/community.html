@@ -3361,20 +3361,6 @@
         const tbody = panel.querySelector('tbody');
         if (!tbody) return;
 
-        // Save scroll position
-        const scrollY = window.scrollY;
-
-        // Snapshot old row positions and scores
-        const oldRows = tbody.querySelectorAll('tr[data-likes-id]');
-        const oldPositions = {};
-        const oldScores = {};
-        oldRows.forEach(tr => {
-            const id = tr.dataset.likesId;
-            oldPositions[id] = tr.getBoundingClientRect();
-            const totalCell = tr.querySelector('.likes-total');
-            oldScores[id] = parseInt(totalCell?.dataset.total, 10) || 0;
-        });
-
         // Ensure all detections are loaded (auto-refresh may have reset to page 1)
         if (!feedExhausted) await loadAllDetections();
 
@@ -3389,6 +3375,18 @@
             panel.innerHTML = '<div class="feed-empty">No reactions yet. Like some detections to see stats here!</div>';
             return;
         }
+
+        // Capture old positions and scores RIGHT BEFORE DOM change (after all async work)
+        const scrollY = window.scrollY;
+        const oldRows = tbody.querySelectorAll('tr[data-likes-id]');
+        const oldPositions = {};
+        const oldScores = {};
+        oldRows.forEach(tr => {
+            const id = tr.dataset.likesId;
+            oldPositions[id] = tr.getBoundingClientRect();
+            const totalCell = tr.querySelector('.likes-total');
+            oldScores[id] = parseInt(totalCell?.dataset.total, 10) || 0;
+        });
 
         // Replace tbody content
         tbody.innerHTML = rows.map((r, i) => likesRowHtml(r, i + 1)).join('');
@@ -3405,20 +3403,16 @@
             if (oldPositions[id]) {
                 const deltaY = oldPositions[id].top - newRect.top;
                 if (Math.abs(deltaY) > 1) {
-                    // Invert: place at old position
+                    // Invert: place at old position instantly
                     tr.style.transform = `translateY(${deltaY}px)`;
-                    tr.style.transition = 'none';
-                    // Play: animate to new position
-                    requestAnimationFrame(() => {
-                        requestAnimationFrame(() => {
-                            tr.classList.add('likes-row-flip');
-                            tr.style.transform = '';
-                            tr.addEventListener('transitionend', () => {
-                                tr.classList.remove('likes-row-flip');
-                                tr.style.transition = '';
-                            }, { once: true });
-                        });
-                    });
+                    // Force layout so the browser registers the starting position
+                    tr.getBoundingClientRect();
+                    // Play: animate to final position
+                    tr.classList.add('likes-row-flip');
+                    tr.style.transform = '';
+                    tr.addEventListener('transitionend', () => {
+                        tr.classList.remove('likes-row-flip');
+                    }, { once: true });
                 }
             } else {
                 // New row that wasn't in the table before
