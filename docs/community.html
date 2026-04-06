@@ -2532,6 +2532,22 @@
     }
 
     // ── Trend chart ──────────────────────────────────────────
+    let trendPeriod      = '';        // '' = all time
+    let trendHiddenSp    = new Set(); // species toggled off by user
+
+    function setTrendPeriod(period, btn) {
+        trendPeriod = period;
+        document.querySelectorAll('.trend-period-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        renderTrend();
+    }
+
+    function toggleTrendSpecies(sp) {
+        if (trendHiddenSp.has(sp)) trendHiddenSp.delete(sp);
+        else trendHiddenSp.add(sp);
+        renderTrendChart();   // only redraw chart + legend, keep controls
+    }
+
     function renderTrend() {
         const visible = applyClientFilters(allDetections);
         const panel   = document.getElementById('stats-trend');
@@ -2540,35 +2556,90 @@
             return;
         }
 
-        // Build daily counts per species (top 5 by total)
-        const spTotals = {};
-        visible.forEach(d => { spTotals[d.species || 'Unknown'] = (spTotals[d.species || 'Unknown'] || 0) + 1; });
-        const topSpecies = Object.entries(spTotals).sort((a,b) => b[1]-a[1]).slice(0, 5).map(e => e[0]);
+        // Apply trend-specific time filter
+        let since = null;
+        if (trendPeriod) {
+            const now = new Date();
+            if (trendPeriod === '7d')  { const d = new Date(now); d.setDate(d.getDate() - 7);  since = d.toISOString(); }
+            if (trendPeriod === '14d') { const d = new Date(now); d.setDate(d.getDate() - 14); since = d.toISOString(); }
+            if (trendPeriod === '30d') { const d = new Date(now); d.setDate(d.getDate() - 30); since = d.toISOString(); }
+            if (trendPeriod === '90d') { const d = new Date(now); d.setDate(d.getDate() - 90); since = d.toISOString(); }
+        }
+        const filtered = since ? visible.filter(d => d.detected_at >= since) : visible;
 
-        // Day buckets: YYYY-MM-DD
-        const dayMap = {};
-        visible.forEach(d => {
-            const day = d.detected_at.slice(0, 10);
-            if (!dayMap[day]) dayMap[day] = {};
-            const sp = d.species || 'Unknown';
-            if (topSpecies.includes(sp)) dayMap[day][sp] = (dayMap[day][sp] || 0) + 1;
-        });
-        const days = Object.keys(dayMap).sort();
-
-        if (days.length < 2) {
-            panel.innerHTML = '<div class="feed-empty">Not enough data to draw a trend (need at least 2 days).</div>';
+        if (!filtered.length) {
+            panel.innerHTML = '<div class="feed-empty">No data for the selected timeframe.</div>';
             return;
         }
 
-        // Build a species-selector
-        const spColors = topSpecies.map((s, i) => PALETTE[i % PALETTE.length]);
+        // Build species totals (all species, sorted by count)
+        const spTotals = {};
+        filtered.forEach(d => { spTotals[d.species || 'Unknown'] = (spTotals[d.species || 'Unknown'] || 0) + 1; });
+        window._trendAllSpecies = Object.entries(spTotals).sort((a,b) => b[1]-a[1]).map(e => e[0]);
+        window._trendFiltered   = filtered;
+
+        // Build controls + chart container
+        panel.innerHTML = `
+            <div class="stats-section-title">Detections Over Time</div>
+            <div class="trend-controls">
+                <button class="trend-period-btn period-btn${trendPeriod === '' ? ' active' : ''}" onclick="setTrendPeriod('', this)">All Time</button>
+                <button class="trend-period-btn period-btn${trendPeriod === '7d' ? ' active' : ''}" onclick="setTrendPeriod('7d', this)">7 Days</button>
+                <button class="trend-period-btn period-btn${trendPeriod === '14d' ? ' active' : ''}" onclick="setTrendPeriod('14d', this)">14 Days</button>
+                <button class="trend-period-btn period-btn${trendPeriod === '30d' ? ' active' : ''}" onclick="setTrendPeriod('30d', this)">30 Days</button>
+                <button class="trend-period-btn period-btn${trendPeriod === '90d' ? ' active' : ''}" onclick="setTrendPeriod('90d', this)">90 Days</button>
+            </div>
+            <div id="trend-legend" style="margin-bottom:0.75rem;"></div>
+            <div id="trend-chart"></div>`;
+
+        renderTrendChart();
+    }
+
+    function renderTrendChart() {
+        const allSpecies = window._trendAllSpecies || [];
+        const filtered   = window._trendFiltered   || [];
+        const shownSpecies = allSpecies.filter(sp => !trendHiddenSp.has(sp));
+
+        // Day buckets
+        const dayMap = {};
+        filtered.forEach(d => {
+            const day = d.detected_at.slice(0, 10);
+            if (!dayMap[day]) dayMap[day] = {};
+            const sp = d.species || 'Unknown';
+            dayMap[day][sp] = (dayMap[day][sp] || 0) + 1;
+        });
+        const days = Object.keys(dayMap).sort();
+
+        // Legend (clickable)
+        const legendEl = document.getElementById('trend-legend');
+        if (legendEl) {
+            legendEl.innerHTML = allSpecies.map((sp, i) => {
+                const color = PALETTE[i % PALETTE.length];
+                const hidden = trendHiddenSp.has(sp);
+                return `<span onclick="toggleTrendSpecies('${esc(sp).replace(/'/g, "\\'")}')"
+                    style="display:inline-flex;align-items:center;gap:5px;margin-right:14px;font-size:0.8rem;cursor:pointer;${hidden ? 'opacity:0.3;text-decoration:line-through;' : ''}">
+                    <span style="display:inline-block;width:18px;height:3px;background:${color};border-radius:2px;"></span>${esc(sp)}
+                </span>`;
+            }).join('');
+        }
+
+        const chartEl = document.getElementById('trend-chart');
+        if (!chartEl) return;
+
+        if (days.length < 2) {
+            chartEl.innerHTML = '<div class="feed-empty">Not enough data to draw a trend (need at least 2 days).</div>';
+            return;
+        }
+
+        // Use stable color indices based on position in allSpecies
+        const spColorIdx = {};
+        allSpecies.forEach((sp, i) => { spColorIdx[sp] = i; });
 
         // SVG dimensions
         const W = 700, H = 260, PAD = { top: 20, right: 20, bottom: 50, left: 45 };
         const chartW = W - PAD.left - PAD.right;
         const chartH = H - PAD.top  - PAD.bottom;
 
-        const maxVal = Math.max(...topSpecies.map(sp => Math.max(...days.map(d => dayMap[d][sp] || 0))), 1);
+        const maxVal = Math.max(...shownSpecies.map(sp => Math.max(...days.map(d => dayMap[d][sp] || 0))), 1);
 
         const xScale = i => PAD.left + (i / (days.length - 1)) * chartW;
         const yScale = v => PAD.top  + chartH - (v / maxVal) * chartH;
@@ -2583,20 +2654,20 @@
             yLabels   += `<text x="${PAD.left - 6}" y="${y + 4}" text-anchor="end" font-size="11" fill="#7a756d">${v}</text>`;
         }
 
-        // X axis labels (show up to 10 evenly spaced day labels)
+        // X axis labels
         let xLabels = '';
         const labelStep = Math.max(1, Math.floor(days.length / 10));
         days.forEach((day, i) => {
             if (i % labelStep !== 0 && i !== days.length - 1) return;
             const x = xScale(i);
-            const label = day.slice(5); // MM-DD
+            const label = day.slice(5);
             xLabels += `<text x="${x}" y="${H - PAD.bottom + 16}" text-anchor="middle" font-size="10" fill="#7a756d">${label}</text>`;
         });
 
-        // Polylines per species
+        // Polylines per shown species
         let polylines = '', dots = '';
-        topSpecies.forEach((sp, si) => {
-            const color = spColors[si];
+        shownSpecies.forEach(sp => {
+            const color = PALETTE[spColorIdx[sp] % PALETTE.length];
             const pts = days.map((d, i) => `${xScale(i)},${yScale(dayMap[d][sp] || 0)}`).join(' ');
             polylines += `<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" opacity="0.85"/>`;
             days.forEach((d, i) => {
@@ -2605,16 +2676,7 @@
             });
         });
 
-        // Legend
-        const legend = topSpecies.map((sp, i) =>
-            `<span style="display:inline-flex;align-items:center;gap:5px;margin-right:14px;font-size:0.8rem;">
-                <span style="display:inline-block;width:18px;height:3px;background:${spColors[i]};border-radius:2px;"></span>${esc(sp)}
-            </span>`
-        ).join('');
-
-        panel.innerHTML = `
-            <div class="stats-section-title">Detections Over Time (top ${topSpecies.length} species)</div>
-            <div style="margin-bottom:0.75rem;">${legend}</div>
+        chartEl.innerHTML = `
             <div class="trend-svg-wrap">
                 <svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px;display:block;">
                     ${gridLines}${yLabels}
