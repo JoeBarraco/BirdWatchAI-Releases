@@ -3375,7 +3375,10 @@
             oldScores[id] = parseInt(totalCell?.dataset.total, 10) || 0;
         });
 
-        // Fetch fresh data from server
+        // Ensure all detections are loaded (auto-refresh may have reset to page 1)
+        if (!feedExhausted) await loadAllDetections();
+
+        // Fetch fresh data from server (includes other users' reactions)
         await loadReactionTotals();
         const ids = allDetections.map(d => d.id);
         if (ids.length) await loadReactionCounts(ids);
