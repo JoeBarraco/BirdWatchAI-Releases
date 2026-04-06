@@ -3,6 +3,6 @@ TO DO LIST
 - ~~Fix problem with confetti showing on every refresh. Very annoying.~~ DONE
 - ~~"Play Call" Button opens web page to "Macaulaylibrary.org", but doesnt actually play the audio~~ DONE
 - Need the concept of a community moderator. Need to be able to assign users the ability to "cleanup" detections (Rename, delete, adjust rarity, etc)
-- Remove the "Debug log" screenshot from the "See it in action" section of the main page.
+- ~~Remove the "Debug log" screenshot from the "See it in action" section of the main page.~~ DONE
 - Need to provide some photos of the bird feeder (both types) so we can price "The full nest" option. I am thinking the Full Nest should be $150 and the software half that ($75).
      - Need to update pricing on "Gumroad" first, as well as add Full nest to gumroad.
