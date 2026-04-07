@@ -4720,6 +4720,12 @@
     function openModEdit(detectionId) {
         const d = allDetections.find(x => String(x.id) === String(detectionId));
         if (!d) return;
+        // Populate species datalist from all loaded detections
+        const speciesList = [...new Set(allDetections.map(x => x.species).filter(Boolean))].sort();
+        const dl = document.getElementById('mod-edit-species-list');
+        if (dl) {
+            dl.innerHTML = speciesList.map(s => `<option value="${esc(s)}">`).join('');
+        }
         document.getElementById('mod-edit-id').value = d.id;
         document.getElementById('mod-edit-species').value = d.species || '';
         document.getElementById('mod-edit-rarity').value = d.rarity || 'Common';
