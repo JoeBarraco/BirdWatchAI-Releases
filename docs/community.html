@@ -1693,7 +1693,7 @@
             }
             renderFeed();
             if (currentView === 'map')   renderMap();
-            if (currentView === 'stats') renderStats();
+            if (currentView === 'stats') renderFullStats();
         } finally {
             refiltering = false;
         }
@@ -1858,7 +1858,7 @@
             const prevTop = lastTopId;
             renderFeed();
             if (currentView === 'map')   renderMap();
-            if (currentView === 'stats') renderStats();
+            if (currentView === 'stats') renderFullStats();
             checkForRareNotifications(allDetections);
             renderBirdOfTheDay(allDetections);
             // Confetti for brand-new Very Rare detections (even without notifications)
@@ -2387,6 +2387,13 @@
         }, 3000);
     }
 
+    function renderFullStats() {
+        renderStats();
+        if (activeStatsTab === 'compare') renderCompare();
+        if (activeStatsTab === 'trend') renderTrend();
+        if (activeStatsTab === 'likes') renderLikesPanel();
+    }
+
     function switchStatsTab(tabName, btn) {
         activeStatsTab = tabName;
         document.querySelectorAll('.stats-tab').forEach(t => t.classList.remove('active'));
@@ -2435,7 +2442,7 @@
 
     async function loadAllThenRenderStats() {
         await loadAllDetections();
-        renderStats();
+        renderFullStats();
     }
 
     function renderStats() {
