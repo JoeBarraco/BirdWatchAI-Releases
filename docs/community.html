@@ -1038,6 +1038,209 @@
         .carousel-grid img:hover { transform: scale(1.03); }
         .carousel-empty { color: rgba(255,255,255,0.6); margin-top: 2rem; font-size: 0.9rem; }
 
+        /* ── Gallery view ────────────────────────────────────── */
+        #gallery-view { display: none; }
+        .gallery-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+        .gallery-slideshow-btn {
+            font-family: inherit;
+            font-size: 0.875rem;
+            font-weight: 600;
+            padding: 7px 18px;
+            border: none;
+            border-radius: 6px;
+            background: var(--color-primary);
+            color: #fff;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .gallery-slideshow-btn:hover { background: var(--color-primary-light); }
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 14px;
+        }
+        .gallery-card {
+            position: relative;
+            border-radius: 10px;
+            overflow: hidden;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: transform 0.18s, box-shadow 0.18s;
+        }
+        .gallery-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.13);
+        }
+        .gallery-card img {
+            width: 100%;
+            aspect-ratio: 4/3;
+            object-fit: cover;
+            display: block;
+        }
+        .gallery-card-info {
+            padding: 10px 12px;
+        }
+        .gallery-card-species {
+            font-family: var(--font-display, 'Fraunces', serif);
+            font-weight: 600;
+            font-size: 1rem;
+            color: var(--color-gray-900);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .gallery-card-meta {
+            font-size: 0.8rem;
+            color: var(--color-gray-500);
+            margin-top: 2px;
+        }
+        .gallery-card-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(0,0,0,0.55);
+            color: #fff;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 999px;
+            backdrop-filter: blur(4px);
+        }
+
+        /* ── Slideshow modal ──────────────────────────────────── */
+        #slideshow-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: #000;
+            z-index: 10001;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+        #slideshow-modal.open { display: flex; }
+        .slideshow-chrome {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            align-items: center;
+            padding: 14px 20px;
+            z-index: 2;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent);
+        }
+        .slideshow-caption {
+            color: #fff;
+            font-family: var(--font-display, 'Fraunces', serif);
+            font-size: 1.25rem;
+            font-weight: 600;
+            flex: 1;
+        }
+        .slideshow-counter {
+            color: rgba(255,255,255,0.7);
+            font-size: 0.85rem;
+            margin-right: 1rem;
+        }
+        .slideshow-close {
+            background: rgba(255,255,255,0.15);
+            border: none;
+            color: white;
+            font-size: 1.25rem;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.15s;
+        }
+        .slideshow-close:hover { background: rgba(255,255,255,0.3); }
+        #slideshow-img {
+            max-width: 92vw;
+            max-height: 80vh;
+            object-fit: contain;
+            border-radius: 6px;
+            transition: opacity 0.3s ease;
+            z-index: 1;
+        }
+        #slideshow-img.fade { opacity: 0; }
+        .slideshow-arrow {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255,255,255,0.12);
+            border: none;
+            color: white;
+            font-size: 2.5rem;
+            width: 52px;
+            height: 72px;
+            border-radius: 8px;
+            cursor: pointer;
+            z-index: 2;
+            transition: background 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+        }
+        .slideshow-arrow:hover { background: rgba(255,255,255,0.25); }
+        .slideshow-prev { left: 16px; }
+        .slideshow-next { right: 16px; }
+        .slideshow-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 20px;
+            background: linear-gradient(to top, rgba(0,0,0,0.6), transparent);
+            z-index: 2;
+        }
+        .slideshow-ctrl {
+            background: rgba(255,255,255,0.15);
+            border: none;
+            color: white;
+            font-size: 1.1rem;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .slideshow-ctrl:hover { background: rgba(255,255,255,0.3); }
+        .slideshow-progress {
+            flex: 1;
+            height: 4px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .slideshow-progress-fill {
+            height: 100%;
+            width: 0%;
+            background: var(--color-primary, #5aab72);
+            border-radius: 2px;
+            transition: width 0.1s linear;
+        }
+        @media (max-width: 640px) {
+            .gallery-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+            .slideshow-arrow { width: 40px; height: 56px; font-size: 2rem; }
+            .slideshow-prev { left: 6px; }
+            .slideshow-next { right: 6px; }
+        }
+
         /* ── Species comparison panel ────────────────────────── */
         .compare-selects {
             display: flex;
@@ -1398,6 +1601,7 @@
     <div class="view-tabs">
         <button class="view-tab active" onclick="switchView('feed', this)">📋 Feed</button>
         <button class="view-tab" onclick="switchView('map', this)">🗺️ Map</button>
+        <button class="view-tab" onclick="switchView('gallery', this)">🖼️ Gallery</button>
         <button class="view-tab" onclick="switchView('stats', this)">📊 Stats</button>
     </div>
 
@@ -1459,6 +1663,35 @@
         <div id="map-legend" class="map-legend"></div>
     </div>
 
+    <!-- Gallery view -->
+    <div id="gallery-view">
+        <div class="gallery-controls">
+            <button class="gallery-slideshow-btn" onclick="startSlideshow()">▶ Slideshow</button>
+            <select id="gallery-sort" class="filter-select" onchange="renderGallery()">
+                <option value="count">Most Photos</option>
+                <option value="alpha">A–Z</option>
+                <option value="recent">Recently Seen</option>
+            </select>
+        </div>
+        <div id="gallery-grid" class="gallery-grid"></div>
+    </div>
+
+    <!-- Slideshow modal -->
+    <div id="slideshow-modal" role="dialog" aria-modal="true">
+        <div class="slideshow-chrome">
+            <div class="slideshow-caption" id="slideshow-caption"></div>
+            <div class="slideshow-counter" id="slideshow-counter"></div>
+            <button class="slideshow-close" id="slideshow-close" aria-label="Close">✕</button>
+        </div>
+        <button class="slideshow-arrow slideshow-prev" id="slideshow-prev" aria-label="Previous">‹</button>
+        <img id="slideshow-img" src="" alt="">
+        <button class="slideshow-arrow slideshow-next" id="slideshow-next" aria-label="Next">›</button>
+        <div class="slideshow-bar">
+            <button class="slideshow-ctrl" id="slideshow-playpause" onclick="toggleSlideshowPause()">⏸</button>
+            <div class="slideshow-progress"><div class="slideshow-progress-fill" id="slideshow-progress-fill"></div></div>
+        </div>
+    </div>
+
     <!-- Stats view -->
     <div id="stats-view">
         <!-- Summary KPIs -->
@@ -1493,7 +1726,7 @@
     <kbd>j</kbd> / <kbd>k</kbd> &nbsp;Next / Prev card<br>
     <kbd>f</kbd> &nbsp;Toggle My Likes filter<br>
     <kbd>r</kbd> &nbsp;Refresh feed<br>
-    <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> &nbsp;Switch Feed / Map / Stats<br>
+    <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd> &nbsp;Switch Feed / Map / Gallery / Stats<br>
     <kbd>Esc</kbd> &nbsp;Close lightbox / hints
 </div>
 
@@ -1693,8 +1926,9 @@
                 if (ids.length) await loadReactionCounts(ids);
             }
             renderFeed();
-            if (currentView === 'map')   renderMap();
-            if (currentView === 'stats') renderFullStats();
+            if (currentView === 'map')     renderMap();
+            if (currentView === 'gallery') renderGallery();
+            if (currentView === 'stats')   renderFullStats();
         } finally {
             refiltering = false;
         }
@@ -1881,8 +2115,9 @@
             const hadDetections = lastTopId !== null;
             const prevTop = lastTopId;
             renderFeed();
-            if (currentView === 'map')   renderMap();
-            if (currentView === 'stats') renderFullStats();
+            if (currentView === 'map')     renderMap();
+            if (currentView === 'gallery') renderGallery();
+            if (currentView === 'stats')   renderFullStats();
             checkForRareNotifications(allDetections);
             renderBirdOfTheDay(allDetections);
             // Confetti for brand-new Very Rare detections (even without notifications)
@@ -2362,9 +2597,10 @@
         document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
         btn.classList.add('active');
 
-        document.getElementById('feed-view').style.display   = view === 'feed'  ? 'grid' : 'none';
-        document.getElementById('map-view').style.display    = view === 'map'   ? 'block' : 'none';
-        document.getElementById('stats-view').style.display  = view === 'stats' ? 'block' : 'none';
+        document.getElementById('feed-view').style.display    = view === 'feed'    ? 'grid'  : 'none';
+        document.getElementById('map-view').style.display     = view === 'map'     ? 'block' : 'none';
+        document.getElementById('gallery-view').style.display = view === 'gallery' ? 'block' : 'none';
+        document.getElementById('stats-view').style.display   = view === 'stats'   ? 'block' : 'none';
 
         // Stop likes polling when leaving stats view
         if (view !== 'stats') stopLikesPoll();
@@ -2377,6 +2613,8 @@
                 map.invalidateSize();
                 renderMap();
             }));
+        } else if (view === 'gallery') {
+            loadAllThenRenderGallery();
         } else if (view === 'stats') {
             loadAllThenRenderStats();
         }
@@ -2929,9 +3167,10 @@
         currentView = 'feed';
         document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
         document.querySelector('.view-tab').classList.add('active');
-        document.getElementById('feed-view').style.display   = 'grid';
-        document.getElementById('map-view').style.display    = 'none';
-        document.getElementById('stats-view').style.display  = 'none';
+        document.getElementById('feed-view').style.display    = 'grid';
+        document.getElementById('map-view').style.display     = 'none';
+        document.getElementById('gallery-view').style.display = 'none';
+        document.getElementById('stats-view').style.display   = 'none';
         renderFeed();
     }
 
@@ -3277,6 +3516,189 @@
             btn.textContent = emoji + (count ? ' ' + count : '');
         });
     }
+
+    // ── Gallery view ────────────────────────────────────────────
+    async function loadAllThenRenderGallery() {
+        if (!feedExhausted) {
+            document.getElementById('gallery-grid').innerHTML =
+                '<div class="feed-loading" style="grid-column:1/-1;">Loading all detections…</div>';
+            await loadAllDetections();
+        }
+        renderGallery();
+    }
+
+    function buildGalleryData() {
+        const visible = applyClientFilters(allDetections);
+        const speciesMap = {};
+        for (const d of visible) {
+            if (!d.species) continue;
+            if (!speciesMap[d.species]) {
+                speciesMap[d.species] = { species: d.species, photos: [], lastSeen: d.detected_at, rarity: d.rarity };
+            }
+            const entry = speciesMap[d.species];
+            if (d.image_url) entry.photos.push({ url: d.image_url, date: d.detected_at, species: d.species });
+            if (d.detected_at > entry.lastSeen) entry.lastSeen = d.detected_at;
+            // Keep highest rarity
+            if (!entry.rarity && d.rarity) entry.rarity = d.rarity;
+            if (d.rarity === 'Very Rare') entry.rarity = 'Very Rare';
+            else if (d.rarity === 'Rare' && entry.rarity !== 'Very Rare') entry.rarity = 'Rare';
+        }
+        return Object.values(speciesMap).filter(s => s.photos.length > 0);
+    }
+
+    function renderGallery() {
+        const species = buildGalleryData();
+        const sort = document.getElementById('gallery-sort').value;
+        if (sort === 'count')  species.sort((a, b) => b.photos.length - a.photos.length);
+        if (sort === 'alpha')  species.sort((a, b) => a.species.localeCompare(b.species));
+        if (sort === 'recent') species.sort((a, b) => (b.lastSeen || '').localeCompare(a.lastSeen || ''));
+
+        const grid = document.getElementById('gallery-grid');
+        if (!species.length) {
+            grid.innerHTML = '<div class="feed-empty" style="grid-column:1/-1;">No photos match your filters.</div>';
+            return;
+        }
+        grid.innerHTML = species.map(s => {
+            const rarityClass = s.rarity ? 'rarity-' + s.rarity.toLowerCase().replace(/\s+/g, '-') : '';
+            return `
+            <div class="gallery-card" data-gallery-species="${esc(s.species)}">
+                <img src="${s.photos[0].url}" alt="${esc(s.species)}" loading="lazy">
+                <span class="gallery-card-badge">${s.photos.length} photo${s.photos.length !== 1 ? 's' : ''}</span>
+                <div class="gallery-card-info">
+                    <div class="gallery-card-species">${esc(s.species)}</div>
+                    <div class="gallery-card-meta">
+                        Last seen ${fmtDetectedAt(s.lastSeen)}${s.rarity ? ` · <span class="${rarityClass}">${esc(s.rarity)}</span>` : ''}
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+
+        grid.querySelectorAll('.gallery-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const sp = card.dataset.gallerySpecies;
+                const data = buildGalleryData().find(s => s.species === sp);
+                if (data) openSlideshowForSpecies(data);
+            });
+        });
+    }
+
+    // ── Slideshow ────────────────────────────────────────────
+    const slideshowModal = document.getElementById('slideshow-modal');
+    let slideshowPhotos = [];
+    let slideshowIdx = 0;
+    let slideshowTimer = null;
+    let slideshowPaused = false;
+    const SLIDESHOW_INTERVAL = 4000; // ms per photo
+    let slideshowProgressRAF = null;
+    let slideshowSlideStart = 0;
+
+    function openSlideshowForSpecies(speciesData) {
+        slideshowPhotos = speciesData.photos;
+        slideshowIdx = 0;
+        slideshowPaused = false;
+        document.getElementById('slideshow-playpause').textContent = '⏸';
+        showSlideshowSlide();
+        slideshowModal.classList.add('open');
+        lockScroll();
+        startSlideshowTimer();
+    }
+
+    function startSlideshow() {
+        // Collect all photos across all species
+        const species = buildGalleryData();
+        const sort = document.getElementById('gallery-sort').value;
+        if (sort === 'count')  species.sort((a, b) => b.photos.length - a.photos.length);
+        if (sort === 'alpha')  species.sort((a, b) => a.species.localeCompare(b.species));
+        if (sort === 'recent') species.sort((a, b) => (b.lastSeen || '').localeCompare(a.lastSeen || ''));
+
+        const all = [];
+        for (const s of species) {
+            for (const p of s.photos) all.push(p);
+        }
+        if (!all.length) { showToast('No photos to show'); return; }
+        slideshowPhotos = all;
+        slideshowIdx = 0;
+        slideshowPaused = false;
+        document.getElementById('slideshow-playpause').textContent = '⏸';
+        showSlideshowSlide();
+        slideshowModal.classList.add('open');
+        lockScroll();
+        startSlideshowTimer();
+    }
+
+    function showSlideshowSlide() {
+        const photo = slideshowPhotos[slideshowIdx];
+        if (!photo) return;
+        const img = document.getElementById('slideshow-img');
+        img.classList.add('fade');
+        setTimeout(() => {
+            img.src = photo.url;
+            img.alt = photo.species || '';
+            img.classList.remove('fade');
+        }, 150);
+        document.getElementById('slideshow-caption').textContent = photo.species || '';
+        document.getElementById('slideshow-counter').textContent =
+            `${slideshowIdx + 1} / ${slideshowPhotos.length}`;
+    }
+
+    function startSlideshowTimer() {
+        clearTimeout(slideshowTimer);
+        cancelAnimationFrame(slideshowProgressRAF);
+        if (slideshowPaused) {
+            document.getElementById('slideshow-progress-fill').style.width = '0%';
+            return;
+        }
+        slideshowSlideStart = performance.now();
+        function tick() {
+            const elapsed = performance.now() - slideshowSlideStart;
+            const pct = Math.min(100, (elapsed / SLIDESHOW_INTERVAL) * 100);
+            document.getElementById('slideshow-progress-fill').style.width = pct + '%';
+            if (pct < 100) slideshowProgressRAF = requestAnimationFrame(tick);
+        }
+        tick();
+        slideshowTimer = setTimeout(() => {
+            slideshowIdx = (slideshowIdx + 1) % slideshowPhotos.length;
+            showSlideshowSlide();
+            startSlideshowTimer();
+        }, SLIDESHOW_INTERVAL);
+    }
+
+    function toggleSlideshowPause() {
+        slideshowPaused = !slideshowPaused;
+        document.getElementById('slideshow-playpause').textContent = slideshowPaused ? '▶' : '⏸';
+        if (!slideshowPaused) startSlideshowTimer();
+        else {
+            clearTimeout(slideshowTimer);
+            cancelAnimationFrame(slideshowProgressRAF);
+            document.getElementById('slideshow-progress-fill').style.width = '0%';
+        }
+    }
+
+    function slideshowNav(dir) {
+        slideshowIdx = (slideshowIdx + dir + slideshowPhotos.length) % slideshowPhotos.length;
+        showSlideshowSlide();
+        if (!slideshowPaused) startSlideshowTimer();
+    }
+
+    function closeSlideshow() {
+        slideshowModal.classList.remove('open');
+        clearTimeout(slideshowTimer);
+        cancelAnimationFrame(slideshowProgressRAF);
+        unlockScroll();
+    }
+
+    document.getElementById('slideshow-close').addEventListener('click', closeSlideshow);
+    document.getElementById('slideshow-prev').addEventListener('click', () => slideshowNav(-1));
+    document.getElementById('slideshow-next').addEventListener('click', () => slideshowNav(1));
+    slideshowModal.addEventListener('click', e => { if (e.target === slideshowModal) closeSlideshow(); });
+
+    // Arrow keys for slideshow navigation
+    document.addEventListener('keydown', e => {
+        if (!slideshowModal.classList.contains('open')) return;
+        if (e.key === 'ArrowLeft')  { slideshowNav(-1); e.preventDefault(); }
+        if (e.key === 'ArrowRight') { slideshowNav(1);  e.preventDefault(); }
+        if (e.key === ' ')          { toggleSlideshowPause(); e.preventDefault(); }
+    });
 
     // ── Species photo carousel ────────────────────────────────
     const carouselModal = document.getElementById('carousel-modal');
@@ -3910,6 +4332,7 @@
         if (e.key === 'Escape') {
             closeLightbox();
             closeCarousel();
+            closeSlideshow();
             closeDetailModal();
             kbdHintVisible = false;
             document.getElementById('kbd-hint').classList.remove('visible');
@@ -3919,9 +4342,10 @@
         if (e.key === 'k') { focusCard(focusedCardIdx - 1); return; }
         if (e.key === 'f') { toggleFavorites(); return; }
         if (e.key === 'r') { loadFeed(); return; }
-        if (e.key === '1') { switchView('feed',  document.querySelectorAll('.view-tab')[0]); return; }
-        if (e.key === '2') { switchView('map',   document.querySelectorAll('.view-tab')[1]); return; }
-        if (e.key === '3') { switchView('stats', document.querySelectorAll('.view-tab')[2]); return; }
+        if (e.key === '1') { switchView('feed',    document.querySelectorAll('.view-tab')[0]); return; }
+        if (e.key === '2') { switchView('map',     document.querySelectorAll('.view-tab')[1]); return; }
+        if (e.key === '3') { switchView('gallery', document.querySelectorAll('.view-tab')[2]); return; }
+        if (e.key === '4') { switchView('stats',   document.querySelectorAll('.view-tab')[3]); return; }
     });
 
     // ── Service Worker registration ───────────────────────────
