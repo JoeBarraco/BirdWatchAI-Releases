@@ -2387,11 +2387,15 @@
         }, 3000);
     }
 
-    function renderFullStats() {
+    async function renderFullStats() {
         renderStats();
         if (activeStatsTab === 'compare') renderCompare();
         if (activeStatsTab === 'trend') renderTrend();
-        if (activeStatsTab === 'likes') renderLikesPanel();
+        if (activeStatsTab === 'likes') {
+            stopLikesPoll();
+            await renderLikesPanel();
+            startLikesPoll();
+        }
     }
 
     function switchStatsTab(tabName, btn) {
