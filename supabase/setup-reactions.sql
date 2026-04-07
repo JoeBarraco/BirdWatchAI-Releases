@@ -152,3 +152,13 @@ $$;
 grant execute on function toggle_reaction(uuid, text, text) to anon;
 grant execute on function get_reaction_counts(uuid[], text) to anon;
 grant execute on function get_reaction_totals() to anon;
+
+-- 8. Migration: Convert is_favorite detections into ❤️ reactions
+--    Attributes the like to 'feeder-owner' so it's clear these came
+--    from the original feeder upload. Safe to run multiple times
+--    (uses ON CONFLICT to skip duplicates).
+insert into detection_reactions (detection_id, user_id, emoji)
+select id, 'feeder-owner', 'liked'
+from community_detections
+where is_favorite = true
+on conflict (detection_id, user_id, emoji) do nothing;

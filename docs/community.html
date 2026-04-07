@@ -1388,7 +1388,7 @@
         </div>
 
         <div class="filter-group">
-            <button id="fav-toggle" class="toggle-btn" onclick="toggleFavorites()">⭐ Favorites only</button>
+            <button id="fav-toggle" class="toggle-btn" onclick="toggleFavorites()">❤️ My Likes</button>
         </div>
 
         <button class="clear-btn" onclick="clearFilters()">✕ Clear</button>
@@ -1491,7 +1491,7 @@
 <div id="kbd-hint" class="kbd-hint">
     <strong style="display:block;margin-bottom:4px;">Keyboard Shortcuts</strong>
     <kbd>j</kbd> / <kbd>k</kbd> &nbsp;Next / Prev card<br>
-    <kbd>f</kbd> &nbsp;Toggle Favorites filter<br>
+    <kbd>f</kbd> &nbsp;Toggle My Likes filter<br>
     <kbd>r</kbd> &nbsp;Refresh feed<br>
     <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> &nbsp;Switch Feed / Map / Stats<br>
     <kbd>Esc</kbd> &nbsp;Close lightbox / hints
@@ -1679,9 +1679,9 @@
                     '<div class="feed-loading">Loading all detections…</div>';
                 await loadAllDetections();
             }
-            // Ensure reaction totals are loaded when sorting by most liked
+            // Ensure reaction data is loaded when sorting by most liked or filtering by My Likes
             const sortOrder = document.getElementById('sort-filter')?.value;
-            if (sortOrder === 'liked') {
+            if (sortOrder === 'liked' || favoritesOnly) {
                 if (!feedExhausted) {
                     document.getElementById('feed-view').innerHTML =
                         '<div class="feed-loading">Loading all detections…</div>';
@@ -1762,7 +1762,7 @@
             if (rarity        && d.rarity                !== rarity)  return false;
             if (feeder        && d.feeders?.display_name !== feeder)  return false;
             if (zip           && d.zip_code              !== zip)      return false;
-            if (favoritesOnly && !d.is_favorite)                       return false;
+            if (favoritesOnly && !hasUserReaction(d.id))                 return false;
             return true;
         });
     }
@@ -2056,7 +2056,7 @@
                 ${d.image_url ? `<img src="${d.image_url}" alt="${esc(d.species)}" loading="lazy" data-carousel-species="${esc(d.species)}">` : ''}
                 <div class="card-body">
                     <div class="card-title">
-                        ${d.is_favorite ? '⭐ ' : ''}<span class="species-link" data-species="${esc(d.species)}" style="cursor:pointer;text-decoration:underline dotted;">${esc(d.species)}</span>${d.rarity
+                        <span class="species-link" data-species="${esc(d.species)}" style="cursor:pointer;text-decoration:underline dotted;">${esc(d.species)}</span>${d.rarity
                             ? ` <span class="${rarityClass}">· ${esc(d.rarity)}</span>` : ''}${isFirst
                             ? ' <span class="badge-first-season">🌱 First of Season</span>' : ''}
                     </div>
@@ -2866,7 +2866,7 @@
     function exportCSV() {
         const visible = applyClientFilters(allDetections);
         if (!visible.length) { alert('No detections to export.'); return; }
-        const cols = ['detected_at', 'species', 'rarity', 'zip_code', 'temperature', 'feeder', 'is_favorite', 'image_url', 'video_url'];
+        const cols = ['detected_at', 'species', 'rarity', 'zip_code', 'temperature', 'feeder', 'likes', 'image_url', 'video_url'];
         const header = cols.join(',');
         const rows = visible.map(d => [
             d.detected_at,
@@ -2875,7 +2875,7 @@
             d.zip_code || '',
             d.temperature != null ? d.temperature : '',
             d.feeders?.display_name || '',
-            d.is_favorite ? 'true' : 'false',
+            getReactionTotal(d.id) || '',
             d.image_url || '',
             d.video_url || '',
         ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(','));
@@ -3133,6 +3133,12 @@
     function isReacted(detectionId, emoji) {
         const key = EMOJI_MAP[emoji];
         return reactionCache[detectionId]?.[key]?.reacted || false;
+    }
+
+    function hasUserReaction(detectionId) {
+        const data = reactionCache[detectionId];
+        if (!data) return false;
+        return Object.values(data).some(info => info.reacted);
     }
 
     function getReactionTotal(detectionId) {
