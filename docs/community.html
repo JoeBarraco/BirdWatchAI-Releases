@@ -1808,8 +1808,10 @@
         <h3>Edit Detection</h3>
         <input type="hidden" id="mod-edit-id">
         <label for="mod-edit-species">Species</label>
-        <input type="text" id="mod-edit-species" placeholder="Species name" list="mod-edit-species-list" autocomplete="off">
-        <datalist id="mod-edit-species-list"></datalist>
+        <select id="mod-edit-species-select">
+            <option value="">Select species…</option>
+        </select>
+        <input type="text" id="mod-edit-species-custom" placeholder="Enter species name" style="display:none;">
         <label for="mod-edit-rarity">Rarity</label>
         <select id="mod-edit-rarity">
             <option value="Common">Common</option>
@@ -2199,12 +2201,6 @@
                 species.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
             specSel.disabled = false;
             if (species.includes(prevSpec)) specSel.value = prevSpec;
-
-            // Update moderator edit species datalist
-            const modSpecList = document.getElementById('mod-edit-species-list');
-            if (modSpecList) {
-                modSpecList.innerHTML = species.map(s => `<option value="${esc(s)}">`).join('');
-            }
 
             // Update map species dropdown
             const mapSel = document.getElementById('map-species-filter');
@@ -4720,18 +4716,37 @@
     function openModEdit(detectionId) {
         const d = allDetections.find(x => String(x.id) === String(detectionId));
         if (!d) return;
-        // Populate species datalist from all loaded detections
+        // Populate species select from all loaded detections
         const speciesList = [...new Set(allDetections.map(x => x.species).filter(Boolean))].sort();
-        const dl = document.getElementById('mod-edit-species-list');
-        if (dl) {
-            dl.innerHTML = speciesList.map(s => `<option value="${esc(s)}">`).join('');
+        const sel = document.getElementById('mod-edit-species-select');
+        const customInput = document.getElementById('mod-edit-species-custom');
+        sel.innerHTML = speciesList.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('') +
+            '<option value="__custom__">Other (type manually)…</option>';
+        // Pre-select current species, or show custom input if not in list
+        if (d.species && speciesList.includes(d.species)) {
+            sel.value = d.species;
+            customInput.style.display = 'none';
+            customInput.value = '';
+        } else {
+            sel.value = '__custom__';
+            customInput.style.display = '';
+            customInput.value = d.species || '';
         }
         document.getElementById('mod-edit-id').value = d.id;
-        document.getElementById('mod-edit-species').value = d.species || '';
         document.getElementById('mod-edit-rarity').value = d.rarity || 'Common';
         document.getElementById('mod-edit-modal').classList.add('open');
-        document.getElementById('mod-edit-species').focus();
     }
+
+    document.getElementById('mod-edit-species-select').addEventListener('change', function() {
+        const customInput = document.getElementById('mod-edit-species-custom');
+        if (this.value === '__custom__') {
+            customInput.style.display = '';
+            customInput.focus();
+        } else {
+            customInput.style.display = 'none';
+            customInput.value = '';
+        }
+    });
 
     function closeModEdit() {
         document.getElementById('mod-edit-modal').classList.remove('open');
@@ -4744,7 +4759,10 @@
     async function doModSave() {
         const { email, password } = getModCreds();
         const detectionId = document.getElementById('mod-edit-id').value;
-        const species = document.getElementById('mod-edit-species').value.trim();
+        const selVal = document.getElementById('mod-edit-species-select').value;
+        const species = (selVal === '__custom__'
+            ? document.getElementById('mod-edit-species-custom').value
+            : selVal).trim();
         const rarity = document.getElementById('mod-edit-rarity').value;
 
         if (!species) { showToast('Species name is required'); return; }
