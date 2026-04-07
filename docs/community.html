@@ -1630,6 +1630,7 @@
     let tabHiddenAt    = null;   // timestamp when tab was hidden
     let lastTopId      = null;
     let allDetections  = [];   // raw data from server
+    let seasonEarliestBySpecies = null; // cached: earliest detected_at per species this year
     let currentView    = 'feed';
     let favoritesOnly  = false;
     let map            = null;
@@ -1776,6 +1777,28 @@
         });
     }
 
+    // ── Load first-of-season data (full year, independent of filter period) ──
+    async function loadSeasonEarliest() {
+        const thisYear = new Date().getFullYear();
+        const yearStart = new Date(thisYear, 0, 1).toISOString();
+        try {
+            const url = `${SUPABASE_URL}/rest/v1/community_detections?select=id,species,detected_at&detected_at=gte.${encodeURIComponent(yearStart)}&order=detected_at.asc&limit=10000`;
+            const res = await fetch(url, {
+                headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` }
+            });
+            if (!res.ok) return;
+            const rows = await res.json();
+            const earliest = {};
+            rows.forEach(d => {
+                if (!d.species || !d.detected_at) return;
+                if (!earliest[d.species] || d.detected_at < earliest[d.species]) {
+                    earliest[d.species] = d.detected_at;
+                }
+            });
+            seasonEarliestBySpecies = earliest;
+        } catch (e) { /* keep previous cache on error */ }
+    }
+
     // ── Load data ────────────────────────────────────────────
     const PAGE_SIZE  = 60;
     let   feedOffset = 0;
@@ -1828,6 +1851,7 @@
             if (page.length < PAGE_SIZE) feedExhausted = true;
             feedOffset += page.length;
 
+            if (!append) loadSeasonEarliest(); // refresh first-of-season cache
             populateFeederDropdown(allDetections);
             populateFeedSpeciesDropdown(allDetections);
             populateMapSpeciesDropdown(allDetections);
@@ -2025,23 +2049,15 @@
             return;
         }
 
-        // Compute first-of-season species set (earliest detection per species this year)
-        const thisYear = new Date().getFullYear();
+        // Compute first-of-season species set using cached full-year data
         const firstOfSeason = new Set();
-        const earliestBySpecies = {};
-        allDetections.forEach(d => {
-            if (!d.species || !d.detected_at) return;
-            const yr = new Date(d.detected_at).getFullYear();
-            if (yr !== thisYear) return;
-            if (!earliestBySpecies[d.species] || d.detected_at < earliestBySpecies[d.species]) {
-                earliestBySpecies[d.species] = d.detected_at;
-            }
-        });
-        visible.forEach(d => {
-            if (d.detected_at && earliestBySpecies[d.species] === d.detected_at) {
-                firstOfSeason.add(d.id);
-            }
-        });
+        if (seasonEarliestBySpecies) {
+            visible.forEach(d => {
+                if (d.detected_at && seasonEarliestBySpecies[d.species] === d.detected_at) {
+                    firstOfSeason.add(d.id);
+                }
+            });
+        }
 
         document.getElementById('feed-view').innerHTML = visible.map((d, i) => {
             const rarityClass = d.rarity
@@ -4514,6 +4530,7 @@
     updateModUI();
 
     // ── Init ─────────────────────────────────────────────────
+    loadSeasonEarliest();
     loadFeed().then(handleSharedId);
 
     // Eagerly initialize the map off-screen so it's ready when the tab is clicked.
