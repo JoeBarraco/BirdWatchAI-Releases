@@ -1808,7 +1808,8 @@
         <h3>Edit Detection</h3>
         <input type="hidden" id="mod-edit-id">
         <label for="mod-edit-species">Species</label>
-        <input type="text" id="mod-edit-species" placeholder="Species name">
+        <input type="text" id="mod-edit-species" placeholder="Species name" list="mod-edit-species-list" autocomplete="off">
+        <datalist id="mod-edit-species-list"></datalist>
         <label for="mod-edit-rarity">Rarity</label>
         <select id="mod-edit-rarity">
             <option value="Common">Common</option>
@@ -2198,6 +2199,12 @@
                 species.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
             specSel.disabled = false;
             if (species.includes(prevSpec)) specSel.value = prevSpec;
+
+            // Update moderator edit species datalist
+            const modSpecList = document.getElementById('mod-edit-species-list');
+            if (modSpecList) {
+                modSpecList.innerHTML = species.map(s => `<option value="${esc(s)}">`).join('');
+            }
 
             // Update map species dropdown
             const mapSel = document.getElementById('map-species-filter');
