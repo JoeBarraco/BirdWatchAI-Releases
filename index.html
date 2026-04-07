@@ -761,6 +761,13 @@
                     .bindPopup(popupHtml)
                     .addTo(map);
             });
+
+            // Zoom to fit all hotspots
+            const allCoords = Object.keys(zipGroups).map(zip => coords[zip]);
+            if (allCoords.length) {
+                const bounds = L.latLngBounds(allCoords);
+                map.fitBounds(bounds.pad(0.3), { maxZoom: 12 });
+            }
         } catch (_) {}
     })();
 
