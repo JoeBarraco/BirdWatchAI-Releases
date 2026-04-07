@@ -1627,6 +1627,7 @@
                 <option value="30" selected>Auto: 30s</option>
                 <option value="60">Auto: 60s</option>
                 <option value="300">Auto: 5m</option>
+                <option value="3600">Auto: 60m</option>
             </select>
 
             <button id="sound-toggle" class="refresh-btn" style="background:var(--color-gray-500);" onclick="toggleSound()" title="Toggle sound">🔇</button>
@@ -3210,12 +3211,21 @@
     }
 
     // ── Auto-refresh ─────────────────────────────────────────
+    function fmtCountdown(secs) {
+        if (secs >= 60) {
+            const m = Math.floor(secs / 60);
+            const s = secs % 60;
+            return s > 0 ? `${m}m ${s}s` : `${m}m`;
+        }
+        return `${secs}s`;
+    }
+
     function changeRefreshInterval(val) {
         REFRESH_SECS = parseInt(val, 10);
         localStorage.setItem('bwai-refresh-interval', REFRESH_SECS);
         if (REFRESH_SECS > 0) {
             countdown = REFRESH_SECS;
-            document.getElementById('countdown').textContent = `Refreshing in ${countdown}s`;
+            document.getElementById('countdown').textContent = `Refreshing in ${fmtCountdown(countdown)}`;
         } else {
             document.getElementById('countdown').textContent = 'Auto-refresh off';
         }
@@ -3244,7 +3254,7 @@
         if (countdown <= 0) {
             loadFeed();
         } else {
-            document.getElementById('countdown').textContent = `Refreshing in ${countdown}s`;
+            document.getElementById('countdown').textContent = `Refreshing in ${fmtCountdown(countdown)}`;
         }
     }, 1000);
 
