@@ -1438,6 +1438,41 @@
             font-family: inherit; font-size: 0.9rem;
             background: var(--bg-input); color: var(--color-gray-700);
         }
+        .mod-edit-media-row { margin-bottom: 0.75rem; }
+        .mod-edit-media {
+            display: flex; align-items: center; gap: 10px;
+            padding: 8px; border: 1px solid var(--border-input);
+            border-radius: 6px; background: var(--bg-input);
+        }
+        .mod-edit-media img {
+            width: 64px; height: 64px; object-fit: cover;
+            border-radius: 4px; flex-shrink: 0; margin: 0;
+        }
+        .mod-edit-media a {
+            flex: 1; font-size: 0.85rem; color: var(--color-primary);
+            text-decoration: none;
+        }
+        .mod-edit-media a:hover { text-decoration: underline; }
+        .mod-edit-media-del {
+            font-family: inherit; font-size: 0.75rem; padding: 5px 10px;
+            border-radius: 5px; border: 1px solid var(--border);
+            cursor: pointer; background: var(--bg-card); color: var(--color-gray-700);
+            margin-left: auto; flex-shrink: 0; width: auto;
+        }
+        .mod-edit-media-del:hover { border-color: #e74c3c; color: #e74c3c; }
+        .mod-edit-media-marked {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 10px; padding: 8px 12px; border-radius: 6px;
+            background: rgba(231, 76, 60, 0.1); border: 1px solid rgba(231, 76, 60, 0.3);
+            color: #c0392b; font-size: 0.8rem;
+        }
+        .mod-edit-media-undo {
+            font-family: inherit; font-size: 0.75rem; padding: 3px 10px;
+            border-radius: 5px; border: 1px solid #c0392b;
+            cursor: pointer; background: transparent; color: #c0392b;
+            width: auto; flex-shrink: 0;
+        }
+        .mod-edit-media-undo:hover { background: #c0392b; color: white; }
 
         /* Mod action buttons on cards */
         .mod-actions {
@@ -1820,6 +1855,35 @@
             <option value="Rare">Rare</option>
             <option value="Very Rare">Very Rare</option>
         </select>
+
+        <!-- Photo section (shown only when detection has a photo) -->
+        <div id="mod-edit-photo-row" class="mod-edit-media-row" style="display:none;">
+            <label>Photo</label>
+            <div class="mod-edit-media">
+                <img id="mod-edit-photo-thumb" src="" alt="Detection photo">
+                <button type="button" class="mod-edit-media-del" id="mod-edit-photo-del"
+                        onclick="toggleModDeleteMedia('photo')">🗑️ Delete Photo</button>
+            </div>
+            <div id="mod-edit-photo-marked" class="mod-edit-media-marked" style="display:none;">
+                Photo will be deleted on save.
+                <button type="button" class="mod-edit-media-undo" onclick="toggleModDeleteMedia('photo')">Undo</button>
+            </div>
+        </div>
+
+        <!-- Video section (shown only when detection has a video) -->
+        <div id="mod-edit-video-row" class="mod-edit-media-row" style="display:none;">
+            <label>Video</label>
+            <div class="mod-edit-media">
+                <a id="mod-edit-video-link" href="#" target="_blank" rel="noopener">🎬 View video</a>
+                <button type="button" class="mod-edit-media-del" id="mod-edit-video-del"
+                        onclick="toggleModDeleteMedia('video')">🗑️ Delete Video</button>
+            </div>
+            <div id="mod-edit-video-marked" class="mod-edit-media-marked" style="display:none;">
+                Video will be deleted on save.
+                <button type="button" class="mod-edit-media-undo" onclick="toggleModDeleteMedia('video')">Undo</button>
+            </div>
+        </div>
+
         <div class="mod-btn-row">
             <button class="mod-btn-cancel" onclick="closeModEdit()">Cancel</button>
             <button class="mod-btn-primary" onclick="doModSave()">Save</button>
@@ -4723,6 +4787,10 @@
         }
     }
 
+    // Pending media deletions for the currently open mod edit modal
+    let modEditDeletePhoto = false;
+    let modEditDeleteVideo = false;
+
     function openModEdit(detectionId) {
         const d = allDetections.find(x => String(x.id) === String(detectionId));
         if (!d) return;
@@ -4744,7 +4812,56 @@
         }
         document.getElementById('mod-edit-id').value = d.id;
         document.getElementById('mod-edit-rarity').value = d.rarity || 'Common';
+
+        // Reset pending media deletions
+        modEditDeletePhoto = false;
+        modEditDeleteVideo = false;
+
+        // Photo section
+        const photoRow    = document.getElementById('mod-edit-photo-row');
+        const photoThumb  = document.getElementById('mod-edit-photo-thumb');
+        const photoDel    = document.getElementById('mod-edit-photo-del');
+        const photoMarked = document.getElementById('mod-edit-photo-marked');
+        if (d.image_url) {
+            photoRow.style.display = '';
+            photoThumb.src = d.image_url;
+            photoDel.parentElement.style.display = '';
+            photoMarked.style.display = 'none';
+        } else {
+            photoRow.style.display = 'none';
+        }
+
+        // Video section
+        const videoRow    = document.getElementById('mod-edit-video-row');
+        const videoLink   = document.getElementById('mod-edit-video-link');
+        const videoDel    = document.getElementById('mod-edit-video-del');
+        const videoMarked = document.getElementById('mod-edit-video-marked');
+        if (d.video_url) {
+            videoRow.style.display = '';
+            videoLink.href = d.video_url;
+            videoDel.parentElement.style.display = '';
+            videoMarked.style.display = 'none';
+        } else {
+            videoRow.style.display = 'none';
+        }
+
         document.getElementById('mod-edit-modal').classList.add('open');
+    }
+
+    function toggleModDeleteMedia(kind) {
+        if (kind === 'photo') {
+            modEditDeletePhoto = !modEditDeletePhoto;
+            const preview = document.getElementById('mod-edit-photo-del').parentElement;
+            const marked  = document.getElementById('mod-edit-photo-marked');
+            preview.style.display = modEditDeletePhoto ? 'none' : '';
+            marked.style.display  = modEditDeletePhoto ? '' : 'none';
+        } else if (kind === 'video') {
+            modEditDeleteVideo = !modEditDeleteVideo;
+            const preview = document.getElementById('mod-edit-video-del').parentElement;
+            const marked  = document.getElementById('mod-edit-video-marked');
+            preview.style.display = modEditDeleteVideo ? 'none' : '';
+            marked.style.display  = modEditDeleteVideo ? '' : 'none';
+        }
     }
 
     document.getElementById('mod-edit-species-select').addEventListener('change', function() {
@@ -4791,6 +4908,8 @@
                     p_detection_id: detectionId,
                     p_species: species,
                     p_rarity: rarity,
+                    p_delete_image: modEditDeletePhoto,
+                    p_delete_video: modEditDeleteVideo,
                 }),
             });
             if (!res.ok) {
@@ -4799,10 +4918,16 @@
             }
             // Update local data
             const d = allDetections.find(x => String(x.id) === String(detectionId));
-            if (d) { d.species = species; d.rarity = rarity; }
+            if (d) {
+                d.species = species;
+                d.rarity = rarity;
+                if (modEditDeletePhoto) d.image_url = null;
+                if (modEditDeleteVideo) d.video_url = null;
+            }
+            const deletedMedia = modEditDeletePhoto || modEditDeleteVideo;
             closeModEdit();
             renderFeed();
-            showToast('Detection updated');
+            showToast(deletedMedia ? 'Detection updated (media removed)' : 'Detection updated');
         } catch (err) {
             showToast('Error: ' + err.message);
         }

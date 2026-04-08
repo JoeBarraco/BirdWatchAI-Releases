@@ -47,6 +47,7 @@ create policy "Service role full access" on moderators
 -- 2b. Drop old functions (parameter names changed from p_username to p_email)
 drop function if exists moderator_login(text, text);
 drop function if exists moderator_update_detection(text, text, uuid, text, text);
+drop function if exists moderator_update_detection(text, text, uuid, text, text, boolean, boolean);
 drop function if exists moderator_delete_detection(text, text, uuid);
 drop function if exists moderator_list_users(text, text);
 drop function if exists moderator_add_user(text, text, text, text, text);
@@ -78,13 +79,16 @@ begin
 end;
 $$;
 
--- 4. RPC: Update a detection (rename species, adjust rarity)
+-- 4. RPC: Update a detection (rename species, adjust rarity,
+--    optionally clear attached photo and/or video)
 create or replace function moderator_update_detection(
   p_email        text,
   p_password     text,
   p_detection_id uuid,
-  p_species      text default null,
-  p_rarity       text default null
+  p_species      text    default null,
+  p_rarity       text    default null,
+  p_delete_image boolean default false,
+  p_delete_video boolean default false
 )
 returns boolean
 language plpgsql security definer
@@ -103,8 +107,10 @@ begin
 
   update community_detections
   set
-    species = coalesce(p_species, species),
-    rarity  = coalesce(p_rarity, rarity)
+    species   = coalesce(p_species, species),
+    rarity    = coalesce(p_rarity, rarity),
+    image_url = case when p_delete_image then null else image_url end,
+    video_url = case when p_delete_video then null else video_url end
   where id = p_detection_id;
 
   return found;
@@ -309,7 +315,7 @@ $$;
 
 -- 11. Grant anon access to call the RPC functions
 grant execute on function moderator_login(text, text) to anon;
-grant execute on function moderator_update_detection(text, text, uuid, text, text) to anon;
+grant execute on function moderator_update_detection(text, text, uuid, text, text, boolean, boolean) to anon;
 grant execute on function moderator_delete_detection(text, text, uuid) to anon;
 grant execute on function moderator_list_users(text, text) to anon;
 grant execute on function moderator_add_user(text, text, text, text) to anon;
