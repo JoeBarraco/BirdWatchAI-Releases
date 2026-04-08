@@ -10,6 +10,8 @@ supabase link --project-ref https://lsamggztfizmkyljdgwq.supabase.co
 # Deploy both functions
 supabase functions deploy weekly-digest
 supabase functions deploy unsubscribe
+supabase functions deploy send-temp-password
+supabase functions deploy moderator-delete-media
 
 # Set the secrets
 supabase secrets set RESEND_API_KEY=re_NZFNyYPo_65EWNoew82LcAUHFHoVppchA

@@ -4894,27 +4894,53 @@
 
         if (!species) { showToast('Species name is required'); return; }
 
+        // When media is being deleted we go through the edge function so that
+        // the files are also removed from Supabase Storage. Otherwise we call
+        // the RPC directly (cheaper, no edge-function round trip).
+        const deletingMedia = modEditDeletePhoto || modEditDeleteVideo;
+
         try {
-            const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/moderator_update_detection`, {
-                method: 'POST',
-                headers: {
-                    apikey: ANON_KEY,
-                    Authorization: `Bearer ${ANON_KEY}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    p_email: email,
-                    p_password: password,
-                    p_detection_id: detectionId,
-                    p_species: species,
-                    p_rarity: rarity,
-                    p_delete_image: modEditDeletePhoto,
-                    p_delete_video: modEditDeleteVideo,
-                }),
-            });
+            let res;
+            if (deletingMedia) {
+                const functionsUrl = SUPABASE_URL.replace('.supabase.co', '.supabase.co/functions/v1');
+                res = await fetch(`${functionsUrl}/moderator-delete-media`, {
+                    method: 'POST',
+                    headers: {
+                        apikey: ANON_KEY,
+                        Authorization: `Bearer ${ANON_KEY}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        action: 'update',
+                        email,
+                        password,
+                        detection_id: detectionId,
+                        species,
+                        rarity,
+                        delete_image: modEditDeletePhoto,
+                        delete_video: modEditDeleteVideo,
+                    }),
+                });
+            } else {
+                res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/moderator_update_detection`, {
+                    method: 'POST',
+                    headers: {
+                        apikey: ANON_KEY,
+                        Authorization: `Bearer ${ANON_KEY}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        p_email: email,
+                        p_password: password,
+                        p_detection_id: detectionId,
+                        p_species: species,
+                        p_rarity: rarity,
+                    }),
+                });
+            }
             if (!res.ok) {
-                const err = await res.json();
-                throw new Error(err.message || 'Update failed');
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.error || err.message || 'Update failed');
             }
             // Update local data
             const d = allDetections.find(x => String(x.id) === String(detectionId));
@@ -4924,10 +4950,9 @@
                 if (modEditDeletePhoto) d.image_url = null;
                 if (modEditDeleteVideo) d.video_url = null;
             }
-            const deletedMedia = modEditDeletePhoto || modEditDeleteVideo;
             closeModEdit();
             renderFeed();
-            showToast(deletedMedia ? 'Detection updated (media removed)' : 'Detection updated');
+            showToast(deletingMedia ? 'Detection updated (media removed)' : 'Detection updated');
         } catch (err) {
             showToast('Error: ' + err.message);
         }
@@ -4940,7 +4965,11 @@
 
         const { email, password } = getModCreds();
         try {
-            const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/moderator_delete_detection`, {
+            // Always route through the edge function so any attached photo /
+            // video files are also removed from Supabase Storage, not just
+            // the DB row.
+            const functionsUrl = SUPABASE_URL.replace('.supabase.co', '.supabase.co/functions/v1');
+            const res = await fetch(`${functionsUrl}/moderator-delete-media`, {
                 method: 'POST',
                 headers: {
                     apikey: ANON_KEY,
@@ -4948,14 +4977,15 @@
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    p_email: email,
-                    p_password: password,
-                    p_detection_id: detectionId,
+                    action: 'delete',
+                    email,
+                    password,
+                    detection_id: detectionId,
                 }),
             });
             if (!res.ok) {
-                const err = await res.json();
-                throw new Error(err.message || 'Delete failed');
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.error || err.message || 'Delete failed');
             }
             // Remove from local data
             allDetections = allDetections.filter(x => String(x.id) !== String(detectionId));
