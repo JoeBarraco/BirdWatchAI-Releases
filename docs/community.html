@@ -1736,10 +1736,7 @@
 
     <!-- Stats view -->
     <div id="stats-view">
-        <!-- Summary KPIs -->
-        <div id="stats-summary"></div>
-
-        <!-- Sub-tabs -->
+        <!-- Sub-tabs (directly under the main view tabs) -->
         <div class="stats-tabs">
             <button class="stats-tab active" onclick="switchStatsTab('life-list', this)">📋 Life List</button>
             <button class="stats-tab" onclick="switchStatsTab('activity', this)">🕐 Activity</button>
@@ -1750,6 +1747,9 @@
             <button class="stats-tab" onclick="switchStatsTab('compare', this)">⚖️ Compare</button>
             <button class="stats-tab" onclick="switchStatsTab('likes', this)">❤️ Likes</button>
         </div>
+
+        <!-- Summary KPIs -->
+        <div id="stats-summary"></div>
 
         <div id="stats-life-list"  class="stats-panel"></div>
         <div id="stats-activity"   class="stats-panel" style="display:none;"></div>
@@ -2704,25 +2704,26 @@
         likesResortTimer = null;
     }
 
-    function startLikesPoll() {
-        stopLikesPoll();
-        likesPollInterval = setInterval(() => {
-            // Don't poll if user just clicked (debounce timer is active)
-            if (likesResortTimer) return;
-            // Don't poll if tab is hidden
-            if (document.hidden) return;
-            resortLikesPanel();
-        }, 3000);
-    }
+    // Auto-poll disabled: it caused a visible refresh flash every few seconds.
+    // The Likes panel now only updates in response to user actions (clicking a
+    // reaction triggers the debounced animated re-sort), switching to the
+    // Likes tab, or feed auto-refresh routing through resortLikesPanel below.
+    function startLikesPoll() { /* no-op */ }
 
     async function renderFullStats() {
         renderStats();
         if (activeStatsTab === 'compare') renderCompare();
         if (activeStatsTab === 'trend') renderTrend();
         if (activeStatsTab === 'likes') {
-            stopLikesPoll();
-            await renderLikesPanel();
-            startLikesPoll();
+            // Surgical update only — avoids the "Loading reaction data…" flash
+            // that renderLikesPanel would cause. If the panel hasn't been
+            // rendered yet (no tbody), fall back to a full render.
+            const panel = document.getElementById('stats-likes');
+            if (panel && panel.querySelector('tbody')) {
+                await resortLikesPanel();
+            } else {
+                await renderLikesPanel();
+            }
         }
     }
 
@@ -2735,7 +2736,7 @@
         if (tabName === 'compare') renderCompare();
         if (tabName === 'trend') renderTrend();
         if (tabName === 'likes') {
-            renderLikesPanel().then(() => startLikesPoll());
+            renderLikesPanel();
         } else {
             stopLikesPoll();
         }
