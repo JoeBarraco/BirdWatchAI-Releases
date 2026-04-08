@@ -642,6 +642,12 @@
         .stats-count        { text-align: right; font-variant-numeric: tabular-nums; }
         .stats-peak         { text-align: center; font-variant-numeric: tabular-nums; }
 
+        /* Header alignment overrides — keep headers lined up with the data cells below */
+        .stats-table th.stats-rank  { text-align: center; }
+        .stats-table th.stats-count { text-align: right;  }
+        .stats-table th.stats-pct   { text-align: right;  }
+        .stats-table th.stats-peak  { text-align: center; }
+
         .stats-pct {
             white-space: nowrap;
             display: flex;
@@ -1632,21 +1638,6 @@
         <button class="clear-btn" onclick="clearFilters()">✕ Clear</button>
     </div>
 
-    <!-- View tabs -->
-    <div class="view-tabs">
-        <button class="view-tab active" onclick="switchView('feed', this)">📋 Feed</button>
-        <button class="view-tab" onclick="switchView('map', this)">🗺️ Map</button>
-        <button class="view-tab" onclick="switchView('gallery', this)">🖼️ Gallery</button>
-        <button class="view-tab" onclick="switchView('stats', this)">📊 Stats</button>
-    </div>
-
-    <!-- Notification permission banner (shown when needed) -->
-    <div id="notif-banner" style="display:none;background:#fff8e6;border:1px solid #e6a817;border-radius:8px;padding:0.75rem 1rem;margin-bottom:0.75rem;font-size:0.875rem;display:none;align-items:center;gap:1rem;flex-wrap:wrap;">
-        <span>🔔 Enable browser notifications to get alerted when a Rare or Very Rare bird is detected — even when this tab isn't in focus.</span>
-        <button onclick="requestNotifPermission()" style="font-family:inherit;font-size:0.8125rem;padding:4px 14px;border:1px solid #e6a817;border-radius:6px;background:#fff;color:#b07a00;cursor:pointer;font-weight:600;white-space:nowrap;">Enable notifications</button>
-        <button onclick="document.getElementById('notif-banner').style.display='none'" style="font-family:inherit;font-size:0.8125rem;padding:4px 10px;border:1px solid #d0cbc3;border-radius:6px;background:#fff;color:#7a756d;cursor:pointer;">Dismiss</button>
-    </div>
-
     <!-- Status bar -->
     <div id="status-bar">
         <div class="status-info">
@@ -1670,6 +1661,21 @@
             <button class="refresh-btn" style="background:var(--color-gray-500);" onclick="exportCSV()" title="Download CSV">⬇ CSV</button>
             <button class="refresh-btn" style="background:var(--color-gray-500);" onclick="toggleKbdHint()" title="Keyboard shortcuts">⌨</button>
         </div>
+    </div>
+
+    <!-- View tabs -->
+    <div class="view-tabs">
+        <button class="view-tab active" onclick="switchView('feed', this)">📋 Feed</button>
+        <button class="view-tab" onclick="switchView('map', this)">🗺️ Map</button>
+        <button class="view-tab" onclick="switchView('gallery', this)">🖼️ Gallery</button>
+        <button class="view-tab" onclick="switchView('stats', this)">📊 Stats</button>
+    </div>
+
+    <!-- Notification permission banner (shown when needed) -->
+    <div id="notif-banner" style="display:none;background:#fff8e6;border:1px solid #e6a817;border-radius:8px;padding:0.75rem 1rem;margin-bottom:0.75rem;font-size:0.875rem;display:none;align-items:center;gap:1rem;flex-wrap:wrap;">
+        <span>🔔 Enable browser notifications to get alerted when a Rare or Very Rare bird is detected — even when this tab isn't in focus.</span>
+        <button onclick="requestNotifPermission()" style="font-family:inherit;font-size:0.8125rem;padding:4px 14px;border:1px solid #e6a817;border-radius:6px;background:#fff;color:#b07a00;cursor:pointer;font-weight:600;white-space:nowrap;">Enable notifications</button>
+        <button onclick="document.getElementById('notif-banner').style.display='none'" style="font-family:inherit;font-size:0.8125rem;padding:4px 10px;border:1px solid #d0cbc3;border-radius:6px;background:#fff;color:#7a756d;cursor:pointer;">Dismiss</button>
     </div>
 
     <!-- Feed view -->
@@ -2866,8 +2872,8 @@
             ? '<div class="feed-empty">No data for the current filters.</div>'
             : `<table class="stats-table">
                 <thead><tr>
-                    <th>#</th><th>Species</th><th>Detections</th>
-                    <th>% of Total</th><th>Peak Hour</th><th></th>
+                    <th class="stats-rank">#</th><th>Species</th><th class="stats-count">Detections</th>
+                    <th class="stats-pct">% of Total</th><th class="stats-peak">Peak Hour</th><th></th>
                 </tr></thead>
                 <tbody>${lifeList.map((s, i) => `
                     <tr>
@@ -2934,8 +2940,8 @@
             ? '<div class="feed-empty">No location data for the current filters.</div>'
             : `<table class="stats-table">
                 <thead><tr>
-                    <th>#</th><th>Zip Code</th><th>Detections</th>
-                    <th>% of Total</th><th>Unique Species</th>
+                    <th class="stats-rank">#</th><th>Zip Code</th><th class="stats-count">Detections</th>
+                    <th class="stats-pct">% of Total</th><th class="stats-count">Unique Species</th>
                 </tr></thead>
                 <tbody>${hotspots.map((h, i) => `
                     <tr>
@@ -3019,8 +3025,8 @@
             ? '<div class="feed-empty">No feeder data for the current filters.</div>'
             : `<table class="stats-table">
                 <thead><tr>
-                    <th>#</th><th>Feeder</th><th>Detections</th>
-                    <th>% of Total</th><th>Species</th><th>Streak</th><th>Rare / Very Rare</th>
+                    <th class="stats-rank">#</th><th>Feeder</th><th class="stats-count">Detections</th>
+                    <th class="stats-pct">% of Total</th><th class="stats-count">Species</th><th class="stats-count">Streak</th><th class="stats-count">Rare / Very Rare</th>
                 </tr></thead>
                 <tbody>${leaderboard.map((f, i) => `
                     <tr>
@@ -3812,6 +3818,11 @@
     // ── Liked Detections (Stats tab) ─────────────────────────
     let likesResortTimer = null;
     let likesPollInterval = null;
+    let lastLikesSignature = '';
+
+    function likesSignature(rows) {
+        return rows.map(r => `${r.d.id}:${r.wow}:${r.liked}:${r.celebrate}:${r.bird}`).join('|');
+    }
 
     function buildLikesRows() {
         const visible = applyClientFilters(allDetections);
@@ -3858,7 +3869,7 @@
     function likesTableHtml(rows) {
         return `<table class="stats-table" style="table-layout:auto;">
             <thead><tr>
-                <th>#</th>
+                <th class="stats-rank">#</th>
                 <th>Species</th>
                 <th>Feeder</th>
                 <th>ZIP</th>
@@ -3886,8 +3897,10 @@
         const rows = buildLikesRows();
         if (rows.length === 0) {
             panel.innerHTML = '<div class="feed-empty">No reactions yet. Like some detections to see stats here!</div>';
+            lastLikesSignature = '';
             return;
         }
+        lastLikesSignature = likesSignature(rows);
 
         // Wire up click handler (event delegation)
         panel.onclick = (e) => {
@@ -3931,8 +3944,16 @@
         const rows = buildLikesRows();
         if (rows.length === 0) {
             panel.innerHTML = '<div class="feed-empty">No reactions yet. Like some detections to see stats here!</div>';
+            lastLikesSignature = '';
             return;
         }
+
+        // Skip the DOM rebuild entirely when nothing has changed.
+        // This is the common case on idle polls and eliminates the scroll jump
+        // caused by tbody.innerHTML replacement + scroll anchor recalculation.
+        const signature = likesSignature(rows);
+        if (signature === lastLikesSignature) return;
+        lastLikesSignature = signature;
 
         // Capture old positions and scores RIGHT BEFORE DOM change (after all async work)
         const scrollY = window.scrollY;
