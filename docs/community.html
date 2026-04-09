@@ -2209,14 +2209,18 @@
             populateFeedSpeciesDropdown(allDetections);
             populateMapSpeciesDropdown(allDetections);
 
-            // If active filters or sorting by most liked, load all detections so results are complete
+            // If active filters or sorting by most liked, load all detections so results are complete.
+            // The stats and gallery views also need the full dataset — otherwise switching the period
+            // while on those views would render with only the first PAGE_SIZE rows.
             const sortOrder = document.getElementById('sort-filter')?.value || 'recent';
             const hasActiveFilter = selectedSpecies ||
                 document.getElementById('rarity-filter').value ||
                 document.getElementById('feeder-filter').value ||
                 document.getElementById('zip-filter').value.trim() ||
                 favoritesOnly;
-            if (!append && !feedExhausted && (sortOrder === 'liked' || hasActiveFilter)) {
+            const needsAll = sortOrder === 'liked' || hasActiveFilter ||
+                currentView === 'stats' || currentView === 'gallery';
+            if (!append && !feedExhausted && needsAll) {
                 await loadAllDetections();
             }
 
