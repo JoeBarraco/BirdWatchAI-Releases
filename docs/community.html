@@ -4571,10 +4571,11 @@
     let slideshowSlideToken = 0; // increments on each showSlideshowSlide call
 
     const SLIDESHOW_TRANSITIONS = [
-        { id: 'fade',     label: '✦ Fade'     },
-        { id: 'slide',    label: '▸ Slide'    },
+        { id: 'fade',     label: '✦ Fade'      },
+        { id: 'slide',    label: '▸ Slide'     },
         { id: 'kenburns', label: '⊙ Ken Burns' },
-        { id: 'blur',     label: '◌ Blur'     }
+        { id: 'blur',     label: '◌ Blur'      },
+        { id: 'random',   label: '⟲ Random'    }
     ];
     let slideshowTransitionIdx = 0;
 
@@ -4623,6 +4624,12 @@
         if (!photo) return;
 
         const myToken = ++slideshowSlideToken;
+
+        // If the user picked "random", roll a fresh transition for this slide.
+        if (SLIDESHOW_TRANSITIONS[slideshowTransitionIdx].id === 'random') {
+            const pool = SLIDESHOW_TRANSITIONS.filter(t => t.id !== 'random');
+            slideshowModal.dataset.transition = pool[Math.floor(Math.random() * pool.length)].id;
+        }
 
         document.getElementById('slideshow-caption').textContent = photo.species || '';
         document.getElementById('slideshow-counter').textContent =
@@ -4718,7 +4725,9 @@
     function cycleSlideshowTransition() {
         slideshowTransitionIdx = (slideshowTransitionIdx + 1) % SLIDESHOW_TRANSITIONS.length;
         const mode = SLIDESHOW_TRANSITIONS[slideshowTransitionIdx];
-        slideshowModal.dataset.transition = mode.id;
+        // For 'random', leave a harmless default in place; showSlideshowSlide
+        // will roll a fresh pick on the next slide change.
+        if (mode.id !== 'random') slideshowModal.dataset.transition = mode.id;
         const btn = document.getElementById('slideshow-transition-btn');
         if (btn) btn.textContent = mode.label;
         bumpSlideshowIdle();
