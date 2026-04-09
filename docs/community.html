@@ -1293,13 +1293,70 @@
             display: none;
             position: fixed;
             inset: 0;
+            width: 100vw;
+            height: 100vh;
             background: #000;
             z-index: 10001;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
+            overflow: hidden;
         }
-        #slideshow-modal.open { display: flex; }
+        #slideshow-modal.open { display: block; }
+        #slideshow-modal:fullscreen,
+        #slideshow-modal:-webkit-full-screen {
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+        }
+        .slideshow-stage {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+        }
+        .slideshow-slide {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            opacity: 0;
+            transform: translateX(0) scale(1);
+            transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.22, 0.61, 0.36, 1);
+            will-change: opacity, transform;
+            pointer-events: none;
+            backface-visibility: hidden;
+        }
+        .slideshow-slide.active { opacity: 1; z-index: 1; }
+
+        /* Slide transition variants — both slides stay opaque and translate */
+        #slideshow-modal[data-transition="slide"] .slideshow-slide {
+            transition: transform 0.75s cubic-bezier(0.22, 0.61, 0.36, 1), opacity 0.35s ease;
+        }
+        #slideshow-modal[data-transition="slide"] .slideshow-slide.from-right { transform: translateX(100%);  opacity: 1; }
+        #slideshow-modal[data-transition="slide"] .slideshow-slide.from-left  { transform: translateX(-100%); opacity: 1; }
+        #slideshow-modal[data-transition="slide"] .slideshow-slide.exit-left  { transform: translateX(-100%); opacity: 1; }
+        #slideshow-modal[data-transition="slide"] .slideshow-slide.exit-right { transform: translateX(100%);  opacity: 1; }
+
+        /* Ken Burns / zoom transition — crossfade plus slow drift-zoom */
+        #slideshow-modal[data-transition="kenburns"] .slideshow-slide.active {
+            animation: ssKenBurns 7s ease-out forwards;
+        }
+        @keyframes ssKenBurns {
+            0%   { transform: scale(1.02) translate3d(0, 0, 0); }
+            100% { transform: scale(1.15) translate3d(-2%, -2%, 0); }
+        }
+
+        /* Blur transition — crossfade with a brief defocus */
+        #slideshow-modal[data-transition="blur"] .slideshow-slide {
+            transition: opacity 0.6s ease, filter 0.6s ease, transform 0.6s ease;
+        }
+        #slideshow-modal[data-transition="blur"] .slideshow-slide:not(.active) {
+            filter: blur(18px);
+            transform: scale(1.05);
+        }
+        #slideshow-modal[data-transition="blur"] .slideshow-slide.active {
+            filter: blur(0);
+            transform: scale(1);
+        }
+
         .slideshow-chrome {
             position: absolute;
             top: 0;
@@ -1307,29 +1364,37 @@
             right: 0;
             display: flex;
             align-items: center;
-            padding: 14px 20px;
-            z-index: 2;
-            background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent);
+            padding: 18px 24px;
+            z-index: 3;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.65), transparent);
+            opacity: 1;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
         }
+        .slideshow-chrome > * { pointer-events: auto; }
+        #slideshow-modal.idle .slideshow-chrome,
+        #slideshow-modal.idle .slideshow-bar { opacity: 0; }
         .slideshow-caption {
             color: #fff;
             font-family: var(--font-display, 'Fraunces', serif);
-            font-size: 1.25rem;
+            font-size: 1.35rem;
             font-weight: 600;
             flex: 1;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.6);
         }
         .slideshow-counter {
-            color: rgba(255,255,255,0.7);
+            color: rgba(255,255,255,0.75);
             font-size: 0.85rem;
             margin-right: 1rem;
+            text-shadow: 0 1px 4px rgba(0,0,0,0.6);
         }
         .slideshow-close {
             background: rgba(255,255,255,0.15);
             border: none;
             color: white;
             font-size: 1.25rem;
-            width: 36px;
-            height: 36px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
             cursor: pointer;
             display: flex;
@@ -1338,15 +1403,6 @@
             transition: background 0.15s;
         }
         .slideshow-close:hover { background: rgba(255,255,255,0.3); }
-        #slideshow-img {
-            max-width: 92vw;
-            max-height: 80vh;
-            object-fit: contain;
-            border-radius: 6px;
-            transition: opacity 0.3s ease;
-            z-index: 1;
-        }
-        #slideshow-img.fade { opacity: 0; }
         .slideshow-arrow {
             position: absolute;
             top: 50%;
@@ -1355,20 +1411,21 @@
             border: none;
             color: white;
             font-size: 2.5rem;
-            width: 52px;
-            height: 72px;
-            border-radius: 8px;
+            width: 56px;
+            height: 80px;
+            border-radius: 10px;
             cursor: pointer;
-            z-index: 2;
-            transition: background 0.15s;
+            z-index: 3;
+            transition: background 0.15s, opacity 0.3s ease;
             display: flex;
             align-items: center;
             justify-content: center;
             line-height: 1;
         }
         .slideshow-arrow:hover { background: rgba(255,255,255,0.25); }
-        .slideshow-prev { left: 16px; }
-        .slideshow-next { right: 16px; }
+        .slideshow-prev { left: 20px; }
+        .slideshow-next { right: 20px; }
+        #slideshow-modal.idle .slideshow-arrow { opacity: 0; }
         .slideshow-bar {
             position: absolute;
             bottom: 0;
@@ -1377,22 +1434,27 @@
             display: flex;
             align-items: center;
             gap: 12px;
-            padding: 12px 20px;
-            background: linear-gradient(to top, rgba(0,0,0,0.6), transparent);
-            z-index: 2;
+            padding: 16px 24px;
+            background: linear-gradient(to top, rgba(0,0,0,0.65), transparent);
+            z-index: 3;
+            opacity: 1;
+            transition: opacity 0.3s ease;
         }
         .slideshow-ctrl {
             background: rgba(255,255,255,0.15);
             border: none;
             color: white;
             font-size: 1.1rem;
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
+            min-width: 40px;
+            height: 40px;
+            padding: 0 12px;
+            border-radius: 20px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: background 0.15s;
+            white-space: nowrap;
         }
         .slideshow-ctrl:hover { background: rgba(255,255,255,0.3); }
         .slideshow-progress {
@@ -1411,9 +1473,24 @@
         }
         @media (max-width: 640px) {
             .gallery-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
-            .slideshow-arrow { width: 40px; height: 56px; font-size: 2rem; }
-            .slideshow-prev { left: 6px; }
-            .slideshow-next { right: 6px; }
+            .slideshow-arrow { width: 42px; height: 60px; font-size: 2rem; }
+            .slideshow-prev { left: 8px; }
+            .slideshow-next { right: 8px; }
+            .slideshow-caption { font-size: 1.05rem; }
+            .slideshow-ctrl { min-width: 36px; height: 36px; padding: 0 10px; font-size: 1rem; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .slideshow-slide { transition: opacity 0.2s linear; }
+            #slideshow-modal[data-transition="kenburns"] .slideshow-slide.active { animation: none; }
+            #slideshow-modal[data-transition="slide"] .slideshow-slide {
+                transition: opacity 0.2s linear;
+            }
+            #slideshow-modal[data-transition="slide"] .slideshow-slide.from-right,
+            #slideshow-modal[data-transition="slide"] .slideshow-slide.from-left,
+            #slideshow-modal[data-transition="slide"] .slideshow-slide.exit-left,
+            #slideshow-modal[data-transition="slide"] .slideshow-slide.exit-right {
+                transform: none;
+            }
         }
 
         /* ── Species comparison panel ────────────────────────── */
@@ -1896,18 +1973,23 @@
     </div>
 
     <!-- Slideshow modal -->
-    <div id="slideshow-modal" role="dialog" aria-modal="true">
+    <div id="slideshow-modal" role="dialog" aria-modal="true" data-transition="fade">
+        <div class="slideshow-stage">
+            <img class="slideshow-slide" id="slideshow-img-a" src="" alt="">
+            <img class="slideshow-slide" id="slideshow-img-b" src="" alt="">
+        </div>
         <div class="slideshow-chrome">
             <div class="slideshow-caption" id="slideshow-caption"></div>
             <div class="slideshow-counter" id="slideshow-counter"></div>
             <button class="slideshow-close" id="slideshow-close" aria-label="Close">✕</button>
         </div>
         <button class="slideshow-arrow slideshow-prev" id="slideshow-prev" aria-label="Previous">‹</button>
-        <img id="slideshow-img" src="" alt="">
         <button class="slideshow-arrow slideshow-next" id="slideshow-next" aria-label="Next">›</button>
         <div class="slideshow-bar">
-            <button class="slideshow-ctrl" id="slideshow-playpause" onclick="toggleSlideshowPause()">⏸</button>
+            <button class="slideshow-ctrl" id="slideshow-playpause" onclick="toggleSlideshowPause()" title="Play / pause (space)" aria-label="Play or pause">⏸</button>
             <div class="slideshow-progress"><div class="slideshow-progress-fill" id="slideshow-progress-fill"></div></div>
+            <button class="slideshow-ctrl" id="slideshow-transition-btn" onclick="cycleSlideshowTransition()" title="Transition style (t)" aria-label="Transition style">✦ Fade</button>
+            <button class="slideshow-ctrl" id="slideshow-fullscreen-btn" onclick="toggleSlideshowFullscreen()" title="Toggle fullscreen (f)" aria-label="Toggle fullscreen">⛶</button>
         </div>
     </div>
 
@@ -4475,6 +4557,8 @@
 
     // ── Slideshow ────────────────────────────────────────────
     const slideshowModal = document.getElementById('slideshow-modal');
+    const slideshowImgA  = document.getElementById('slideshow-img-a');
+    const slideshowImgB  = document.getElementById('slideshow-img-b');
     let slideshowPhotos = [];
     let slideshowIdx = 0;
     let slideshowTimer = null;
@@ -4482,16 +4566,21 @@
     const SLIDESHOW_INTERVAL = 4000; // ms per photo
     let slideshowProgressRAF = null;
     let slideshowSlideStart = 0;
+    let slideshowActiveSlot = 0; // 0 = A, 1 = B
+    let slideshowIdleTimer = null;
+    let slideshowSlideToken = 0; // increments on each showSlideshowSlide call
+
+    const SLIDESHOW_TRANSITIONS = [
+        { id: 'fade',     label: '✦ Fade'     },
+        { id: 'slide',    label: '▸ Slide'    },
+        { id: 'kenburns', label: '⊙ Ken Burns' },
+        { id: 'blur',     label: '◌ Blur'     }
+    ];
+    let slideshowTransitionIdx = 0;
 
     function openSlideshowForSpecies(speciesData) {
         slideshowPhotos = speciesData.photos;
-        slideshowIdx = 0;
-        slideshowPaused = false;
-        document.getElementById('slideshow-playpause').textContent = '⏸';
-        showSlideshowSlide();
-        slideshowModal.classList.add('open');
-        lockScroll();
-        startSlideshowTimer();
+        startSlideshowPlayback();
     }
 
     function startSlideshow() {
@@ -4508,28 +4597,81 @@
         }
         if (!all.length) { showToast('No photos to show'); return; }
         slideshowPhotos = all;
-        slideshowIdx = 0;
-        slideshowPaused = false;
-        document.getElementById('slideshow-playpause').textContent = '⏸';
-        showSlideshowSlide();
-        slideshowModal.classList.add('open');
-        lockScroll();
-        startSlideshowTimer();
+        startSlideshowPlayback();
     }
 
-    function showSlideshowSlide() {
+    function startSlideshowPlayback() {
+        slideshowIdx = 0;
+        slideshowPaused = false;
+        slideshowActiveSlot = 0;
+        // Reset slide slots to a known clean state
+        [slideshowImgA, slideshowImgB].forEach(el => {
+            el.className = 'slideshow-slide';
+            el.removeAttribute('src');
+        });
+        document.getElementById('slideshow-playpause').textContent = '⏸';
+        slideshowModal.classList.add('open');
+        lockScroll();
+        showSlideshowSlide(0);
+        startSlideshowTimer();
+        requestSlideshowFullscreen();
+        bumpSlideshowIdle();
+    }
+
+    function showSlideshowSlide(direction) {
         const photo = slideshowPhotos[slideshowIdx];
         if (!photo) return;
-        const img = document.getElementById('slideshow-img');
-        img.classList.add('fade');
-        setTimeout(() => {
-            img.src = photo.url;
-            img.alt = photo.species || '';
-            img.classList.remove('fade');
-        }, 150);
+
+        const myToken = ++slideshowSlideToken;
+
         document.getElementById('slideshow-caption').textContent = photo.species || '';
         document.getElementById('slideshow-counter').textContent =
             `${slideshowIdx + 1} / ${slideshowPhotos.length}`;
+
+        const transition = slideshowModal.dataset.transition || 'fade';
+        const slots = [slideshowImgA, slideshowImgB];
+        const currentImg = slots[slideshowActiveSlot];
+        const nextImg    = slots[1 - slideshowActiveSlot];
+
+        const commit = () => {
+            if (myToken !== slideshowSlideToken) return; // superseded by a newer call
+            // Reset any leftover transition classes on the incoming slide
+            nextImg.className = 'slideshow-slide';
+            nextImg.alt = photo.species || '';
+
+            if (transition === 'slide' && direction) {
+                // Position the incoming slide off-screen, then animate it in.
+                nextImg.classList.add(direction > 0 ? 'from-right' : 'from-left');
+                // Force layout so the starting transform is applied
+                void nextImg.offsetWidth;
+                nextImg.classList.remove('from-right', 'from-left');
+                nextImg.classList.add('active');
+                currentImg.classList.remove('active');
+                currentImg.classList.add(direction > 0 ? 'exit-left' : 'exit-right');
+            } else {
+                // Crossfade (fade / kenburns / blur)
+                nextImg.classList.add('active');
+                currentImg.classList.remove('active');
+            }
+
+            slideshowActiveSlot = 1 - slideshowActiveSlot;
+        };
+
+        // Preload before swapping so the crossfade reveals a fully-loaded image.
+        const pre = new Image();
+        let done = false;
+        const finish = () => {
+            if (done) return;
+            done = true;
+            if (myToken !== slideshowSlideToken) return; // stale
+            nextImg.src = photo.url;
+            requestAnimationFrame(commit);
+        };
+        pre.onload = finish;
+        pre.onerror = finish;
+        pre.src = photo.url;
+        // Safety net in case the browser never fires load/error
+        setTimeout(finish, 1200);
     }
 
     function startSlideshowTimer() {
@@ -4549,7 +4691,7 @@
         tick();
         slideshowTimer = setTimeout(() => {
             slideshowIdx = (slideshowIdx + 1) % slideshowPhotos.length;
-            showSlideshowSlide();
+            showSlideshowSlide(1);
             startSlideshowTimer();
         }, SLIDESHOW_INTERVAL);
     }
@@ -4563,25 +4705,83 @@
             cancelAnimationFrame(slideshowProgressRAF);
             document.getElementById('slideshow-progress-fill').style.width = '0%';
         }
+        bumpSlideshowIdle();
     }
 
     function slideshowNav(dir) {
         slideshowIdx = (slideshowIdx + dir + slideshowPhotos.length) % slideshowPhotos.length;
-        showSlideshowSlide();
+        showSlideshowSlide(dir);
         if (!slideshowPaused) startSlideshowTimer();
+        bumpSlideshowIdle();
+    }
+
+    function cycleSlideshowTransition() {
+        slideshowTransitionIdx = (slideshowTransitionIdx + 1) % SLIDESHOW_TRANSITIONS.length;
+        const mode = SLIDESHOW_TRANSITIONS[slideshowTransitionIdx];
+        slideshowModal.dataset.transition = mode.id;
+        const btn = document.getElementById('slideshow-transition-btn');
+        if (btn) btn.textContent = mode.label;
+        bumpSlideshowIdle();
+    }
+
+    // Fullscreen helpers (with webkit prefix for Safari)
+    function isSlideshowFullscreen() {
+        return !!(document.fullscreenElement || document.webkitFullscreenElement);
+    }
+    function requestSlideshowFullscreen() {
+        const el = slideshowModal;
+        const req = el.requestFullscreen || el.webkitRequestFullscreen;
+        if (req && !isSlideshowFullscreen()) {
+            try { req.call(el).catch(() => {}); } catch (_) { /* user-gesture required; ignore */ }
+        }
+    }
+    function exitSlideshowFullscreen() {
+        const ex = document.exitFullscreen || document.webkitExitFullscreen;
+        if (ex && isSlideshowFullscreen()) {
+            try { ex.call(document).catch(() => {}); } catch (_) { /* ignore */ }
+        }
+    }
+    function toggleSlideshowFullscreen() {
+        if (isSlideshowFullscreen()) exitSlideshowFullscreen();
+        else requestSlideshowFullscreen();
+        bumpSlideshowIdle();
+    }
+
+    function bumpSlideshowIdle() {
+        slideshowModal.classList.remove('idle');
+        clearTimeout(slideshowIdleTimer);
+        slideshowIdleTimer = setTimeout(() => {
+            if (slideshowModal.classList.contains('open') && !slideshowPaused) {
+                slideshowModal.classList.add('idle');
+            }
+        }, 2500);
     }
 
     function closeSlideshow() {
-        slideshowModal.classList.remove('open');
+        if (!slideshowModal.classList.contains('open')) return;
+        slideshowModal.classList.remove('open', 'idle');
         clearTimeout(slideshowTimer);
+        clearTimeout(slideshowIdleTimer);
         cancelAnimationFrame(slideshowProgressRAF);
+        exitSlideshowFullscreen();
         unlockScroll();
     }
 
     document.getElementById('slideshow-close').addEventListener('click', closeSlideshow);
     document.getElementById('slideshow-prev').addEventListener('click', () => slideshowNav(-1));
     document.getElementById('slideshow-next').addEventListener('click', () => slideshowNav(1));
-    slideshowModal.addEventListener('click', e => { if (e.target === slideshowModal) closeSlideshow(); });
+    // Reveal chrome on any pointer activity inside the modal
+    slideshowModal.addEventListener('mousemove', bumpSlideshowIdle);
+    slideshowModal.addEventListener('touchstart', bumpSlideshowIdle, { passive: true });
+
+    // Keep the fullscreen button icon in sync when the user exits via Esc, etc.
+    function syncFullscreenButton() {
+        const btn = document.getElementById('slideshow-fullscreen-btn');
+        if (!btn) return;
+        btn.textContent = isSlideshowFullscreen() ? '⤢' : '⛶';
+    }
+    document.addEventListener('fullscreenchange', syncFullscreenButton);
+    document.addEventListener('webkitfullscreenchange', syncFullscreenButton);
 
     // Arrow keys for slideshow navigation
     document.addEventListener('keydown', e => {
@@ -4589,6 +4789,8 @@
         if (e.key === 'ArrowLeft')  { slideshowNav(-1); e.preventDefault(); }
         if (e.key === 'ArrowRight') { slideshowNav(1);  e.preventDefault(); }
         if (e.key === ' ')          { toggleSlideshowPause(); e.preventDefault(); }
+        if (e.key === 'f' || e.key === 'F') { toggleSlideshowFullscreen(); e.preventDefault(); }
+        if (e.key === 't' || e.key === 'T') { cycleSlideshowTransition(); e.preventDefault(); }
     });
 
     // ── Species photo carousel ────────────────────────────────
