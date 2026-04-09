@@ -13,3 +13,6 @@ TO DO LIST
 - Favorited detection uploads should translate to "Liked" by the uploaded
 - Need to provide some photos of the bird feeder (both types) so we can price "The full nest" option. I am thinking the Full Nest should be $150 and the software half that ($75).
      - Need to update pricing on "Gumroad" first, as well as add Full nest to gumroad.
+- Add the ability for bird feeders to provide GPS location in addition to zip code. This will allow for more precise detection location mapping.
+- Add the concept of linking bird feeders to users of the website. Email may be the common link.
+- Once bird feeders are linked to users, add the concept of time based cloud storage. The feeder site would always preserve detections, but photos and videos only for 30 days unless the user has paid for a subscription.
