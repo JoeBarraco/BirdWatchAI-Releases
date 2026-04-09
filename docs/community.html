@@ -709,6 +709,41 @@
         }
         .stats-view-btn:hover { background: var(--color-primary); color: white; }
 
+        /* ── Back-to-Stats banner ─────────────────────────── */
+        .back-banner {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            background: var(--color-gray-100);
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--color-primary);
+            border-radius: 6px;
+            padding: 0.5rem 0.875rem;
+            margin-bottom: 0.75rem;
+            font-size: 0.875rem;
+        }
+        .back-banner-btn {
+            font-family: inherit;
+            font-size: 0.8125rem;
+            font-weight: 600;
+            padding: 5px 12px;
+            border: 1px solid var(--color-primary);
+            border-radius: 5px;
+            background: var(--color-primary);
+            color: #fff;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: filter 0.15s;
+        }
+        .back-banner-btn:hover { filter: brightness(1.1); }
+        .back-banner-arrow { font-size: 1rem; line-height: 1; }
+        .back-banner-context { color: var(--color-gray-500); }
+        .back-banner-context strong { color: var(--color-gray-900); font-weight: 600; }
+        [data-theme="dark"] .back-banner { background: var(--color-gray-100); }
+
         /* ── Horizontal bar chart ─────────────────────────── */
         .bar-chart-h { display: flex; flex-direction: column; gap: 5px; }
 
@@ -1678,6 +1713,14 @@
         <button onclick="document.getElementById('notif-banner').style.display='none'" style="font-family:inherit;font-size:0.8125rem;padding:4px 10px;border:1px solid #d0cbc3;border-radius:6px;background:#fff;color:#7a756d;cursor:pointer;">Dismiss</button>
     </div>
 
+    <!-- Back-to-stats banner (shown after clicking "View" on a stats row) -->
+    <div id="back-to-stats-banner" class="back-banner" style="display:none;">
+        <button type="button" class="back-banner-btn" onclick="backToStats()">
+            <span class="back-banner-arrow">←</span> Back to <span id="back-banner-target">Stats</span>
+        </button>
+        <span class="back-banner-context">Showing <strong id="back-banner-species"></strong></span>
+    </div>
+
     <!-- Feed view -->
     <div id="feed-view">
         <div class="feed-loading">Loading detections…</div>
@@ -1968,6 +2011,8 @@
 
     // ── Species filter dropdown ─────────────────────────────
     async function commitSpecies(name) {
+        // Manual species change breaks the "back to stats" intent
+        clearStatsContext();
         selectedSpecies = name;
         document.getElementById('species-filter').value = name;
         await refilter();
@@ -2667,6 +2712,8 @@
 
     // ── View switching ───────────────────────────────────────
     function switchView(view, btn) {
+        // Manually switching tabs clears the back-to-stats context
+        clearStatsContext();
         currentView = view;
         document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
         btn.classList.add('active');
@@ -3229,7 +3276,76 @@
         URL.revokeObjectURL(url);
     }
 
+    // ── Back-to-Stats banner ─────────────────────────────────
+    // When the user clicks "View" on a species row in a stats panel, we
+    // remember where they came from so they can pop straight back instead
+    // of having to manually clear the species filter and re-navigate.
+    let previousStatsContext = null;
+
+    const STATS_TAB_LABELS = {
+        'life-list':  'Life List',
+        'activity':   'Activity',
+        'hotspots':   'Hotspots',
+        'temperature':'Temperature',
+        'leaderboard':'Leaderboard',
+        'trend':      'Trend',
+        'compare':    'Compare',
+        'likes':      'Likes',
+    };
+
+    function showBackToStatsBanner(speciesName) {
+        const banner = document.getElementById('back-to-stats-banner');
+        if (!banner || !previousStatsContext) return;
+        document.getElementById('back-banner-target').textContent =
+            STATS_TAB_LABELS[previousStatsContext.statsTab] || 'Stats';
+        document.getElementById('back-banner-species').textContent = speciesName;
+        banner.style.display = '';
+    }
+
+    function hideBackToStatsBanner() {
+        const banner = document.getElementById('back-to-stats-banner');
+        if (banner) banner.style.display = 'none';
+    }
+
+    function clearStatsContext() {
+        previousStatsContext = null;
+        hideBackToStatsBanner();
+    }
+
+    function backToStats() {
+        if (!previousStatsContext) return;
+        const ctx = previousStatsContext;
+        previousStatsContext = null;
+        hideBackToStatsBanner();
+
+        // Restore the previous species filter (whatever was in effect before
+        // the user clicked "View" — usually empty / All Species).
+        selectedSpecies = ctx.previousSpecies || '';
+        const specSel = document.getElementById('species-filter');
+        if (specSel) specSel.value = selectedSpecies;
+
+        // Switch back to the Stats view and the original sub-tab.
+        const statsTabBtn = Array.from(document.querySelectorAll('.view-tab'))
+            .find(b => /switchView\('stats'/.test(b.getAttribute('onclick') || ''));
+        if (statsTabBtn) switchView('stats', statsTabBtn);
+
+        const subTabBtn = Array.from(document.querySelectorAll('.stats-tab'))
+            .find(b => new RegExp(`switchStatsTab\\('${ctx.statsTab}'`).test(b.getAttribute('onclick') || ''));
+        if (subTabBtn) switchStatsTab(ctx.statsTab, subTabBtn);
+    }
+
+    function captureStatsContextIfActive() {
+        // Only capture context when the user is actually on a stats sub-tab.
+        if (currentView !== 'stats') return;
+        previousStatsContext = {
+            statsTab: activeStatsTab,
+            previousSpecies: selectedSpecies,
+        };
+    }
+
     function filterBySpeciesFromMap(speciesName) {
+        // Map clicks aren't from the stats view, so no back-context here.
+        clearStatsContext();
         selectedSpecies = speciesName;
         document.getElementById('species-filter').value = speciesName;
         switchView('feed', document.querySelector('.view-tab'));
@@ -3237,6 +3353,7 @@
 
     function filterBySpecies(btn) {
         const speciesName = btn.dataset.species;
+        captureStatsContextIfActive();
         selectedSpecies = speciesName;
         document.getElementById('species-filter').value = speciesName;
         currentView = 'feed';
@@ -3247,6 +3364,7 @@
         document.getElementById('gallery-view').style.display = 'none';
         document.getElementById('stats-view').style.display   = 'none';
         renderFeed();
+        showBackToStatsBanner(speciesName);
     }
 
     // ── Filter event wiring ──────────────────────────────────
@@ -3268,6 +3386,7 @@
     });
 
     function clearFilters() {
+        clearStatsContext();
         document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
         document.querySelector('.period-btn[data-period=""]').classList.add('active');
         selectedSpecies = '';
