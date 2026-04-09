@@ -709,6 +709,140 @@
         }
         .stats-view-btn:hover { background: var(--color-primary); color: white; }
 
+        /* ── Rarity mix bar (Life List header) ───────────── */
+        .rarity-mix-wrap { margin-bottom: 1.5rem; }
+        .rarity-mix-bar {
+            display: flex;
+            width: 100%;
+            height: 18px;
+            border-radius: 9px;
+            overflow: hidden;
+            background: var(--color-gray-100);
+            border: 1px solid var(--border);
+        }
+        .rarity-mix-seg {
+            height: 100%;
+            transition: filter 0.15s;
+        }
+        .rarity-mix-seg:hover { filter: brightness(1.1); }
+        .rarity-mix-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem 1.25rem;
+            margin-top: 0.5rem;
+            font-size: 0.8rem;
+            color: var(--color-gray-700, #4a4740);
+        }
+        .rarity-mix-legend-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .rarity-mix-swatch {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+            border: 1px solid var(--border);
+        }
+        .rarity-mix-pct { color: var(--color-gray-500); }
+
+        /* ── Temperature top-species chips ──────────────── */
+        .temp-topsp-table { max-width: 640px; }
+        .temp-topsp-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            margin: 2px 4px 2px 0;
+            border-radius: 999px;
+            background: var(--color-gray-100);
+            border: 1px solid var(--border);
+            font-size: 0.8rem;
+            color: var(--color-gray-900);
+        }
+        .temp-topsp-count {
+            font-size: 0.72rem;
+            color: var(--color-gray-500);
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* ── Calendar heatmap ───────────────────────────── */
+        .calendar-wrap {
+            overflow-x: auto;
+            padding-bottom: 0.5rem;
+        }
+        .calendar-legend {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 0.75rem;
+        }
+
+        /* ── Records tab ────────────────────────────────── */
+        .records-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+        .record-card {
+            background: var(--color-gray-100);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.9rem 1rem;
+            text-align: center;
+        }
+        .record-label {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--color-gray-500);
+            margin-bottom: 4px;
+        }
+        .record-value {
+            font-family: 'Fraunces', serif;
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: var(--color-primary);
+            line-height: 1.1;
+        }
+        .record-sub {
+            font-size: 0.72rem;
+            color: var(--color-gray-500);
+            margin-top: 4px;
+            min-height: 1em;
+        }
+        .records-lists {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+        .records-list-col { min-width: 0; }
+
+        /* ── Trend rarity legend ────────────────────────── */
+        .trend-rarity-legend {
+            display: flex;
+            gap: 1rem;
+            margin-top: 0.5rem;
+            font-size: 0.75rem;
+            color: var(--color-gray-500);
+        }
+        .trend-rarity-legend-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .trend-rarity-swatch {
+            display: inline-block;
+            width: 0;
+            height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-bottom: 8px solid #c62828;
+        }
+
         /* ── Back-to-Stats banner ─────────────────────────── */
         .back-banner {
             display: flex;
@@ -1783,10 +1917,13 @@
         <div class="stats-tabs">
             <button class="stats-tab active" onclick="switchStatsTab('life-list', this)">📋 Life List</button>
             <button class="stats-tab" onclick="switchStatsTab('activity', this)">🕐 Activity</button>
+            <button class="stats-tab" onclick="switchStatsTab('calendar', this)">📅 Calendar</button>
             <button class="stats-tab" onclick="switchStatsTab('hotspots', this)">📍 Hotspots</button>
             <button class="stats-tab" onclick="switchStatsTab('temperature', this)">🌡️ Temperature</button>
             <button class="stats-tab" onclick="switchStatsTab('leaderboard', this)">🏆 Leaderboard</button>
             <button class="stats-tab" onclick="switchStatsTab('trend', this)">📈 Trend</button>
+            <button class="stats-tab" onclick="switchStatsTab('records', this)">🎖️ Records</button>
+            <button class="stats-tab" onclick="switchStatsTab('pairs', this)">🤝 Pairs</button>
             <button class="stats-tab" onclick="switchStatsTab('compare', this)">⚖️ Compare</button>
             <button class="stats-tab" onclick="switchStatsTab('likes', this)">❤️ Likes</button>
         </div>
@@ -1796,10 +1933,13 @@
 
         <div id="stats-life-list"  class="stats-panel"></div>
         <div id="stats-activity"   class="stats-panel" style="display:none;"></div>
+        <div id="stats-calendar"   class="stats-panel" style="display:none;"></div>
         <div id="stats-hotspots"   class="stats-panel" style="display:none;"></div>
         <div id="stats-temperature" class="stats-panel" style="display:none;"></div>
         <div id="stats-leaderboard" class="stats-panel" style="display:none;"></div>
         <div id="stats-trend"      class="stats-panel" style="display:none;"></div>
+        <div id="stats-records"    class="stats-panel" style="display:none;"></div>
+        <div id="stats-pairs"      class="stats-panel" style="display:none;"></div>
         <div id="stats-compare"    class="stats-panel" style="display:none;"></div>
         <div id="stats-likes"      class="stats-panel" style="display:none;"></div>
     </div>
@@ -2763,8 +2903,11 @@
 
     async function renderFullStats() {
         renderStats();
-        if (activeStatsTab === 'compare') renderCompare();
-        if (activeStatsTab === 'trend') renderTrend();
+        if (activeStatsTab === 'calendar') renderCalendar();
+        if (activeStatsTab === 'records')  renderRecords();
+        if (activeStatsTab === 'pairs')    renderPairs();
+        if (activeStatsTab === 'compare')  renderCompare();
+        if (activeStatsTab === 'trend')    renderTrend();
         if (activeStatsTab === 'likes') {
             // Surgical update only — avoids the "Loading reaction data…" flash
             // that renderLikesPanel would cause. If the panel hasn't been
@@ -2784,8 +2927,11 @@
         btn.classList.add('active');
         document.querySelectorAll('.stats-panel').forEach(p => p.style.display = 'none');
         document.getElementById('stats-' + tabName).style.display = '';
-        if (tabName === 'compare') renderCompare();
-        if (tabName === 'trend') renderTrend();
+        if (tabName === 'calendar') renderCalendar();
+        if (tabName === 'records')  renderRecords();
+        if (tabName === 'pairs')    renderPairs();
+        if (tabName === 'compare')  renderCompare();
+        if (tabName === 'trend')    renderTrend();
         if (tabName === 'likes') {
             renderLikesPanel();
         } else {
@@ -2920,9 +3066,59 @@
             }))
             .sort((a, b) => b.count - a.count);
 
+        // ── Rarity mix (stacked bar at top of Life List) ──────
+        const RARITY_ORDER = [
+            { key: 'Very Rare', cls: 'very-rare', color: '#c62828' },
+            { key: 'Rare',      cls: 'rare',      color: '#e65100' },
+            { key: 'Uncommon',  cls: 'uncommon',  color: '#9e9e9e' },
+            { key: 'Common',    cls: 'common',    color: '#2e7d32' },
+        ];
+        const rarityCounts = {};
+        visible.forEach(d => {
+            const r = d.rarity || 'Unknown';
+            rarityCounts[r] = (rarityCounts[r] || 0) + 1;
+        });
+        const rarityTotal = Object.values(rarityCounts).reduce((a, b) => a + b, 0);
+        const rarityMixHtml = rarityTotal === 0 ? '' : (() => {
+            const segments = RARITY_ORDER
+                .filter(r => rarityCounts[r.key])
+                .map(r => {
+                    const c   = rarityCounts[r.key];
+                    const pct = (c / rarityTotal) * 100;
+                    return `<div class="rarity-mix-seg" style="width:${pct.toFixed(2)}%;background:${r.color};"
+                               title="${r.key}: ${c.toLocaleString()} (${pct.toFixed(1)}%)"></div>`;
+                }).join('');
+            const unknown = rarityCounts['Unknown'];
+            const unknownSeg = unknown
+                ? `<div class="rarity-mix-seg" style="width:${((unknown / rarityTotal) * 100).toFixed(2)}%;background:#c8c4bd;"
+                       title="Unknown: ${unknown.toLocaleString()}"></div>`
+                : '';
+            const legend = RARITY_ORDER
+                .filter(r => rarityCounts[r.key])
+                .map(r => {
+                    const c   = rarityCounts[r.key];
+                    const pct = ((c / rarityTotal) * 100).toFixed(1);
+                    return `<span class="rarity-mix-legend-item">
+                        <span class="rarity-mix-swatch" style="background:${r.color};"></span>
+                        ${r.key} · ${c.toLocaleString()} <span class="rarity-mix-pct">${pct}%</span>
+                    </span>`;
+                }).join('') + (unknown
+                    ? `<span class="rarity-mix-legend-item">
+                        <span class="rarity-mix-swatch" style="background:#c8c4bd;"></span>
+                        Unknown · ${unknown.toLocaleString()}
+                    </span>`
+                    : '');
+            return `
+                <div class="rarity-mix-wrap">
+                    <div class="stats-section-title" style="margin-bottom:0.5rem;">Rarity Mix</div>
+                    <div class="rarity-mix-bar">${segments}${unknownSeg}</div>
+                    <div class="rarity-mix-legend">${legend}</div>
+                </div>`;
+        })();
+
         document.getElementById('stats-life-list').innerHTML = lifeList.length === 0
             ? '<div class="feed-empty">No data for the current filters.</div>'
-            : `<table class="stats-table">
+            : `${rarityMixHtml}<table class="stats-table">
                 <thead><tr>
                     <th class="stats-rank">#</th><th>Species</th><th class="stats-count">Detections</th>
                     <th class="stats-pct">% of Total</th><th class="stats-peak">Peak Hour</th><th></th>
@@ -2956,6 +3152,18 @@
         const maxDay  = Math.max(...dayCounts,  1);
         const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+        // Cache per-species hour buckets for the picker below (reuses spMap.hours)
+        window._activitySpMap = spMap;
+
+        // Species picker: default to the current species filter if set, otherwise the top species
+        const activitySpeciesList = Object.entries(spMap)
+            .sort((a, b) => b[1].count - a[1].count)
+            .map(e => e[0]);
+        const prevPick = document.getElementById('activity-species-pick')?.value;
+        const defaultPick = activitySpeciesList.includes(prevPick)
+            ? prevPick
+            : (activitySpeciesList.includes(selectedSpecies) ? selectedSpecies : (activitySpeciesList[0] || ''));
+
         document.getElementById('stats-activity').innerHTML = `
             <div class="stats-section-title">Detections by Hour of Day</div>
             <div class="bar-chart-h">${hourCounts.map((c, h) => `
@@ -2972,7 +3180,19 @@
                     <div class="bar-track"><div class="bar-fill" style="width:${(c/maxDay*100).toFixed(1)}%"></div></div>
                     <div class="bar-value">${c}</div>
                 </div>`).join('')}
-            </div>`;
+            </div>
+            ${activitySpeciesList.length > 0 ? `
+            <div class="stats-section-title" style="margin-top:2rem;display:flex;flex-wrap:wrap;align-items:center;gap:0.75rem;">
+                <span>Diurnal Pattern by Species</span>
+                <select id="activity-species-pick" class="filter-select" style="font-size:0.8rem;"
+                        onchange="renderActivitySpeciesChart()">
+                    ${activitySpeciesList.map(sp => `
+                        <option value="${esc(sp)}"${sp === defaultPick ? ' selected' : ''}>${esc(sp)}</option>`).join('')}
+                </select>
+            </div>
+            <div id="activity-species-chart"></div>` : ''}`;
+
+        if (activitySpeciesList.length > 0) renderActivitySpeciesChart();
 
         // ── Hotspots ──────────────────────────────────────────
         const zipStats = {};
@@ -3011,20 +3231,32 @@
 
         // ── Temperature ───────────────────────────────────────
         const TEMP_RANGES = [
-            { label: 'Below 32°F', min: -Infinity, max: 32,       count: 0, species: new Set() },
-            { label: '32 – 50°F',  min: 32,        max: 50,       count: 0, species: new Set() },
-            { label: '50 – 70°F',  min: 50,        max: 70,       count: 0, species: new Set() },
-            { label: '70 – 85°F',  min: 70,        max: 85,       count: 0, species: new Set() },
-            { label: 'Above 85°F', min: 85,        max: Infinity, count: 0, species: new Set() },
+            { label: 'Below 32°F', min: -Infinity, max: 32,       count: 0, species: new Set(), spCounts: {} },
+            { label: '32 – 50°F',  min: 32,        max: 50,       count: 0, species: new Set(), spCounts: {} },
+            { label: '50 – 70°F',  min: 50,        max: 70,       count: 0, species: new Set(), spCounts: {} },
+            { label: '70 – 85°F',  min: 70,        max: 85,       count: 0, species: new Set(), spCounts: {} },
+            { label: 'Above 85°F', min: 85,        max: Infinity, count: 0, species: new Set(), spCounts: {} },
         ];
         let tempTotal = 0;
         visible.forEach(d => {
             if (d.temperature == null) return;
             tempTotal++;
             const r = TEMP_RANGES.find(r => d.temperature >= r.min && d.temperature < r.max);
-            if (r) { r.count++; if (d.species) r.species.add(d.species); }
+            if (r) {
+                r.count++;
+                if (d.species) {
+                    r.species.add(d.species);
+                    r.spCounts[d.species] = (r.spCounts[d.species] || 0) + 1;
+                }
+            }
         });
         const maxTemp = Math.max(...TEMP_RANGES.map(r => r.count), 1);
+
+        const topSpFor = r => Object.entries(r.spCounts)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3)
+            .map(([sp, c]) => `<span class="temp-topsp-chip">${esc(sp)} <span class="temp-topsp-count">${c}</span></span>`)
+            .join('');
 
         document.getElementById('stats-temperature').innerHTML = tempTotal === 0
             ? '<div class="feed-empty">No temperature data for the current filters.</div>'
@@ -3035,7 +3267,17 @@
                        <div class="bar-track"><div class="bar-fill" style="width:${(r.count/maxTemp*100).toFixed(1)}%"></div></div>
                        <div class="bar-value">${r.count} <span class="bar-sub">${r.species.size} sp.</span></div>
                    </div>`).join('')}
-               </div>`;
+               </div>
+               <div class="stats-section-title" style="margin-top:2rem;">Top Species by Temperature Band</div>
+               <table class="stats-table temp-topsp-table">
+                   <thead><tr><th>Temperature</th><th>Top 3 Species</th></tr></thead>
+                   <tbody>${TEMP_RANGES.filter(r => r.count > 0).map(r => `
+                       <tr>
+                           <td class="stats-species-name" style="white-space:nowrap;">${r.label}</td>
+                           <td>${topSpFor(r) || '<span style="color:var(--color-gray-500);">—</span>'}</td>
+                       </tr>`).join('')}
+                   </tbody>
+               </table>`;
 
         // ── Leaderboard ───────────────────────────────────────
         const feederStats = {};
@@ -3095,6 +3337,24 @@
                     </tr>`).join('')}
                 </tbody>
             </table>`;
+    }
+
+    // ── Per-species diurnal chart (Activity tab) ─────────────
+    function renderActivitySpeciesChart() {
+        const chartEl = document.getElementById('activity-species-chart');
+        const pick    = document.getElementById('activity-species-pick')?.value;
+        const spMap   = window._activitySpMap || {};
+        if (!chartEl || !pick || !spMap[pick]) return;
+        const hours  = spMap[pick].hours;
+        const maxVal = Math.max(...hours, 1);
+        chartEl.innerHTML = `
+            <div class="bar-chart-h">${hours.map((c, h) => `
+                <div class="bar-row">
+                    <div class="bar-label">${fmtHour(h)}</div>
+                    <div class="bar-track"><div class="bar-fill" style="width:${(c/maxVal*100).toFixed(1)}%"></div></div>
+                    <div class="bar-value">${c}</div>
+                </div>`).join('')}
+            </div>`;
     }
 
     // ── Trend chart ──────────────────────────────────────────
@@ -3242,6 +3502,51 @@
             });
         });
 
+        // Rarity markers — show Rare / Very Rare as distinctive symbols above the baseline
+        // so unusual sightings are easy to spot even when their species line is hidden.
+        const RARE_COLOR      = '#e65100';
+        const VERY_RARE_COLOR = '#c62828';
+        const dayIdx = {};
+        days.forEach((d, i) => { dayIdx[d] = i; });
+        const rareByDay = {};  // day -> {rare:[species], veryRare:[species]}
+        filtered.forEach(d => {
+            if (!d.rarity || (d.rarity !== 'Rare' && d.rarity !== 'Very Rare')) return;
+            const day = d.detected_at.slice(0, 10);
+            if (!(day in dayIdx)) return;
+            if (!rareByDay[day]) rareByDay[day] = { rare: [], veryRare: [] };
+            const bucket = d.rarity === 'Very Rare' ? rareByDay[day].veryRare : rareByDay[day].rare;
+            if (d.species && !bucket.includes(d.species)) bucket.push(d.species);
+        });
+        let rarityMarkers = '';
+        Object.entries(rareByDay).forEach(([day, data]) => {
+            const x = xScale(dayIdx[day]);
+            const y = PAD.top + chartH - 6;
+            if (data.veryRare.length) {
+                const title = `Very Rare on ${day}: ${data.veryRare.join(', ')}`;
+                rarityMarkers += `<polygon points="${x - 5},${y + 4} ${x + 5},${y + 4} ${x},${y - 6}"
+                    fill="${VERY_RARE_COLOR}" stroke="white" stroke-width="1.25">
+                    <title>${esc(title)}</title></polygon>`;
+            }
+            if (data.rare.length && !data.veryRare.length) {
+                const title = `Rare on ${day}: ${data.rare.join(', ')}`;
+                rarityMarkers += `<polygon points="${x - 5},${y + 4} ${x + 5},${y + 4} ${x},${y - 6}"
+                    fill="${RARE_COLOR}" stroke="white" stroke-width="1.25">
+                    <title>${esc(title)}</title></polygon>`;
+            }
+        });
+        const hasAnyRare     = Object.values(rareByDay).some(r => r.rare.length);
+        const hasAnyVeryRare = Object.values(rareByDay).some(r => r.veryRare.length);
+        const rarityLegend = (hasAnyRare || hasAnyVeryRare)
+            ? `<div class="trend-rarity-legend">
+                ${hasAnyVeryRare ? `<span class="trend-rarity-legend-item">
+                    <span class="trend-rarity-swatch" style="border-bottom-color:${VERY_RARE_COLOR};"></span>Very Rare
+                </span>` : ''}
+                ${hasAnyRare ? `<span class="trend-rarity-legend-item">
+                    <span class="trend-rarity-swatch" style="border-bottom-color:${RARE_COLOR};"></span>Rare
+                </span>` : ''}
+            </div>`
+            : '';
+
         chartEl.innerHTML = `
             <div class="trend-svg-wrap">
                 <svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px;display:block;">
@@ -3249,8 +3554,384 @@
                     <line x1="${PAD.left}" y1="${PAD.top}" x2="${PAD.left}" y2="${PAD.top+chartH}" stroke="#d0cbc3" stroke-width="1"/>
                     <line x1="${PAD.left}" y1="${PAD.top+chartH}" x2="${PAD.left+chartW}" y2="${PAD.top+chartH}" stroke="#d0cbc3" stroke-width="1"/>
                     ${xLabels}${polylines}${dots}
+                    ${rarityMarkers}
                 </svg>
+                ${rarityLegend}
             </div>`;
+    }
+
+    // ── Calendar heatmap ─────────────────────────────────────
+    function renderCalendar() {
+        const panel = document.getElementById('stats-calendar');
+        if (!panel) return;
+        const visible = applyClientFilters(allDetections);
+        if (!visible.length) {
+            panel.innerHTML = '<div class="feed-empty">No data for the current filters.</div>';
+            return;
+        }
+
+        // Count detections per local day (YYYY-MM-DD)
+        const dayCounts = {};
+        visible.forEach(d => {
+            const key = d.detected_at.slice(0, 10);
+            dayCounts[key] = (dayCounts[key] || 0) + 1;
+        });
+
+        // Range: cover the span of the loaded data, but cap at the last 53 weeks
+        const keys = Object.keys(dayCounts).sort();
+        // Use UTC throughout so slicing detected_at (UTC ISO) lines up with cells
+        const firstDay = new Date(keys[0] + 'T00:00:00Z');
+        const lastDay  = new Date(keys[keys.length - 1] + 'T00:00:00Z');
+        const maxSpanDays = 53 * 7;
+        const spanDays = Math.round((lastDay - firstDay) / 86400000) + 1;
+        const startDate = spanDays > maxSpanDays
+            ? new Date(lastDay.getTime() - (maxSpanDays - 1) * 86400000)
+            : firstDay;
+
+        // Align start to the preceding Sunday (UTC) so weeks line up as columns
+        const alignedStart = new Date(startDate);
+        alignedStart.setUTCDate(alignedStart.getUTCDate() - alignedStart.getUTCDay());
+
+        // Build cells week-by-week
+        const MS = 86400000;
+        const cells = [];
+        for (let t = alignedStart.getTime(); t <= lastDay.getTime(); t += MS) {
+            const d   = new Date(t);
+            const key = d.toISOString().slice(0, 10);
+            cells.push({ date: d, key, count: dayCounts[key] || 0, inRange: d >= startDate });
+        }
+
+        // Compute color scale from non-zero days
+        const nonZero = cells.map(c => c.count).filter(c => c > 0);
+        const maxCount = nonZero.length ? Math.max(...nonZero) : 1;
+        function shade(c) {
+            if (c === 0) return 'var(--color-gray-100)';
+            const ratio = c / maxCount;
+            if (ratio < 0.25) return '#c8e6c9';
+            if (ratio < 0.50) return '#81c784';
+            if (ratio < 0.75) return '#4caf50';
+            return '#2d5a3d';
+        }
+
+        // SVG layout
+        const CELL = 12, GAP = 2, STEP = CELL + GAP;
+        const weeks = Math.ceil(cells.length / 7);
+        const W = 40 + weeks * STEP;
+        const H = 20 + 7 * STEP + 14;  // +14 for bottom padding
+
+        // Month labels at the top
+        const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        let monthLabels = '';
+        let prevMonth = -1;
+        for (let w = 0; w < weeks; w++) {
+            const cell = cells[w * 7];
+            if (!cell) continue;
+            const m = cell.date.getUTCMonth();
+            if (m !== prevMonth) {
+                prevMonth = m;
+                monthLabels += `<text x="${40 + w * STEP}" y="12" font-size="10" fill="#7a756d">${MONTHS[m]}</text>`;
+            }
+        }
+
+        // Day-of-week labels
+        const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const dowLabels = DOW.map((name, i) =>
+            (i % 2 === 1)
+                ? `<text x="34" y="${20 + i * STEP + CELL - 2}" text-anchor="end" font-size="9" fill="#7a756d">${name}</text>`
+                : ''
+        ).join('');
+
+        // Cell rects
+        let rects = '';
+        cells.forEach((c, idx) => {
+            if (!c.inRange) return;
+            const w   = Math.floor(idx / 7);
+            const dow = idx % 7;
+            const x   = 40 + w * STEP;
+            const y   = 20 + dow * STEP;
+            const title = c.count === 0
+                ? `${c.key} — no detections`
+                : `${c.key} — ${c.count} detection${c.count === 1 ? '' : 's'}`;
+            rects += `<rect x="${x}" y="${y}" width="${CELL}" height="${CELL}" rx="2" ry="2"
+                        fill="${shade(c.count)}" stroke="var(--border)" stroke-width="0.5">
+                        <title>${title}</title>
+                      </rect>`;
+        });
+
+        // Legend (shade scale)
+        const legendShades = [0, 1, Math.round(maxCount * 0.375), Math.round(maxCount * 0.625), maxCount];
+        const legendRects = legendShades.map((c, i) => `
+            <rect x="${i * (CELL + 2)}" y="0" width="${CELL}" height="${CELL}" rx="2" ry="2"
+                  fill="${shade(c)}" stroke="var(--border)" stroke-width="0.5"/>
+        `).join('');
+
+        // Summary totals
+        const daysWithActivity = Object.keys(dayCounts).length;
+        const totalDays = Math.round((lastDay - startDate) / MS) + 1;
+        const activePct = totalDays > 0 ? ((daysWithActivity / totalDays) * 100).toFixed(0) : 0;
+        const bestDay = cells.reduce((best, c) => c.count > (best?.count || 0) ? c : best, null);
+
+        panel.innerHTML = `
+            <div class="stats-section-title">Detection Calendar</div>
+            <div style="font-size:0.8rem;color:var(--color-gray-500);margin-bottom:0.75rem;">
+                ${daysWithActivity} active day${daysWithActivity === 1 ? '' : 's'} out of ${totalDays}
+                (${activePct}% coverage)${bestDay
+                    ? ` &middot; busiest day: <strong>${bestDay.key}</strong> with ${bestDay.count} detections`
+                    : ''}
+            </div>
+            <div class="calendar-wrap">
+                <svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px;display:block;">
+                    ${monthLabels}
+                    ${dowLabels}
+                    ${rects}
+                </svg>
+            </div>
+            <div class="calendar-legend">
+                <span style="font-size:0.72rem;color:var(--color-gray-500);">Less</span>
+                <svg width="${(CELL + 2) * legendShades.length}" height="${CELL}" style="vertical-align:middle;">
+                    ${legendRects}
+                </svg>
+                <span style="font-size:0.72rem;color:var(--color-gray-500);">More</span>
+            </div>`;
+    }
+
+    // ── Records ──────────────────────────────────────────────
+    function renderRecords() {
+        const panel = document.getElementById('stats-records');
+        if (!panel) return;
+        const visible = applyClientFilters(allDetections);
+        if (!visible.length) {
+            panel.innerHTML = '<div class="feed-empty">No data for the current filters.</div>';
+            return;
+        }
+
+        // Group by day + hour
+        const byDay  = {};  // day -> { count, species:Set }
+        const byHour = {};  // 'YYYY-MM-DD HH' -> count
+        const firstSeen = {};  // species -> earliest ISO
+        const lastSeen  = {};  // species -> latest ISO
+        visible.forEach(d => {
+            const day = d.detected_at.slice(0, 10);
+            const hk  = d.detected_at.slice(0, 13);
+            if (!byDay[day]) byDay[day] = { count: 0, species: new Set() };
+            byDay[day].count++;
+            if (d.species) byDay[day].species.add(d.species);
+            byHour[hk] = (byHour[hk] || 0) + 1;
+            if (d.species) {
+                if (!firstSeen[d.species] || d.detected_at < firstSeen[d.species]) firstSeen[d.species] = d.detected_at;
+                if (!lastSeen[d.species]  || d.detected_at > lastSeen[d.species])  lastSeen[d.species]  = d.detected_at;
+            }
+        });
+
+        // Biggest day / biggest species-on-day / biggest hour
+        const sortedDays = Object.entries(byDay).sort((a, b) => b[1].count - a[1].count);
+        const bigDay     = sortedDays[0];
+        const mostSpDay  = Object.entries(byDay).sort((a, b) => b[1].species.size - a[1].species.size)[0];
+        const bigHourEntry = Object.entries(byHour).sort((a, b) => b[1] - a[1])[0];
+        const bigHourLabel = bigHourEntry
+            ? `${bigHourEntry[0].slice(0, 10)} ${fmtHour(parseInt(bigHourEntry[0].slice(11, 13), 10))}`
+            : '—';
+
+        // Streaks (active-day streaks based on consecutive days)
+        const daySet    = new Set(Object.keys(byDay));
+        const sortedAsc = [...daySet].sort();
+        let longestStreak = 0, runLen = 0, prevDate = null;
+        sortedAsc.forEach(day => {
+            if (prevDate) {
+                const diff = Math.round((new Date(day) - new Date(prevDate)) / 86400000);
+                if (diff === 1) runLen++;
+                else runLen = 1;
+            } else {
+                runLen = 1;
+            }
+            if (runLen > longestStreak) longestStreak = runLen;
+            prevDate = day;
+        });
+        // Current streak (must include today or yesterday)
+        const todayKey     = new Date().toISOString().slice(0, 10);
+        const yesterdayKey = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+        let currentStreak = 0;
+        if (daySet.has(todayKey) || daySet.has(yesterdayKey)) {
+            let cursor = daySet.has(todayKey) ? new Date(todayKey) : new Date(yesterdayKey);
+            while (daySet.has(cursor.toISOString().slice(0, 10))) {
+                currentStreak++;
+                cursor.setDate(cursor.getDate() - 1);
+            }
+        }
+
+        // New arrivals: species whose first detection (within the loaded data) is in the past 14 days
+        const cutoffNew = new Date(Date.now() - 14 * 86400000).toISOString();
+        const arrivals = Object.entries(firstSeen)
+            .filter(([, iso]) => iso >= cutoffNew)
+            .sort((a, b) => b[1].localeCompare(a[1]))
+            .slice(0, 10);
+
+        // Dormant: species whose last detection was > 30 days ago
+        const cutoffDormant = new Date(Date.now() - 30 * 86400000).toISOString();
+        const dormant = Object.entries(lastSeen)
+            .filter(([, iso]) => iso < cutoffDormant)
+            .sort((a, b) => a[1].localeCompare(b[1]))  // longest-dormant first
+            .slice(0, 10);
+
+        const fmtDaysAgo = (iso) => {
+            const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+            if (days === 0) return 'today';
+            if (days === 1) return 'yesterday';
+            return `${days}d ago`;
+        };
+
+        panel.innerHTML = `
+            <div class="stats-section-title">Records &amp; Highlights</div>
+            <div class="records-grid">
+                <div class="record-card">
+                    <div class="record-label">Busiest day</div>
+                    <div class="record-value">${bigDay ? bigDay[1].count.toLocaleString() : '—'}</div>
+                    <div class="record-sub">${bigDay ? bigDay[0] : ''}</div>
+                </div>
+                <div class="record-card">
+                    <div class="record-label">Most species in a day</div>
+                    <div class="record-value">${mostSpDay ? mostSpDay[1].species.size : '—'}</div>
+                    <div class="record-sub">${mostSpDay ? mostSpDay[0] : ''}</div>
+                </div>
+                <div class="record-card">
+                    <div class="record-label">Busiest hour</div>
+                    <div class="record-value">${bigHourEntry ? bigHourEntry[1].toLocaleString() : '—'}</div>
+                    <div class="record-sub">${bigHourLabel}</div>
+                </div>
+                <div class="record-card">
+                    <div class="record-label">Current streak</div>
+                    <div class="record-value">${currentStreak > 0 ? '🔥 ' + currentStreak + 'd' : '—'}</div>
+                    <div class="record-sub">${currentStreak >= 7 ? 'on fire!' : 'consecutive active days'}</div>
+                </div>
+                <div class="record-card">
+                    <div class="record-label">Longest streak</div>
+                    <div class="record-value">${longestStreak > 0 ? longestStreak + 'd' : '—'}</div>
+                    <div class="record-sub">best run in this window</div>
+                </div>
+                <div class="record-card">
+                    <div class="record-label">Active days</div>
+                    <div class="record-value">${daySet.size}</div>
+                    <div class="record-sub">days with detections</div>
+                </div>
+            </div>
+
+            <div class="records-lists">
+                <div class="records-list-col">
+                    <div class="stats-section-title" style="margin-top:1.5rem;">🆕 New Arrivals (first seen in last 14 days)</div>
+                    ${arrivals.length === 0
+                        ? '<div style="color:var(--color-gray-500);font-size:0.875rem;padding:0.5rem 0;">No new species in the past 14 days.</div>'
+                        : `<table class="stats-table">
+                            <thead><tr><th>Species</th><th class="stats-count">First Seen</th><th></th></tr></thead>
+                            <tbody>${arrivals.map(([sp, iso]) => `
+                                <tr>
+                                    <td class="stats-species-name">${esc(sp)}</td>
+                                    <td class="stats-count">${fmtDaysAgo(iso)}</td>
+                                    <td style="text-align:right;">
+                                        <button class="stats-view-btn" data-species="${esc(sp)}" onclick="filterBySpecies(this)">View</button>
+                                    </td>
+                                </tr>`).join('')}
+                            </tbody>
+                        </table>`}
+                </div>
+                <div class="records-list-col">
+                    <div class="stats-section-title" style="margin-top:1.5rem;">💤 Dormant (not seen in 30+ days)</div>
+                    ${dormant.length === 0
+                        ? '<div style="color:var(--color-gray-500);font-size:0.875rem;padding:0.5rem 0;">No dormant species — every bird has been active recently.</div>'
+                        : `<table class="stats-table">
+                            <thead><tr><th>Species</th><th class="stats-count">Last Seen</th><th></th></tr></thead>
+                            <tbody>${dormant.map(([sp, iso]) => `
+                                <tr>
+                                    <td class="stats-species-name">${esc(sp)}</td>
+                                    <td class="stats-count">${fmtDaysAgo(iso)}</td>
+                                    <td style="text-align:right;">
+                                        <button class="stats-view-btn" data-species="${esc(sp)}" onclick="filterBySpecies(this)">View</button>
+                                    </td>
+                                </tr>`).join('')}
+                            </tbody>
+                        </table>`}
+                </div>
+            </div>`;
+    }
+
+    // ── Species co-occurrence (Pairs) ────────────────────────
+    function renderPairs() {
+        const panel = document.getElementById('stats-pairs');
+        if (!panel) return;
+        const visible = applyClientFilters(allDetections);
+        if (!visible.length) {
+            panel.innerHTML = '<div class="feed-empty">No data for the current filters.</div>';
+            return;
+        }
+
+        // Bucket species by day
+        const daySpecies = {};  // day -> Set(species)
+        visible.forEach(d => {
+            if (!d.species) return;
+            const day = d.detected_at.slice(0, 10);
+            if (!daySpecies[day]) daySpecies[day] = new Set();
+            daySpecies[day].add(d.species);
+        });
+
+        // Count co-occurrences
+        const pairCounts = {};
+        Object.values(daySpecies).forEach(set => {
+            const arr = [...set].sort();
+            for (let i = 0; i < arr.length; i++) {
+                for (let j = i + 1; j < arr.length; j++) {
+                    const key = arr[i] + '\u0000' + arr[j];
+                    pairCounts[key] = (pairCounts[key] || 0) + 1;
+                }
+            }
+        });
+
+        const top = Object.entries(pairCounts)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 25)
+            .map(([k, c]) => {
+                const [a, b] = k.split('\u0000');
+                return { a, b, days: c };
+            });
+
+        if (top.length === 0) {
+            panel.innerHTML = `
+                <div class="stats-section-title">Species Co-occurrence</div>
+                <div class="feed-empty">Not enough overlap to show species pairs — need multiple species on the same day.</div>`;
+            return;
+        }
+
+        const totalDays = Object.keys(daySpecies).length;
+        const maxDays   = top[0].days;
+
+        panel.innerHTML = `
+            <div class="stats-section-title">Species Co-occurrence</div>
+            <div style="font-size:0.8rem;color:var(--color-gray-500);margin-bottom:0.75rem;">
+                Species pairs that appear on the same day most often
+                (${totalDays} day${totalDays === 1 ? '' : 's'} of data).
+            </div>
+            <table class="stats-table">
+                <thead><tr>
+                    <th class="stats-rank">#</th>
+                    <th>Species A</th>
+                    <th>Species B</th>
+                    <th class="stats-count">Days Together</th>
+                    <th class="stats-pct">% of Active Days</th>
+                </tr></thead>
+                <tbody>${top.map((p, i) => {
+                    const pct = totalDays > 0 ? ((p.days / totalDays) * 100).toFixed(1) : '0.0';
+                    return `
+                    <tr>
+                        <td class="stats-rank">${i + 1}</td>
+                        <td class="stats-species-name">${esc(p.a)}</td>
+                        <td class="stats-species-name">${esc(p.b)}</td>
+                        <td class="stats-count">${p.days}</td>
+                        <td class="stats-pct">
+                            <span class="pct-bar-wrap"><span class="pct-bar" style="width:${(p.days/maxDays*100).toFixed(1)}%"></span></span>
+                            ${pct}%
+                        </td>
+                    </tr>`;
+                }).join('')}
+                </tbody>
+            </table>`;
     }
 
     // ── CSV export ───────────────────────────────────────────
@@ -3289,10 +3970,13 @@
     const STATS_TAB_LABELS = {
         'life-list':  'Life List',
         'activity':   'Activity',
+        'calendar':   'Calendar',
         'hotspots':   'Hotspots',
         'temperature':'Temperature',
         'leaderboard':'Leaderboard',
         'trend':      'Trend',
+        'records':    'Records',
+        'pairs':      'Pairs',
         'compare':    'Compare',
         'likes':      'Likes',
     };
