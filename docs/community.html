@@ -1963,10 +1963,12 @@
     <div id="gallery-view">
         <div class="gallery-controls">
             <button class="gallery-slideshow-btn" onclick="startSlideshow()">▶ Slideshow</button>
-            <select id="gallery-sort" class="filter-select" onchange="renderGallery()">
+            <select id="gallery-sort" class="filter-select" onchange="onGallerySortChange()">
                 <option value="count">Most Photos</option>
                 <option value="alpha">A–Z</option>
                 <option value="recent">Recently Seen</option>
+                <option value="liked">Liked</option>
+                <option value="random">Random</option>
             </select>
         </div>
         <div id="gallery-grid" class="gallery-grid"></div>
@@ -4509,7 +4511,7 @@
                 speciesMap[d.species] = { species: d.species, photos: [], lastSeen: d.detected_at, rarity: d.rarity };
             }
             const entry = speciesMap[d.species];
-            if (d.image_url) entry.photos.push({ url: d.image_url, date: d.detected_at, species: d.species });
+            if (d.image_url) entry.photos.push({ id: d.id, url: d.image_url, date: d.detected_at, species: d.species });
             if (d.detected_at > entry.lastSeen) entry.lastSeen = d.detected_at;
             // Keep highest rarity
             if (!entry.rarity && d.rarity) entry.rarity = d.rarity;
@@ -4519,12 +4521,37 @@
         return Object.values(speciesMap).filter(s => s.photos.length > 0);
     }
 
+    // Fisher–Yates, mutates + returns the input array.
+    function shuffleArray(arr) {
+        for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+    }
+
+    // Sum reaction totals across all photos of a species.
+    function speciesLikeTotal(s) {
+        let total = 0;
+        for (const p of s.photos) total += getReactionTotal(p.id) || 0;
+        return total;
+    }
+
+    async function onGallerySortChange() {
+        const sort = document.getElementById('gallery-sort').value;
+        // Ensure reaction totals are available before sorting by likes.
+        if (sort === 'liked') await loadReactionTotals();
+        renderGallery();
+    }
+
     function renderGallery() {
         const species = buildGalleryData();
         const sort = document.getElementById('gallery-sort').value;
         if (sort === 'count')  species.sort((a, b) => b.photos.length - a.photos.length);
         if (sort === 'alpha')  species.sort((a, b) => a.species.localeCompare(b.species));
         if (sort === 'recent') species.sort((a, b) => (b.lastSeen || '').localeCompare(a.lastSeen || ''));
+        if (sort === 'liked')  species.sort((a, b) => speciesLikeTotal(b) - speciesLikeTotal(a));
+        if (sort === 'random') shuffleArray(species);
 
         const grid = document.getElementById('gallery-grid');
         if (!species.length) {
@@ -4584,18 +4611,35 @@
         startSlideshowPlayback();
     }
 
-    function startSlideshow() {
-        // Collect all photos across all species
-        const species = buildGalleryData();
+    async function startSlideshow() {
         const sort = document.getElementById('gallery-sort').value;
+        // Ensure reaction totals are loaded when the user picked "Liked".
+        if (sort === 'liked') await loadReactionTotals();
+
+        const species = buildGalleryData();
         if (sort === 'count')  species.sort((a, b) => b.photos.length - a.photos.length);
         if (sort === 'alpha')  species.sort((a, b) => a.species.localeCompare(b.species));
         if (sort === 'recent') species.sort((a, b) => (b.lastSeen || '').localeCompare(a.lastSeen || ''));
+        if (sort === 'liked')  species.sort((a, b) => speciesLikeTotal(b) - speciesLikeTotal(a));
 
         const all = [];
         for (const s of species) {
             for (const p of s.photos) all.push(p);
         }
+
+        // Liked: drop photos with zero total reactions, order the rest by likes desc.
+        if (sort === 'liked') {
+            const withLikes = all.filter(p => (getReactionTotal(p.id) || 0) > 0);
+            withLikes.sort((a, b) => getReactionTotal(b.id) - getReactionTotal(a.id));
+            if (!withLikes.length) { showToast('No liked photos yet'); return; }
+            slideshowPhotos = withLikes;
+            startSlideshowPlayback();
+            return;
+        }
+
+        // Random: shuffle the flat photo list for a true mix across species.
+        if (sort === 'random') shuffleArray(all);
+
         if (!all.length) { showToast('No photos to show'); return; }
         slideshowPhotos = all;
         startSlideshowPlayback();
