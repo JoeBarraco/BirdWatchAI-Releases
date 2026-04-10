@@ -5608,33 +5608,6 @@
         detailModal.classList.add('open');
     }
 
-    // ── Nearby ZIP auto-detect on first visit ─────────────────
-    (function initNearbyZip() {
-        const saved = localStorage.getItem('bwai-nearby-zip');
-        const zipInput = document.getElementById('zip-filter');
-        // Only auto-fill the zip on the very first tab/session load, not on every refresh
-        const alreadyLoaded = sessionStorage.getItem('bwai-zip-loaded');
-        if (saved && !zipInput.value && !alreadyLoaded) {
-            zipInput.value = saved;
-            sessionStorage.setItem('bwai-zip-loaded', '1');
-        }
-        // On first-ever visit (no saved zip, no ?id= param), ask for location silently
-        if (!saved && !new URLSearchParams(location.search).get('id') && navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(async pos => {
-                try {
-                    const { latitude: lat, longitude: lng } = pos.coords;
-                    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
-                    const j = await r.json();
-                    const zip = j.address?.postcode?.split('-')[0];
-                    if (zip && /^\d{5}$/.test(zip)) {
-                        localStorage.setItem('bwai-nearby-zip', zip);
-                        sessionStorage.setItem('bwai-zip-loaded', '1');
-                        if (!zipInput.value) { zipInput.value = zip; renderFeed(); if (currentView === 'map') renderMap(); }
-                    }
-                } catch {}
-            }, () => {}, { timeout: 6000 });
-        }
-    })();
 
     // ── Moderator system ───────────────────────────────────────
     function isModLoggedIn() {
