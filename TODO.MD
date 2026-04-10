@@ -20,11 +20,12 @@ TO DO LIST
 WEBSITE ENHANCEMENTS
 
 Community Engagement
-- Add optional user accounts (lightweight, magic link via Supabase Auth) to enable persistent likes across devices, profiles, and real leaderboards.
-- Add public per-user life lists with shareable links so birders have a personal species "collection" to chase.
-- Add "Follow a Feeder" feature — subscribe to a specific feeder and get notified when it catches something rare.
-- Add comments/threads on detections so users can discuss IDs (e.g. "I think that's a female Purple Finch, not House Finch").
-- Add community flagging/reporting for mis-IDs or inappropriate content, feeding a moderation queue instead of post-hoc cleanup.
+- ~~Add optional user accounts (lightweight, magic link via Supabase Auth) to enable persistent likes across devices, profiles, and real leaderboards.~~ DONE
+- ~~Add public per-user life lists with shareable links so birders have a personal species "collection" to chase.~~ DONE
+- ~~Add "Follow a Feeder" feature — subscribe to a specific feeder and get notified when it catches something rare.~~ DONE
+- ~~Add comments/threads on detections so users can discuss IDs (e.g. "I think that's a female Purple Finch, not House Finch").~~ DONE
+- ~~Add community flagging/reporting for mis-IDs or inappropriate content, feeding a moderation queue instead of post-hoc cleanup.~~ DONE
+     - NOTE: Run supabase/setup-community-engagement.sql in Supabase Dashboard to activate these features.
 
 Discovery & Content
 - Add full-text search covering species, feeder name, and notes (currently filter-only).
