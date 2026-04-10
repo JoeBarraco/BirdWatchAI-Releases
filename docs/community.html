@@ -1790,6 +1790,331 @@
         }
         .mod-add-form button:hover { background: var(--color-primary-light); }
 
+        /* ── Community user auth ──────────────────────────────── */
+        #user-login-modal {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.5); z-index: 9450;
+            justify-content: center; align-items: center;
+        }
+        #user-login-modal.open { display: flex; }
+        .user-login-box {
+            background: var(--bg-card); border-radius: 12px;
+            padding: 2rem; width: 380px; max-width: 90vw;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+        .user-login-box h3 {
+            font-family: 'Fraunces', serif; margin-bottom: 0.5rem;
+            color: var(--color-gray-900); font-size: 1.25rem;
+        }
+        .user-login-box p {
+            font-size: 0.85rem; color: var(--color-gray-500); margin-bottom: 1rem;
+        }
+        .user-login-box input {
+            width: 100%; padding: 10px 12px; margin-bottom: 0.75rem;
+            border: 1px solid var(--border-input); border-radius: 6px;
+            font-family: inherit; font-size: 0.9rem;
+            background: var(--bg-input); color: var(--color-gray-700);
+        }
+        .user-login-box .btn-row { display: flex; gap: 8px; margin-top: 0.5rem; }
+        .user-login-box button {
+            flex: 1; padding: 10px 14px; border-radius: 6px;
+            border: 1px solid var(--border); cursor: pointer;
+            font-family: inherit; font-size: 0.875rem; font-weight: 600;
+        }
+        .user-login-box .btn-primary {
+            background: var(--color-primary); color: white; border-color: var(--color-primary);
+        }
+        .user-login-box .btn-cancel {
+            background: var(--bg-card); color: var(--color-gray-700);
+        }
+        .user-login-status {
+            font-size: 0.85rem; margin-top: 0.75rem; text-align: center;
+        }
+        .user-login-status.error { color: #e74c3c; }
+        .user-login-status.success { color: #2eaa4f; }
+
+        /* User profile modal */
+        #user-profile-modal {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.5); z-index: 9460;
+            justify-content: center; align-items: center;
+        }
+        #user-profile-modal.open { display: flex; }
+        .user-profile-box {
+            background: var(--bg-card); border-radius: 12px;
+            padding: 2rem; width: 400px; max-width: 90vw;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+        .user-profile-box h3 {
+            font-family: 'Fraunces', serif; margin-bottom: 1rem;
+            color: var(--color-gray-900); font-size: 1.25rem;
+        }
+        .user-profile-box label {
+            display: block; font-size: 0.8rem; font-weight: 600;
+            color: var(--color-gray-500); margin-bottom: 4px;
+        }
+        .user-profile-box input, .user-profile-box textarea {
+            width: 100%; padding: 8px 12px; margin-bottom: 0.75rem;
+            border: 1px solid var(--border-input); border-radius: 6px;
+            font-family: inherit; font-size: 0.9rem;
+            background: var(--bg-input); color: var(--color-gray-700);
+        }
+        .user-profile-box textarea { resize: vertical; min-height: 60px; }
+
+        /* ── Life list ────────────────────────────────────────── */
+        #life-list-modal {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.5); z-index: 9470;
+            justify-content: center; align-items: center;
+        }
+        #life-list-modal.open { display: flex; }
+        .life-list-box {
+            background: var(--bg-card); border-radius: 12px;
+            padding: 2rem; width: 500px; max-width: 90vw;
+            max-height: 80vh; overflow-y: auto;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+        .life-list-box h3 {
+            font-family: 'Fraunces', serif; margin-bottom: 0.25rem;
+            color: var(--color-gray-900); font-size: 1.25rem;
+        }
+        .life-list-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 1rem;
+        }
+        .life-list-count {
+            font-size: 0.85rem; color: var(--color-gray-500);
+        }
+        .life-list-share {
+            font-size: 0.8rem; padding: 4px 12px; border-radius: 6px;
+            border: 1px solid var(--border); cursor: pointer;
+            background: var(--bg-card); color: var(--color-primary);
+            font-family: inherit; font-weight: 600;
+        }
+        .life-list-share:hover { background: var(--color-primary); color: white; }
+        .life-list-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 8px;
+        }
+        .life-list-item {
+            padding: 8px 10px; border-radius: 8px;
+            border: 1px solid var(--border); background: var(--bg-input);
+            font-size: 0.85rem; position: relative;
+        }
+        .life-list-item .species-name {
+            font-weight: 600; color: var(--color-gray-900); display: block;
+        }
+        .life-list-item .first-seen {
+            font-size: 0.75rem; color: var(--color-gray-500);
+        }
+        .life-list-remove {
+            position: absolute; top: 4px; right: 6px;
+            background: none; border: none; cursor: pointer;
+            font-size: 0.7rem; color: var(--color-gray-500); padding: 2px;
+        }
+        .life-list-remove:hover { color: #e74c3c; }
+        .life-list-empty {
+            text-align: center; padding: 2rem; color: var(--color-gray-500);
+            font-size: 0.9rem;
+        }
+        .life-list-add-btn {
+            display: inline-block; font-size: 0.7rem; padding: 2px 8px;
+            border-radius: 4px; border: 1px solid var(--color-primary);
+            color: var(--color-primary); background: transparent;
+            cursor: pointer; font-family: inherit; margin-left: 4px;
+            vertical-align: middle;
+        }
+        .life-list-add-btn:hover { background: var(--color-primary); color: white; }
+        .life-list-add-btn.on-list {
+            border-color: #2eaa4f; color: #2eaa4f;
+        }
+        .life-list-add-btn.on-list:hover { background: #e74c3c; border-color: #e74c3c; color: white; }
+
+        /* ── Follow a Feeder ──────────────────────────────────── */
+        .follow-feeder-btn {
+            display: inline-flex; align-items: center; gap: 4px;
+            font-size: 0.75rem; padding: 3px 10px; border-radius: 12px;
+            border: 1px solid var(--color-primary); cursor: pointer;
+            background: transparent; color: var(--color-primary);
+            font-family: inherit; font-weight: 600; margin-left: 6px;
+            vertical-align: middle;
+        }
+        .follow-feeder-btn:hover { background: var(--color-primary); color: white; }
+        .follow-feeder-btn.following {
+            background: var(--color-primary); color: white;
+        }
+        .follow-feeder-btn.following:hover { background: #e74c3c; border-color: #e74c3c; }
+
+        /* ── Comments ─────────────────────────────────────────── */
+        .card-comment-btn {
+            display: inline-block; margin-top: 6px; margin-left: 8px;
+            font-size: 12px; color: var(--color-gray-500);
+            cursor: pointer; background: none; border: none;
+            font-family: inherit; padding: 0;
+        }
+        .card-comment-btn:hover { color: var(--color-primary); }
+        #comments-modal {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.5); z-index: 9480;
+            justify-content: center; align-items: center;
+        }
+        #comments-modal.open { display: flex; }
+        .comments-box {
+            background: var(--bg-card); border-radius: 12px;
+            padding: 2rem; width: 500px; max-width: 90vw;
+            max-height: 80vh; display: flex; flex-direction: column;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+        .comments-box h3 {
+            font-family: 'Fraunces', serif; margin-bottom: 1rem;
+            color: var(--color-gray-900); font-size: 1.15rem;
+        }
+        .comments-list {
+            flex: 1; overflow-y: auto; margin-bottom: 1rem;
+            min-height: 100px;
+        }
+        .comment-item {
+            padding: 8px 0; border-bottom: 1px solid var(--border);
+        }
+        .comment-item:last-child { border-bottom: none; }
+        .comment-author {
+            font-weight: 600; font-size: 0.85rem; color: var(--color-gray-900);
+        }
+        .comment-time {
+            font-size: 0.75rem; color: var(--color-gray-500); margin-left: 8px;
+        }
+        .comment-body {
+            font-size: 0.9rem; color: var(--color-gray-700);
+            margin-top: 2px; line-height: 1.5;
+        }
+        .comment-actions { margin-top: 4px; }
+        .comment-actions button {
+            font-size: 0.75rem; color: var(--color-gray-500);
+            background: none; border: none; cursor: pointer;
+            font-family: inherit; padding: 0; margin-right: 8px;
+        }
+        .comment-actions button:hover { color: var(--color-primary); }
+        .comment-reply { margin-left: 1.5rem; border-left: 2px solid var(--border); padding-left: 12px; }
+        .comment-compose {
+            display: flex; gap: 8px; align-items: flex-end;
+        }
+        .comment-compose textarea {
+            flex: 1; padding: 8px 12px; border: 1px solid var(--border-input);
+            border-radius: 6px; font-family: inherit; font-size: 0.875rem;
+            resize: none; min-height: 40px; max-height: 120px;
+            background: var(--bg-input); color: var(--color-gray-700);
+        }
+        .comment-compose button {
+            padding: 8px 16px; border-radius: 6px; border: none;
+            background: var(--color-primary); color: white;
+            font-family: inherit; font-size: 0.85rem; font-weight: 600;
+            cursor: pointer; white-space: nowrap; align-self: flex-end;
+        }
+        .comment-compose button:hover { background: var(--color-primary-light); }
+        .comment-compose button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .comment-login-prompt {
+            text-align: center; padding: 1rem; color: var(--color-gray-500);
+            font-size: 0.85rem;
+        }
+        .comment-login-prompt a {
+            color: var(--color-primary); cursor: pointer; text-decoration: underline;
+        }
+
+        /* ── Flag / Report ────────────────────────────────────── */
+        .card-flag-btn {
+            display: inline-block; margin-top: 6px; margin-left: 8px;
+            font-size: 12px; color: var(--color-gray-500);
+            cursor: pointer; background: none; border: none;
+            font-family: inherit; padding: 0;
+        }
+        .card-flag-btn:hover { color: #e74c3c; }
+        #flag-modal {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.5); z-index: 9490;
+            justify-content: center; align-items: center;
+        }
+        #flag-modal.open { display: flex; }
+        .flag-box {
+            background: var(--bg-card); border-radius: 12px;
+            padding: 2rem; width: 400px; max-width: 90vw;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+        .flag-box h3 {
+            font-family: 'Fraunces', serif; margin-bottom: 0.5rem;
+            color: var(--color-gray-900); font-size: 1.15rem;
+        }
+        .flag-box p {
+            font-size: 0.85rem; color: var(--color-gray-500); margin-bottom: 1rem;
+        }
+        .flag-box label {
+            display: block; font-size: 0.8rem; font-weight: 600;
+            color: var(--color-gray-500); margin-bottom: 4px;
+        }
+        .flag-box select, .flag-box textarea {
+            width: 100%; padding: 8px 12px; margin-bottom: 0.75rem;
+            border: 1px solid var(--border-input); border-radius: 6px;
+            font-family: inherit; font-size: 0.9rem;
+            background: var(--bg-input); color: var(--color-gray-700);
+        }
+        .flag-box textarea { resize: vertical; min-height: 60px; }
+        .flag-box .btn-row { display: flex; gap: 8px; margin-top: 0.5rem; }
+        .flag-box button {
+            flex: 1; padding: 10px 14px; border-radius: 6px;
+            border: 1px solid var(--border); cursor: pointer;
+            font-family: inherit; font-size: 0.875rem; font-weight: 600;
+        }
+        .flag-box .btn-danger {
+            background: #e74c3c; color: white; border-color: #e74c3c;
+        }
+        .flag-box .btn-cancel {
+            background: var(--bg-card); color: var(--color-gray-700);
+        }
+
+        /* ── Mod flag queue ───────────────────────────────────── */
+        #flag-queue-modal {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.5); z-index: 9560;
+            justify-content: center; align-items: center;
+        }
+        #flag-queue-modal.open { display: flex; }
+        .flag-queue-box {
+            background: var(--bg-card); border-radius: 12px;
+            padding: 2rem; width: 600px; max-width: 90vw;
+            max-height: 80vh; overflow-y: auto;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+        .flag-queue-box h3 {
+            font-family: 'Fraunces', serif; margin-bottom: 1rem;
+            color: var(--color-gray-900); font-size: 1.25rem;
+        }
+        .flag-queue-item {
+            padding: 12px; border: 1px solid var(--border); border-radius: 8px;
+            margin-bottom: 8px; display: flex; gap: 12px; align-items: flex-start;
+        }
+        .flag-queue-item img {
+            width: 60px; height: 60px; object-fit: cover; border-radius: 6px; flex-shrink: 0;
+        }
+        .flag-queue-info { flex: 1; min-width: 0; }
+        .flag-queue-info .species { font-weight: 600; color: var(--color-gray-900); }
+        .flag-queue-info .reason {
+            font-size: 0.8rem; color: #e74c3c; margin-top: 2px;
+        }
+        .flag-queue-info .details {
+            font-size: 0.8rem; color: var(--color-gray-500); margin-top: 2px;
+        }
+        .flag-queue-info .reporter {
+            font-size: 0.75rem; color: var(--color-gray-500); margin-top: 4px;
+        }
+        .flag-queue-actions { display: flex; gap: 6px; flex-shrink: 0; }
+        .flag-queue-actions button {
+            font-size: 0.75rem; padding: 4px 10px; border-radius: 5px;
+            border: 1px solid var(--border); cursor: pointer;
+            font-family: inherit; background: var(--bg-card); color: var(--color-gray-700);
+        }
+        .flag-queue-actions .btn-resolve { border-color: #2eaa4f; color: #2eaa4f; }
+        .flag-queue-actions .btn-resolve:hover { background: #2eaa4f; color: white; }
+        .flag-queue-actions .btn-dismiss:hover { border-color: var(--color-gray-500); }
+
     </style>
 </head>
 <body>
@@ -1802,11 +2127,20 @@
     </div>
     <div class="navbar-right">
         <button id="theme-toggle" class="navbar-btn" onclick="toggleTheme()" title="Toggle dark mode">🌙 Theme</button>
+        <!-- Community user auth -->
+        <span id="navbar-community-user" class="navbar-user" style="display:none;"></span>
+        <button id="navbar-community-login" class="navbar-btn" onclick="openUserLogin()" title="Sign in to comment, follow feeders, and build your life list">Sign In</button>
+        <button id="navbar-life-list" class="navbar-btn" onclick="openLifeList()" title="My Life List" style="display:none;">My Life List</button>
+        <button id="navbar-community-profile" class="navbar-btn" onclick="openUserProfile()" title="Edit profile" style="display:none;">Profile</button>
+        <button id="navbar-community-logout" class="navbar-btn navbar-btn-danger" onclick="doUserLogout()" title="Sign out" style="display:none;">Sign Out</button>
+        <span style="opacity:0.3">|</span>
+        <!-- Moderator auth -->
         <span id="navbar-user" class="navbar-user" style="display:none;"></span>
-        <button id="navbar-login-btn" class="navbar-btn" onclick="toggleModLogin()" title="Moderator login">🔒 Login</button>
-        <button id="navbar-logout-btn" class="navbar-btn navbar-btn-danger" onclick="toggleModLogin()" title="Log out" style="display:none;">Logout</button>
+        <button id="navbar-login-btn" class="navbar-btn" onclick="toggleModLogin()" title="Moderator login">🔒 Mod</button>
+        <button id="navbar-logout-btn" class="navbar-btn navbar-btn-danger" onclick="toggleModLogin()" title="Log out" style="display:none;">Mod Out</button>
         <button id="navbar-changepw-btn" class="navbar-btn" onclick="showChangePassword()" title="Change password" style="display:none;">🔑 Password</button>
         <button id="navbar-admin-btn" class="navbar-btn" onclick="openAdminPanel()" title="Manage moderators" style="display:none;">👥 Moderators</button>
+        <button id="navbar-flags-btn" class="navbar-btn" onclick="openFlagQueue()" title="Review flagged detections" style="display:none;">🚩 Flags</button>
     </div>
 </nav>
 
@@ -2071,6 +2405,106 @@
     </div>
 </div>
 
+<!-- ── Community user login modal ──────────────────────────── -->
+<div id="user-login-modal" role="dialog" aria-modal="true">
+    <div class="user-login-box">
+        <h3>Sign In to BirdWatchAI</h3>
+        <p>Enter your email and we'll send you a magic link — no password needed.</p>
+        <div id="user-login-status" class="user-login-status" style="display:none;"></div>
+        <input type="email" id="user-login-email" placeholder="you@example.com" autocomplete="email">
+        <div class="btn-row">
+            <button class="btn-cancel" onclick="closeUserLogin()">Cancel</button>
+            <button class="btn-primary" onclick="doUserLogin()">Send Magic Link</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Community user profile modal ──────────────────────────── -->
+<div id="user-profile-modal" role="dialog" aria-modal="true">
+    <div class="user-profile-box">
+        <h3>Edit Profile</h3>
+        <label for="user-profile-name">Display Name</label>
+        <input type="text" id="user-profile-name" placeholder="Your display name" maxlength="50">
+        <label for="user-profile-bio">Bio</label>
+        <textarea id="user-profile-bio" placeholder="Tell us about your birding..." maxlength="200"></textarea>
+        <div id="user-profile-status" class="user-login-status" style="display:none;"></div>
+        <div class="btn-row" style="display:flex;gap:8px;margin-top:0.5rem;">
+            <button class="btn-cancel" style="flex:1;padding:10px 14px;border-radius:6px;border:1px solid var(--border);cursor:pointer;font-family:inherit;font-size:0.875rem;font-weight:600;background:var(--bg-card);color:var(--color-gray-700);" onclick="closeUserProfile()">Cancel</button>
+            <button class="btn-primary" style="flex:1;padding:10px 14px;border-radius:6px;border:1px solid var(--color-primary);cursor:pointer;font-family:inherit;font-size:0.875rem;font-weight:600;background:var(--color-primary);color:white;" onclick="saveUserProfile()">Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Life list modal ───────────────────────────────────────── -->
+<div id="life-list-modal" role="dialog" aria-modal="true">
+    <div class="life-list-box">
+        <div class="life-list-header">
+            <div>
+                <h3 id="life-list-title">My Life List</h3>
+                <span class="life-list-count" id="life-list-count"></span>
+            </div>
+            <button class="life-list-share" id="life-list-share-btn" onclick="shareLifeList()">🔗 Share</button>
+        </div>
+        <div id="life-list-content">
+            <div class="life-list-empty">Loading...</div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:1rem;">
+            <button class="btn-cancel" style="flex:1;padding:10px 14px;border-radius:6px;border:1px solid var(--border);cursor:pointer;font-family:inherit;font-size:0.875rem;font-weight:600;background:var(--bg-card);color:var(--color-gray-700);" onclick="closeLifeList()">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Comments modal ────────────────────────────────────────── -->
+<div id="comments-modal" role="dialog" aria-modal="true">
+    <div class="comments-box">
+        <h3>Comments</h3>
+        <div class="comments-list" id="comments-list">
+            <div style="text-align:center;color:var(--color-gray-500);padding:1rem;">Loading...</div>
+        </div>
+        <div id="comment-compose-area"></div>
+        <div style="display:flex;gap:8px;margin-top:0.5rem;">
+            <button class="btn-cancel" style="flex:1;padding:8px 14px;border-radius:6px;border:1px solid var(--border);cursor:pointer;font-family:inherit;font-size:0.875rem;font-weight:600;background:var(--bg-card);color:var(--color-gray-700);" onclick="closeComments()">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Flag / Report modal ───────────────────────────────────── -->
+<div id="flag-modal" role="dialog" aria-modal="true">
+    <div class="flag-box">
+        <h3>Report Detection</h3>
+        <p>Help us keep the community feed accurate and safe.</p>
+        <input type="hidden" id="flag-detection-id">
+        <label for="flag-reason">Reason</label>
+        <select id="flag-reason">
+            <option value="wrong_species">Wrong Species ID</option>
+            <option value="inappropriate">Inappropriate Content</option>
+            <option value="duplicate">Duplicate Detection</option>
+            <option value="spam">Spam</option>
+            <option value="other">Other</option>
+        </select>
+        <label for="flag-details">Details (optional)</label>
+        <textarea id="flag-details" placeholder="Tell us more about the issue..."></textarea>
+        <div id="flag-status" class="user-login-status" style="display:none;"></div>
+        <div class="btn-row">
+            <button class="btn-cancel" onclick="closeFlag()">Cancel</button>
+            <button class="btn-danger" onclick="submitFlag()">Report</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Mod flag queue modal ──────────────────────────────────── -->
+<div id="flag-queue-modal" role="dialog" aria-modal="true">
+    <div class="flag-queue-box">
+        <h3>Flagged Detections</h3>
+        <div id="flag-queue-list">
+            <div style="text-align:center;color:var(--color-gray-500);padding:1rem;">Loading...</div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:1rem;">
+            <button class="btn-cancel" style="flex:1;padding:10px 14px;border-radius:6px;border:1px solid var(--border);cursor:pointer;font-family:inherit;font-size:0.875rem;font-weight:600;background:var(--bg-card);color:var(--color-gray-700);" onclick="closeFlagQueue()">Close</button>
+        </div>
+    </div>
+</div>
+
 <!-- Change password modal -->
 <div id="mod-changepw-modal" role="dialog" aria-modal="true" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9520;justify-content:center;align-items:center;">
     <div class="mod-login-box">
@@ -2194,9 +2628,18 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
     const SUPABASE_URL = 'https://lsamggztfizmkyljdgwq.supabase.co';
     const ANON_KEY     = 'sb_publishable_-80LQjkx2s82XnURj2DfQQ_d7ARz3js';
+
+    // ── Supabase Auth client (for community user accounts) ────
+    const supabaseClient = supabase.createClient(SUPABASE_URL, ANON_KEY);
+    let currentUser = null;       // auth.users row
+    let currentProfile = null;    // user_profiles row
+    let userLifeList = [];        // cached life list species
+    let userFollowedFeeders = []; // cached followed feeder IDs
+    let commentCounts = {};       // { detectionId: count }
     let REFRESH_SECS = parseInt(localStorage.getItem('bwai-refresh-interval') ?? '30', 10);
 
 
@@ -2448,14 +2891,16 @@
                 await loadAllDetections();
             }
 
-            // Load reaction data from Supabase
+            // Load reaction data and comment counts from Supabase
             const ids = allDetections.map(d => d.id);
             if (sortOrder === 'liked') {
                 await loadReactionTotals();
                 await loadReactionCounts(ids);
+                await loadCommentCounts(ids);
             } else {
                 const pageIds = page.map(d => d.id);
                 loadReactionCounts(pageIds).then(() => renderFeed());
+                loadCommentCounts(pageIds).then(() => renderFeed());
                 if (!append) loadReactionTotals().then(() => renderFeed());
             }
 
@@ -2649,6 +3094,11 @@
             const isFirst = firstOfSeason.has(d.id);
             const reactions = getReactions(d.id);
 
+            const cCount = commentCounts[d.id] || 0;
+            const onLifeList = currentUser && userLifeList.includes(d.species);
+            const feederId = d.feeder_id || d.feeders?.id;
+            const isFollowing = feederId && userFollowedFeeders.includes(feederId);
+
             return `
             <div class="card${isNew ? ' new' : ''}" data-id="${d.id}">
                 ${d.image_url ? `<img src="${d.image_url}" alt="${esc(d.species)}" loading="lazy" data-carousel-species="${esc(d.species)}">` : ''}
@@ -2656,14 +3106,15 @@
                     <div class="card-title">
                         <span class="species-link" data-species="${esc(d.species)}" style="cursor:pointer;text-decoration:underline dotted;">${esc(d.species)}</span>${d.rarity
                             ? ` <span class="${rarityClass}">· ${esc(d.rarity)}</span>` : ''}${isFirst
-                            ? ' <span class="badge-first-season">🌱 First of Season</span>' : ''}
+                            ? ' <span class="badge-first-season">🌱 First of Season</span>' : ''}${currentUser
+                            ? `<button class="life-list-add-btn${onLifeList ? ' on-list' : ''}" onclick="toggleLifeListSpecies('${esc(d.species)}', '${d.id}', this)" title="${onLifeList ? 'Remove from life list' : 'Add to life list'}">${onLifeList ? '✓ Listed' : '+ Life List'}</button>` : ''}
                     </div>
                     <div class="card-meta">
                         🕐 ${fmtDetectedAt(d.detected_at)}${d.zip_code
                             ? ` · 📍 ${esc(d.zip_code)}` : ''}${d.temperature != null
                             ? ` · 🌡️ ${d.temperature}°F` : ''}
                     </div>
-                    ${d.feeders?.display_name ? `<div class="card-feeder">📡 ${esc(d.feeders.display_name)}</div>` : ''}
+                    ${d.feeders?.display_name ? `<div class="card-feeder">📡 ${esc(d.feeders.display_name)}${currentUser && feederId ? `<button class="follow-feeder-btn${isFollowing ? ' following' : ''}" onclick="toggleFollowFeeder('${feederId}', this)">${isFollowing ? '★ Following' : '☆ Follow'}</button>` : ''}</div>` : ''}
                     <div class="card-reactions">
                         ${EMOJI_LIST.map(emoji => {
                             const count = reactions[emoji] || 0;
@@ -2677,6 +3128,8 @@
                             : ''}
                         <button class="card-audio" data-audio-species="${esc(d.species)}" title="Play bird call">🔊 Call</button>
                         <button class="card-share" data-share-id="${d.id}" title="Copy link to this detection">🔗 Share</button>
+                        <button class="card-comment-btn" onclick="openComments('${d.id}')" title="Comments">💬${cCount ? ' ' + cCount : ''}</button>
+                        <button class="card-flag-btn" onclick="openFlag('${d.id}')" title="Report this detection">🚩</button>
                     </div>
                     ${isModLoggedIn() ? `<div class="mod-actions">
                         <button onclick="openModEdit('${d.id}')">✏️ Edit</button>
@@ -5633,6 +6086,7 @@
         document.getElementById('navbar-logout-btn').style.display = loggedIn ? '' : 'none';
         document.getElementById('navbar-changepw-btn').style.display = loggedIn ? '' : 'none';
         document.getElementById('navbar-admin-btn').style.display = (loggedIn && admin) ? '' : 'none';
+        document.getElementById('navbar-flags-btn').style.display = loggedIn ? '' : 'none';
         // Show logged-in user
         const userEl = document.getElementById('navbar-user');
         if (loggedIn) {
@@ -6203,10 +6657,524 @@
         }
     }
 
+    // ── Community User Auth (Supabase Auth magic link) ─────────
+    function updateCommunityUI() {
+        const loggedIn = !!currentUser;
+        document.getElementById('navbar-community-login').style.display = loggedIn ? 'none' : '';
+        document.getElementById('navbar-community-logout').style.display = loggedIn ? '' : 'none';
+        document.getElementById('navbar-community-profile').style.display = loggedIn ? '' : 'none';
+        document.getElementById('navbar-life-list').style.display = loggedIn ? '' : 'none';
+        const userSpan = document.getElementById('navbar-community-user');
+        if (loggedIn && currentProfile) {
+            userSpan.textContent = currentProfile.display_name || currentUser.email;
+            userSpan.style.display = '';
+        } else {
+            userSpan.style.display = 'none';
+        }
+    }
+
+    async function initCommunityAuth() {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (session?.user) {
+            currentUser = session.user;
+            await loadUserProfile();
+            await loadUserLifeList();
+            await loadUserFollowedFeeders();
+        }
+        updateCommunityUI();
+
+        // Listen for auth state changes (e.g. magic link callback)
+        supabaseClient.auth.onAuthStateChange(async (event, session) => {
+            if (session?.user) {
+                currentUser = session.user;
+                await loadUserProfile();
+                await loadUserLifeList();
+                await loadUserFollowedFeeders();
+            } else {
+                currentUser = null;
+                currentProfile = null;
+                userLifeList = [];
+                userFollowedFeeders = [];
+            }
+            updateCommunityUI();
+            renderFeed();
+        });
+    }
+
+    async function loadUserProfile() {
+        if (!currentUser) return;
+        const { data } = await supabaseClient
+            .from('user_profiles')
+            .select('*')
+            .eq('id', currentUser.id)
+            .single();
+        currentProfile = data;
+    }
+
+    function openUserLogin() {
+        document.getElementById('user-login-modal').classList.add('open');
+        document.getElementById('user-login-email').focus();
+        const status = document.getElementById('user-login-status');
+        status.style.display = 'none';
+    }
+
+    function closeUserLogin() {
+        document.getElementById('user-login-modal').classList.remove('open');
+        document.getElementById('user-login-email').value = '';
+    }
+
+    document.getElementById('user-login-modal').addEventListener('click', e => {
+        if (e.target.id === 'user-login-modal') closeUserLogin();
+    });
+
+    document.getElementById('user-login-email').addEventListener('keydown', e => {
+        if (e.key === 'Enter') doUserLogin();
+    });
+
+    async function doUserLogin() {
+        const email = document.getElementById('user-login-email').value.trim();
+        const status = document.getElementById('user-login-status');
+        if (!email) { status.textContent = 'Please enter an email.'; status.className = 'user-login-status error'; status.style.display = ''; return; }
+
+        status.textContent = 'Sending magic link...';
+        status.className = 'user-login-status';
+        status.style.display = '';
+
+        const { error } = await supabaseClient.auth.signInWithOtp({
+            email,
+            options: { emailRedirectTo: window.location.href.split('?')[0] }
+        });
+
+        if (error) {
+            status.textContent = error.message;
+            status.className = 'user-login-status error';
+        } else {
+            status.textContent = 'Check your email for a magic link to sign in!';
+            status.className = 'user-login-status success';
+        }
+    }
+
+    async function doUserLogout() {
+        await supabaseClient.auth.signOut();
+        currentUser = null;
+        currentProfile = null;
+        userLifeList = [];
+        userFollowedFeeders = [];
+        updateCommunityUI();
+        renderFeed();
+        showToast('Signed out');
+    }
+
+    // ── User profile editing ─────────────────────────────────
+    function openUserProfile() {
+        if (!currentUser) return;
+        document.getElementById('user-profile-name').value = currentProfile?.display_name || '';
+        document.getElementById('user-profile-bio').value = currentProfile?.bio || '';
+        document.getElementById('user-profile-status').style.display = 'none';
+        document.getElementById('user-profile-modal').classList.add('open');
+    }
+
+    function closeUserProfile() {
+        document.getElementById('user-profile-modal').classList.remove('open');
+    }
+
+    document.getElementById('user-profile-modal').addEventListener('click', e => {
+        if (e.target.id === 'user-profile-modal') closeUserProfile();
+    });
+
+    async function saveUserProfile() {
+        const name = document.getElementById('user-profile-name').value.trim();
+        const bio = document.getElementById('user-profile-bio').value.trim();
+        const status = document.getElementById('user-profile-status');
+
+        if (!name) { status.textContent = 'Display name is required.'; status.className = 'user-login-status error'; status.style.display = ''; return; }
+
+        const { error } = await supabaseClient
+            .from('user_profiles')
+            .upsert({ id: currentUser.id, display_name: name, bio });
+
+        if (error) {
+            status.textContent = error.message;
+            status.className = 'user-login-status error';
+            status.style.display = '';
+        } else {
+            currentProfile = { ...currentProfile, display_name: name, bio };
+            updateCommunityUI();
+            closeUserProfile();
+            showToast('Profile saved');
+        }
+    }
+
+    // ── Life list ────────────────────────────────────────────
+    async function loadUserLifeList() {
+        if (!currentUser) { userLifeList = []; return; }
+        const { data } = await supabaseClient.rpc('get_life_list', { p_user_id: currentUser.id });
+        if (Array.isArray(data)) {
+            userLifeList = data.map(item => item.species);
+        }
+    }
+
+    async function toggleLifeListSpecies(species, detectionId, btn) {
+        if (!currentUser) { openUserLogin(); return; }
+
+        const isOnList = userLifeList.includes(species);
+        if (isOnList) {
+            await supabaseClient.rpc('remove_from_life_list', { p_species: species });
+            userLifeList = userLifeList.filter(s => s !== species);
+            if (btn) { btn.classList.remove('on-list'); btn.textContent = '+ Life List'; btn.title = 'Add to life list'; }
+            showToast(`${species} removed from life list`);
+        } else {
+            await supabaseClient.rpc('add_to_life_list', {
+                p_species: species,
+                p_detection_id: detectionId || null,
+                p_notes: ''
+            });
+            userLifeList.push(species);
+            if (btn) { btn.classList.add('on-list'); btn.textContent = '✓ Listed'; btn.title = 'Remove from life list'; }
+            showToast(`${species} added to life list!`);
+        }
+    }
+
+    function openLifeList(userId) {
+        const targetId = userId || currentUser?.id;
+        if (!targetId) { openUserLogin(); return; }
+        const isOwn = targetId === currentUser?.id;
+        document.getElementById('life-list-title').textContent = isOwn ? 'My Life List' : 'Life List';
+        document.getElementById('life-list-share-btn').style.display = isOwn ? '' : 'none';
+        document.getElementById('life-list-modal').classList.add('open');
+        loadAndRenderLifeList(targetId, isOwn);
+    }
+
+    function closeLifeList() {
+        document.getElementById('life-list-modal').classList.remove('open');
+    }
+
+    document.getElementById('life-list-modal').addEventListener('click', e => {
+        if (e.target.id === 'life-list-modal') closeLifeList();
+    });
+
+    async function loadAndRenderLifeList(userId, isOwn) {
+        const content = document.getElementById('life-list-content');
+        content.innerHTML = '<div class="life-list-empty">Loading...</div>';
+
+        const { data } = await supabaseClient.rpc('get_life_list', { p_user_id: userId });
+        const list = data || [];
+        document.getElementById('life-list-count').textContent = `${list.length} species`;
+
+        if (!list.length) {
+            content.innerHTML = `<div class="life-list-empty">${isOwn ? 'Your life list is empty. Add species from detection cards!' : 'This birder hasn\'t added any species yet.'}</div>`;
+            return;
+        }
+
+        content.innerHTML = `<div class="life-list-grid">${list.map(item => `
+            <div class="life-list-item">
+                <span class="species-name">${esc(item.species)}</span>
+                <span class="first-seen">${new Date(item.first_seen).toLocaleDateString()}</span>
+                ${isOwn ? `<button class="life-list-remove" onclick="removeFromLifeListModal('${esc(item.species)}', this)" title="Remove">✕</button>` : ''}
+            </div>
+        `).join('')}</div>`;
+    }
+
+    async function removeFromLifeListModal(species, btn) {
+        await supabaseClient.rpc('remove_from_life_list', { p_species: species });
+        userLifeList = userLifeList.filter(s => s !== species);
+        btn.closest('.life-list-item').remove();
+        const count = document.querySelectorAll('.life-list-item').length;
+        document.getElementById('life-list-count').textContent = `${count} species`;
+        showToast(`${species} removed`);
+    }
+
+    function shareLifeList() {
+        if (!currentUser) return;
+        const url = `${window.location.href.split('?')[0]}?lifelist=${currentUser.id}`;
+        navigator.clipboard.writeText(url).then(() => showToast('Life list link copied!')).catch(() => {});
+    }
+
+    // Handle ?lifelist=UUID in URL
+    function handleLifeListLink() {
+        const params = new URLSearchParams(window.location.search);
+        const lifeListId = params.get('lifelist');
+        if (lifeListId) openLifeList(lifeListId);
+    }
+
+    // ── Follow a Feeder ──────────────────────────────────────
+    async function loadUserFollowedFeeders() {
+        if (!currentUser) { userFollowedFeeders = []; return; }
+        const { data } = await supabaseClient.rpc('get_followed_feeders');
+        if (Array.isArray(data)) {
+            userFollowedFeeders = data.map(f => f.feeder_id);
+        }
+    }
+
+    async function toggleFollowFeeder(feederId, btn) {
+        if (!currentUser) { openUserLogin(); return; }
+
+        const { data } = await supabaseClient.rpc('toggle_feeder_follow', { p_feeder_id: feederId });
+        if (data?.following) {
+            userFollowedFeeders.push(feederId);
+            if (btn) { btn.classList.add('following'); btn.textContent = '★ Following'; }
+            showToast('Now following this feeder!');
+        } else {
+            userFollowedFeeders = userFollowedFeeders.filter(id => id !== feederId);
+            if (btn) { btn.classList.remove('following'); btn.textContent = '☆ Follow'; }
+            showToast('Unfollowed feeder');
+        }
+    }
+
+    // ── Comments ─────────────────────────────────────────────
+    let activeCommentDetectionId = null;
+
+    async function loadCommentCounts(detectionIds) {
+        if (!detectionIds.length) return;
+        try {
+            const { data } = await supabaseClient.rpc('get_comment_counts', { p_detection_ids: detectionIds });
+            if (data && typeof data === 'object') {
+                Object.assign(commentCounts, data);
+            }
+        } catch (_) { /* non-critical */ }
+    }
+
+    function openComments(detectionId) {
+        activeCommentDetectionId = detectionId;
+        document.getElementById('comments-modal').classList.add('open');
+        loadAndRenderComments(detectionId);
+    }
+
+    function closeComments() {
+        document.getElementById('comments-modal').classList.remove('open');
+        activeCommentDetectionId = null;
+    }
+
+    document.getElementById('comments-modal').addEventListener('click', e => {
+        if (e.target.id === 'comments-modal') closeComments();
+    });
+
+    async function loadAndRenderComments(detectionId) {
+        const list = document.getElementById('comments-list');
+        const compose = document.getElementById('comment-compose-area');
+        list.innerHTML = '<div style="text-align:center;color:var(--color-gray-500);padding:1rem;">Loading...</div>';
+
+        const { data } = await supabaseClient.rpc('get_comments', { p_detection_id: detectionId });
+        const comments = data || [];
+
+        if (!comments.length) {
+            list.innerHTML = '<div style="text-align:center;color:var(--color-gray-500);padding:1rem;">No comments yet. Be the first!</div>';
+        } else {
+            // Build threaded comments: top-level first, then replies
+            const topLevel = comments.filter(c => !c.parent_id);
+            const replies = comments.filter(c => c.parent_id);
+            const replyMap = {};
+            replies.forEach(r => {
+                if (!replyMap[r.parent_id]) replyMap[r.parent_id] = [];
+                replyMap[r.parent_id].push(r);
+            });
+
+            list.innerHTML = topLevel.map(c => renderCommentItem(c, replyMap, detectionId)).join('');
+        }
+
+        // Compose area
+        if (currentUser) {
+            compose.innerHTML = `
+                <div class="comment-compose">
+                    <textarea id="comment-input" placeholder="Add a comment..." maxlength="2000"></textarea>
+                    <button onclick="submitComment('${detectionId}')">Post</button>
+                </div>`;
+        } else {
+            compose.innerHTML = `<div class="comment-login-prompt"><a onclick="closeComments();openUserLogin();">Sign in</a> to post a comment.</div>`;
+        }
+    }
+
+    function renderCommentItem(comment, replyMap, detectionId) {
+        const isOwn = currentUser && comment.user_id === currentUser.id;
+        const childReplies = replyMap[comment.id] || [];
+        const ago = timeAgo(comment.created_at);
+
+        return `
+            <div class="comment-item" data-comment-id="${comment.id}">
+                <span class="comment-author">${esc(comment.display_name || 'Birder')}</span>
+                <span class="comment-time">${ago}</span>
+                <div class="comment-body">${esc(comment.body)}</div>
+                <div class="comment-actions">
+                    ${currentUser ? `<button onclick="startReply('${comment.id}', '${esc(comment.display_name)}')">Reply</button>` : ''}
+                    ${isOwn ? `<button onclick="deleteComment('${comment.id}', '${detectionId}')">Delete</button>` : ''}
+                </div>
+                ${childReplies.map(r => `<div class="comment-reply">${renderCommentItem(r, replyMap, detectionId)}</div>`).join('')}
+            </div>`;
+    }
+
+    function timeAgo(dateStr) {
+        const diff = Date.now() - new Date(dateStr).getTime();
+        const mins = Math.floor(diff / 60000);
+        if (mins < 1) return 'just now';
+        if (mins < 60) return `${mins}m ago`;
+        const hrs = Math.floor(mins / 60);
+        if (hrs < 24) return `${hrs}h ago`;
+        const days = Math.floor(hrs / 24);
+        if (days < 30) return `${days}d ago`;
+        return new Date(dateStr).toLocaleDateString();
+    }
+
+    function startReply(parentId, authorName) {
+        const input = document.getElementById('comment-input');
+        if (input) {
+            input.dataset.parentId = parentId;
+            input.placeholder = `Replying to ${authorName}...`;
+            input.focus();
+        }
+    }
+
+    async function submitComment(detectionId) {
+        const input = document.getElementById('comment-input');
+        if (!input || !currentUser) return;
+        const body = input.value.trim();
+        if (!body) return;
+
+        const parentId = input.dataset.parentId || null;
+        const btn = input.nextElementSibling;
+        btn.disabled = true;
+
+        const { data, error } = await supabaseClient.rpc('post_comment', {
+            p_detection_id: detectionId,
+            p_body: body,
+            p_parent_id: parentId
+        });
+
+        btn.disabled = false;
+
+        if (error) {
+            showToast('Failed to post comment: ' + error.message);
+        } else {
+            input.value = '';
+            input.dataset.parentId = '';
+            input.placeholder = 'Add a comment...';
+            commentCounts[detectionId] = (commentCounts[detectionId] || 0) + 1;
+            loadAndRenderComments(detectionId);
+            // Update card button
+            document.querySelectorAll(`.card[data-id="${detectionId}"] .card-comment-btn`).forEach(btn => {
+                btn.textContent = `💬 ${commentCounts[detectionId]}`;
+            });
+        }
+    }
+
+    async function deleteComment(commentId, detectionId) {
+        await supabaseClient.rpc('delete_comment', { p_comment_id: commentId });
+        commentCounts[detectionId] = Math.max(0, (commentCounts[detectionId] || 1) - 1);
+        loadAndRenderComments(detectionId);
+    }
+
+    // ── Flagging / reporting ─────────────────────────────────
+    function openFlag(detectionId) {
+        if (!currentUser) { openUserLogin(); return; }
+        document.getElementById('flag-detection-id').value = detectionId;
+        document.getElementById('flag-reason').value = 'wrong_species';
+        document.getElementById('flag-details').value = '';
+        document.getElementById('flag-status').style.display = 'none';
+        document.getElementById('flag-modal').classList.add('open');
+    }
+
+    function closeFlag() {
+        document.getElementById('flag-modal').classList.remove('open');
+    }
+
+    document.getElementById('flag-modal').addEventListener('click', e => {
+        if (e.target.id === 'flag-modal') closeFlag();
+    });
+
+    async function submitFlag() {
+        const detectionId = document.getElementById('flag-detection-id').value;
+        const reason = document.getElementById('flag-reason').value;
+        const details = document.getElementById('flag-details').value.trim();
+        const status = document.getElementById('flag-status');
+
+        const { data, error } = await supabaseClient.rpc('flag_detection', {
+            p_detection_id: detectionId,
+            p_reason: reason,
+            p_details: details
+        });
+
+        if (error) {
+            status.textContent = error.message;
+            status.className = 'user-login-status error';
+            status.style.display = '';
+        } else {
+            showToast('Report submitted. Thank you!');
+            closeFlag();
+        }
+    }
+
+    // ── Mod: flag queue ──────────────────────────────────────
+    function openFlagQueue() {
+        if (!isModLoggedIn()) return;
+        document.getElementById('flag-queue-modal').classList.add('open');
+        loadFlagQueue();
+    }
+
+    function closeFlagQueue() {
+        document.getElementById('flag-queue-modal').classList.remove('open');
+    }
+
+    document.getElementById('flag-queue-modal').addEventListener('click', e => {
+        if (e.target.id === 'flag-queue-modal') closeFlagQueue();
+    });
+
+    async function loadFlagQueue() {
+        const list = document.getElementById('flag-queue-list');
+        list.innerHTML = '<div style="text-align:center;color:var(--color-gray-500);padding:1rem;">Loading...</div>';
+
+        const creds = getModCreds();
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_flag_queue`, {
+            method: 'POST',
+            headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ p_email: creds.email, p_password: creds.password }),
+        });
+        const flags = await res.json();
+
+        if (!Array.isArray(flags) || !flags.length) {
+            list.innerHTML = '<div style="text-align:center;color:var(--color-gray-500);padding:1rem;">No pending flags. All clear!</div>';
+            return;
+        }
+
+        const reasonLabels = { wrong_species: 'Wrong Species', inappropriate: 'Inappropriate', duplicate: 'Duplicate', spam: 'Spam', other: 'Other' };
+        list.innerHTML = flags.map(f => `
+            <div class="flag-queue-item" data-flag-id="${f.flag_id}">
+                ${f.image_url ? `<img src="${f.image_url}" alt="">` : '<div style="width:60px;height:60px;background:var(--bg-input);border-radius:6px;"></div>'}
+                <div class="flag-queue-info">
+                    <div class="species">${esc(f.species || 'Unknown')}</div>
+                    <div class="reason">${reasonLabels[f.reason] || f.reason}${f.flag_count > 1 ? ` (${f.flag_count} reports)` : ''}</div>
+                    ${f.details ? `<div class="details">${esc(f.details)}</div>` : ''}
+                    <div class="reporter">Reported by ${esc(f.reporter_name || 'user')} · ${timeAgo(f.created_at)}</div>
+                </div>
+                <div class="flag-queue-actions">
+                    <button class="btn-resolve" onclick="resolveFlag('${f.flag_id}', 'reviewed')">✓ Reviewed</button>
+                    <button class="btn-dismiss" onclick="resolveFlag('${f.flag_id}', 'dismissed')">✕ Dismiss</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    async function resolveFlag(flagId, action) {
+        const creds = getModCreds();
+        await fetch(`${SUPABASE_URL}/rest/v1/rpc/resolve_flag`, {
+            method: 'POST',
+            headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ p_email: creds.email, p_password: creds.password, p_flag_id: flagId, p_action: action }),
+        });
+        const item = document.querySelector(`.flag-queue-item[data-flag-id="${flagId}"]`);
+        if (item) item.remove();
+        showToast(action === 'reviewed' ? 'Flag reviewed' : 'Flag dismissed');
+        // If empty, show message
+        if (!document.querySelectorAll('.flag-queue-item').length) {
+            document.getElementById('flag-queue-list').innerHTML = '<div style="text-align:center;color:var(--color-gray-500);padding:1rem;">No pending flags. All clear!</div>';
+        }
+    }
+
     // Restore moderator UI state on page load
     updateModUI();
 
     // ── Init ─────────────────────────────────────────────────
+    initCommunityAuth().then(() => {
+        handleLifeListLink();
+    });
     loadSeasonEarliest();
     loadFeed().then(handleSharedId);
 
