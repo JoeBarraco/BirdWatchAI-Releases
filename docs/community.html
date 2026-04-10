@@ -2634,7 +2634,12 @@
     const ANON_KEY     = 'sb_publishable_-80LQjkx2s82XnURj2DfQQ_d7ARz3js';
 
     // ── Supabase Auth client (for community user accounts) ────
-    const supabaseClient = supabase.createClient(SUPABASE_URL, ANON_KEY);
+    let supabaseClient = null;
+    try {
+        if (typeof supabase !== 'undefined' && supabase.createClient) {
+            supabaseClient = supabase.createClient(SUPABASE_URL, ANON_KEY);
+        }
+    } catch (_) { /* Supabase JS not loaded — community features disabled */ }
     let currentUser = null;       // auth.users row
     let currentProfile = null;    // user_profiles row
     let userLifeList = [];        // cached life list species
@@ -6674,41 +6679,49 @@
     }
 
     async function initCommunityAuth() {
-        const { data: { session } } = await supabaseClient.auth.getSession();
-        if (session?.user) {
-            currentUser = session.user;
-            await loadUserProfile();
-            await loadUserLifeList();
-            await loadUserFollowedFeeders();
-        }
-        updateCommunityUI();
-
-        // Listen for auth state changes (e.g. magic link callback)
-        supabaseClient.auth.onAuthStateChange(async (event, session) => {
+        if (!supabaseClient) { updateCommunityUI(); return; }
+        try {
+            const { data: { session } } = await supabaseClient.auth.getSession();
             if (session?.user) {
                 currentUser = session.user;
                 await loadUserProfile();
                 await loadUserLifeList();
                 await loadUserFollowedFeeders();
-            } else {
-                currentUser = null;
-                currentProfile = null;
-                userLifeList = [];
-                userFollowedFeeders = [];
             }
             updateCommunityUI();
-            renderFeed();
-        });
+
+            // Listen for auth state changes (e.g. magic link callback)
+            supabaseClient.auth.onAuthStateChange(async (event, session) => {
+                if (session?.user) {
+                    currentUser = session.user;
+                    await loadUserProfile();
+                    await loadUserLifeList();
+                    await loadUserFollowedFeeders();
+                } else {
+                    currentUser = null;
+                    currentProfile = null;
+                    userLifeList = [];
+                    userFollowedFeeders = [];
+                }
+                updateCommunityUI();
+                renderFeed();
+            });
+        } catch (e) {
+            console.warn('Community auth init failed:', e);
+            updateCommunityUI();
+        }
     }
 
     async function loadUserProfile() {
-        if (!currentUser) return;
-        const { data } = await supabaseClient
-            .from('user_profiles')
-            .select('*')
-            .eq('id', currentUser.id)
-            .single();
-        currentProfile = data;
+        if (!currentUser || !supabaseClient) return;
+        try {
+            const { data } = await supabaseClient
+                .from('user_profiles')
+                .select('*')
+                .eq('id', currentUser.id)
+                .single();
+            currentProfile = data;
+        } catch (_) {}
     }
 
     function openUserLogin() {
@@ -6735,6 +6748,7 @@
         const email = document.getElementById('user-login-email').value.trim();
         const status = document.getElementById('user-login-status');
         if (!email) { status.textContent = 'Please enter an email.'; status.className = 'user-login-status error'; status.style.display = ''; return; }
+        if (!supabaseClient) { status.textContent = 'Sign-in is not available right now.'; status.className = 'user-login-status error'; status.style.display = ''; return; }
 
         status.textContent = 'Sending magic link...';
         status.className = 'user-login-status';
@@ -6755,7 +6769,7 @@
     }
 
     async function doUserLogout() {
-        await supabaseClient.auth.signOut();
+        if (supabaseClient) await supabaseClient.auth.signOut();
         currentUser = null;
         currentProfile = null;
         userLifeList = [];
@@ -6788,6 +6802,7 @@
         const status = document.getElementById('user-profile-status');
 
         if (!name) { status.textContent = 'Display name is required.'; status.className = 'user-login-status error'; status.style.display = ''; return; }
+        if (!supabaseClient) return;
 
         const { error } = await supabaseClient
             .from('user_profiles')
@@ -6807,7 +6822,7 @@
 
     // ── Life list ────────────────────────────────────────────
     async function loadUserLifeList() {
-        if (!currentUser) { userLifeList = []; return; }
+        if (!currentUser || !supabaseClient) { userLifeList = []; return; }
         const { data } = await supabaseClient.rpc('get_life_list', { p_user_id: currentUser.id });
         if (Array.isArray(data)) {
             userLifeList = data.map(item => item.species);
@@ -6816,6 +6831,7 @@
 
     async function toggleLifeListSpecies(species, detectionId, btn) {
         if (!currentUser) { openUserLogin(); return; }
+        if (!supabaseClient) return;
 
         const isOnList = userLifeList.includes(species);
         if (isOnList) {
@@ -6856,6 +6872,7 @@
     async function loadAndRenderLifeList(userId, isOwn) {
         const content = document.getElementById('life-list-content');
         content.innerHTML = '<div class="life-list-empty">Loading...</div>';
+        if (!supabaseClient) { content.innerHTML = '<div class="life-list-empty">Not available.</div>'; return; }
 
         const { data } = await supabaseClient.rpc('get_life_list', { p_user_id: userId });
         const list = data || [];
@@ -6876,6 +6893,7 @@
     }
 
     async function removeFromLifeListModal(species, btn) {
+        if (!supabaseClient) return;
         await supabaseClient.rpc('remove_from_life_list', { p_species: species });
         userLifeList = userLifeList.filter(s => s !== species);
         btn.closest('.life-list-item').remove();
@@ -6899,7 +6917,7 @@
 
     // ── Follow a Feeder ──────────────────────────────────────
     async function loadUserFollowedFeeders() {
-        if (!currentUser) { userFollowedFeeders = []; return; }
+        if (!currentUser || !supabaseClient) { userFollowedFeeders = []; return; }
         const { data } = await supabaseClient.rpc('get_followed_feeders');
         if (Array.isArray(data)) {
             userFollowedFeeders = data.map(f => f.feeder_id);
@@ -6908,6 +6926,7 @@
 
     async function toggleFollowFeeder(feederId, btn) {
         if (!currentUser) { openUserLogin(); return; }
+        if (!supabaseClient) return;
 
         const { data } = await supabaseClient.rpc('toggle_feeder_follow', { p_feeder_id: feederId });
         if (data?.following) {
@@ -6925,7 +6944,7 @@
     let activeCommentDetectionId = null;
 
     async function loadCommentCounts(detectionIds) {
-        if (!detectionIds.length) return;
+        if (!detectionIds.length || !supabaseClient) return;
         try {
             const { data } = await supabaseClient.rpc('get_comment_counts', { p_detection_ids: detectionIds });
             if (data && typeof data === 'object') {
@@ -6953,6 +6972,7 @@
         const list = document.getElementById('comments-list');
         const compose = document.getElementById('comment-compose-area');
         list.innerHTML = '<div style="text-align:center;color:var(--color-gray-500);padding:1rem;">Loading...</div>';
+        if (!supabaseClient) { list.innerHTML = '<div style="text-align:center;color:var(--color-gray-500);padding:1rem;">Comments not available yet.</div>'; compose.innerHTML = ''; return; }
 
         const { data } = await supabaseClient.rpc('get_comments', { p_detection_id: detectionId });
         const comments = data || [];
@@ -7025,7 +7045,7 @@
 
     async function submitComment(detectionId) {
         const input = document.getElementById('comment-input');
-        if (!input || !currentUser) return;
+        if (!input || !currentUser || !supabaseClient) return;
         const body = input.value.trim();
         if (!body) return;
 
@@ -7057,6 +7077,7 @@
     }
 
     async function deleteComment(commentId, detectionId) {
+        if (!supabaseClient) return;
         await supabaseClient.rpc('delete_comment', { p_comment_id: commentId });
         commentCounts[detectionId] = Math.max(0, (commentCounts[detectionId] || 1) - 1);
         loadAndRenderComments(detectionId);
@@ -7085,6 +7106,7 @@
         const reason = document.getElementById('flag-reason').value;
         const details = document.getElementById('flag-details').value.trim();
         const status = document.getElementById('flag-status');
+        if (!supabaseClient) { status.textContent = 'Not available yet.'; status.className = 'user-login-status error'; status.style.display = ''; return; }
 
         const { data, error } = await supabaseClient.rpc('flag_detection', {
             p_detection_id: detectionId,
