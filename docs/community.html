@@ -2628,22 +2628,42 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
     const SUPABASE_URL = 'https://lsamggztfizmkyljdgwq.supabase.co';
     const ANON_KEY     = 'sb_publishable_-80LQjkx2s82XnURj2DfQQ_d7ARz3js';
 
-    // ── Supabase Auth client (for community user accounts) ────
-    let supabaseClient = null;
-    try {
-        // The UMD build may expose as window.supabase or window.Supabase
-        const sbLib = (typeof supabase !== 'undefined' && supabase.createClient) ? supabase
-                    : (typeof Supabase !== 'undefined' && Supabase.createClient) ? Supabase
-                    : null;
-        if (sbLib) supabaseClient = sbLib.createClient(SUPABASE_URL, ANON_KEY);
-    } catch (e) { console.warn('Supabase JS client init failed:', e); }
-    let currentUser = null;       // auth.users row or synthetic mod user
-    let currentProfile = null;    // user_profiles row or synthetic mod profile
+    // ── Supabase REST helper (no external JS client needed) ───
+    // All community features use the Supabase REST API directly,
+    // matching the pattern already used for reactions/moderator.
+    let authAccessToken = null;   // set after magic-link sign-in
+    let authRefreshToken = null;
+
+    function sbHeaders(authenticated) {
+        const h = { apikey: ANON_KEY, 'Content-Type': 'application/json' };
+        if (authenticated && authAccessToken) {
+            h['Authorization'] = `Bearer ${authAccessToken}`;
+        } else {
+            h['Authorization'] = `Bearer ${ANON_KEY}`;
+        }
+        return h;
+    }
+
+    async function sbRpc(fnName, params, authenticated) {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fnName}`, {
+            method: 'POST',
+            headers: sbHeaders(authenticated),
+            body: JSON.stringify(params),
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            return { data: null, error: err };
+        }
+        const data = await res.json();
+        return { data, error: null };
+    }
+
+    let currentUser = null;       // auth user info or synthetic mod user
+    let currentProfile = null;    // user profile info
     let userLifeList = [];        // cached life list species
     let userFollowedFeeders = []; // cached followed feeder IDs
     let commentCounts = {};       // { detectionId: count }
@@ -6704,49 +6724,108 @@
     }
 
     async function initCommunityAuth() {
-        if (!supabaseClient) { updateCommunityUI(); return; }
+        // Check for magic-link token fragments in the URL (Supabase Auth callback)
         try {
-            const { data: { session } } = await supabaseClient.auth.getSession();
-            if (session?.user) {
-                currentUser = session.user;
-                await loadUserProfile();
-                await loadUserLifeList();
-                await loadUserFollowedFeeders();
-            }
-            updateCommunityUI();
-
-            // Listen for auth state changes (e.g. magic link callback)
-            supabaseClient.auth.onAuthStateChange(async (event, session) => {
-                if (session?.user) {
-                    currentUser = session.user;
-                    isModAsCommunityUser = false; // real auth overrides mod bridge
-                    await loadUserProfile();
-                    await loadUserLifeList();
-                    await loadUserFollowedFeeders();
-                } else if (!isModAsCommunityUser) {
-                    currentUser = null;
-                    currentProfile = null;
-                    userLifeList = [];
-                    userFollowedFeeders = [];
+            const hash = window.location.hash;
+            if (hash && hash.includes('access_token=')) {
+                const params = new URLSearchParams(hash.substring(1));
+                authAccessToken = params.get('access_token');
+                authRefreshToken = params.get('refresh_token');
+                if (authAccessToken) {
+                    localStorage.setItem('bwai-auth-token', authAccessToken);
+                    if (authRefreshToken) localStorage.setItem('bwai-auth-refresh', authRefreshToken);
+                    // Fetch user info
+                    const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+                        headers: { apikey: ANON_KEY, Authorization: `Bearer ${authAccessToken}` }
+                    });
+                    if (res.ok) {
+                        const user = await res.json();
+                        currentUser = user;
+                        isModAsCommunityUser = false;
+                        await loadUserProfile();
+                        await loadUserLifeList();
+                        await loadUserFollowedFeeders();
+                    }
+                    // Clean up URL hash
+                    history.replaceState(null, '', window.location.pathname + window.location.search);
                 }
-                updateCommunityUI();
-                renderFeed();
-            });
-        } catch (e) {
-            console.warn('Community auth init failed:', e);
-            updateCommunityUI();
+            }
+        } catch (e) { console.warn('Magic link callback failed:', e); }
+
+        // Restore saved auth token
+        if (!currentUser) {
+            const savedToken = localStorage.getItem('bwai-auth-token');
+            if (savedToken) {
+                try {
+                    const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+                        headers: { apikey: ANON_KEY, Authorization: `Bearer ${savedToken}` }
+                    });
+                    if (res.ok) {
+                        authAccessToken = savedToken;
+                        authRefreshToken = localStorage.getItem('bwai-auth-refresh');
+                        currentUser = await res.json();
+                        isModAsCommunityUser = false;
+                        await loadUserProfile();
+                        await loadUserLifeList();
+                        await loadUserFollowedFeeders();
+                    } else {
+                        // Token expired — try refresh
+                        const refreshed = await refreshAuthToken();
+                        if (refreshed) {
+                            await loadUserProfile();
+                            await loadUserLifeList();
+                            await loadUserFollowedFeeders();
+                        } else {
+                            localStorage.removeItem('bwai-auth-token');
+                            localStorage.removeItem('bwai-auth-refresh');
+                        }
+                    }
+                } catch (_) {}
+            }
         }
+        updateCommunityUI();
+    }
+
+    async function refreshAuthToken() {
+        const refreshToken = localStorage.getItem('bwai-auth-refresh');
+        if (!refreshToken) return false;
+        try {
+            const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+                method: 'POST',
+                headers: { apikey: ANON_KEY, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ refresh_token: refreshToken }),
+            });
+            if (!res.ok) return false;
+            const data = await res.json();
+            authAccessToken = data.access_token;
+            authRefreshToken = data.refresh_token;
+            localStorage.setItem('bwai-auth-token', authAccessToken);
+            localStorage.setItem('bwai-auth-refresh', authRefreshToken);
+            // Fetch user
+            const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+                headers: { apikey: ANON_KEY, Authorization: `Bearer ${authAccessToken}` }
+            });
+            if (userRes.ok) {
+                currentUser = await userRes.json();
+                isModAsCommunityUser = false;
+                return true;
+            }
+        } catch (_) {}
+        return false;
     }
 
     async function loadUserProfile() {
-        if (!currentUser || !supabaseClient) return;
+        if (!currentUser) return;
+        if (isModAsCommunityUser) return; // mod bridge sets profile directly
         try {
-            const { data } = await supabaseClient
-                .from('user_profiles')
-                .select('*')
-                .eq('id', currentUser.id)
-                .single();
-            currentProfile = data;
+            const res = await fetch(
+                `${SUPABASE_URL}/rest/v1/user_profiles?id=eq.${currentUser.id}&select=*`,
+                { headers: sbHeaders(true) }
+            );
+            if (res.ok) {
+                const rows = await res.json();
+                currentProfile = rows[0] || null;
+            }
         } catch (_) {}
     }
 
@@ -6774,32 +6853,49 @@
         const email = document.getElementById('user-login-email').value.trim();
         const status = document.getElementById('user-login-status');
         if (!email) { status.textContent = 'Please enter an email.'; status.className = 'user-login-status error'; status.style.display = ''; return; }
-        if (!supabaseClient) { status.textContent = 'Sign-in is not available right now.'; status.className = 'user-login-status error'; status.style.display = ''; return; }
 
         status.textContent = 'Sending magic link...';
         status.className = 'user-login-status';
         status.style.display = '';
 
-        const { error } = await supabaseClient.auth.signInWithOtp({
-            email,
-            options: { emailRedirectTo: window.location.href.split('?')[0] }
-        });
-
-        if (error) {
-            status.textContent = error.message;
+        try {
+            const res = await fetch(`${SUPABASE_URL}/auth/v1/magiclink`, {
+                method: 'POST',
+                headers: { apikey: ANON_KEY, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, options: { emailRedirectTo: window.location.href.split('#')[0].split('?')[0] } }),
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                status.textContent = err.msg || err.error_description || 'Failed to send magic link.';
+                status.className = 'user-login-status error';
+            } else {
+                status.textContent = 'Check your email for a magic link to sign in!';
+                status.className = 'user-login-status success';
+            }
+        } catch (e) {
+            status.textContent = 'Network error: ' + e.message;
             status.className = 'user-login-status error';
-        } else {
-            status.textContent = 'Check your email for a magic link to sign in!';
-            status.className = 'user-login-status success';
         }
     }
 
     async function doUserLogout() {
-        if (supabaseClient) await supabaseClient.auth.signOut();
+        if (authAccessToken) {
+            try {
+                await fetch(`${SUPABASE_URL}/auth/v1/logout`, {
+                    method: 'POST',
+                    headers: { apikey: ANON_KEY, Authorization: `Bearer ${authAccessToken}` },
+                });
+            } catch (_) {}
+        }
+        authAccessToken = null;
+        authRefreshToken = null;
+        localStorage.removeItem('bwai-auth-token');
+        localStorage.removeItem('bwai-auth-refresh');
         currentUser = null;
         currentProfile = null;
         userLifeList = [];
         userFollowedFeeders = [];
+        isModAsCommunityUser = false;
         updateCommunityUI();
         renderFeed();
         showToast('Signed out');
@@ -6828,28 +6924,34 @@
         const status = document.getElementById('user-profile-status');
 
         if (!name) { status.textContent = 'Display name is required.'; status.className = 'user-login-status error'; status.style.display = ''; return; }
-        if (!supabaseClient) return;
+        if (!authAccessToken) { status.textContent = 'Sign in required.'; status.className = 'user-login-status error'; status.style.display = ''; return; }
 
-        const { error } = await supabaseClient
-            .from('user_profiles')
-            .upsert({ id: currentUser.id, display_name: name, bio });
-
-        if (error) {
-            status.textContent = error.message;
-            status.className = 'user-login-status error';
-            status.style.display = '';
-        } else {
+        try {
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/user_profiles?id=eq.${currentUser.id}`, {
+                method: 'PATCH',
+                headers: sbHeaders(true),
+                body: JSON.stringify({ display_name: name, bio }),
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.message || 'Failed to save');
+            }
             currentProfile = { ...currentProfile, display_name: name, bio };
             updateCommunityUI();
             closeUserProfile();
             showToast('Profile saved');
+        } catch (e) {
+            status.textContent = e.message;
+            status.className = 'user-login-status error';
+            status.style.display = '';
         }
     }
 
     // ── Life list ────────────────────────────────────────────
     async function loadUserLifeList() {
-        if (!currentUser || !supabaseClient) { userLifeList = []; return; }
-        const { data } = await supabaseClient.rpc('get_life_list', { p_user_id: currentUser.id });
+        if (!currentUser) { userLifeList = []; return; }
+        if (isModAsCommunityUser) { userLifeList = []; return; }
+        const { data } = await sbRpc('get_life_list', { p_user_id: currentUser.id }, true);
         if (Array.isArray(data)) {
             userLifeList = data.map(item => item.species);
         }
@@ -6857,21 +6959,20 @@
 
     async function toggleLifeListSpecies(species, detectionId, btn) {
         if (!currentUser) { openUserLogin(); return; }
-        if (!supabaseClient) return;
         if (isModAsCommunityUser) { showToast('To use life lists, do a one-time Sign In with your email (magic link).'); return; }
 
         const isOnList = userLifeList.includes(species);
         if (isOnList) {
-            await supabaseClient.rpc('remove_from_life_list', { p_species: species });
+            await sbRpc('remove_from_life_list', { p_species: species }, true);
             userLifeList = userLifeList.filter(s => s !== species);
             if (btn) { btn.classList.remove('on-list'); btn.textContent = '+ Life List'; btn.title = 'Add to life list'; }
             showToast(`${species} removed from life list`);
         } else {
-            await supabaseClient.rpc('add_to_life_list', {
+            await sbRpc('add_to_life_list', {
                 p_species: species,
                 p_detection_id: detectionId || null,
                 p_notes: ''
-            });
+            }, true);
             userLifeList.push(species);
             if (btn) { btn.classList.add('on-list'); btn.textContent = '✓ Listed'; btn.title = 'Remove from life list'; }
             showToast(`${species} added to life list!`);
@@ -6899,9 +7000,8 @@
     async function loadAndRenderLifeList(userId, isOwn) {
         const content = document.getElementById('life-list-content');
         content.innerHTML = '<div class="life-list-empty">Loading...</div>';
-        if (!supabaseClient) { content.innerHTML = '<div class="life-list-empty">Not available.</div>'; return; }
 
-        const { data } = await supabaseClient.rpc('get_life_list', { p_user_id: userId });
+        const { data } = await sbRpc('get_life_list', { p_user_id: userId }, false);
         const list = data || [];
         document.getElementById('life-list-count').textContent = `${list.length} species`;
 
@@ -6920,8 +7020,7 @@
     }
 
     async function removeFromLifeListModal(species, btn) {
-        if (!supabaseClient) return;
-        await supabaseClient.rpc('remove_from_life_list', { p_species: species });
+        await sbRpc('remove_from_life_list', { p_species: species }, true);
         userLifeList = userLifeList.filter(s => s !== species);
         btn.closest('.life-list-item').remove();
         const count = document.querySelectorAll('.life-list-item').length;
@@ -6944,8 +7043,9 @@
 
     // ── Follow a Feeder ──────────────────────────────────────
     async function loadUserFollowedFeeders() {
-        if (!currentUser || !supabaseClient) { userFollowedFeeders = []; return; }
-        const { data } = await supabaseClient.rpc('get_followed_feeders');
+        if (!currentUser) { userFollowedFeeders = []; return; }
+        if (isModAsCommunityUser) { userFollowedFeeders = []; return; }
+        const { data } = await sbRpc('get_followed_feeders', {}, true);
         if (Array.isArray(data)) {
             userFollowedFeeders = data.map(f => f.feeder_id);
         }
@@ -6953,10 +7053,9 @@
 
     async function toggleFollowFeeder(feederId, btn) {
         if (!currentUser) { openUserLogin(); return; }
-        if (!supabaseClient) return;
         if (isModAsCommunityUser) { showToast('To follow feeders, do a one-time Sign In with your email (magic link).'); return; }
 
-        const { data } = await supabaseClient.rpc('toggle_feeder_follow', { p_feeder_id: feederId });
+        const { data } = await sbRpc('toggle_feeder_follow', { p_feeder_id: feederId }, true);
         if (data?.following) {
             userFollowedFeeders.push(feederId);
             if (btn) { btn.classList.add('following'); btn.textContent = '★ Following'; }
@@ -6972,9 +7071,9 @@
     let activeCommentDetectionId = null;
 
     async function loadCommentCounts(detectionIds) {
-        if (!detectionIds.length || !supabaseClient) return;
+        if (!detectionIds.length) return;
         try {
-            const { data } = await supabaseClient.rpc('get_comment_counts', { p_detection_ids: detectionIds });
+            const { data } = await sbRpc('get_comment_counts', { p_detection_ids: detectionIds }, false);
             if (data && typeof data === 'object') {
                 Object.assign(commentCounts, data);
             }
@@ -7000,9 +7099,8 @@
         const list = document.getElementById('comments-list');
         const compose = document.getElementById('comment-compose-area');
         list.innerHTML = '<div style="text-align:center;color:var(--color-gray-500);padding:1rem;">Loading...</div>';
-        if (!supabaseClient) { list.innerHTML = '<div style="text-align:center;color:var(--color-gray-500);padding:1rem;">Comments not available yet.</div>'; compose.innerHTML = ''; return; }
 
-        const { data } = await supabaseClient.rpc('get_comments', { p_detection_id: detectionId });
+        const { data } = await sbRpc('get_comments', { p_detection_id: detectionId }, false);
         const comments = data || [];
 
         if (!comments.length) {
@@ -7073,7 +7171,7 @@
 
     async function submitComment(detectionId) {
         const input = document.getElementById('comment-input');
-        if (!input || !currentUser || !supabaseClient) return;
+        if (!input || !currentUser) return;
         const body = input.value.trim();
         if (!body) return;
 
@@ -7086,16 +7184,16 @@
         const btn = input.nextElementSibling;
         btn.disabled = true;
 
-        const { data, error } = await supabaseClient.rpc('post_comment', {
+        const { data, error } = await sbRpc('post_comment', {
             p_detection_id: detectionId,
             p_body: body,
             p_parent_id: parentId
-        });
+        }, true);
 
         btn.disabled = false;
 
         if (error) {
-            showToast('Failed to post comment: ' + error.message);
+            showToast('Failed to post comment: ' + (error.message || JSON.stringify(error)));
         } else {
             input.value = '';
             input.dataset.parentId = '';
@@ -7110,8 +7208,7 @@
     }
 
     async function deleteComment(commentId, detectionId) {
-        if (!supabaseClient) return;
-        await supabaseClient.rpc('delete_comment', { p_comment_id: commentId });
+        await sbRpc('delete_comment', { p_comment_id: commentId }, true);
         commentCounts[detectionId] = Math.max(0, (commentCounts[detectionId] || 1) - 1);
         loadAndRenderComments(detectionId);
     }
@@ -7139,7 +7236,6 @@
         const reason = document.getElementById('flag-reason').value;
         const details = document.getElementById('flag-details').value.trim();
         const status = document.getElementById('flag-status');
-        if (!supabaseClient) { status.textContent = 'Not available yet.'; status.className = 'user-login-status error'; status.style.display = ''; return; }
 
         if (isModAsCommunityUser) {
             // Moderators can already edit/delete detections directly
@@ -7148,14 +7244,14 @@
             return;
         }
 
-        const { data, error } = await supabaseClient.rpc('flag_detection', {
+        const { data, error } = await sbRpc('flag_detection', {
             p_detection_id: detectionId,
             p_reason: reason,
             p_details: details
-        });
+        }, true);
 
         if (error) {
-            status.textContent = error.message;
+            status.textContent = error.message || JSON.stringify(error);
             status.className = 'user-login-status error';
             status.style.display = '';
         } else {
