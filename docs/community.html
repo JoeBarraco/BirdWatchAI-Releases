@@ -6825,6 +6825,19 @@
             if (res.ok) {
                 const rows = await res.json();
                 currentProfile = rows[0] || null;
+                // Auto-create profile if it doesn't exist yet
+                if (!currentProfile && currentUser.email) {
+                    const displayName = currentUser.email.split('@')[0] || 'Birder';
+                    const createRes = await fetch(`${SUPABASE_URL}/rest/v1/user_profiles`, {
+                        method: 'POST',
+                        headers: { ...sbHeaders(true), Prefer: 'return=representation' },
+                        body: JSON.stringify({ id: currentUser.id, display_name: displayName, bio: '' }),
+                    });
+                    if (createRes.ok) {
+                        const created = await createRes.json();
+                        currentProfile = created[0] || { id: currentUser.id, display_name: displayName, bio: '' };
+                    }
+                }
             }
         } catch (_) {}
     }

@@ -39,6 +39,10 @@ create policy "Users can update own profile" on user_profiles
   for update using (auth.uid() = id);
 
 -- Auto-create a profile row when a new user signs up
+-- NOTE: If this trigger causes "Database error saving new user",
+-- drop it and let the app handle profile creation instead:
+--   drop trigger if exists on_auth_user_created on auth.users;
+-- The app will auto-create the profile on first login.
 create or replace function handle_new_user()
 returns trigger
 language plpgsql security definer
@@ -51,10 +55,17 @@ begin
 end;
 $$;
 
-drop trigger if exists on_auth_user_created on auth.users;
-create trigger on_auth_user_created
-  after insert on auth.users
-  for each row execute function handle_new_user();
+-- Disabled by default — uncomment if your Supabase instance supports it.
+-- Some configurations block triggers on auth.users.
+-- drop trigger if exists on_auth_user_created on auth.users;
+-- create trigger on_auth_user_created
+--   after insert on auth.users
+--   for each row execute function handle_new_user();
+
+-- Also allow service role to insert profiles (for app-side creation)
+drop policy if exists "Service role can create profiles" on user_profiles;
+create policy "Service role can create profiles" on user_profiles
+  to service_role for insert with check (true);
 
 
 -- ── 2. Life lists (species a user has seen) ──────────────────
