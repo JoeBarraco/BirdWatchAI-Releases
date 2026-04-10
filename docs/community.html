@@ -2628,7 +2628,7 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
-<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
     const SUPABASE_URL = 'https://lsamggztfizmkyljdgwq.supabase.co';
     const ANON_KEY     = 'sb_publishable_-80LQjkx2s82XnURj2DfQQ_d7ARz3js';
@@ -2636,15 +2636,18 @@
     // ── Supabase Auth client (for community user accounts) ────
     let supabaseClient = null;
     try {
-        if (typeof supabase !== 'undefined' && supabase.createClient) {
-            supabaseClient = supabase.createClient(SUPABASE_URL, ANON_KEY);
-        }
-    } catch (_) { /* Supabase JS not loaded — community features disabled */ }
-    let currentUser = null;       // auth.users row
-    let currentProfile = null;    // user_profiles row
+        // The UMD build may expose as window.supabase or window.Supabase
+        const sbLib = (typeof supabase !== 'undefined' && supabase.createClient) ? supabase
+                    : (typeof Supabase !== 'undefined' && Supabase.createClient) ? Supabase
+                    : null;
+        if (sbLib) supabaseClient = sbLib.createClient(SUPABASE_URL, ANON_KEY);
+    } catch (e) { console.warn('Supabase JS client init failed:', e); }
+    let currentUser = null;       // auth.users row or synthetic mod user
+    let currentProfile = null;    // user_profiles row or synthetic mod profile
     let userLifeList = [];        // cached life list species
     let userFollowedFeeders = []; // cached followed feeder IDs
     let commentCounts = {};       // { detectionId: count }
+    let isModAsCommunityUser = false; // true when mod is bridged as community user
     let REFRESH_SECS = parseInt(localStorage.getItem('bwai-refresh-interval') ?? '30', 10);
 
 
@@ -6083,6 +6086,17 @@
         };
     }
 
+    // Bridge moderator/admin session into a community user so they
+    // can use life lists, comments, follow feeders, etc. without
+    // needing a separate magic-link sign-in.
+    function bridgeModAsCommunityUser(email, role, modId) {
+        const label = role === 'admin' ? 'Admin' : 'Moderator';
+        currentUser = { id: modId, email: email, role: 'moderator' };
+        currentProfile = { id: modId, display_name: `${label}: ${email.split('@')[0]}`, bio: '' };
+        isModAsCommunityUser = true;
+        updateCommunityUI();
+    }
+
     function updateModUI() {
         const loggedIn = isModLoggedIn();
         const admin = isAdmin();
@@ -6111,6 +6125,15 @@
             sessionStorage.removeItem('bwai-mod-user');
             sessionStorage.removeItem('bwai-mod-pass');
             sessionStorage.removeItem('bwai-mod-role');
+            // Clear bridged community user if it came from mod login
+            if (isModAsCommunityUser) {
+                currentUser = null;
+                currentProfile = null;
+                userLifeList = [];
+                userFollowedFeeders = [];
+                isModAsCommunityUser = false;
+                updateCommunityUI();
+            }
             updateModUI();
             showToast('Moderator logged out');
             renderFeed();
@@ -6150,6 +6173,8 @@
             sessionStorage.setItem('bwai-mod-user', email);
             sessionStorage.setItem('bwai-mod-pass', password);
             sessionStorage.setItem('bwai-mod-role', data.role);
+            // Bridge: give moderators community user access automatically
+            bridgeModAsCommunityUser(email, data.role, data.id);
             updateModUI();
             closeModLogin();
             showToast(`Logged in as ${data.role}: ${email}`);
@@ -6694,10 +6719,11 @@
             supabaseClient.auth.onAuthStateChange(async (event, session) => {
                 if (session?.user) {
                     currentUser = session.user;
+                    isModAsCommunityUser = false; // real auth overrides mod bridge
                     await loadUserProfile();
                     await loadUserLifeList();
                     await loadUserFollowedFeeders();
-                } else {
+                } else if (!isModAsCommunityUser) {
                     currentUser = null;
                     currentProfile = null;
                     userLifeList = [];
@@ -6832,6 +6858,7 @@
     async function toggleLifeListSpecies(species, detectionId, btn) {
         if (!currentUser) { openUserLogin(); return; }
         if (!supabaseClient) return;
+        if (isModAsCommunityUser) { showToast('To use life lists, do a one-time Sign In with your email (magic link).'); return; }
 
         const isOnList = userLifeList.includes(species);
         if (isOnList) {
@@ -6927,6 +6954,7 @@
     async function toggleFollowFeeder(feederId, btn) {
         if (!currentUser) { openUserLogin(); return; }
         if (!supabaseClient) return;
+        if (isModAsCommunityUser) { showToast('To follow feeders, do a one-time Sign In with your email (magic link).'); return; }
 
         const { data } = await supabaseClient.rpc('toggle_feeder_follow', { p_feeder_id: feederId });
         if (data?.following) {
@@ -7049,6 +7077,11 @@
         const body = input.value.trim();
         if (!body) return;
 
+        if (isModAsCommunityUser) {
+            showToast('To post comments, do a one-time Sign In with your email (magic link).');
+            return;
+        }
+
         const parentId = input.dataset.parentId || null;
         const btn = input.nextElementSibling;
         btn.disabled = true;
@@ -7107,6 +7140,13 @@
         const details = document.getElementById('flag-details').value.trim();
         const status = document.getElementById('flag-status');
         if (!supabaseClient) { status.textContent = 'Not available yet.'; status.className = 'user-login-status error'; status.style.display = ''; return; }
+
+        if (isModAsCommunityUser) {
+            // Moderators can already edit/delete detections directly
+            showToast('As a moderator you can edit or delete detections directly.');
+            closeFlag();
+            return;
+        }
 
         const { data, error } = await supabaseClient.rpc('flag_detection', {
             p_detection_id: detectionId,
@@ -7192,9 +7232,18 @@
 
     // Restore moderator UI state on page load
     updateModUI();
+    // If a mod session exists, bridge them as a community user too
+    if (isModLoggedIn()) {
+        const email = sessionStorage.getItem('bwai-mod-user');
+        const role = sessionStorage.getItem('bwai-mod-role');
+        // Use the anonymous user ID as a stable ID for the bridged mod
+        bridgeModAsCommunityUser(email, role, ANON_USER_ID);
+    }
 
     // ── Init ─────────────────────────────────────────────────
     initCommunityAuth().then(() => {
+        // If Supabase Auth returned a real user, prefer that over the mod bridge
+        if (currentUser && !isModAsCommunityUser) updateCommunityUI();
         handleLifeListLink();
     });
     loadSeasonEarliest();
