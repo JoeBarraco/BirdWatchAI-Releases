@@ -7,17 +7,19 @@ const path = require('path');
 const fs   = require('fs');
 
 // ── Parse screensaver command-line args ────────────────────
-// Windows passes: /s (show), /c (configure), /p:<hwnd> (preview)
+// Windows passes: /s (show), /c:<hwnd> (configure), /p:<hwnd> (preview)
+// The :HWND suffix is a parent window handle — we match with startsWith.
 // We also accept bare flags for development: --screensaver, --config, --preview
 function parseMode() {
     const args = process.argv.slice(1).map(a => a.toLowerCase());
     for (const arg of args) {
-        if (arg === '/s' || arg === '--screensaver') return 'screensaver';
-        if (arg === '/c' || arg === '--config')      return 'config';
-        if (arg.startsWith('/p') || arg === '--preview') return 'preview';
+        if (arg.startsWith('/s') || arg === '--screensaver') return 'screensaver';
+        if (arg.startsWith('/c') || arg === '--config')      return 'config';
+        if (arg.startsWith('/p') || arg === '--preview')     return 'preview';
     }
-    // Default to screensaver mode when launched without args
-    return 'screensaver';
+    // Default to config mode when launched without args (matches Windows convention
+    // for double-clicking a .scr file)
+    return 'config';
 }
 
 // ── Settings persistence ───────────────────────────────────
