@@ -210,12 +210,13 @@ function stopBirdCall(btn) {
 }
 
 // ── Emoji reactions (Supabase-backed, shared across users) ──
-const EMOJI_MAP = { '😮': 'wow', '❤️': 'liked', '🎉': 'celebrate', '🦅': 'bird' };
-const EMOJI_REVERSE = Object.fromEntries(Object.entries(EMOJI_MAP).map(([k,v]) => [v,k]));
-const EMOJI_LIST = ['😮','❤️','🎉','🦅'];
+const EMOJI_MAP = { '❤️': 'liked' };
+const EMOJI_REVERSE = { 'liked': '❤️' };
+const EMOJI_LIST = ['❤️'];
 
-// Anonymous user ID (persisted in localStorage)
-function getAnonUserId() {
+// Returns the user ID to use for reactions — real auth ID if signed in, else anon
+function getReactionUserId() {
+    if (currentUser && currentUser.id) return currentUser.id;
     let id = localStorage.getItem('bwai-user-id');
     if (!id) {
         id = crypto.randomUUID();
@@ -223,7 +224,6 @@ function getAnonUserId() {
     }
     return id;
 }
-const ANON_USER_ID = getAnonUserId();
 
 // In-memory cache of reaction data: { detectionId: { emojiKey: { count, reacted } } }
 let reactionCache = {};
@@ -266,7 +266,7 @@ async function loadReactionCounts(detectionIds) {
                 Authorization: `Bearer ${ANON_KEY}`,
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ p_detection_ids: detectionIds, p_user_id: ANON_USER_ID }),
+            body: JSON.stringify({ p_detection_ids: detectionIds, p_user_id: getReactionUserId() }),
         });
         if (!res.ok) return;
         const data = await res.json();
@@ -308,6 +308,13 @@ async function toggleReaction(detectionId, emoji, btn) {
     const emojiKey = EMOJI_MAP[emoji];
     if (!emojiKey) return;
 
+    // Require signed-in user
+    if (!currentUser) {
+        showToast('Sign in to like detections');
+        openUserLogin();
+        return;
+    }
+
     // Optimistic UI update
     const wasReacted = btn.classList.contains('reacted');
     const cached = reactionCache[detectionId]?.[emojiKey];
@@ -333,7 +340,7 @@ async function toggleReaction(detectionId, emoji, btn) {
                 Authorization: `Bearer ${ANON_KEY}`,
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ p_detection_id: detectionId, p_user_id: ANON_USER_ID, p_emoji: emojiKey }),
+            body: JSON.stringify({ p_detection_id: detectionId, p_user_id: getReactionUserId(), p_emoji: emojiKey }),
         });
         if (res.ok) {
             const serverData = await res.json();
@@ -360,6 +367,72 @@ function updateCardReactions(detectionId) {
         btn.classList.toggle('reacted', reacted);
         btn.textContent = emoji + (count ? ' ' + count : '');
     });
+}
+
+// ── "Liked by" popover ──────────────────────────────────────
+let likersCache = {};
+
+async function showLikers(detectionId, anchor) {
+    // Close any existing popover
+    const existing = document.getElementById('likers-popover');
+    if (existing) { existing.remove(); return; }
+
+    const popover = document.createElement('div');
+    popover.id = 'likers-popover';
+    popover.className = 'likers-popover';
+    popover.innerHTML = '<div class="likers-loading">Loading…</div>';
+    anchor.style.position = 'relative';
+    anchor.appendChild(popover);
+
+    // Close on outside click
+    const closeHandler = e => {
+        if (!popover.contains(e.target) && e.target !== anchor) {
+            popover.remove();
+            document.removeEventListener('click', closeHandler, true);
+        }
+    };
+    setTimeout(() => document.addEventListener('click', closeHandler, true), 0);
+
+    try {
+        // Fetch reaction records for this detection
+        const rxRes = await fetch(
+            `${SUPABASE_URL}/rest/v1/detection_reactions?detection_id=eq.${detectionId}&emoji=eq.liked&select=user_id,created_at&order=created_at.desc`,
+            { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` } }
+        );
+        if (!rxRes.ok) throw new Error('fetch failed');
+        const reactions = await rxRes.json();
+
+        if (!reactions.length) {
+            popover.innerHTML = '<div class="likers-empty">No likes yet</div>';
+            return;
+        }
+
+        // Fetch user profiles for the user IDs
+        const userIds = [...new Set(reactions.map(r => r.user_id))];
+        const profileRes = await fetch(
+            `${SUPABASE_URL}/rest/v1/user_profiles?id=in.(${userIds.map(id => `"${id}"`).join(',')})&select=id,display_name`,
+            { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` } }
+        );
+        const profiles = profileRes.ok ? await profileRes.json() : [];
+        const nameMap = {};
+        profiles.forEach(p => { nameMap[p.id] = p.display_name; });
+
+        // Build list
+        const names = reactions.map(r => nameMap[r.user_id] || null).filter(Boolean);
+        const anonCount = reactions.length - names.length;
+
+        let html = '<div class="likers-list">';
+        if (names.length) {
+            html += names.map(n => `<div class="liker-name">❤️ ${n}</div>`).join('');
+        }
+        if (anonCount > 0) {
+            html += `<div class="liker-anon">${anonCount} anonymous like${anonCount > 1 ? 's' : ''}</div>`;
+        }
+        html += '</div>';
+        popover.innerHTML = html;
+    } catch {
+        popover.innerHTML = '<div class="likers-empty">Could not load likes</div>';
+    }
 }
 
 // ── Gallery view ────────────────────────────────────────────

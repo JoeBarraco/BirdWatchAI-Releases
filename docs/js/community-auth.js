@@ -280,22 +280,27 @@ function openDetailModal(id) {
     aiResearchBtn.onclick = () => { closeDetailModal(); openAIResearch(d.species); };
     actions.appendChild(aiResearchBtn);
 
-    // Reactions in detail modal
+    // Reactions in detail modal (single ❤️ like)
     const rxDiv = document.createElement('div');
     rxDiv.className = 'card-reactions';
     rxDiv.style.marginTop = '0.75rem';
     const reactions = getReactions(d.id);
-    EMOJI_LIST.forEach(emoji => {
-        const count = reactions[emoji] || 0;
-        const reacted = isReacted(d.id, emoji);
-        const btn = document.createElement('button');
-        btn.className = 'reaction-btn' + (reacted ? ' reacted' : '');
-        btn.dataset.reactionId = d.id;
-        btn.dataset.emoji = emoji;
-        btn.textContent = emoji + (count ? ' ' + count : '');
-        btn.onclick = () => toggleReaction(d.id, emoji, btn);
-        rxDiv.appendChild(btn);
-    });
+    const likeCount = reactions['❤️'] || 0;
+    const likeReacted = isReacted(d.id, '❤️');
+    const likeBtn = document.createElement('button');
+    likeBtn.className = 'reaction-btn' + (likeReacted ? ' reacted' : '');
+    likeBtn.dataset.reactionId = d.id;
+    likeBtn.dataset.emoji = '❤️';
+    likeBtn.textContent = '❤️' + (likeCount ? ' ' + likeCount : '');
+    likeBtn.onclick = () => toggleReaction(d.id, '❤️', likeBtn);
+    rxDiv.appendChild(likeBtn);
+    if (likeCount) {
+        const likersBtn = document.createElement('button');
+        likersBtn.className = 'likers-btn';
+        likersBtn.textContent = 'Liked by…';
+        likersBtn.onclick = () => showLikers(d.id, rxDiv);
+        rxDiv.appendChild(likersBtn);
+    }
     actions.parentElement.appendChild(rxDiv);
 
     if (isModLoggedIn()) {
@@ -1592,7 +1597,7 @@ if (isModLoggedIn()) {
     const email = sessionStorage.getItem('bwai-mod-user');
     const role = sessionStorage.getItem('bwai-mod-role');
     // Use the anonymous user ID as a stable ID for the bridged mod
-    bridgeModAsCommunityUser(email, role, ANON_USER_ID);
+    bridgeModAsCommunityUser(email, role, getReactionUserId());
 }
 
 // ── Init ─────────────────────────────────────────────────
