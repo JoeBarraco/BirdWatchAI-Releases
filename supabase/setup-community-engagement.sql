@@ -65,7 +65,7 @@ $$;
 -- Also allow service role to insert profiles (for app-side creation)
 drop policy if exists "Service role can create profiles" on user_profiles;
 create policy "Service role can create profiles" on user_profiles
-  to service_role for insert with check (true);
+  for insert to service_role with check (true);
 
 
 -- ── 2. Life lists (species a user has seen) ──────────────────
