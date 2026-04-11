@@ -1,26 +1,26 @@
-// Post-build script: rename the portable .exe to .scr for Windows screensaver registration.
-// Windows treats .scr files identically to .exe but recognises them as screensavers
-// in the Personalization > Lock screen > Screen saver settings panel.
+// Post-build script: rename the main .exe to .scr inside the unpacked build directory.
+// The `dir` target produces dist/win-unpacked/ with the real Electron exe + supporting
+// DLLs/resources.  Renaming the exe to .scr is all Windows needs to treat it as a
+// screensaver — it's the same PE format.
 
 const fs   = require('fs');
 const path = require('path');
-const glob = require('path');
 
-const distDir = path.join(__dirname, '..', 'dist');
+const unpackedDir = path.join(__dirname, '..', 'dist', 'win-unpacked');
 
-if (!fs.existsSync(distDir)) {
-    console.log('dist/ not found — run "npm run build" first.');
+if (!fs.existsSync(unpackedDir)) {
+    console.log('dist/win-unpacked/ not found — run "npm run build" first.');
     process.exit(1);
 }
 
-const files = fs.readdirSync(distDir);
+const files = fs.readdirSync(unpackedDir);
 let renamed = false;
 
 for (const file of files) {
     if (file.endsWith('.exe') && file.toLowerCase().includes('screensaver')) {
-        const oldPath = path.join(distDir, file);
+        const oldPath = path.join(unpackedDir, file);
         const newName = file.replace(/\.exe$/i, '.scr');
-        const newPath = path.join(distDir, newName);
+        const newPath = path.join(unpackedDir, newName);
 
         fs.renameSync(oldPath, newPath);
         console.log(`Renamed: ${file} -> ${newName}`);
@@ -29,6 +29,11 @@ for (const file of files) {
 }
 
 if (!renamed) {
-    console.log('No matching .exe found in dist/. Available files:');
+    console.log('No screensaver .exe found in dist/win-unpacked/. Files:');
     files.forEach(f => console.log(`  ${f}`));
+    process.exit(1);
 }
+
+console.log('');
+console.log('Build complete!  Next steps:');
+console.log('  Run scripts\\install.bat to install the screensaver.');
