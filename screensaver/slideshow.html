@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BirdWatchAI Screensaver</title>
+    <link rel="stylesheet" href="slideshow.css">
+</head>
+<body>
+    <div id="slideshow" data-transition="fade">
+        <!-- Stage: two alternating images for crossfade -->
+        <div class="slideshow-stage">
+            <img id="slide-a" class="slideshow-slide" alt="" draggable="false">
+            <img id="slide-b" class="slideshow-slide" alt="" draggable="false">
+        </div>
+
+        <!-- Caption overlay (species name + feeder) -->
+        <div id="slideshow-chrome" class="slideshow-chrome">
+            <span id="slideshow-caption" class="slideshow-caption"></span>
+            <span id="slideshow-counter" class="slideshow-counter"></span>
+        </div>
+
+        <!-- Progress bar -->
+        <div id="slideshow-bar" class="slideshow-bar">
+            <div class="slideshow-progress">
+                <div id="slideshow-progress-fill" class="slideshow-progress-fill"></div>
+            </div>
+        </div>
+
+        <!-- Loading state -->
+        <div id="slideshow-loading" class="slideshow-loading">
+            <div class="loading-spinner"></div>
+            <p>Loading bird photos...</p>
+        </div>
+    </div>
+
+    <script src="slideshow.js"></script>
+</body>
+</html>
