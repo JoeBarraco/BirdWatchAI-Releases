@@ -90,24 +90,32 @@ if not defined CSC (
     goto :register
 )
 
-REM Compile the launcher
+REM Compile the launcher (64-bit PE with version info for System32)
 set "LAUNCHER_SRC=%SCRIPT_DIR%Launcher.cs"
 set "LAUNCHER_OUT=%TEMP%\%LAUNCHER_NAME%"
 
-"%CSC%" /nologo /optimize /target:winexe /out:"%LAUNCHER_OUT%" "%LAUNCHER_SRC%" >nul 2>&1
+echo       Using: %CSC%
+"%CSC%" /nologo /optimize /platform:x64 /target:winexe /out:"%LAUNCHER_OUT%" "%LAUNCHER_SRC%"
 if errorlevel 1 (
     echo  WARNING: Compilation failed. Skipping System32 launcher.
     goto :register
 )
 
 REM Copy launcher to System32
-copy /y "%LAUNCHER_OUT%" "%SystemRoot%\System32\%LAUNCHER_NAME%" >nul 2>&1
+copy /y "%LAUNCHER_OUT%" "%SystemRoot%\System32\%LAUNCHER_NAME%"
 if errorlevel 1 (
     echo  WARNING: Could not copy launcher to System32.
     goto :register
 )
 del /q "%LAUNCHER_OUT%" >nul 2>&1
-echo       Done.
+
+REM Verify the file actually landed in System32
+if not exist "%SystemRoot%\System32\%LAUNCHER_NAME%" (
+    echo  WARNING: Launcher not found in System32 after copy.
+    echo  Windows Defender may have quarantined it.
+    goto :register
+)
+echo       Verified: %SystemRoot%\System32\%LAUNCHER_NAME%
 
 REM ── Step 5: Register in the registry ─────────────────────────
 :register
