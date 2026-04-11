@@ -40,6 +40,12 @@ set "LAUNCHER_NAME=BirdWatchAI.scr"
 
 REM ── Step 1: Clean up old entries ─────────────────────────────
 echo [1/5] Cleaning up old installations...
+REM Kill any running screensaver or preview processes that lock the .scr
+taskkill /f /im "%LAUNCHER_NAME%" >nul 2>&1
+taskkill /f /im "BirdWatchAI Screensaver.scr" >nul 2>&1
+taskkill /f /im "BirdWatchAI Screensaver.exe" >nul 2>&1
+REM Brief pause to let file handles release
+ping -n 2 127.0.0.1 >nul
 del /q "%SystemRoot%\System32\BirdWatchAI*Screensaver*.scr" >nul 2>&1
 del /q "%SystemRoot%\System32\PBirdWatchAI*Screensaver*.scr" >nul 2>&1
 del /q "%SystemRoot%\System32\%LAUNCHER_NAME%" >nul 2>&1
@@ -63,7 +69,7 @@ echo [3/5] Installing to %INSTALL_DIR%...
 
 if exist "%INSTALL_DIR%" rmdir /s /q "%INSTALL_DIR%"
 
-xcopy "%BUILD_DIR%" "%INSTALL_DIR%\" /s /e /i /y
+xcopy "%BUILD_DIR%" "%INSTALL_DIR%\" /s /e /i /q /y
 if errorlevel 1 (
     echo  ERROR: Failed to copy files to %INSTALL_DIR%
     pause
