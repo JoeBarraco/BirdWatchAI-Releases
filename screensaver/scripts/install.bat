@@ -72,10 +72,11 @@ echo  ============================================
 echo.
 echo   Location: %INSTALL_DIR%
 echo.
-echo   Opening Screen Saver Settings so you
-echo   can set your preferred wait time...
+echo   Opening Screen Saver Settings...
 echo.
 
-rundll32.exe desk.cpl,InstallScreenSaver "%SCR_PATH%"
+REM Open Screen Saver Settings dialog directly (without InstallScreenSaver
+REM which tries to copy the .scr to System32 and fails for Electron apps)
+rundll32.exe shell32.dll,Control_RunDLL desk.cpl,,1
 
 pause
