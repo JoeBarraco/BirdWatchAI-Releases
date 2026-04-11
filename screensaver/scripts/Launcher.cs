@@ -25,7 +25,9 @@ class BirdWatchAIScreensaverLauncher
         string scrPath = null;
         try
         {
-            using (var key = Registry.CurrentUser.OpenSubKey(@"Software\BirdWatchAI\Screensaver"))
+            // Try HKLM first (written by the admin installer), fall back to HKCU
+            using (var key = Registry.LocalMachine.OpenSubKey(@"Software\BirdWatchAI\Screensaver")
+                          ?? Registry.CurrentUser.OpenSubKey(@"Software\BirdWatchAI\Screensaver"))
             {
                 if (key != null)
                     scrPath = key.GetValue("Path") as string;

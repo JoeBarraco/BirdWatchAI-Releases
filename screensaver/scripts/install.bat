@@ -121,12 +121,9 @@ REM ── Step 5: Register in the registry ────────────
 :register
 echo [5/5] Registering screensaver...
 
-REM Store the real path so the launcher can find the Electron app
-reg add "HKCU\Software\BirdWatchAI\Screensaver" /v Path /t REG_SZ /d "%SCR_PATH%" /f >nul 2>&1
-
-REM Also set as the active screensaver
-reg add "HKCU\Control Panel\Desktop" /v SCRNSAVE.EXE /t REG_SZ /d "%SystemRoot%\System32\%LAUNCHER_NAME%" /f >nul 2>&1
-reg add "HKCU\Control Panel\Desktop" /v ScreenSaveActive /t REG_SZ /d 1 /f >nul 2>&1
+REM Store the real path in HKLM so ALL users can find the Electron app
+REM (install.bat runs as admin, which may be a different user than the desktop session)
+reg add "HKLM\Software\BirdWatchAI\Screensaver" /v Path /t REG_SZ /d "%SCR_PATH%" /f >nul 2>&1
 
 echo       Done.
 echo.
