@@ -321,6 +321,7 @@ async function loadFeed(append = false) {
         if (currentView === 'map')     renderMap();
         if (currentView === 'gallery') renderGallery();
         if (currentView === 'stats')   renderFullStats();
+        if (typeof refreshSlideshowPhotos === 'function') refreshSlideshowPhotos();
         checkForRareNotifications(allDetections);
         renderBirdOfTheDay(allDetections);
         // Confetti for brand-new Very Rare detections (even without notifications)

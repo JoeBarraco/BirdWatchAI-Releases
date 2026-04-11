@@ -539,6 +539,8 @@ let slideshowSlideStart = 0;
 let slideshowActiveSlot = 0; // 0 = A, 1 = B
 let slideshowIdleTimer = null;
 let slideshowSlideToken = 0; // increments on each showSlideshowSlide call
+let slideshowSortMode = 'count';     // gallery-wide sort used to start the slideshow
+let slideshowFilterSpecies = null;   // non-null when viewing a single species
 
 const SLIDESHOW_TRANSITIONS = [
     { id: 'fade',     label: '✦ Fade'      },
@@ -550,12 +552,16 @@ const SLIDESHOW_TRANSITIONS = [
 let slideshowTransitionIdx = 0;
 
 function openSlideshowForSpecies(speciesData) {
+    slideshowSortMode = null;
+    slideshowFilterSpecies = speciesData.species;
     slideshowPhotos = speciesData.photos;
     startSlideshowPlayback();
 }
 
 async function startSlideshow() {
     const sort = document.getElementById('gallery-sort').value;
+    slideshowSortMode = sort;
+    slideshowFilterSpecies = null;
     // Ensure reaction totals are loaded when the user picked "Liked".
     if (sort === 'liked') await loadReactionTotals();
 
@@ -764,6 +770,71 @@ function closeSlideshow() {
 }
 
 document.getElementById('slideshow-close').addEventListener('click', closeSlideshow);
+
+// Silently merge new detections into a running slideshow after a feed refresh
+function refreshSlideshowPhotos() {
+    if (!slideshowModal.classList.contains('open')) return;
+    if (!slideshowPhotos.length) return;
+
+    const currentId = slideshowPhotos[slideshowIdx]?.id;
+    const sort = slideshowSortMode;
+
+    let newPhotos;
+
+    if (slideshowFilterSpecies) {
+        // Species-specific slideshow — only include photos of that species
+        const visible = applyClientFilters(allDetections);
+        newPhotos = visible
+            .filter(d => d.species === slideshowFilterSpecies && d.image_url)
+            .map(d => ({ id: d.id, url: d.image_url, date: d.detected_at, species: d.species }));
+        if (!newPhotos.length) return;
+    } else if (sort === 'liked') {
+        const species = buildGalleryData();
+        const all = [];
+        for (const s of species) for (const p of s.photos) all.push(p);
+        newPhotos = all.filter(p => (getReactionTotal(p.id) || 0) > 0);
+        newPhotos.sort((a, b) => getReactionTotal(b.id) - getReactionTotal(a.id));
+        if (!newPhotos.length) return;
+    } else {
+        const species = buildGalleryData();
+        if (sort === 'count')  species.sort((a, b) => b.photos.length - a.photos.length);
+        if (sort === 'alpha')  species.sort((a, b) => a.species.localeCompare(b.species));
+        if (sort === 'recent') species.sort((a, b) => (b.lastSeen || '').localeCompare(a.lastSeen || ''));
+        const all = [];
+        for (const s of species) for (const p of s.photos) all.push(p);
+        if (!all.length) return;
+
+        if (sort === 'random') {
+            // Keep existing order, append only genuinely new photos
+            const existingIds = new Set(slideshowPhotos.map(p => p.id));
+            const added = all.filter(p => !existingIds.has(p.id));
+            if (!added.length) return;
+            shuffleArray(added);
+            // Insert new photos after the current position so they appear naturally
+            slideshowPhotos.splice(slideshowIdx + 1, 0, ...added);
+            document.getElementById('slideshow-counter').textContent =
+                `${slideshowIdx + 1} / ${slideshowPhotos.length}`;
+            return;
+        }
+
+        newPhotos = all;
+    }
+
+    // Check if anything actually changed
+    if (newPhotos.length === slideshowPhotos.length &&
+        newPhotos.every((p, i) => p.id === slideshowPhotos[i].id)) return;
+
+    slideshowPhotos = newPhotos;
+
+    // Restore position to the photo we were showing
+    if (currentId) {
+        const newIdx = slideshowPhotos.findIndex(p => p.id === currentId);
+        slideshowIdx = newIdx >= 0 ? newIdx : Math.min(slideshowIdx, slideshowPhotos.length - 1);
+    }
+
+    document.getElementById('slideshow-counter').textContent =
+        `${slideshowIdx + 1} / ${slideshowPhotos.length}`;
+}
 document.getElementById('slideshow-prev').addEventListener('click', () => slideshowNav(-1));
 document.getElementById('slideshow-next').addEventListener('click', () => slideshowNav(1));
 // Reveal chrome on any pointer activity inside the modal
