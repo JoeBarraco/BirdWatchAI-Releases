@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BirdWatchAI - Automatic Bird Detection & Identification</title>
+    <script>
+    // If this page received a Supabase Auth callback, redirect to the community feed
+    if (window.location.hash && window.location.hash.includes('access_token=')) {
+        window.location.replace('docs/community.html' + window.location.hash);
+    }
+    </script>
     <meta name="description" content="Transform your backyard into a smart bird sanctuary. BirdWatchAI uses AI to automatically detect, identify, and notify you of bird visitors at your feeders.">
     
     <!-- Fonts -->
