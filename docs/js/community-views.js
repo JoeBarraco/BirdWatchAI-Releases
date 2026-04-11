@@ -61,11 +61,11 @@ function renderFeed() {
                 </div>
                 ${d.feeders?.display_name ? `<div class="card-feeder">📡 ${esc(d.feeders.display_name)}${currentUser && feederId ? `<button class="follow-feeder-btn${isFollowing ? ' following' : ''}" onclick="toggleFollowFeeder('${feederId}', this)">${isFollowing ? '★ Following' : '☆ Follow'}</button>` : ''}</div>` : ''}
                 <div class="card-reactions">
-                    ${EMOJI_LIST.map(emoji => {
-                        const count = reactions[emoji] || 0;
-                        const reacted = isReacted(d.id, emoji);
-                        return `<button class="reaction-btn${reacted ? ' reacted' : ''}" data-reaction-id="${d.id}" data-emoji="${emoji}">${emoji}${count ? ' ' + count : ''}</button>`;
-                    }).join('')}
+                    ${(() => {
+                        const count = reactions['❤️'] || 0;
+                        const reacted = isReacted(d.id, '❤️');
+                        return `<button class="reaction-btn${reacted ? ' reacted' : ''}" data-reaction-id="${d.id}" data-emoji="❤️">❤️${count ? ' ' + count : ''}</button>${count ? `<button class="likers-btn" onclick="showLikers('${d.id}', this.parentElement)" title="See who liked">Liked by…</button>` : ''}`;
+                    })()}
                 </div>
                 <div style="display:flex;align-items:center;flex-wrap:wrap;gap:0;">
                     ${d.video_url

@@ -1175,7 +1175,48 @@
             white-space: nowrap;
         }
         .reaction-btn:hover { border-color: var(--color-primary); background: var(--bg-card); }
-        .reaction-btn.reacted { border-color: var(--color-primary); background: rgba(45,90,61,0.08); font-weight: 600; }
+        .reaction-btn.reacted { border-color: #e74c3c; background: rgba(231,76,60,0.08); font-weight: 600; color: #e74c3c; }
+
+        .likers-btn {
+            font-size: 11px;
+            color: var(--color-gray-500);
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+            padding: 2px 4px;
+            text-decoration: underline dotted;
+        }
+        .likers-btn:hover { color: var(--color-primary); }
+
+        .likers-popover {
+            position: absolute;
+            bottom: calc(100% + 6px);
+            left: 0;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+            padding: 8px 12px;
+            min-width: 160px;
+            max-width: 260px;
+            z-index: 9000;
+            font-size: 0.8rem;
+        }
+        .likers-loading, .likers-empty {
+            color: var(--color-gray-500);
+            font-size: 0.8rem;
+            padding: 4px 0;
+        }
+        .liker-name {
+            padding: 3px 0;
+            color: var(--color-gray-700);
+        }
+        .liker-anon {
+            padding: 3px 0;
+            color: var(--color-gray-500);
+            font-style: italic;
+        }
 
         /* ── Species photo carousel modal ────────────────────── */
         #carousel-modal {
