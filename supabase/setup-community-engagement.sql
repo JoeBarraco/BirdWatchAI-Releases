@@ -562,3 +562,163 @@ $$;
 grant execute on function flag_detection(uuid, text, text) to authenticated;
 grant execute on function get_flag_queue(text, text) to anon;
 grant execute on function resolve_flag(text, text, uuid, text) to anon;
+
+
+-- ── 6. Moderator-accessible community functions ─────────────
+-- These allow moderators (who use a separate auth system) to use
+-- community features without needing a Supabase Auth session.
+-- They verify moderator credentials and accept a user_id parameter.
+
+-- Mod: add to life list
+drop function if exists mod_add_to_life_list(text, text, text, text, uuid, text);
+create or replace function mod_add_to_life_list(
+  p_email        text,
+  p_password     text,
+  p_user_id      text,
+  p_species      text,
+  p_detection_id uuid default null,
+  p_notes        text default ''
+)
+returns json
+language plpgsql security definer
+as $$
+declare
+  mod_id uuid;
+begin
+  select id into mod_id from moderators
+  where email = lower(trim(p_email))
+    and password_hash = crypt(p_password, password_hash);
+  if mod_id is null then raise exception 'Invalid moderator credentials'; end if;
+
+  insert into user_life_list (user_id, species, detection_id, notes, first_seen)
+  values (p_user_id::uuid, p_species, p_detection_id, p_notes, now())
+  on conflict (user_id, species) do nothing;
+
+  return json_build_object('species', p_species, 'added', true);
+end;
+$$;
+
+-- Mod: remove from life list
+drop function if exists mod_remove_from_life_list(text, text, text, text);
+create or replace function mod_remove_from_life_list(
+  p_email    text,
+  p_password text,
+  p_user_id  text,
+  p_species  text
+)
+returns boolean
+language plpgsql security definer
+as $$
+declare
+  mod_id uuid;
+begin
+  select id into mod_id from moderators
+  where email = lower(trim(p_email))
+    and password_hash = crypt(p_password, password_hash);
+  if mod_id is null then raise exception 'Invalid moderator credentials'; end if;
+
+  delete from user_life_list where user_id = p_user_id::uuid and species = p_species;
+  return found;
+end;
+$$;
+
+-- Mod: post comment
+drop function if exists mod_post_comment(text, text, text, uuid, text, uuid);
+create or replace function mod_post_comment(
+  p_email        text,
+  p_password     text,
+  p_user_id      text,
+  p_detection_id uuid,
+  p_body         text,
+  p_parent_id    uuid default null
+)
+returns json
+language plpgsql security definer
+as $$
+declare
+  mod_id uuid;
+  new_id uuid;
+begin
+  select id into mod_id from moderators
+  where email = lower(trim(p_email))
+    and password_hash = crypt(p_password, password_hash);
+  if mod_id is null then raise exception 'Invalid moderator credentials'; end if;
+
+  insert into detection_comments (detection_id, user_id, body, parent_id)
+  values (p_detection_id, p_user_id::uuid, p_body, p_parent_id)
+  returning id into new_id;
+
+  return json_build_object(
+    'id', new_id,
+    'detection_id', p_detection_id,
+    'user_id', p_user_id,
+    'display_name', (select display_name from user_profiles where id = p_user_id::uuid),
+    'body', p_body,
+    'parent_id', p_parent_id,
+    'created_at', now()
+  );
+end;
+$$;
+
+-- Mod: delete comment
+drop function if exists mod_delete_comment(text, text, uuid);
+create or replace function mod_delete_comment(
+  p_email      text,
+  p_password   text,
+  p_comment_id uuid
+)
+returns boolean
+language plpgsql security definer
+as $$
+declare
+  mod_id uuid;
+begin
+  select id into mod_id from moderators
+  where email = lower(trim(p_email))
+    and password_hash = crypt(p_password, password_hash);
+  if mod_id is null then raise exception 'Invalid moderator credentials'; end if;
+
+  delete from detection_comments where id = p_comment_id;
+  return found;
+end;
+$$;
+
+-- Mod: toggle follow feeder
+drop function if exists mod_toggle_feeder_follow(text, text, text, uuid);
+create or replace function mod_toggle_feeder_follow(
+  p_email     text,
+  p_password  text,
+  p_user_id   text,
+  p_feeder_id uuid
+)
+returns json
+language plpgsql security definer
+as $$
+declare
+  mod_id uuid;
+  existing_id uuid;
+begin
+  select id into mod_id from moderators
+  where email = lower(trim(p_email))
+    and password_hash = crypt(p_password, password_hash);
+  if mod_id is null then raise exception 'Invalid moderator credentials'; end if;
+
+  select id into existing_id from feeder_follows
+  where user_id = p_user_id::uuid and feeder_id = p_feeder_id;
+
+  if existing_id is not null then
+    delete from feeder_follows where id = existing_id;
+    return json_build_object('following', false);
+  else
+    insert into feeder_follows (user_id, feeder_id)
+    values (p_user_id::uuid, p_feeder_id);
+    return json_build_object('following', true);
+  end if;
+end;
+$$;
+
+grant execute on function mod_add_to_life_list(text, text, text, text, uuid, text) to anon;
+grant execute on function mod_remove_from_life_list(text, text, text, text) to anon;
+grant execute on function mod_post_comment(text, text, text, uuid, text, uuid) to anon;
+grant execute on function mod_delete_comment(text, text, uuid) to anon;
+grant execute on function mod_toggle_feeder_follow(text, text, text, uuid) to anon;

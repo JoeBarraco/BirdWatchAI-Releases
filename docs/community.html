@@ -6972,20 +6972,25 @@
 
     async function toggleLifeListSpecies(species, detectionId, btn) {
         if (!currentUser) { openUserLogin(); return; }
-        if (isModAsCommunityUser) { showToast('To use life lists, do a one-time Sign In with your email (magic link).'); return; }
 
         const isOnList = userLifeList.includes(species);
         if (isOnList) {
-            await sbRpc('remove_from_life_list', { p_species: species }, true);
+            if (isModAsCommunityUser) {
+                const c = getModCreds();
+                await sbRpc('mod_remove_from_life_list', { p_email: c.email, p_password: c.password, p_user_id: currentUser.id, p_species: species }, false);
+            } else {
+                await sbRpc('remove_from_life_list', { p_species: species }, true);
+            }
             userLifeList = userLifeList.filter(s => s !== species);
             if (btn) { btn.classList.remove('on-list'); btn.textContent = '+ Life List'; btn.title = 'Add to life list'; }
             showToast(`${species} removed from life list`);
         } else {
-            await sbRpc('add_to_life_list', {
-                p_species: species,
-                p_detection_id: detectionId || null,
-                p_notes: ''
-            }, true);
+            if (isModAsCommunityUser) {
+                const c = getModCreds();
+                await sbRpc('mod_add_to_life_list', { p_email: c.email, p_password: c.password, p_user_id: currentUser.id, p_species: species, p_detection_id: detectionId || null, p_notes: '' }, false);
+            } else {
+                await sbRpc('add_to_life_list', { p_species: species, p_detection_id: detectionId || null, p_notes: '' }, true);
+            }
             userLifeList.push(species);
             if (btn) { btn.classList.add('on-list'); btn.textContent = '✓ Listed'; btn.title = 'Remove from life list'; }
             showToast(`${species} added to life list!`);
@@ -7033,7 +7038,12 @@
     }
 
     async function removeFromLifeListModal(species, btn) {
-        await sbRpc('remove_from_life_list', { p_species: species }, true);
+        if (isModAsCommunityUser) {
+            const c = getModCreds();
+            await sbRpc('mod_remove_from_life_list', { p_email: c.email, p_password: c.password, p_user_id: currentUser.id, p_species: species }, false);
+        } else {
+            await sbRpc('remove_from_life_list', { p_species: species }, true);
+        }
         userLifeList = userLifeList.filter(s => s !== species);
         btn.closest('.life-list-item').remove();
         const count = document.querySelectorAll('.life-list-item').length;
@@ -7066,9 +7076,14 @@
 
     async function toggleFollowFeeder(feederId, btn) {
         if (!currentUser) { openUserLogin(); return; }
-        if (isModAsCommunityUser) { showToast('To follow feeders, do a one-time Sign In with your email (magic link).'); return; }
 
-        const { data } = await sbRpc('toggle_feeder_follow', { p_feeder_id: feederId }, true);
+        let data;
+        if (isModAsCommunityUser) {
+            const c = getModCreds();
+            ({ data } = await sbRpc('mod_toggle_feeder_follow', { p_email: c.email, p_password: c.password, p_user_id: currentUser.id, p_feeder_id: feederId }, false));
+        } else {
+            ({ data } = await sbRpc('toggle_feeder_follow', { p_feeder_id: feederId }, true));
+        }
         if (data?.following) {
             userFollowedFeeders.push(feederId);
             if (btn) { btn.classList.add('following'); btn.textContent = '★ Following'; }
@@ -7188,20 +7203,17 @@
         const body = input.value.trim();
         if (!body) return;
 
-        if (isModAsCommunityUser) {
-            showToast('To post comments, do a one-time Sign In with your email (magic link).');
-            return;
-        }
-
         const parentId = input.dataset.parentId || null;
         const btn = input.nextElementSibling;
         btn.disabled = true;
 
-        const { data, error } = await sbRpc('post_comment', {
-            p_detection_id: detectionId,
-            p_body: body,
-            p_parent_id: parentId
-        }, true);
+        let data, error;
+        if (isModAsCommunityUser) {
+            const c = getModCreds();
+            ({ data, error } = await sbRpc('mod_post_comment', { p_email: c.email, p_password: c.password, p_user_id: currentUser.id, p_detection_id: detectionId, p_body: body, p_parent_id: parentId }, false));
+        } else {
+            ({ data, error } = await sbRpc('post_comment', { p_detection_id: detectionId, p_body: body, p_parent_id: parentId }, true));
+        }
 
         btn.disabled = false;
 
@@ -7221,7 +7233,12 @@
     }
 
     async function deleteComment(commentId, detectionId) {
-        await sbRpc('delete_comment', { p_comment_id: commentId }, true);
+        if (isModAsCommunityUser) {
+            const c = getModCreds();
+            await sbRpc('mod_delete_comment', { p_email: c.email, p_password: c.password, p_comment_id: commentId }, false);
+        } else {
+            await sbRpc('delete_comment', { p_comment_id: commentId }, true);
+        }
         commentCounts[detectionId] = Math.max(0, (commentCounts[detectionId] || 1) - 1);
         loadAndRenderComments(detectionId);
     }
