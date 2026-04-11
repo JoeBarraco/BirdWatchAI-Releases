@@ -75,9 +75,22 @@ document.addEventListener('DOMContentLoaded', function() {
     if (buyBtn) {
         buyBtn.addEventListener('click', function(e) {
             e.preventDefault();
-            
+
             const gumroadUrl = 'https://birdbrainllc.gumroad.com/l/dajhd';
-            
+
+            // Open in new tab for payment
+            window.open(gumroadUrl, '_blank');
+        });
+    }
+
+    // Buy Full Nest button - Gumroad product link
+    const buyNestBtn = document.getElementById('buy-nest-btn');
+    if (buyNestBtn) {
+        buyNestBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+
+            const gumroadUrl = 'https://birdbrainllc.gumroad.com/l/irvwmy';
+
             // Open in new tab for payment
             window.open(gumroadUrl, '_blank');
         });
