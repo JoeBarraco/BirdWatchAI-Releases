@@ -6754,36 +6754,34 @@
             }
         } catch (e) { console.warn('Magic link callback failed:', e); }
 
-        // Restore saved auth token
-        if (!currentUser) {
-            const savedToken = localStorage.getItem('bwai-auth-token');
-            if (savedToken) {
-                try {
-                    const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-                        headers: { apikey: ANON_KEY, Authorization: `Bearer ${savedToken}` }
-                    });
-                    if (res.ok) {
-                        authAccessToken = savedToken;
-                        authRefreshToken = localStorage.getItem('bwai-auth-refresh');
-                        currentUser = await res.json();
-                        isModAsCommunityUser = false;
+        // Restore saved auth token (always check — overrides mod bridge if present)
+        const savedToken = localStorage.getItem('bwai-auth-token');
+        if (savedToken && !authAccessToken) {
+            try {
+                const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+                    headers: { apikey: ANON_KEY, Authorization: `Bearer ${savedToken}` }
+                });
+                if (res.ok) {
+                    authAccessToken = savedToken;
+                    authRefreshToken = localStorage.getItem('bwai-auth-refresh');
+                    currentUser = await res.json();
+                    isModAsCommunityUser = false;
+                    await loadUserProfile();
+                    await loadUserLifeList();
+                    await loadUserFollowedFeeders();
+                } else {
+                    // Token expired — try refresh
+                    const refreshed = await refreshAuthToken();
+                    if (refreshed) {
                         await loadUserProfile();
                         await loadUserLifeList();
                         await loadUserFollowedFeeders();
                     } else {
-                        // Token expired — try refresh
-                        const refreshed = await refreshAuthToken();
-                        if (refreshed) {
-                            await loadUserProfile();
-                            await loadUserLifeList();
-                            await loadUserFollowedFeeders();
-                        } else {
-                            localStorage.removeItem('bwai-auth-token');
-                            localStorage.removeItem('bwai-auth-refresh');
-                        }
+                        localStorage.removeItem('bwai-auth-token');
+                        localStorage.removeItem('bwai-auth-refresh');
                     }
-                } catch (_) {}
-            }
+                }
+            } catch (_) {}
         }
         updateCommunityUI();
     }
