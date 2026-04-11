@@ -114,6 +114,34 @@
         </div>
     </section>
 
+    <!-- Inline Newsletter Signup (prominent) -->
+    <section class="inline-newsletter">
+        <div class="container">
+            <div class="inline-newsletter-inner">
+                <div class="inline-newsletter-text">
+                    <strong>📬 Get the Weekly Bird Digest</strong>
+                    <span>Rarest sightings, top feeders, and species highlights — every Sunday.</span>
+                </div>
+                <form class="inline-newsletter-form" onsubmit="submitNewsletter(event)">
+                    <input type="email" id="inline-newsletter-email" placeholder="your@email.com" required class="inline-newsletter-input" aria-label="Email address for weekly digest">
+                    <button type="submit" class="btn btn-primary inline-newsletter-btn">Subscribe Free</button>
+                </form>
+                <div id="inline-newsletter-msg" style="display:none;font-weight:600;color:white;"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Interactive Community Map (promoted above the fold) -->
+    <section id="community-map-section" class="community-map-section">
+        <div class="container">
+            <div class="section-header">
+                <h2>Detection Hotspots</h2>
+                <p>Where birds are being spotted by BirdWatchAI feeders across the country.</p>
+            </div>
+            <div id="community-map" style="height:420px;border-radius:12px;overflow:hidden;box-shadow:var(--shadow-md);"></div>
+        </div>
+    </section>
+
     <!-- Recent Sightings Gallery -->
     <section class="recent-sightings">
         <div class="container">
@@ -126,6 +154,20 @@
             </div>
             <div style="text-align:center;margin-top:1.5rem;">
                 <a href="docs/community.html" class="btn btn-secondary">View Full Community Feed →</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- On This Day Last Year -->
+    <section id="on-this-day" class="on-this-day-section">
+        <div class="container">
+            <div id="on-this-day-content" class="on-this-day-content" style="display:none;">
+                <div class="on-this-day-header">
+                    <div class="on-this-day-icon">📅</div>
+                    <h2>On This Day Last Year</h2>
+                    <p>A look back at what was visiting feeders exactly one year ago today.</p>
+                </div>
+                <div id="on-this-day-grid" class="on-this-day-grid"></div>
             </div>
         </div>
     </section>
@@ -153,17 +195,6 @@
             <div id="migration-content" class="migration-content">
                 <div class="highlights-loading">Loading migration data…</div>
             </div>
-        </div>
-    </section>
-
-    <!-- Interactive Community Map -->
-    <section id="community-map-section" class="community-map-section">
-        <div class="container">
-            <div class="section-header">
-                <h2>Detection Hotspots</h2>
-                <p>Where birds are being spotted by BirdWatchAI feeders across the country.</p>
-            </div>
-            <div id="community-map" style="height:420px;border-radius:12px;overflow:hidden;box-shadow:var(--shadow-md);"></div>
         </div>
     </section>
 
@@ -291,6 +322,59 @@
         </div>
     </section>
 
+    <!-- Testimonials -->
+    <section id="testimonials" class="testimonials-section">
+        <div class="container">
+            <div class="section-header">
+                <h2>What Birders Are Saying</h2>
+                <p>Join a growing community of backyard bird enthusiasts.</p>
+            </div>
+            <div class="testimonials-grid">
+                <div class="testimonial-card">
+                    <div class="testimonial-stars">★★★★★</div>
+                    <blockquote>"I never knew how many species visited my feeder until BirdWatchAI showed me. I've logged over 30 species in three months — including a Painted Bunting I would have completely missed!"</blockquote>
+                    <div class="testimonial-author">
+                        <strong>Sarah M.</strong>
+                        <span>Austin, TX</span>
+                    </div>
+                </div>
+                <div class="testimonial-card">
+                    <div class="testimonial-stars">★★★★★</div>
+                    <blockquote>"Setup took five minutes with my TAPO camera. Now my kids race to check the app every morning to see what birds visited overnight. It's become our family's favorite hobby."</blockquote>
+                    <div class="testimonial-author">
+                        <strong>Mike R.</strong>
+                        <span>Portland, OR</span>
+                    </div>
+                </div>
+                <div class="testimonial-card">
+                    <div class="testimonial-stars">★★★★★</div>
+                    <blockquote>"The community feed is addictive. I love seeing what other feeders are catching across the country. And the weekly digest email is the highlight of my Sunday morning."</blockquote>
+                    <div class="testimonial-author">
+                        <strong>Linda K.</strong>
+                        <span>Asheville, NC</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Interactive Community Demo -->
+    <section id="try-it" class="demo-section">
+        <div class="container">
+            <div class="section-header">
+                <h2>Try the Live Feed</h2>
+                <p>See real-time bird detections from community feeders — no download required.</p>
+            </div>
+            <div class="demo-wrapper">
+                <iframe src="docs/widget.html?limit=6&title=Live Community Detections" class="demo-iframe" title="Live BirdWatchAI community feed demo" loading="lazy"></iframe>
+                <div class="demo-cta">
+                    <p>This is a live feed from real BirdWatchAI feeders. Imagine this on your own website or blog!</p>
+                    <a href="docs/community.html" class="btn btn-primary">Explore the Full Feed</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- Feeder Directory -->
     <section id="feeder-directory" class="feeder-directory-section">
         <div class="container">
@@ -303,6 +387,42 @@
             </div>
             <div style="text-align:center;margin-top:1.5rem;">
                 <a href="docs/community.html" class="btn btn-secondary">Browse All Detections →</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Embeddable Widget -->
+    <section id="embed-widget" class="widget-docs-section">
+        <div class="container">
+            <div class="section-header">
+                <h2>Embed Live Birds on Your Site</h2>
+                <p>Add a real-time bird detection feed to your website, blog, or nature center display with a single line of HTML.</p>
+            </div>
+            <div class="widget-docs-content">
+                <div class="widget-docs-preview">
+                    <iframe src="docs/widget.html?limit=4&title=My Backyard Birds" class="widget-preview-iframe" title="Widget preview" loading="lazy"></iframe>
+                </div>
+                <div class="widget-docs-code">
+                    <h3>Copy & Paste</h3>
+                    <p>Drop this snippet into any webpage to show a live feed of recent detections:</p>
+                    <div class="code-block">
+                        <button class="code-copy-btn" onclick="copyWidgetCode()" aria-label="Copy embed code">Copy</button>
+                        <pre><code>&lt;iframe
+  src="https://joebarraco.github.io/BirdWatchAI-Releases/docs/widget.html"
+  width="360" height="480"
+  style="border:none;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,0.15);"
+  loading="lazy"
+  title="BirdWatchAI Live Feed"
+&gt;&lt;/iframe&gt;</code></pre>
+                    </div>
+                    <h3>Options</h3>
+                    <p>Customize the widget with URL parameters:</p>
+                    <ul class="widget-options-list">
+                        <li><code>?feeder=MyFeeder</code> — Show detections from a specific feeder</li>
+                        <li><code>?limit=6</code> — Number of detections to show (max 20)</li>
+                        <li><code>?title=My Birds</code> — Custom header text</li>
+                    </ul>
+                </div>
             </div>
         </div>
     </section>
@@ -422,7 +542,8 @@
                     <h3>📷 Camera</h3>
                     <ul>
                         <li>Any RTSP-compatible IP camera</li>
-                        <li>Recommended: TAPO C120</li>
+                        <li>Recommended: <a href="https://www.amazon.com/dp/B0CH45HPZT" target="_blank" rel="noopener">TAPO C120</a> (~$30)</li>
+                        <li>Also works with <a href="https://www.amazon.com/dp/B0CH45HPZT" target="_blank" rel="noopener">Wyze</a>, Reolink, Amcrest</li>
                         <li>Position with clear view of feeder</li>
                         <li>Stable WiFi connection</li>
                     </ul>
@@ -476,7 +597,7 @@
             <div class="faq-grid">
                 <div class="faq-item">
                     <h3>What cameras are supported?</h3>
-                    <p>BirdWatchAI works with any camera that supports RTSP streaming. We recommend the TAPO C120 for its excellent image quality and affordable price (~$30). Other popular options include Wyze, Reolink, and Amcrest cameras.</p>
+                    <p>BirdWatchAI works with any camera that supports RTSP streaming. We recommend the <a href="https://www.amazon.com/dp/B0CH45HPZT" target="_blank" rel="noopener">TAPO C120</a> for its excellent image quality and affordable price (~$30). Other popular options include Wyze, Reolink, and Amcrest cameras.</p>
                 </div>
                 
                 <div class="faq-item">
@@ -827,12 +948,19 @@
         }
     })();
 
-    // ── Newsletter signup ─────────────────────────────────────
+    // ── Newsletter signup (handles both inline and main forms) ─
     async function submitNewsletter(e) {
         e.preventDefault();
-        const email = document.getElementById('newsletter-email').value.trim();
-        const msg   = document.getElementById('newsletter-msg');
-        const btn   = e.target.querySelector('button[type=submit]');
+        // Determine which form was submitted
+        const form = e.target;
+        const emailInput = form.querySelector('input[type=email]');
+        const email = emailInput.value.trim();
+        // Find the closest message element
+        const isInline = form.classList.contains('inline-newsletter-form');
+        const msg = isInline
+            ? document.getElementById('inline-newsletter-msg')
+            : document.getElementById('newsletter-msg');
+        const btn = form.querySelector('button[type=submit]');
         if (!email) return;
         btn.disabled = true; btn.textContent = 'Subscribing…';
         try {
@@ -841,10 +969,21 @@
                 headers: { ..._headers, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
                 body: JSON.stringify({ email })
             });
-            if (res.ok || res.status === 409) {  // 409 = already subscribed
-                msg.textContent = res.status === 409 ? 'You\'re already subscribed!' : '🎉 Subscribed! See you Sunday.';
+            if (res.ok || res.status === 409) {
+                const text = res.status === 409 ? 'You\'re already subscribed!' : '🎉 Subscribed! See you Sunday.';
+                msg.textContent = text;
                 msg.style.display = 'block';
-                document.getElementById('newsletter-form').style.display = 'none';
+                form.style.display = 'none';
+                // If inline form succeeded, also update the main form
+                if (isInline) {
+                    const mainForm = document.getElementById('newsletter-form');
+                    const mainMsg  = document.getElementById('newsletter-msg');
+                    if (mainForm && mainMsg) {
+                        mainForm.style.display = 'none';
+                        mainMsg.textContent = text;
+                        mainMsg.style.display = 'block';
+                    }
+                }
             } else {
                 throw new Error('HTTP ' + res.status);
             }
@@ -855,6 +994,60 @@
             btn.disabled = false; btn.textContent = 'Subscribe Free';
         }
     }
+
+    // ── Widget embed code copy ───────────────────────────────
+    function copyWidgetCode() {
+        const code = `<iframe\n  src="https://joebarraco.github.io/BirdWatchAI-Releases/docs/widget.html"\n  width="360" height="480"\n  style="border:none;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,0.15);"\n  loading="lazy"\n  title="BirdWatchAI Live Feed"\n></iframe>`;
+        navigator.clipboard.writeText(code).then(() => {
+            const btn = document.querySelector('.code-copy-btn');
+            btn.textContent = 'Copied!';
+            setTimeout(() => btn.textContent = 'Copy', 2000);
+        }).catch(() => {});
+    }
+
+    // ── On This Day Last Year ────────────────────────────────
+    (async () => {
+        try {
+            const now = new Date();
+            const lastYear = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+            const dayStart = lastYear.toISOString().slice(0, 10) + 'T00:00:00';
+            const dayEnd   = lastYear.toISOString().slice(0, 10) + 'T23:59:59';
+            const res = await fetch(`${_SB_URL}/rest/v1/community_detections?select=species,rarity,detected_at,image_url,feeders(display_name)&detected_at=gte.${encodeURIComponent(dayStart)}&detected_at=lte.${encodeURIComponent(dayEnd)}&order=detected_at.desc&limit=50`, { headers: _headers });
+            const data = await res.json();
+            if (!Array.isArray(data) || !data.length) return;
+
+            const section = document.getElementById('on-this-day-content');
+            const grid = document.getElementById('on-this-day-grid');
+
+            const uniqueSpecies = [...new Set(data.map(d => d.species))];
+            const dateStr = lastYear.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+
+            const cards = data.filter(d => d.image_url).slice(0, 6);
+            const speciesCount = uniqueSpecies.length;
+
+            grid.innerHTML = `
+                <div class="on-this-day-summary">
+                    <p>On <strong>${dateStr}</strong>, community feeders spotted <strong>${speciesCount} species</strong> across <strong>${data.length} detections</strong>.</p>
+                </div>
+                <div class="on-this-day-cards">
+                    ${cards.map(d => {
+                        const rarityClass = d.rarity === 'Very Rare' ? 'sighting-rarity-very-rare'
+                                          : d.rarity === 'Rare'      ? 'sighting-rarity-rare' : '';
+                        return `<div class="on-this-day-card">
+                            <img src="${_esc(d.image_url)}" alt="${_esc(d.species)}" loading="lazy">
+                            <div class="on-this-day-card-info">
+                                <strong>${_esc(d.species)}</strong>
+                                ${d.rarity && d.rarity !== 'Common' ? `<span class="${rarityClass}">${_esc(d.rarity)}</span>` : ''}
+                                ${d.feeders?.display_name ? `<span class="on-this-day-feeder">${_esc(d.feeders.display_name)}</span>` : ''}
+                            </div>
+                        </div>`;
+                    }).join('')}
+                </div>
+                ${uniqueSpecies.length > 6 ? `<p class="on-this-day-more">Also spotted: ${uniqueSpecies.slice(6, 14).map(s => _esc(s)).join(', ')}${uniqueSpecies.length > 14 ? '…' : ''}</p>` : ''}`;
+
+            section.style.display = 'block';
+        } catch (_) {}
+    })();
 
     // Show unsubscribe confirmation if redirected back from unsubscribe function
     if (new URLSearchParams(location.search).get('unsubscribed') === '1') {
