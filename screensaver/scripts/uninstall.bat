@@ -30,8 +30,9 @@ if not errorlevel 1 (
     reg delete "HKCU\Control Panel\Desktop" /v SCRNSAVE.EXE /f >nul 2>&1
 )
 
-REM Remove our registry key
+REM Remove our registry keys (both HKCU and HKLM)
 reg delete "HKCU\Software\BirdWatchAI\Screensaver" /f >nul 2>&1
+reg delete "HKLM\Software\BirdWatchAI\Screensaver" /f >nul 2>&1
 echo       Done.
 
 REM ── Remove installed files ───────────────────────────────────

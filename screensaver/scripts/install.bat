@@ -90,35 +90,40 @@ if not defined CSC (
     goto :register
 )
 
-REM Compile the launcher
+REM Compile the launcher (64-bit PE with version info for System32)
 set "LAUNCHER_SRC=%SCRIPT_DIR%Launcher.cs"
 set "LAUNCHER_OUT=%TEMP%\%LAUNCHER_NAME%"
 
-"%CSC%" /nologo /optimize /target:winexe /out:"%LAUNCHER_OUT%" "%LAUNCHER_SRC%" >nul 2>&1
+echo       Using: %CSC%
+"%CSC%" /nologo /optimize /platform:x64 /target:winexe /out:"%LAUNCHER_OUT%" "%LAUNCHER_SRC%"
 if errorlevel 1 (
     echo  WARNING: Compilation failed. Skipping System32 launcher.
     goto :register
 )
 
 REM Copy launcher to System32
-copy /y "%LAUNCHER_OUT%" "%SystemRoot%\System32\%LAUNCHER_NAME%" >nul 2>&1
+copy /y "%LAUNCHER_OUT%" "%SystemRoot%\System32\%LAUNCHER_NAME%"
 if errorlevel 1 (
     echo  WARNING: Could not copy launcher to System32.
     goto :register
 )
 del /q "%LAUNCHER_OUT%" >nul 2>&1
-echo       Done.
+
+REM Verify the file actually landed in System32
+if not exist "%SystemRoot%\System32\%LAUNCHER_NAME%" (
+    echo  WARNING: Launcher not found in System32 after copy.
+    echo  Windows Defender may have quarantined it.
+    goto :register
+)
+echo       Verified: %SystemRoot%\System32\%LAUNCHER_NAME%
 
 REM ── Step 5: Register in the registry ─────────────────────────
 :register
 echo [5/5] Registering screensaver...
 
-REM Store the real path so the launcher can find the Electron app
-reg add "HKCU\Software\BirdWatchAI\Screensaver" /v Path /t REG_SZ /d "%SCR_PATH%" /f >nul 2>&1
-
-REM Also set as the active screensaver
-reg add "HKCU\Control Panel\Desktop" /v SCRNSAVE.EXE /t REG_SZ /d "%SystemRoot%\System32\%LAUNCHER_NAME%" /f >nul 2>&1
-reg add "HKCU\Control Panel\Desktop" /v ScreenSaveActive /t REG_SZ /d 1 /f >nul 2>&1
+REM Store the real path in HKLM so ALL users can find the Electron app
+REM (install.bat runs as admin, which may be a different user than the desktop session)
+reg add "HKLM\Software\BirdWatchAI\Screensaver" /v Path /t REG_SZ /d "%SCR_PATH%" /f >nul 2>&1
 
 echo       Done.
 echo.

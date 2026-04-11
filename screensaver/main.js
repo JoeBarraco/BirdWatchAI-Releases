@@ -84,9 +84,15 @@ function launchScreensaver() {
 
         win.loadFile('slideshow.html');
 
-        // Send settings once the page is ready
+        // Send settings once the page is ready.
+        // Stagger each monitor with a random delay (0–40% of the interval)
+        // so transitions don't fire in lockstep across displays.
+        const staggerDelay = displays.length > 1
+            ? Math.floor(Math.random() * settings.interval * 0.4)
+            : 0;
+
         win.webContents.on('did-finish-load', () => {
-            win.webContents.send('init-settings', settings);
+            win.webContents.send('init-settings', { ...settings, staggerDelay });
         });
 
         win.once('ready-to-show', () => {
