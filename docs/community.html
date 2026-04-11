@@ -6745,6 +6745,8 @@
                         await loadUserProfile();
                         await loadUserLifeList();
                         await loadUserFollowedFeeders();
+                        updateCommunityUI();
+                        showToast('Signed in as ' + (currentProfile?.display_name || user.email));
                     }
                     // Clean up URL hash
                     history.replaceState(null, '', window.location.pathname + window.location.search);
