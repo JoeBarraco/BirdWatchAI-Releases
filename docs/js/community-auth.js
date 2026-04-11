@@ -269,6 +269,12 @@ function openDetailModal(id) {
     audioBtn.textContent = '🔊 Play call';
     audioBtn.onclick = () => playBirdCall(d.species, audioBtn);
     actions.appendChild(audioBtn);
+    const wikiLink = document.createElement('a');
+    wikiLink.href = `https://en.wikipedia.org/wiki/${encodeURIComponent(d.species)}`;
+    wikiLink.target = '_blank';
+    wikiLink.rel = 'noopener';
+    wikiLink.textContent = '📖 Wikipedia';
+    actions.appendChild(wikiLink);
 
     // Reactions in detail modal
     const rxDiv = document.createElement('div');
