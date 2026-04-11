@@ -11,8 +11,8 @@ TO DO LIST
 - ~~Would like to be able to disable auto refresh, or adjust the refresh frequency.~~ DONE
 - ~~Would like to allow users to like detections, then be able to sort by most liked. Currently I dont think the likes are seen by others.~~ DONE
 - Favorited detection uploads should translate to "Liked" by the uploaded (requires backend: add is_favorite column to community_detections and auto-create reaction on upload)
-- Need to provide some photos of the bird feeder (both types) so we can price "The full nest" option. I am thinking the Full Nest should be $150 and the software half that ($75).
-     - Need to update pricing on "Gumroad" first, as well as add Full nest to gumroad.
+- ~~Need to provide some photos of the bird feeder (both types) so we can price "The full nest" option. I am thinking the Full Nest should be $150 and the software half that ($75).~~ DONE (Full Nest priced at $150, software license at $75)
+     - ~~Need to update pricing on "Gumroad" first, as well as add Full nest to gumroad.~~ DONE
 - Add the ability for bird feeders to provide GPS location in addition to zip code. This will allow for more precise detection location mapping.
 - Add the concept of linking bird feeders to users of the website. Email may be the common link.
 - Once bird feeders are linked to users, add the concept of time based cloud storage. The feeder site would always preserve detections, but photos and videos only for 30 days unless the user has paid for a subscription.
@@ -47,7 +47,7 @@ Mobile & Accessibility
 - ~~Improve accessibility — add ARIA labels to stats tabs, filter bar, and other interactive elements; expand keyboard navigation.~~ DONE
 
 Monetization & Product
-- Add Gumroad embed for "Full Nest" kit with direct "Buy Nest Kit" CTA and pricing on the landing page.
+- ~~Add Gumroad embed for "Full Nest" kit with direct "Buy Nest Kit" CTA and pricing on the landing page.~~ DONE
 - Add a referral program — existing users get a discount for referring someone who buys.
 - ~~Add affiliate links to recommended cameras (TAPO C120, etc.).~~ DONE
 - Add a subscription tier for extended cloud storage of photos/videos beyond 30 days.
