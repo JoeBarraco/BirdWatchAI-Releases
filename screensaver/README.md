@@ -37,8 +37,8 @@ npm run start:preview
 
 | Flag | Mode | Description |
 |------|------|-------------|
-| `/s` | Screensaver | Run fullscreen slideshow (default) |
-| `/c` | Configure | Open settings window |
+| `/s` | Screensaver | Run fullscreen slideshow |
+| `/c` | Configure | Open settings window (default when double-clicked) |
 | `/p` | Preview | Show small preview window |
 
 ## Building
@@ -47,22 +47,21 @@ npm run start:preview
 npm run build
 ```
 
-This produces a portable `.exe` in `dist/`, then automatically renames it to `.scr`.
+This produces an unpacked Electron build in `dist/win-unpacked/`, then renames the `.exe` to `.scr`.
 
 ## Installation
 
-### Option A: Automated
+### Install
 
-Run `scripts/install.bat` as Administrator. It copies the `.scr` to `System32` and opens Screen Saver Settings.
+Run `scripts\install.bat` (no admin required). It will:
+1. Clean up any old broken `.scr` entries from System32
+2. Copy the build to `%LOCALAPPDATA%\BirdWatchAI Screensaver\`
+3. Register it as the active screensaver via the registry
+4. Open Screen Saver Settings so you can set your wait time
 
-### Option B: Manual
+### Uninstall
 
-1. Build the project (`npm run build`)
-2. Copy the `.scr` file from `dist/` to `C:\Windows\System32\`
-3. Open **Settings > Personalization > Lock screen > Screen saver settings**
-4. Select **BirdWatchAI Screensaver** from the dropdown
-5. Click **Settings** to configure transition, duration, etc.
-6. Click **Preview** to test, **OK** to apply
+Run `scripts\uninstall.bat` to remove the screensaver, registry entries, and installed files.
 
 ## Architecture
 
