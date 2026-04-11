@@ -8,7 +8,7 @@
     "start:screensaver": "electron . /s",
     "start:config": "electron . /c",
     "start:preview": "electron . /p",
-    "build": "electron-builder --win",
+    "build": "npx electron-builder --win",
     "postbuild": "node scripts/rename-to-scr.js"
   },
   "author": "BirdWatchAI",
@@ -27,7 +27,8 @@
           "arch": ["x64"]
         }
       ],
-      "icon": "../images/favicon-96x96.png"
+      "icon": "../images/favicon-96x96.png",
+      "signAndEditExecutable": false
     },
     "files": [
       "main.js",
