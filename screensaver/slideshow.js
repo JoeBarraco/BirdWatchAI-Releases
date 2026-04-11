@@ -145,9 +145,14 @@ async function loadPhotos() {
             return;
         }
 
-        // Hide loading, start playback
+        // Hide loading, start playback (after optional stagger delay for multi-monitor)
         loadingEl.classList.add('hidden');
-        startPlayback();
+        const delay = settings.staggerDelay || 0;
+        if (delay > 0) {
+            setTimeout(() => startPlayback(), delay);
+        } else {
+            startPlayback();
+        }
 
     } catch (err) {
         console.error('Failed to load photos:', err);
