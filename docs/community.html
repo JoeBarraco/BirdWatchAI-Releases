@@ -502,6 +502,18 @@
     </div>
 </div>
 
+<!-- AI Species Research side panel -->
+<div id="ai-panel-overlay" class="ai-panel-overlay" onclick="closeAIPanel()"></div>
+<aside id="ai-panel" class="ai-panel" role="dialog" aria-modal="true" aria-label="AI Species Research">
+    <div class="ai-panel-header">
+        <h3 id="ai-panel-title">Species Research</h3>
+        <button class="ai-panel-close" onclick="closeAIPanel()" aria-label="Close">&times;</button>
+    </div>
+    <div class="ai-panel-body" id="ai-panel-body">
+        <div class="ai-panel-loading">Loading species info…</div>
+    </div>
+</aside>
+
 <!-- Detection detail modal -->
 <div id="detail-modal" role="dialog" aria-modal="true">
     <div class="detail-box">

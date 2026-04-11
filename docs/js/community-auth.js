@@ -275,6 +275,10 @@ function openDetailModal(id) {
     wikiLink.rel = 'noopener';
     wikiLink.textContent = '📖 Wikipedia';
     actions.appendChild(wikiLink);
+    const aiResearchBtn = document.createElement('button');
+    aiResearchBtn.textContent = '🤖 AI Research';
+    aiResearchBtn.onclick = () => { closeDetailModal(); openAIResearch(d.species); };
+    actions.appendChild(aiResearchBtn);
 
     // Reactions in detail modal
     const rxDiv = document.createElement('div');
