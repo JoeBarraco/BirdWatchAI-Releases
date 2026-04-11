@@ -41,10 +41,10 @@ Landing Page Conversion
 - Add an interactive demo — embed a sandbox community feed on the landing page so visitors can try it without downloading.
 
 Mobile & Accessibility
-- Complete PWA support (sw.js and manifest.json already exist in docs/) so users can install to their phone home screen.
-- Redesign the stats dashboard for mobile — 11 tabs is a lot on a phone screen.
-- Audit dark mode persistence across pages.
-- Improve accessibility — add ARIA labels to stats tabs, filter bar, and other interactive elements; expand keyboard navigation.
+- ~~Complete PWA support (sw.js and manifest.json already exist in docs/) so users can install to their phone home screen.~~ DONE
+- ~~Redesign the stats dashboard for mobile — 11 tabs is a lot on a phone screen.~~ DONE
+- ~~Audit dark mode persistence across pages.~~ DONE
+- ~~Improve accessibility — add ARIA labels to stats tabs, filter bar, and other interactive elements; expand keyboard navigation.~~ DONE
 
 Monetization & Product
 - Add Gumroad embed for "Full Nest" kit with direct "Buy Nest Kit" CTA and pricing on the landing page.
