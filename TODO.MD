@@ -10,7 +10,7 @@ TO DO LIST
 - ~~When the refresh occurs, it brings the bird of the day back if I dismissed it.~~ DONE
 - ~~Would like to be able to disable auto refresh, or adjust the refresh frequency.~~ DONE
 - ~~Would like to allow users to like detections, then be able to sort by most liked. Currently I dont think the likes are seen by others.~~ DONE
-- Favorited detection uploads should translate to "Liked" by the uploaded
+- Favorited detection uploads should translate to "Liked" by the uploaded (requires backend: add is_favorite column to community_detections and auto-create reaction on upload)
 - Need to provide some photos of the bird feeder (both types) so we can price "The full nest" option. I am thinking the Full Nest should be $150 and the software half that ($75).
      - Need to update pricing on "Gumroad" first, as well as add Full nest to gumroad.
 - Add the ability for bird feeders to provide GPS location in addition to zip code. This will allow for more precise detection location mapping.
@@ -28,17 +28,17 @@ Community Engagement
      - NOTE: Run supabase/setup-community-engagement.sql in Supabase Dashboard to activate these features.
 
 Discovery & Content
-- Add full-text search covering species, feeder name, and notes (currently filter-only).
+- ~~Add full-text search covering species, feeder name, and notes (currently filter-only).~~ DONE
 - Add dedicated species pages aggregating all detections, best photos, seasonality chart, and Xeno-canto audio. Good for SEO.
 - Add rare bird email/SMS alert subscription for users — notify when rare sightings occur within a zip code radius.
-- Add "On This Day Last Year" nostalgia card on the landing page, leveraging existing calendar heatmap data.
+- ~~Add "On This Day Last Year" nostalgia card on the landing page, leveraging existing calendar heatmap data.~~ DONE
 
 Landing Page Conversion
-- Enable the live detection ticker (currently hidden) with real detections for social proof.
-- Add a testimonials / user quotes section.
-- Promote the feeder hotspot map higher on the page (above the fold) to hook visitors.
-- Make the "Sign up for weekly digest" more prominent inline — the weekly-digest edge function already exists.
-- Add an interactive demo — embed a sandbox community feed on the landing page so visitors can try it without downloading.
+- ~~Enable the live detection ticker (currently hidden) with real detections for social proof.~~ DONE
+- ~~Add a testimonials / user quotes section.~~ DONE
+- ~~Promote the feeder hotspot map higher on the page (above the fold) to hook visitors.~~ DONE
+- ~~Make the "Sign up for weekly digest" more prominent inline — the weekly-digest edge function already exists.~~ DONE
+- ~~Add an interactive demo — embed a sandbox community feed on the landing page so visitors can try it without downloading.~~ DONE
 
 Mobile & Accessibility
 - ~~Complete PWA support (sw.js and manifest.json already exist in docs/) so users can install to their phone home screen.~~ DONE
@@ -49,10 +49,10 @@ Mobile & Accessibility
 Monetization & Product
 - Add Gumroad embed for "Full Nest" kit with direct "Buy Nest Kit" CTA and pricing on the landing page.
 - Add a referral program — existing users get a discount for referring someone who buys.
-- Add affiliate links to recommended cameras (TAPO C120, etc.).
+- ~~Add affiliate links to recommended cameras (TAPO C120, etc.).~~ DONE
 - Add a subscription tier for extended cloud storage of photos/videos beyond 30 days.
 
 Technical
-- Document and promote the embeddable widget (widget.html exists but isn't documented). A copy-paste iframe for "Latest birds from my feeder."
+- ~~Document and promote the embeddable widget (widget.html exists but isn't documented). A copy-paste iframe for "Latest birds from my feeder."~~ DONE
 - Add a public read-only API for detections to enable community integrations (eBird-style).
-- Refactor community.html (6000+ lines) — split JS/CSS into modules for maintainability.
+- ~~Refactor community.html (6000+ lines) — split JS/CSS into modules for maintainability.~~ DONE (CSS extracted to docs/css/community.css, JS split into docs/js/community-core.js, community-views.js, community-social.js, community-auth.js. HTML reduced from 7400+ to ~540 lines.)
