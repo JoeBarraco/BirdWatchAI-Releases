@@ -134,6 +134,9 @@ document.getElementById('feed-view').addEventListener('click', e => {
         openLightbox(e.target.src, e.target.alt);
         return;
     }
+    // AI Research button
+    const aiBtn = e.target.closest('.card-ai');
+    if (aiBtn) { openAIResearch(aiBtn.dataset.aiSpecies); return; }
     // Share button
     const shareBtn = e.target.closest('[data-share-id]');
     if (shareBtn) { shareDetection(shareBtn.dataset.shareId, shareBtn.closest('.card')); return; }
@@ -1167,6 +1170,86 @@ function shareDetection(id, cardEl) {
     showToast('Share API unavailable — copying link');
     clipboardFallback();
 }
+
+// ── AI Species Research panel ────────────────────────────
+const aiPanel = document.getElementById('ai-panel');
+const aiPanelOverlay = document.getElementById('ai-panel-overlay');
+const aiPanelTitle = document.getElementById('ai-panel-title');
+const aiPanelBody = document.getElementById('ai-panel-body');
+
+function openAIResearch(species) {
+    if (!species) return;
+    aiPanelTitle.textContent = species;
+    aiPanelBody.innerHTML = '<div class="ai-panel-loading">Loading species info…</div>';
+    aiPanel.classList.add('open');
+    aiPanelOverlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+    fetchSpeciesSummary(species);
+}
+
+function closeAIPanel() {
+    aiPanel.classList.remove('open');
+    aiPanelOverlay.classList.remove('open');
+    document.body.style.overflow = '';
+}
+
+async function fetchSpeciesSummary(species) {
+    const geminiQuery = `Tell me about the ${species} bird species. Include habitat, behavior, diet, conservation status, interesting facts, and any recent news or research.`;
+    const geminiUrl = `https://gemini.google.com/app?q=${encodeURIComponent(geminiQuery)}`;
+
+    // Build quick links section immediately
+    const linksHtml = `
+        <div class="ai-panel-section">
+            <h4>🤖 AI Research</h4>
+            <p class="ai-panel-hint">Get a comprehensive AI-powered overview with recent news and web sources.</p>
+            <a href="${geminiUrl}" target="_blank" rel="noopener" class="ai-panel-gemini-btn">
+                ✨ Research with Google Gemini
+            </a>
+        </div>
+        <div class="ai-panel-section">
+            <h4>🔗 Quick Links</h4>
+            <div class="ai-panel-links">
+                <a href="https://en.wikipedia.org/wiki/${encodeURIComponent(species)}" target="_blank" rel="noopener">📖 Wikipedia</a>
+                <a href="https://www.allaboutbirds.org/guide/${encodeURIComponent(species.replace(/\s+/g, '_'))}" target="_blank" rel="noopener">🐦 All About Birds</a>
+                <a href="https://ebird.org/species/${encodeURIComponent(species.toLowerCase().replace(/[^a-z]/g, ''))}" target="_blank" rel="noopener">🦅 eBird</a>
+                <a href="https://www.audubon.org/field-guide/bird/${encodeURIComponent(species.toLowerCase().replace(/\s+/g, '-'))}" target="_blank" rel="noopener">🌿 Audubon</a>
+                <a href="https://www.google.com/search?q=${encodeURIComponent(species + ' bird species news')}" target="_blank" rel="noopener">🔍 Google News</a>
+            </div>
+        </div>`;
+
+    // Fetch Wikipedia summary
+    try {
+        const res = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(species)}`);
+        if (!res.ok) throw new Error('Not found');
+        const data = await res.json();
+
+        const thumb = data.thumbnail
+            ? `<img class="ai-panel-thumb" src="${data.thumbnail.source}" alt="${species}">`
+            : '';
+        const extract = data.extract || 'No summary available.';
+
+        aiPanelBody.innerHTML = `
+            ${thumb}
+            <div class="ai-panel-section">
+                <h4>📋 Overview</h4>
+                <p class="ai-panel-extract">${extract}</p>
+            </div>
+            ${linksHtml}`;
+    } catch {
+        aiPanelBody.innerHTML = `
+            <div class="ai-panel-section">
+                <p class="ai-panel-extract" style="color:var(--color-gray-500);">No Wikipedia summary found for "${species}". Try the links below for more information.</p>
+            </div>
+            ${linksHtml}`;
+    }
+}
+
+// Close AI panel on Escape
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && aiPanel.classList.contains('open')) {
+        closeAIPanel();
+    }
+});
 
 function showToast(msg) {
     let t = document.getElementById('share-toast');
