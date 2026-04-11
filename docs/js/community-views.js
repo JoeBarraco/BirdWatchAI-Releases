@@ -72,8 +72,7 @@ function renderFeed() {
                         ? `<a class="card-video" href="${d.video_url}" target="_blank" rel="noopener">🎬 Watch video</a>`
                         : ''}
                     <button class="card-audio" data-audio-species="${esc(d.species)}" title="Play bird call">🔊 Call</button>
-                    <a class="card-wiki" href="https://en.wikipedia.org/wiki/${encodeURIComponent(d.species)}" target="_blank" rel="noopener" title="View on Wikipedia">📖 Wiki</a>
-                    <button class="card-ai" data-ai-species="${esc(d.species)}" title="AI species research">🤖 AI</button>
+                    <button class="card-ai" data-ai-species="${esc(d.species)}" title="Species info and links">🌐 Web</button>
                     <button class="card-share" data-share-id="${d.id}" title="Copy link to this detection">🔗 Share</button>
                     <button class="card-comment-btn" onclick="openComments('${d.id}')" title="Comments">💬${cCount ? ' ' + cCount : ''}</button>
                     <button class="card-flag-btn" onclick="openFlag('${d.id}')" title="Report this detection">🚩</button>

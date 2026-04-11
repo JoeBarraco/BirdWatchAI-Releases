@@ -269,16 +269,10 @@ function openDetailModal(id) {
     audioBtn.textContent = '🔊 Play call';
     audioBtn.onclick = () => playBirdCall(d.species, audioBtn);
     actions.appendChild(audioBtn);
-    const wikiLink = document.createElement('a');
-    wikiLink.href = `https://en.wikipedia.org/wiki/${encodeURIComponent(d.species)}`;
-    wikiLink.target = '_blank';
-    wikiLink.rel = 'noopener';
-    wikiLink.textContent = '📖 Wikipedia';
-    actions.appendChild(wikiLink);
-    const aiResearchBtn = document.createElement('button');
-    aiResearchBtn.textContent = '🤖 AI Research';
-    aiResearchBtn.onclick = () => { closeDetailModal(); openAIResearch(d.species); };
-    actions.appendChild(aiResearchBtn);
+    const webBtn = document.createElement('button');
+    webBtn.textContent = '🌐 Web';
+    webBtn.onclick = () => { closeDetailModal(); openAIResearch(d.species); };
+    actions.appendChild(webBtn);
 
     // Reactions in detail modal (single ❤️ like)
     const rxDiv = document.createElement('div');

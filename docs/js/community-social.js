@@ -1262,7 +1262,6 @@ async function fetchSpeciesSummary(species) {
         <div class="ai-panel-section">
             <h4>🔗 Quick Links</h4>
             <div class="ai-panel-links">
-                <a href="https://en.wikipedia.org/wiki/${encodeURIComponent(species)}" target="_blank" rel="noopener">📖 Wikipedia</a>
                 <a href="https://www.allaboutbirds.org/guide/${encodeURIComponent(species.replace(/\s+/g, '_'))}" target="_blank" rel="noopener">🐦 All About Birds</a>
                 <a href="https://www.audubon.org/field-guide/bird/${encodeURIComponent(species.toLowerCase().replace(/\s+/g, '-'))}" target="_blank" rel="noopener">🌿 Audubon</a>
                 <a href="https://www.google.com/search?q=${encodeURIComponent(species + ' bird species news')}" target="_blank" rel="noopener">🔍 Google News</a>
