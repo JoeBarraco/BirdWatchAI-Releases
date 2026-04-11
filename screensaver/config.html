@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BirdWatchAI Screensaver Settings</title>
+    <link rel="stylesheet" href="config.css">
+</head>
+<body>
+    <div class="config-container">
+        <h1>BirdWatchAI Screensaver</h1>
+        <p class="subtitle">Community bird gallery screensaver settings</p>
+
+        <div class="form-group">
+            <label for="transition">Transition Effect</label>
+            <select id="transition">
+                <option value="fade">Fade</option>
+                <option value="slide">Slide</option>
+                <option value="kenburns">Ken Burns</option>
+                <option value="blur">Blur</option>
+                <option value="random" selected>Random</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="interval">Photo Duration</label>
+            <select id="interval">
+                <option value="3000">3 seconds</option>
+                <option value="4000">4 seconds</option>
+                <option value="6000" selected>6 seconds</option>
+                <option value="8000">8 seconds</option>
+                <option value="10000">10 seconds</option>
+                <option value="15000">15 seconds</option>
+                <option value="20000">20 seconds</option>
+                <option value="30000">30 seconds</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="sortMode">Photo Order</label>
+            <select id="sortMode">
+                <option value="random" selected>Random</option>
+                <option value="recent">Most Recent</option>
+                <option value="count">Most Photographed Species</option>
+                <option value="alpha">Alphabetical by Species</option>
+            </select>
+        </div>
+
+        <div class="form-group checkbox-group">
+            <label>
+                <input type="checkbox" id="showCaption" checked>
+                Show species name &amp; feeder
+            </label>
+        </div>
+
+        <div class="form-group checkbox-group">
+            <label>
+                <input type="checkbox" id="showProgress" checked>
+                Show progress bar
+            </label>
+        </div>
+
+        <div class="button-row">
+            <button id="btn-save" class="btn btn-primary">Save</button>
+            <button id="btn-cancel" class="btn btn-secondary">Cancel</button>
+        </div>
+
+        <p id="status-msg" class="status-msg"></p>
+    </div>
+
+    <script src="config.js"></script>
+</body>
+</html>

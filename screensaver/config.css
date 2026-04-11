@@ -1,0 +1,123 @@
+/* BirdWatchAI Screensaver — Configuration window styles */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    background: #1a1a2e;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    font-size: 14px;
+    -webkit-app-region: drag; /* Allow dragging the window */
+}
+
+.config-container {
+    padding: 32px 28px 24px;
+    -webkit-app-region: no-drag;
+}
+
+h1 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #5aab72;
+    margin-bottom: 4px;
+}
+
+.subtitle {
+    color: rgba(255,255,255,0.45);
+    font-size: 0.85rem;
+    margin-bottom: 28px;
+}
+
+.form-group {
+    margin-bottom: 18px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: rgba(255,255,255,0.7);
+    margin-bottom: 6px;
+}
+
+.form-group select {
+    width: 100%;
+    padding: 8px 12px;
+    background: #16213e;
+    color: #e0e0e0;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.15s;
+    cursor: pointer;
+}
+
+.form-group select:focus {
+    border-color: #5aab72;
+}
+
+.checkbox-group label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 400;
+    color: #e0e0e0;
+}
+
+.checkbox-group input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: #5aab72;
+    cursor: pointer;
+}
+
+.button-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 28px;
+}
+
+.btn {
+    flex: 1;
+    padding: 10px 0;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+}
+
+.btn:active {
+    transform: scale(0.98);
+}
+
+.btn-primary {
+    background: #5aab72;
+    color: #fff;
+}
+
+.btn-primary:hover {
+    background: #4d9463;
+}
+
+.btn-secondary {
+    background: rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.7);
+}
+
+.btn-secondary:hover {
+    background: rgba(255,255,255,0.18);
+}
+
+.status-msg {
+    margin-top: 14px;
+    font-size: 0.82rem;
+    text-align: center;
+    color: #5aab72;
+    min-height: 1.2em;
+    transition: opacity 0.3s;
+}
