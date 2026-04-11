@@ -1563,6 +1563,20 @@
         }
         .card-share:hover { color: var(--color-primary); }
 
+        /* ── Wikipedia link on cards ───────────────────────── */
+        .card-wiki {
+            display: inline-block;
+            margin-top: 6px;
+            margin-left: 8px;
+            font-size: 12px;
+            color: var(--color-gray-500);
+            cursor: pointer;
+            text-decoration: none;
+            font-family: inherit;
+            padding: 0;
+        }
+        .card-wiki:hover { color: var(--color-primary); text-decoration: underline; }
+
         /* ── Bird of the Day banner ─────────────────────────── */
         #botd-banner {
             display: none;
