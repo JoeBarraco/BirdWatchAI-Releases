@@ -20,6 +20,12 @@
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="icon" type="image/png" href="images/favicon.png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2d5a3d">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="BirdWatchAI">
+    <link rel="apple-touch-icon" href="images/icon-192.png">
     <!-- Apply saved theme before first paint to prevent flash -->
     <script>
         (function() {
@@ -30,22 +36,22 @@
 </head>
 <body>
     <!-- Navigation -->
-    <nav class="nav">
+    <nav class="nav" aria-label="Main navigation">
         <div class="nav-container">
             <a href="#" class="nav-logo">
                 <img src="images/logo.png" alt="BirdWatchAI" class="nav-logo-img">
                 <span>BirdWatchAI</span>
             </a>
-            <div class="nav-links">
-                <a href="#features">Features</a>
-                <a href="#how-it-works">How It Works</a>
-                <a href="#pricing">Pricing</a>
-                <a href="#requirements">Requirements</a>
-                <a href="docs/community.html" class="nav-live">🔴 Live Community Feed</a>
-                <a href="#download" class="btn btn-nav">Download Free Trial</a>
+            <div class="nav-links" role="menubar">
+                <a href="#features" role="menuitem">Features</a>
+                <a href="#how-it-works" role="menuitem">How It Works</a>
+                <a href="#pricing" role="menuitem">Pricing</a>
+                <a href="#requirements" role="menuitem">Requirements</a>
+                <a href="docs/community.html" class="nav-live" role="menuitem">🔴 Live Community Feed</a>
+                <a href="#download" class="btn btn-nav" role="menuitem">Download Free Trial</a>
             </div>
             <button id="theme-toggle-main" onclick="toggleMainTheme()" aria-label="Toggle dark mode" style="background:none;border:none;cursor:pointer;font-size:1rem;padding:4px 8px;line-height:1;margin-right:4px;color:inherit;" title="Toggle dark mode">🌙 Theme</button>
-            <button class="nav-mobile-toggle" aria-label="Toggle menu">
+            <button class="nav-mobile-toggle" aria-label="Toggle menu" aria-expanded="false">
                 <span></span>
                 <span></span>
                 <span></span>
@@ -89,19 +95,19 @@
     </header>
 
     <!-- Social Proof / Stats -->
-    <section class="stats">
+    <section class="stats" aria-label="Key statistics">
         <div class="container">
-            <div class="stats-grid">
-                <div class="stat">
-                    <span class="stat-number">965+</span>
+            <div class="stats-grid" role="list">
+                <div class="stat" role="listitem">
+                    <span class="stat-number" aria-hidden="true">965+</span>
                     <span class="stat-label">Bird Species Recognized</span>
                 </div>
-                <div class="stat">
-                    <span class="stat-number">24/7</span>
+                <div class="stat" role="listitem">
+                    <span class="stat-number" aria-hidden="true">24/7</span>
                     <span class="stat-label">Automatic Monitoring</span>
                 </div>
-                <div class="stat">
-                    <span class="stat-number">100%</span>
+                <div class="stat" role="listitem">
+                    <span class="stat-number" aria-hidden="true">100%</span>
                     <span class="stat-label">Local & Private</span>
                 </div>
             </div>
@@ -162,57 +168,57 @@
     </section>
 
     <!-- Features Section -->
-    <section id="features" class="features">
+    <section id="features" class="features" aria-labelledby="features-heading">
         <div class="container">
             <div class="section-header">
-                <h2>Everything You Need to<br>Monitor Your Feeders</h2>
+                <h2 id="features-heading">Everything You Need to<br>Monitor Your Feeders</h2>
                 <p>Powerful features designed for bird enthusiasts who want to see every visitor.</p>
             </div>
-            
-            <div class="features-grid">
-                <div class="feature-card feature-card-main">
+
+            <div class="features-grid" role="list">
+                <div class="feature-card feature-card-main" role="listitem">
                     <div class="feature-icon">🐦✨</div>
                     <h3>AI Bird Identification</h3>
                     <p>Our trained neural network identifies 965+ North American bird species in real-time. Get instant notifications with species name, confidence level, and rarity for your location.</p>
                 </div>
                 
-                <div class="feature-card">
+                <div class="feature-card" role="listitem">
                     <div class="feature-icon">📹</div>
                     <h3>RTSP Camera Support</h3>
                     <p>Works with most IP cameras including popular TAPO C120. Easy setup wizard guides you through camera configuration.</p>
                 </div>
                 
-                <div class="feature-card">
+                <div class="feature-card" role="listitem">
                     <div class="feature-icon">📸</div>
                     <h3>Automatic Snapshots</h3>
                     <p>Captures and saves photos of every bird detection with beautiful overlays showing species, time, temperature, and more.</p>
                 </div>
                 
-                <div class="feature-card">
+                <div class="feature-card" role="listitem">
                     <div class="feature-icon">🎬</div>
                     <h3>Video Recording</h3>
                     <p>Record video clips when birds are detected. Never miss a special moment at your feeder.</p>
                 </div>
                 
-                <div class="feature-card">
+                <div class="feature-card" role="listitem">
                     <div class="feature-icon">📱</div>
                     <h3>Instant Notifications</h3>
                     <p>Get push notifications via Pushover or email alerts with photos. Know when rare species visit!</p>
                 </div>
                 
-                <div class="feature-card">
+                <div class="feature-card" role="listitem">
                     <div class="feature-icon">📊</div>
                     <h3>Statistics & Reports</h3>
                     <p>Weekly and monthly summary reports with detection stats, species counts, and your best snapshots.</p>
                 </div>
                 
-                <div class="feature-card">
+                <div class="feature-card" role="listitem">
                     <div class="feature-icon">🌡️</div>
                     <h3>Weather Integration</h3>
                     <p>Automatically records temperature at detection time based on your location's zip code.</p>
                 </div>
                 
-                <div class="feature-card">
+                <div class="feature-card" role="listitem">
                     <div class="feature-icon">🔒</div>
                     <h3>100% Private</h3>
                     <p>All processing happens locally on your computer. Your camera feed and data never leave your home.</p>
@@ -222,10 +228,10 @@
     </section>
 
     <!-- How It Works -->
-    <section id="how-it-works" class="how-it-works">
+    <section id="how-it-works" class="how-it-works" aria-labelledby="how-it-works-heading">
         <div class="container">
             <div class="section-header">
-                <h2>Up and Running in Minutes</h2>
+                <h2 id="how-it-works-heading">Up and Running in Minutes</h2>
                 <p>Simple setup gets you watching birds faster.</p>
             </div>
             
@@ -258,7 +264,7 @@
     </section>
 
     <!-- Screenshot Gallery -->
-    <section class="gallery">
+    <section class="gallery" aria-label="Application screenshots">
         <div class="container">
             <div class="section-header">
                 <h2>See It in Action</h2>
@@ -308,8 +314,8 @@
                 <div class="newsletter-icon">📬</div>
                 <h2>Weekly Bird Digest</h2>
                 <p>Get a curated summary of the rarest sightings, most active feeders, and top species every week — delivered to your inbox.</p>
-                <form id="newsletter-form" class="newsletter-form" onsubmit="submitNewsletter(event)">
-                    <input type="email" id="newsletter-email" placeholder="your@email.com" required class="newsletter-input">
+                <form id="newsletter-form" class="newsletter-form" onsubmit="submitNewsletter(event)" aria-label="Newsletter signup">
+                    <input type="email" id="newsletter-email" placeholder="your@email.com" required class="newsletter-input" aria-label="Email address for weekly digest">
                     <button type="submit" class="btn btn-primary newsletter-btn">Subscribe Free</button>
                 </form>
                 <p class="newsletter-fine">No spam, unsubscribe anytime. Sent every Sunday morning.</p>
@@ -319,10 +325,10 @@
     </section>
 
     <!-- Pricing Section -->
-    <section id="pricing" class="pricing">
+    <section id="pricing" class="pricing" aria-labelledby="pricing-heading">
         <div class="container">
             <div class="section-header">
-                <h2>Simple, One-Time Pricing</h2>
+                <h2 id="pricing-heading">Simple, One-Time Pricing</h2>
                 <p>No subscriptions. No hidden fees. Just great bird watching.</p>
             </div>
             
@@ -461,10 +467,10 @@
     </section>
 
     <!-- FAQ Section -->
-    <section class="faq">
+    <section class="faq" aria-labelledby="faq-heading">
         <div class="container">
             <div class="section-header">
-                <h2>Frequently Asked Questions</h2>
+                <h2 id="faq-heading">Frequently Asked Questions</h2>
             </div>
             
             <div class="faq-grid">
@@ -502,7 +508,7 @@
     </section>
 
     <!-- Footer -->
-    <footer class="footer">
+    <footer class="footer" role="contentinfo">
         <div class="container">
             <div class="footer-content">
                 <div class="footer-brand">
@@ -862,6 +868,14 @@
         }
         // Clean URL without reloading
         history.replaceState(null, '', location.pathname);
+    }
+    </script>
+    <script>
+    // ── Service Worker registration ───────────────────────────
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js').catch(() => {});
+        });
     }
     </script>
 </body>

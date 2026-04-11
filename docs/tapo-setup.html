@@ -18,6 +18,28 @@
             --color-gray-700: #4a4640;
             --color-gray-900: #2a2825;
         }
+
+        [data-theme="dark"] {
+            --color-primary:       #5aab72;
+            --color-primary-light: #6dc489;
+            --color-cream:         #1a1a18;
+            --color-gray-100:      #2e2e2a;
+            --color-gray-500:      #9a9590;
+            --color-gray-700:      #ccc8c2;
+            --color-gray-900:      #f0ede8;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root:not([data-theme="light"]) {
+                --color-primary:       #5aab72;
+                --color-primary-light: #6dc489;
+                --color-cream:         #1a1a18;
+                --color-gray-100:      #2e2e2a;
+                --color-gray-500:      #9a9590;
+                --color-gray-700:      #ccc8c2;
+                --color-gray-900:      #f0ede8;
+            }
+        }
         
         * { box-sizing: border-box; margin: 0; padding: 0; }
         
@@ -177,7 +199,23 @@
             color: var(--color-gray-500);
             font-size: 0.875rem;
         }
+
+        [data-theme="dark"] .box-info { background: #1a2a3a; border-color: #3a7bd5; }
+        [data-theme="dark"] .box-warning { background: #2e2a1a; border-color: #b8960a; }
+        [data-theme="dark"] .box-error { background: #2e1a1a; border-color: #c0392b; }
+        [data-theme="dark"] .box-step { background: #242420; }
+        [data-theme="dark"] code { background: var(--color-gray-100); color: var(--color-gray-700); }
+        [data-theme="dark"] pre { background: #111; }
+        [data-theme="dark"] th { background: var(--color-primary); }
+        [data-theme="dark"] td { border-color: var(--color-gray-100); }
+        [data-theme="dark"] tr:nth-child(even) { background: #242420; }
     </style>
+    <script>
+        (function() {
+            var t = localStorage.getItem('bwai-theme');
+            if (t) document.documentElement.setAttribute('data-theme', t);
+        })();
+    </script>
 </head>
 <body>
     <div class="container">

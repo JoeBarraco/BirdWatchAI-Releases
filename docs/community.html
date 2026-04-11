@@ -66,6 +66,11 @@
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
+        :focus-visible {
+            outline: 2px solid var(--color-primary);
+            outline-offset: 2px;
+        }
+
         body {
             font-family: 'Source Sans 3', -apple-system, sans-serif;
             font-size: 1.0625rem;
@@ -579,12 +584,34 @@
             color: var(--color-gray-500);
             cursor: pointer;
             transition: all 0.15s;
+            white-space: nowrap;
         }
         .stats-tab:hover { border-color: var(--color-primary); color: var(--color-primary); }
         .stats-tab.active {
             background: var(--color-primary);
             border-color: var(--color-primary);
             color: white;
+        }
+
+        /* Mobile: horizontal scrollable stats tabs */
+        @media (max-width: 640px) {
+            .stats-tabs {
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                padding-bottom: 4px;
+                margin-left: -0.5rem;
+                margin-right: -0.5rem;
+                padding-left: 0.5rem;
+                padding-right: 0.5rem;
+            }
+            .stats-tabs::-webkit-scrollbar { display: none; }
+            .stats-tab {
+                font-size: 0.78rem;
+                padding: 5px 10px;
+                flex-shrink: 0;
+            }
         }
 
         .stats-panel {
@@ -2126,13 +2153,13 @@
         <span>Community Feed</span>
     </div>
     <div class="navbar-right">
-        <button id="theme-toggle" class="navbar-btn" onclick="toggleTheme()" title="Toggle dark mode">🌙 Theme</button>
+        <button id="theme-toggle" class="navbar-btn" onclick="toggleTheme()" title="Toggle dark mode" aria-label="Toggle dark mode">🌙 Theme</button>
         <!-- Community user auth -->
         <span id="navbar-community-user" class="navbar-user" style="display:none;"></span>
-        <button id="navbar-community-login" class="navbar-btn" onclick="openUserLogin()" title="Sign in to comment, follow feeders, and build your life list">Sign In</button>
-        <button id="navbar-life-list" class="navbar-btn" onclick="openLifeList()" title="My Life List" style="display:none;">My Life List</button>
-        <button id="navbar-community-profile" class="navbar-btn" onclick="openUserProfile()" title="Edit profile" style="display:none;">Profile</button>
-        <button id="navbar-community-logout" class="navbar-btn navbar-btn-danger" onclick="doUserLogout()" title="Sign out" style="display:none;">Sign Out</button>
+        <button id="navbar-community-login" class="navbar-btn" onclick="openUserLogin()" title="Sign in to comment, follow feeders, and build your life list" aria-label="Sign in">Sign In</button>
+        <button id="navbar-life-list" class="navbar-btn" onclick="openLifeList()" title="My Life List" aria-label="View my life list" style="display:none;">My Life List</button>
+        <button id="navbar-community-profile" class="navbar-btn" onclick="openUserProfile()" title="Edit profile" aria-label="Edit profile" style="display:none;">Profile</button>
+        <button id="navbar-community-logout" class="navbar-btn navbar-btn-danger" onclick="doUserLogout()" title="Sign out" aria-label="Sign out" style="display:none;">Sign Out</button>
         <span style="opacity:0.3">|</span>
         <!-- Moderator auth -->
         <span id="navbar-user" class="navbar-user" style="display:none;"></span>
@@ -2161,27 +2188,27 @@
     </div>
 
     <!-- Filter bar -->
-    <div class="filter-bar">
+    <div class="filter-bar" role="search" aria-label="Filter detections">
         <div class="filter-group">
-            <span class="filter-label">Period</span>
-            <div class="period-btns">
-                <button class="period-btn active" data-period="">All</button>
-                <button class="period-btn" data-period="today">Today</button>
-                <button class="period-btn" data-period="week">This Week</button>
-                <button class="period-btn" data-period="month">This Month</button>
-                <button class="period-btn" data-period="year">This Year</button>
+            <span class="filter-label" id="period-label">Period</span>
+            <div class="period-btns" role="group" aria-labelledby="period-label">
+                <button class="period-btn active" data-period="" aria-pressed="true">All</button>
+                <button class="period-btn" data-period="today" aria-pressed="false">Today</button>
+                <button class="period-btn" data-period="week" aria-pressed="false">This Week</button>
+                <button class="period-btn" data-period="month" aria-pressed="false">This Month</button>
+                <button class="period-btn" data-period="year" aria-pressed="false">This Year</button>
             </div>
         </div>
 
         <div class="filter-group">
-            <span class="filter-label">Species</span>
+            <label class="filter-label" for="species-filter">Species</label>
             <select id="species-filter" class="filter-select" onchange="commitSpecies(this.value)">
                 <option value="">All species</option>
             </select>
         </div>
 
         <div class="filter-group">
-            <span class="filter-label">Rarity</span>
+            <label class="filter-label" for="rarity-filter">Rarity</label>
             <select id="rarity-filter" class="filter-select">
                 <option value="">All</option>
                 <option value="Uncommon">Uncommon</option>
@@ -2191,20 +2218,20 @@
         </div>
 
         <div class="filter-group">
-            <span class="filter-label">Feeder</span>
+            <label class="filter-label" for="feeder-filter">Feeder</label>
             <select id="feeder-filter" class="filter-select">
                 <option value="">All feeders</option>
             </select>
         </div>
 
         <div class="filter-group">
-            <span class="filter-label">Zip</span>
-            <input id="zip-filter" class="filter-input" type="text" placeholder="e.g. 90210" maxlength="10">
-            <button id="near-me-btn" class="near-me-btn" onclick="useMyLocation()" title="Use my location">📍 Near me</button>
+            <label class="filter-label" for="zip-filter">Zip</label>
+            <input id="zip-filter" class="filter-input" type="text" placeholder="e.g. 90210" maxlength="10" aria-label="Filter by zip code">
+            <button id="near-me-btn" class="near-me-btn" onclick="useMyLocation()" title="Use my location" aria-label="Use my location">📍 Near me</button>
         </div>
 
         <div class="filter-group">
-            <span class="filter-label">Sort</span>
+            <label class="filter-label" for="sort-filter">Sort</label>
             <select id="sort-filter" class="filter-select" onchange="refilter()">
                 <option value="recent">Most Recent</option>
                 <option value="liked">Most Liked</option>
@@ -2212,10 +2239,10 @@
         </div>
 
         <div class="filter-group">
-            <button id="fav-toggle" class="toggle-btn" onclick="toggleFavorites()">❤️ My Likes</button>
+            <button id="fav-toggle" class="toggle-btn" onclick="toggleFavorites()" aria-pressed="false" aria-label="Show my liked detections">❤️ My Likes</button>
         </div>
 
-        <button class="clear-btn" onclick="clearFilters()">✕ Clear</button>
+        <button class="clear-btn" onclick="clearFilters()" aria-label="Clear all filters">✕ Clear</button>
     </div>
 
     <!-- Status bar -->
@@ -2244,11 +2271,11 @@
     </div>
 
     <!-- View tabs -->
-    <div class="view-tabs">
-        <button class="view-tab active" onclick="switchView('feed', this)">📋 Feed</button>
-        <button class="view-tab" onclick="switchView('map', this)">🗺️ Map</button>
-        <button class="view-tab" onclick="switchView('gallery', this)">🖼️ Gallery</button>
-        <button class="view-tab" onclick="switchView('stats', this)">📊 Stats</button>
+    <div class="view-tabs" role="tablist" aria-label="Content views">
+        <button class="view-tab active" role="tab" aria-selected="true" aria-controls="feed-view" onclick="switchView('feed', this)">📋 Feed</button>
+        <button class="view-tab" role="tab" aria-selected="false" aria-controls="map-view" onclick="switchView('map', this)">🗺️ Map</button>
+        <button class="view-tab" role="tab" aria-selected="false" aria-controls="gallery-view" onclick="switchView('gallery', this)">🖼️ Gallery</button>
+        <button class="view-tab" role="tab" aria-selected="false" aria-controls="stats-view" onclick="switchView('stats', this)">📊 Stats</button>
     </div>
 
     <!-- Notification permission banner (shown when needed) -->
@@ -2330,36 +2357,36 @@
     </div>
 
     <!-- Stats view -->
-    <div id="stats-view">
+    <div id="stats-view" role="tabpanel">
         <!-- Sub-tabs (directly under the main view tabs) -->
-        <div class="stats-tabs">
-            <button class="stats-tab active" onclick="switchStatsTab('life-list', this)">📋 Life List</button>
-            <button class="stats-tab" onclick="switchStatsTab('activity', this)">🕐 Activity</button>
-            <button class="stats-tab" onclick="switchStatsTab('calendar', this)">📅 Calendar</button>
-            <button class="stats-tab" onclick="switchStatsTab('hotspots', this)">📍 Hotspots</button>
-            <button class="stats-tab" onclick="switchStatsTab('temperature', this)">🌡️ Temperature</button>
-            <button class="stats-tab" onclick="switchStatsTab('leaderboard', this)">🏆 Leaderboard</button>
-            <button class="stats-tab" onclick="switchStatsTab('trend', this)">📈 Trend</button>
-            <button class="stats-tab" onclick="switchStatsTab('records', this)">🎖️ Records</button>
-            <button class="stats-tab" onclick="switchStatsTab('pairs', this)">🤝 Pairs</button>
-            <button class="stats-tab" onclick="switchStatsTab('compare', this)">⚖️ Compare</button>
-            <button class="stats-tab" onclick="switchStatsTab('likes', this)">❤️ Likes</button>
+        <div class="stats-tabs" role="tablist" aria-label="Statistics categories">
+            <button class="stats-tab active" role="tab" aria-selected="true" aria-controls="stats-life-list" onclick="switchStatsTab('life-list', this)">📋 Life List</button>
+            <button class="stats-tab" role="tab" aria-selected="false" aria-controls="stats-activity" onclick="switchStatsTab('activity', this)">🕐 Activity</button>
+            <button class="stats-tab" role="tab" aria-selected="false" aria-controls="stats-calendar" onclick="switchStatsTab('calendar', this)">📅 Calendar</button>
+            <button class="stats-tab" role="tab" aria-selected="false" aria-controls="stats-hotspots" onclick="switchStatsTab('hotspots', this)">📍 Hotspots</button>
+            <button class="stats-tab" role="tab" aria-selected="false" aria-controls="stats-temperature" onclick="switchStatsTab('temperature', this)">🌡️ Temperature</button>
+            <button class="stats-tab" role="tab" aria-selected="false" aria-controls="stats-leaderboard" onclick="switchStatsTab('leaderboard', this)">🏆 Leaderboard</button>
+            <button class="stats-tab" role="tab" aria-selected="false" aria-controls="stats-trend" onclick="switchStatsTab('trend', this)">📈 Trend</button>
+            <button class="stats-tab" role="tab" aria-selected="false" aria-controls="stats-records" onclick="switchStatsTab('records', this)">🎖️ Records</button>
+            <button class="stats-tab" role="tab" aria-selected="false" aria-controls="stats-pairs" onclick="switchStatsTab('pairs', this)">🤝 Pairs</button>
+            <button class="stats-tab" role="tab" aria-selected="false" aria-controls="stats-compare" onclick="switchStatsTab('compare', this)">⚖️ Compare</button>
+            <button class="stats-tab" role="tab" aria-selected="false" aria-controls="stats-likes" onclick="switchStatsTab('likes', this)">❤️ Likes</button>
         </div>
 
         <!-- Summary KPIs -->
         <div id="stats-summary"></div>
 
-        <div id="stats-life-list"  class="stats-panel"></div>
-        <div id="stats-activity"   class="stats-panel" style="display:none;"></div>
-        <div id="stats-calendar"   class="stats-panel" style="display:none;"></div>
-        <div id="stats-hotspots"   class="stats-panel" style="display:none;"></div>
-        <div id="stats-temperature" class="stats-panel" style="display:none;"></div>
-        <div id="stats-leaderboard" class="stats-panel" style="display:none;"></div>
-        <div id="stats-trend"      class="stats-panel" style="display:none;"></div>
-        <div id="stats-records"    class="stats-panel" style="display:none;"></div>
-        <div id="stats-pairs"      class="stats-panel" style="display:none;"></div>
-        <div id="stats-compare"    class="stats-panel" style="display:none;"></div>
-        <div id="stats-likes"      class="stats-panel" style="display:none;"></div>
+        <div id="stats-life-list"  class="stats-panel" role="tabpanel"></div>
+        <div id="stats-activity"   class="stats-panel" role="tabpanel" style="display:none;"></div>
+        <div id="stats-calendar"   class="stats-panel" role="tabpanel" style="display:none;"></div>
+        <div id="stats-hotspots"   class="stats-panel" role="tabpanel" style="display:none;"></div>
+        <div id="stats-temperature" class="stats-panel" role="tabpanel" style="display:none;"></div>
+        <div id="stats-leaderboard" class="stats-panel" role="tabpanel" style="display:none;"></div>
+        <div id="stats-trend"      class="stats-panel" role="tabpanel" style="display:none;"></div>
+        <div id="stats-records"    class="stats-panel" role="tabpanel" style="display:none;"></div>
+        <div id="stats-pairs"      class="stats-panel" role="tabpanel" style="display:none;"></div>
+        <div id="stats-compare"    class="stats-panel" role="tabpanel" style="display:none;"></div>
+        <div id="stats-likes"      class="stats-panel" role="tabpanel" style="display:none;"></div>
     </div>
 </div>
 
@@ -3424,8 +3451,9 @@
         // Manually switching tabs clears the back-to-stats context
         clearStatsContext();
         currentView = view;
-        document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.view-tab').forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected', 'false'); });
         btn.classList.add('active');
+        btn.setAttribute('aria-selected', 'true');
 
         document.getElementById('feed-view').style.display    = view === 'feed'    ? 'grid'  : 'none';
         document.getElementById('map-view').style.display     = view === 'map'     ? 'block' : 'none';
@@ -3488,8 +3516,11 @@
 
     function switchStatsTab(tabName, btn) {
         activeStatsTab = tabName;
-        document.querySelectorAll('.stats-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.stats-tab').forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected', 'false'); });
         btn.classList.add('active');
+        btn.setAttribute('aria-selected', 'true');
+        // On mobile, scroll the active tab into view
+        btn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
         document.querySelectorAll('.stats-panel').forEach(p => p.style.display = 'none');
         document.getElementById('stats-' + tabName).style.display = '';
         if (tabName === 'calendar') renderCalendar();
@@ -5988,6 +6019,23 @@
         if (e.key === '2') { switchView('map',     document.querySelectorAll('.view-tab')[1]); return; }
         if (e.key === '3') { switchView('gallery', document.querySelectorAll('.view-tab')[2]); return; }
         if (e.key === '4') { switchView('stats',   document.querySelectorAll('.view-tab')[3]); return; }
+    });
+
+    // ── Arrow-key navigation for tab lists (ARIA tabs pattern) ──
+    document.querySelectorAll('[role="tablist"]').forEach(tablist => {
+        tablist.addEventListener('keydown', e => {
+            if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
+            const tabs = [...tablist.querySelectorAll('[role="tab"]')];
+            const idx = tabs.indexOf(document.activeElement);
+            if (idx < 0) return;
+            e.preventDefault();
+            let next;
+            if (e.key === 'ArrowRight') next = tabs[(idx + 1) % tabs.length];
+            else if (e.key === 'ArrowLeft') next = tabs[(idx - 1 + tabs.length) % tabs.length];
+            else if (e.key === 'Home') next = tabs[0];
+            else if (e.key === 'End') next = tabs[tabs.length - 1];
+            if (next) { next.focus(); next.click(); }
+        });
     });
 
     // ── Service Worker registration ───────────────────────────

@@ -12,13 +12,17 @@ document.addEventListener('DOMContentLoaded', function() {
             navLinks.classList.toggle('active');
             // Animate hamburger to X
             this.classList.toggle('active');
+            // Update aria-expanded for accessibility
+            var expanded = navLinks.classList.contains('active');
+            this.setAttribute('aria-expanded', expanded);
         });
-        
+
         // Close mobile nav when clicking a link
         navLinks.querySelectorAll('a').forEach(link => {
             link.addEventListener('click', () => {
                 navLinks.classList.remove('active');
                 navToggle.classList.remove('active');
+                navToggle.setAttribute('aria-expanded', 'false');
             });
         });
     }
