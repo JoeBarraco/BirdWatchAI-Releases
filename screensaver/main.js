@@ -2,7 +2,7 @@
 // Handles Windows screensaver protocols: /s (run), /c (configure), /p (preview)
 // Spawns one fullscreen window per monitor for multi-display support.
 
-const { app, BrowserWindow, screen, globalShortcut, ipcMain } = require('electron');
+const { app, BrowserWindow, screen, ipcMain } = require('electron');
 const path = require('path');
 const fs   = require('fs');
 
@@ -58,10 +58,7 @@ function launchScreensaver() {
     const displays = screen.getAllDisplays();
     const settings = loadSettings();
     const windows  = [];
-
-    // Track initial mouse position to detect intentional movement
-    const initialMouse = screen.getCursorScreenPoint();
-    const MOUSE_THRESHOLD = 10; // px — ignore jitter
+    let   armed    = false; // Don't react to input until the grace period ends
 
     for (const display of displays) {
         const win = new BrowserWindow({
@@ -84,7 +81,6 @@ function launchScreensaver() {
 
         win.loadFile('slideshow.html');
 
-        // Send settings once the page is ready.
         // Stagger each monitor with a random delay (0–40% of the interval)
         // so transitions don't fire in lockstep across displays.
         const staggerDelay = displays.length > 1
@@ -100,26 +96,37 @@ function launchScreensaver() {
             win.setFullScreen(true);
         });
 
-        // Any keyboard input exits the screensaver
+        // Keyboard input exits the screensaver (only after grace period)
         win.webContents.on('before-input-event', () => {
-            quitAll();
+            if (armed) quitAll();
         });
 
         windows.push(win);
     }
 
-    // Poll mouse position — exit if it moves beyond threshold
-    const mousePoller = setInterval(() => {
-        const pos = screen.getCursorScreenPoint();
-        const dx = Math.abs(pos.x - initialMouse.x);
-        const dy = Math.abs(pos.y - initialMouse.y);
-        if (dx > MOUSE_THRESHOLD || dy > MOUSE_THRESHOLD) {
-            quitAll();
-        }
-    }, 200);
+    // Grace period: ignore all input for the first 2 seconds while windows
+    // are being created and fullscreened. Mouse jitter and OS-generated
+    // events during this phase would otherwise exit immediately.
+    setTimeout(() => {
+        armed = true;
+        // Capture mouse position AFTER windows are up, not before
+        const initialMouse = screen.getCursorScreenPoint();
+        const MOUSE_THRESHOLD = 15; // px — ignore jitter
+
+        const mousePoller = setInterval(() => {
+            if (!armed) return;
+            const pos = screen.getCursorScreenPoint();
+            const dx = Math.abs(pos.x - initialMouse.x);
+            const dy = Math.abs(pos.y - initialMouse.y);
+            if (dx > MOUSE_THRESHOLD || dy > MOUSE_THRESHOLD) {
+                clearInterval(mousePoller);
+                quitAll();
+            }
+        }, 200);
+    }, 2000);
 
     function quitAll() {
-        clearInterval(mousePoller);
+        armed = false;
         for (const w of windows) {
             if (!w.isDestroyed()) w.close();
         }
@@ -127,7 +134,9 @@ function launchScreensaver() {
     }
 
     // Also listen for mouse clicks relayed from the renderer
-    ipcMain.on('user-activity', () => quitAll());
+    ipcMain.on('user-activity', () => {
+        if (armed) quitAll();
+    });
 }
 
 // ── Configuration mode ─────────────────────────────────────
@@ -153,61 +162,30 @@ function launchConfig() {
 }
 
 // ── Preview mode ───────────────────────────────────────────
-// Windows passes /p:<hwnd> to embed in the tiny Settings preview.
-// Full native embedding requires Win32 SetParent — for now we open
-// a small standalone preview window.
+// Windows passes /p:<hwnd> to embed a preview in the tiny monitor
+// graphic in the Screen Saver Settings dialog. True embedding requires
+// Win32 SetParent which isn't available in Electron. We simply exit
+// cleanly so we don't open a confusing standalone window.
 function launchPreview() {
-    const settings = loadSettings();
-
-    const win = new BrowserWindow({
-        width: 320,
-        height: 240,
-        frame: false,
-        resizable: false,
-        backgroundColor: '#000000',
-        webPreferences: {
-            preload: path.join(__dirname, 'preload.js'),
-            contextIsolation: true,
-            nodeIntegration: false,
-        },
-    });
-
-    win.loadFile('slideshow.html');
-    win.webContents.on('did-finish-load', () => {
-        win.webContents.send('init-settings', { ...settings, showCaption: false, showProgress: false });
-    });
-
-    // Close on any input
-    win.webContents.on('before-input-event', () => {
-        win.close();
-        app.quit();
-    });
-
-    win.on('closed', () => app.quit());
+    app.quit();
 }
 
 // ── App lifecycle ──────────────────────────────────────────
-// Prevent multiple instances (Windows can try to launch multiple)
-const gotLock = app.requestSingleInstanceLock();
-if (!gotLock) {
-    app.quit();
-} else {
-    app.whenReady().then(() => {
-        const mode = parseMode();
+app.whenReady().then(() => {
+    const mode = parseMode();
 
-        switch (mode) {
-            case 'config':
-                launchConfig();
-                break;
-            case 'preview':
-                launchPreview();
-                break;
-            case 'screensaver':
-            default:
-                launchScreensaver();
-                break;
-        }
-    });
-}
+    switch (mode) {
+        case 'config':
+            launchConfig();
+            break;
+        case 'preview':
+            launchPreview();
+            break;
+        case 'screensaver':
+        default:
+            launchScreensaver();
+            break;
+    }
+});
 
 app.on('window-all-closed', () => app.quit());
