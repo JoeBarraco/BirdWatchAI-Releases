@@ -834,12 +834,8 @@ function buildLikesRows() {
     const visible = applyClientFilters(allDetections);
     return visible.map(d => {
         const data = reactionCache[d.id] || {};
-        const wow       = data.wow?.count || 0;
         const liked     = data.liked?.count || 0;
-        const celebrate = data.celebrate?.count || 0;
-        const bird      = data.bird?.count || 0;
-        const total     = wow + liked + celebrate + bird;
-        return { d, wow, liked, celebrate, bird, total };
+        return { d, liked, total: liked };
     }).filter(r => r.total > 0)
       .sort((a, b) => b.total - a.total);
 }
@@ -863,10 +859,7 @@ function likesRowHtml(r, rank) {
         <td style="white-space:nowrap;">${r.d.feeders?.display_name ? esc(r.d.feeders.display_name) : ''}</td>
         <td>${r.d.zip_code ? esc(r.d.zip_code) : ''}</td>
         <td style="white-space:nowrap;">${fmtDetectedAt(r.d.detected_at)}</td>
-        <td style="text-align:center;">${rxBtn('😮', r.wow)}</td>
         <td style="text-align:center;">${rxBtn('❤️', r.liked)}</td>
-        <td style="text-align:center;">${rxBtn('🎉', r.celebrate)}</td>
-        <td style="text-align:center;">${rxBtn('🦅', r.bird)}</td>
         <td class="likes-total" data-total="${r.total}" style="text-align:center;font-weight:600;">${r.total}</td>
         <td style="text-align:center;white-space:nowrap;">${photoBtn} ${videoBtn}</td>
     </tr>`;
@@ -880,10 +873,7 @@ function likesTableHtml(rows) {
             <th>Feeder</th>
             <th>ZIP</th>
             <th>Detected</th>
-            <th style="text-align:center;">😮</th>
             <th style="text-align:center;">❤️</th>
-            <th style="text-align:center;">🎉</th>
-            <th style="text-align:center;">🦅</th>
             <th style="text-align:center;">Total</th>
             <th style="text-align:center;">Media</th>
         </tr></thead>
@@ -1267,24 +1257,14 @@ function closeAIPanel() {
 }
 
 async function fetchSpeciesSummary(species) {
-    const geminiQuery = `Tell me about the ${species} bird species. Include habitat, behavior, diet, conservation status, interesting facts, and any recent news or research.`;
-    const geminiUrl = `https://gemini.google.com/app?q=${encodeURIComponent(geminiQuery)}`;
-
     // Build quick links section immediately
     const linksHtml = `
-        <div class="ai-panel-section">
-            <h4>🤖 AI Research</h4>
-            <p class="ai-panel-hint">Get a comprehensive AI-powered overview with recent news and web sources.</p>
-            <a href="${geminiUrl}" target="_blank" rel="noopener" class="ai-panel-gemini-btn">
-                ✨ Research with Google Gemini
-            </a>
-        </div>
         <div class="ai-panel-section">
             <h4>🔗 Quick Links</h4>
             <div class="ai-panel-links">
                 <a href="https://en.wikipedia.org/wiki/${encodeURIComponent(species)}" target="_blank" rel="noopener">📖 Wikipedia</a>
                 <a href="https://www.allaboutbirds.org/guide/${encodeURIComponent(species.replace(/\s+/g, '_'))}" target="_blank" rel="noopener">🐦 All About Birds</a>
-                <a href="https://ebird.org/species/${encodeURIComponent(species.toLowerCase().replace(/[^a-z]/g, ''))}" target="_blank" rel="noopener">🦅 eBird</a>
+                <a href="https://ebird.org/explore?q=${encodeURIComponent(species)}" target="_blank" rel="noopener">🦅 eBird</a>
                 <a href="https://www.audubon.org/field-guide/bird/${encodeURIComponent(species.toLowerCase().replace(/\s+/g, '-'))}" target="_blank" rel="noopener">🌿 Audubon</a>
                 <a href="https://www.google.com/search?q=${encodeURIComponent(species + ' bird species news')}" target="_blank" rel="noopener">🔍 Google News</a>
             </div>

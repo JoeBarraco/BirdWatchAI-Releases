@@ -1727,34 +1727,6 @@
             color: var(--color-gray-700);
             margin: 0;
         }
-        .ai-panel-hint {
-            font-size: 0.825rem;
-            color: var(--color-gray-500);
-            margin: 0 0 0.75rem;
-            line-height: 1.5;
-        }
-        .ai-panel-gemini-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 10px 20px;
-            background: linear-gradient(135deg, #8e44ad 0%, #3498db 100%);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 0.9rem;
-            font-weight: 600;
-            font-family: inherit;
-            cursor: pointer;
-            text-decoration: none;
-            transition: opacity 0.15s, transform 0.15s;
-        }
-        .ai-panel-gemini-btn:hover {
-            opacity: 0.9;
-            transform: translateY(-1px);
-            color: white;
-            text-decoration: none;
-        }
         .ai-panel-links {
             display: flex;
             flex-direction: column;
