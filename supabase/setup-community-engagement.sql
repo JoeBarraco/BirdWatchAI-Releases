@@ -71,7 +71,7 @@ create policy "Service role can create profiles" on user_profiles
 -- ── 2. Life lists (species a user has seen) ──────────────────
 create table if not exists user_life_list (
   id           uuid primary key default gen_random_uuid(),
-  user_id      uuid not null references auth.users(id) on delete cascade,
+  user_id      uuid not null,
   species      text not null,
   first_seen   timestamptz not null default now(),
   detection_id uuid references community_detections(id) on delete set null,
@@ -176,7 +176,7 @@ grant execute on function get_life_list(uuid) to anon, authenticated;
 -- ── 3. Follow a Feeder ───────────────────────────────────────
 create table if not exists feeder_follows (
   id         uuid primary key default gen_random_uuid(),
-  user_id    uuid not null references auth.users(id) on delete cascade,
+  user_id    uuid not null,
   feeder_id  uuid not null references feeders(id) on delete cascade,
   notify_rare boolean not null default true,
   created_at timestamptz default now(),
@@ -278,7 +278,7 @@ grant execute on function get_feeder_follower_count(uuid) to anon, authenticated
 create table if not exists detection_comments (
   id            uuid primary key default gen_random_uuid(),
   detection_id  uuid not null references community_detections(id) on delete cascade,
-  user_id       uuid not null references auth.users(id) on delete cascade,
+  user_id       uuid not null,
   parent_id     uuid references detection_comments(id) on delete cascade,
   body          text not null check (length(body) between 1 and 2000),
   created_at    timestamptz default now(),
@@ -422,7 +422,7 @@ grant execute on function get_comment_counts(uuid[]) to anon, authenticated;
 create table if not exists detection_flags (
   id            uuid primary key default gen_random_uuid(),
   detection_id  uuid not null references community_detections(id) on delete cascade,
-  user_id       uuid not null references auth.users(id) on delete cascade,
+  user_id       uuid not null,
   reason        text not null check (reason in (
                   'wrong_species', 'inappropriate', 'duplicate', 'spam', 'other'
                 )),
