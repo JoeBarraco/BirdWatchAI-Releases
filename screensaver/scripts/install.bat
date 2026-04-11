@@ -1,10 +1,10 @@
 @echo off
 REM BirdWatchAI Screensaver — Installer
-REM 1. Copies the Electron build to LocalAppData
+REM 1. Copies the Electron build to Program Files
 REM 2. Compiles a tiny launcher .scr and places it in System32
 REM 3. Registers the screensaver path in the registry
 REM
-REM Requires: Administrator (to write to System32)
+REM Requires: Administrator
 
 setlocal enabledelayedexpansion
 
@@ -35,7 +35,7 @@ set "BUILD_DIR=%CD%"
 popd
 
 set "SCRIPT_DIR=%~dp0"
-set "INSTALL_DIR=%LOCALAPPDATA%\BirdWatchAI Screensaver"
+set "INSTALL_DIR=%ProgramFiles%\BirdWatchAI Screensaver"
 set "LAUNCHER_NAME=BirdWatchAI.scr"
 
 REM ── Step 1: Clean up old entries ─────────────────────────────
@@ -61,9 +61,9 @@ echo       Found: %SCR_NAME%
 REM ── Step 3: Copy build to install directory ──────────────────
 echo [3/5] Installing to %INSTALL_DIR%...
 
-if exist "%INSTALL_DIR%" rmdir /s /q "%INSTALL_DIR%" >nul 2>&1
+if exist "%INSTALL_DIR%" rmdir /s /q "%INSTALL_DIR%"
 
-xcopy "%BUILD_DIR%" "%INSTALL_DIR%\" /s /e /i /q /y >nul 2>&1
+xcopy "%BUILD_DIR%" "%INSTALL_DIR%\" /s /e /i /y
 if errorlevel 1 (
     echo  ERROR: Failed to copy files to %INSTALL_DIR%
     pause
@@ -86,7 +86,6 @@ if not defined CSC (
 if not defined CSC (
     echo  WARNING: C# compiler not found. Skipping System32 launcher.
     echo  The screensaver is installed but won't appear in the dropdown.
-    echo  It will still activate after your configured wait time.
     goto :register
 )
 
@@ -94,7 +93,7 @@ REM Compile the launcher (64-bit PE with version info for System32)
 set "LAUNCHER_SRC=%SCRIPT_DIR%Launcher.cs"
 set "LAUNCHER_OUT=%TEMP%\%LAUNCHER_NAME%"
 
-echo       Using: %CSC%
+echo       Compiler: %CSC%
 "%CSC%" /nologo /optimize /platform:x64 /target:winexe /out:"%LAUNCHER_OUT%" "%LAUNCHER_SRC%"
 if errorlevel 1 (
     echo  WARNING: Compilation failed. Skipping System32 launcher.
@@ -122,7 +121,6 @@ REM ── Step 5: Register in the registry ────────────
 echo [5/5] Registering screensaver...
 
 REM Store the real path in HKLM so ALL users can find the Electron app
-REM (install.bat runs as admin, which may be a different user than the desktop session)
 reg add "HKLM\Software\BirdWatchAI\Screensaver" /v Path /t REG_SZ /d "%SCR_PATH%" /f >nul 2>&1
 
 echo       Done.

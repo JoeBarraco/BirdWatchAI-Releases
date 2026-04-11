@@ -10,7 +10,7 @@ echo  BirdWatchAI Screensaver Uninstaller
 echo  ====================================
 echo.
 
-set "INSTALL_DIR=%LOCALAPPDATA%\BirdWatchAI Screensaver"
+set "INSTALL_DIR=%ProgramFiles%\BirdWatchAI Screensaver"
 set "LAUNCHER_NAME=BirdWatchAI.scr"
 
 REM ── Remove launcher from System32 ────────────────────────────
