@@ -1010,6 +1010,39 @@ ul {
     color: var(--color-accent-light);
 }
 
+.screensaver-download {
+    margin-top: var(--space-xl);
+    padding-top: var(--space-xl);
+    border-top: 1px solid rgba(255,255,255,0.2);
+}
+
+.screensaver-download h3 {
+    color: var(--color-white);
+    font-size: 1.125rem;
+    margin-bottom: var(--space-xs);
+}
+
+.screensaver-download > p {
+    color: var(--color-secondary);
+    font-size: 0.9375rem;
+    margin-bottom: var(--space-md);
+}
+
+.screensaver-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,255,255,0.15);
+    color: var(--color-white);
+    border-color: rgba(255,255,255,0.3);
+}
+
+.screensaver-btn:hover {
+    background: rgba(255,255,255,0.25);
+    color: var(--color-white);
+    border-color: rgba(255,255,255,0.4);
+}
+
 /* ==========================================================================
    FAQ Section
    ========================================================================== */

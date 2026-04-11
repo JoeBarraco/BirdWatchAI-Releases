@@ -70,6 +70,17 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // Screensaver download button - GitHub Releases
+    const screensaverBtn = document.getElementById('screensaver-download-btn');
+    if (screensaverBtn) {
+        screensaverBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const screensaverUrl = 'https://github.com/JoeBarraco/BirdWatchAI-Releases/releases/download/v1.0.0-screensaver/BirdWatchAI_Screensaver_1.0.0.zip';
+            console.log('Screensaver download initiated');
+            window.location.href = screensaverUrl;
+        });
+    }
+
     // Buy button - Gumroad product link
     const buyBtn = document.getElementById('buy-btn');
     if (buyBtn) {
