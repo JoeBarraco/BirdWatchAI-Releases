@@ -1064,16 +1064,15 @@ function renderCalendar() {
         dayCounts[key] = (dayCounts[key] || 0) + 1;
     });
 
-    // Range: cover the span of the loaded data, but cap at the last 53 weeks
+    // Always show a full 53-week span ending at the most recent detection
+    // (GitHub-style). This keeps the heatmap a consistent width even when
+    // only a few weeks of data exist.
     const keys = Object.keys(dayCounts).sort();
     // Use UTC throughout so slicing detected_at (UTC ISO) lines up with cells
     const firstDay = new Date(keys[0] + 'T00:00:00Z');
     const lastDay  = new Date(keys[keys.length - 1] + 'T00:00:00Z');
-    const maxSpanDays = 53 * 7;
-    const spanDays = Math.round((lastDay - firstDay) / 86400000) + 1;
-    const startDate = spanDays > maxSpanDays
-        ? new Date(lastDay.getTime() - (maxSpanDays - 1) * 86400000)
-        : firstDay;
+    const spanDays = 53 * 7;
+    const startDate = new Date(lastDay.getTime() - (spanDays - 1) * 86400000);
 
     // Align start to the preceding Sunday (UTC) so weeks line up as columns
     const alignedStart = new Date(startDate);
@@ -1167,7 +1166,8 @@ function renderCalendar() {
                 : ''}
         </div>
         <div class="calendar-wrap">
-            <svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMinYMid meet" style="display:block;">
+            <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet"
+                 style="display:block;width:100%;height:auto;max-height:240px;">
                 ${monthLabels}
                 ${dowLabels}
                 ${rects}
