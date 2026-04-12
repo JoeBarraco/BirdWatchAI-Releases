@@ -733,6 +733,7 @@ async function doModSave() {
         }
         // Update local data
         const d = allDetections.find(x => String(x.id) === String(detectionId));
+        const oldSpecies = d?.species;
         if (d) {
             d.species = species;
             d.rarity = rarity;
@@ -740,8 +741,19 @@ async function doModSave() {
             if (modEditDeleteVideo) d.video_url = null;
         }
         closeModEdit();
+        // If the species filter was pinned to the old (wrong) species, the
+        // correction would leave zero matches and strand the feed in a "No
+        // detections match your filters" state. Clear the filter so the mod
+        // sees their correction immediately.
+        if (oldSpecies && selectedSpecies === oldSpecies && oldSpecies !== species) {
+            selectedSpecies = '';
+            const specSel = document.getElementById('species-filter');
+            if (specSel) specSel.value = '';
+        }
         renderFeed();
         showToast(deletingMedia ? 'Detection updated (media removed)' : 'Detection updated');
+        // Refresh from server so dropdowns and counts reconcile with the edit.
+        loadFeed();
     } catch (err) {
         showToast('Error: ' + err.message);
     }

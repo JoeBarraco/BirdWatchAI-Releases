@@ -401,7 +401,18 @@ async function loadAllDropdownOptions() {
         specSel.innerHTML = '<option value="">All species (' + species.length + ')</option>' +
             species.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
         specSel.disabled = false;
-        if (species.includes(prevSpec)) specSel.value = prevSpec;
+        let speciesFilterCleared = false;
+        if (species.includes(prevSpec)) {
+            specSel.value = prevSpec;
+        } else if (prevSpec) {
+            // Previously-selected species no longer exists in the current dataset
+            // (e.g. a moderator corrected the only matching detection, or it aged
+            // out of the active period). Keep the state variable in sync with the
+            // dropdown (which has reverted to "All species") so the feed doesn't
+            // silently filter against a stale value.
+            selectedSpecies = '';
+            speciesFilterCleared = true;
+        }
 
         // Update map species dropdown
         const mapSel = document.getElementById('map-species-filter');
@@ -419,6 +430,16 @@ async function loadAllDropdownOptions() {
 
         dropdownsReady = true;
         updateFeedCount();
+
+        // If we had to clear a stale species filter, re-render the active views
+        // so the list reflects the now-unfiltered state (otherwise the user sees
+        // an empty list with a "All species" dropdown until they reload).
+        if (speciesFilterCleared) {
+            renderFeed();
+            if (currentView === 'map')     renderMap();
+            if (currentView === 'gallery') renderGallery();
+            if (currentView === 'stats')   renderFullStats();
+        }
     } catch (e) {
         specSel.disabled = false;
         dropdownsReady = true;
