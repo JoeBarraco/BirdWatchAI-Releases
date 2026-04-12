@@ -1167,7 +1167,7 @@ function renderCalendar() {
                 : ''}
         </div>
         <div class="calendar-wrap">
-            <svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px;display:block;">
+            <svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMinYMid meet" style="display:block;">
                 ${monthLabels}
                 ${dowLabels}
                 ${rects}
