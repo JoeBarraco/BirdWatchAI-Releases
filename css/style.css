@@ -815,6 +815,17 @@ ul {
     background: linear-gradient(180deg, #f0f9ff 0%, var(--color-white) 100%);
 }
 
+.pricing-image {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    border-radius: var(--radius-md);
+    margin-bottom: var(--space-md);
+    box-shadow: var(--shadow-sm);
+}
+
 .pricing-badge {
     position: absolute;
     top: -12px;
