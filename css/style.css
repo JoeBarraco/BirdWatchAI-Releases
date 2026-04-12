@@ -789,10 +789,26 @@ ul {
     grid-template-columns: repeat(3, 1fr);
 }
 
+.pricing-cards-four {
+    max-width: 1400px;
+    grid-template-columns: repeat(4, 1fr);
+}
+
 @media (max-width: 968px) {
     .pricing-cards-three {
         grid-template-columns: 1fr;
         max-width: 400px;
+    }
+    .pricing-cards-four {
+        grid-template-columns: 1fr;
+        max-width: 400px;
+    }
+}
+
+@media (min-width: 969px) and (max-width: 1280px) {
+    .pricing-cards-four {
+        grid-template-columns: repeat(2, 1fr);
+        max-width: 800px;
     }
 }
 
