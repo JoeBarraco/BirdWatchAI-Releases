@@ -127,6 +127,43 @@ lightbox.addEventListener('click', closeLightbox);
 lightboxImg.addEventListener('click', e => e.stopPropagation());
 document.getElementById('lightbox-close').addEventListener('click', closeLightbox);
 
+// ── Inline video player ─────────────────────────────────
+// Plays detection videos in a modal rather than navigating away,
+// so the moderator (sessionStorage-backed) session isn't disrupted
+// on platforms that hand direct media URLs off to the OS player.
+const videoModal  = document.getElementById('video-modal');
+const videoPlayer = document.getElementById('video-modal-player');
+
+function openVideoPlayer(src) {
+    if (!src) return;
+    videoPlayer.src = src;
+    videoModal.classList.add('open');
+    lockScroll();
+    // Best-effort autoplay; ignore rejection (e.g. mobile gesture policy)
+    const p = videoPlayer.play();
+    if (p && typeof p.catch === 'function') p.catch(() => {});
+}
+function closeVideoPlayer() {
+    videoPlayer.pause();
+    videoPlayer.removeAttribute('src');
+    videoPlayer.load();
+    videoModal.classList.remove('open');
+    unlockScroll();
+}
+videoModal.addEventListener('click', e => {
+    if (e.target === videoModal) closeVideoPlayer();
+});
+videoPlayer.addEventListener('click', e => e.stopPropagation());
+document.getElementById('video-modal-close').addEventListener('click', closeVideoPlayer);
+// Intercept any element marked as a video play link
+document.addEventListener('click', e => {
+    const trigger = e.target.closest('[data-video-play]');
+    if (trigger) {
+        e.preventDefault();
+        openVideoPlayer(trigger.getAttribute('data-video-play'));
+    }
+});
+
 // Delegate clicks on feed cards
 document.getElementById('feed-view').addEventListener('click', e => {
     // Image → lightbox
@@ -917,7 +954,7 @@ function likesRowHtml(r, rank) {
         ? `<img src="${r.d.image_url}" alt="${esc(r.d.species)}" style="width:32px;height:32px;object-fit:cover;border-radius:4px;cursor:pointer;vertical-align:middle;" onclick="openLightbox('${r.d.image_url}','${esc(r.d.species)}')">`
         : '';
     const videoBtn = r.d.video_url
-        ? `<a href="${r.d.video_url}" target="_blank" rel="noopener" title="Watch video" style="font-size:1.75rem;vertical-align:middle;text-decoration:none;">🎬</a>`
+        ? `<a href="${r.d.video_url}" data-video-play="${r.d.video_url}" target="_blank" rel="noopener" title="Watch video" style="font-size:1.75rem;vertical-align:middle;text-decoration:none;">🎬</a>`
         : '';
     const rxBtn = (emoji, count) => {
         const reacted = isReacted(r.d.id, emoji);

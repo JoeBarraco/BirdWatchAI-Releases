@@ -69,7 +69,7 @@ function renderFeed() {
                 </div>
                 <div style="display:flex;align-items:center;flex-wrap:wrap;gap:0;">
                     ${d.video_url
-                        ? `<a class="card-video" href="${d.video_url}" target="_blank" rel="noopener">🎬 Watch video</a>`
+                        ? `<a class="card-video" href="${d.video_url}" data-video-play="${d.video_url}" target="_blank" rel="noopener">🎬 Watch video</a>`
                         : ''}
                     <button class="card-audio" data-audio-species="${esc(d.species)}" title="Play bird call">🔊 Call</button>
                     <button class="card-ai" data-ai-species="${esc(d.species)}" title="Species info and links">🌐 Web</button>

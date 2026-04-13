@@ -259,6 +259,7 @@ function openDetailModal(id) {
     if (d.video_url) {
         const a = document.createElement('a');
         a.href = d.video_url; a.target = '_blank'; a.rel = 'noopener';
+        a.setAttribute('data-video-play', d.video_url);
         a.textContent = '🎬 Watch video'; actions.appendChild(a);
     }
     const shareBtn = document.createElement('button');
@@ -628,6 +629,7 @@ function openModEdit(detectionId) {
     if (d.video_url) {
         videoRow.style.display = '';
         videoLink.href = d.video_url;
+        videoLink.setAttribute('data-video-play', d.video_url);
         videoDel.parentElement.style.display = '';
         videoMarked.style.display = 'none';
     } else {
