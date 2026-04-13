@@ -412,6 +412,40 @@
         }
         #lightbox-close:hover { opacity: 1; }
 
+        /* ── Video player modal ─────────────────────────── */
+        #video-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.9);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+        }
+        #video-modal.open { display: flex; }
+        #video-modal video {
+            max-width: 92vw;
+            max-height: 88vh;
+            border-radius: 8px;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+            background: #000;
+        }
+        #video-modal-close {
+            position: fixed;
+            top: 16px;
+            right: 20px;
+            color: white;
+            font-size: 2rem;
+            line-height: 1;
+            cursor: pointer;
+            opacity: 0.8;
+            background: none;
+            border: none;
+            padding: 4px 8px;
+            z-index: 2;
+        }
+        #video-modal-close:hover { opacity: 1; }
+
         .card-body { flex: 1; min-width: 0; }
 
         .card-title {
