@@ -275,6 +275,7 @@ function openDetailModal(id) {
     actions.appendChild(webBtn);
 
     // Reactions in detail modal (single ❤️ like)
+    actions.parentElement.querySelectorAll('.card-reactions').forEach(n => n.remove());
     const rxDiv = document.createElement('div');
     rxDiv.className = 'card-reactions';
     rxDiv.style.marginTop = '0.75rem';
