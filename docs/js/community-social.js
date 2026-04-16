@@ -1298,7 +1298,7 @@ function shareDetection(id, cardEl) {
     const url     = `${location.origin}${location.pathname}?id=${id}`;
     // Read from the card DOM directly — reliable even after auto-refresh replaces allDetections
     const species = cardEl?.querySelector('.card-title')?.childNodes[0]?.textContent?.trim() || '';
-    const feeder  = cardEl?.querySelector('.card-feeder')?.textContent?.replace('📡','').trim() || '';
+    const feeder  = cardEl?.querySelector('.card-feeder')?.textContent?.replace('🪺','').trim() || '';
     const title   = species ? `${species} — BirdWatchAI` : 'BirdWatchAI Detection';
     const text    = species
         ? `Check out this ${species}${feeder ? ' spotted at ' + feeder : ''}!`
