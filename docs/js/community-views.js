@@ -59,7 +59,7 @@ function renderFeed() {
                         ? ` · 📍 ${esc(d.zip_code)}` : ''}${d.temperature != null
                         ? ` · 🌡️ ${d.temperature}°F` : ''}
                 </div>
-                ${d.feeders?.display_name ? `<div class="card-feeder">🪺 ${esc(d.feeders.display_name)}${currentUser && feederId ? `<button class="follow-feeder-btn${isFollowing ? ' following' : ''}" onclick="toggleFollowFeeder('${feederId}', this)">${isFollowing ? '★ Following' : '☆ Follow'}</button>` : ''}</div>` : ''}
+                ${d.feeders?.display_name ? `<div class="card-feeder">🏠 ${esc(d.feeders.display_name)}${currentUser && feederId ? `<button class="follow-feeder-btn${isFollowing ? ' following' : ''}" onclick="toggleFollowFeeder('${feederId}', this)">${isFollowing ? '★ Following' : '☆ Follow'}</button>` : ''}</div>` : ''}
                 <div class="card-reactions">
                     ${(() => {
                         const count = reactions['❤️'] || 0;

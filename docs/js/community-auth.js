@@ -248,7 +248,7 @@ function openDetailModal(id) {
     });
     const metaRows = [
         `<span>🕐 ${time}</span>`,
-        d.feeders?.display_name ? `<span>🪺 ${esc(d.feeders.display_name)}</span>` : '',
+        d.feeders?.display_name ? `<span>🏠 ${esc(d.feeders.display_name)}</span>` : '',
         d.zip_code              ? `<span>📍 ZIP ${esc(d.zip_code)}</span>` : '',
         d.temperature != null   ? `<span>🌡️ ${d.temperature}°F</span>` : '',
     ].filter(Boolean).join('');
