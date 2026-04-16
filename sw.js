@@ -1,5 +1,5 @@
 // BirdWatchAI Landing Page — Service Worker
-const CACHE   = 'bwai-landing-v2';
+const CACHE   = 'bwai-landing-v3';
 const PRECACHE = [
     'https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Source+Sans+3:wght@300;400;500;600;700&display=swap',
     'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',

@@ -116,6 +116,7 @@
 html {
     scroll-behavior: smooth;
     scroll-padding-top: 80px;
+    overflow-x: hidden;
 }
 
 /* Keyboard focus indicator for accessibility */
@@ -1297,8 +1298,8 @@ section {
 
 /* ── Live Ticker ─────────────────────────────────────────── */
 @keyframes ticker-scroll {
-    0%   { transform: translateX(0); }
-    100% { transform: translateX(-100%); }
+    from { transform: translateX(100vw); }
+    to   { transform: translateX(-100%); }
 }
 #live-ticker { position: fixed; top: 70px; left: 0; right: 0; z-index: 999; }
 body.ticker-visible { padding-top: 32px; }
