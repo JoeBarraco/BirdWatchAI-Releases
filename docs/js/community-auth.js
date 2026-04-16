@@ -89,24 +89,23 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 // ── Bird of the Day ──────────────────────────────────────
-function dismissBotd() {
-    const today = new Date().toISOString().slice(0, 10);
-    localStorage.setItem('bwai-botd-dismissed', today);
-    document.getElementById('botd-banner').classList.remove('visible');
+let botdDetectionId = null;
+
+function openBotdDetail() {
+    if (botdDetectionId != null) openDetailModal(botdDetectionId);
 }
 
 function renderBirdOfTheDay(detections) {
     // Pick today's rarest detection (Very Rare > Rare > most-detected species)
     const today  = new Date().toISOString().slice(0, 10);
 
-    // Don't re-show if user already dismissed today
-    if (localStorage.getItem('bwai-botd-dismissed') === today) return;
-
     const todays = detections.filter(d => d.detected_at.slice(0, 10) === today);
     if (!todays.length) return;
 
     const byRarity = r => r === 'Very Rare' ? 3 : r === 'Rare' ? 2 : r === 'Uncommon' ? 1 : 0;
     const best = todays.slice().sort((a, b) => byRarity(b.rarity) - byRarity(a.rarity))[0];
+
+    botdDetectionId = best.id;
 
     document.getElementById('botd-species').textContent = best.species || 'Unknown';
     document.getElementById('botd-meta').textContent =

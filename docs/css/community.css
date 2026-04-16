@@ -1785,8 +1785,12 @@
             align-items: center;
             gap: 1rem;
             flex-wrap: wrap;
+            cursor: pointer;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
         }
         #botd-banner.visible { display: flex; }
+        #botd-banner:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        #botd-banner:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
         .botd-img {
             width: 72px;
             height: 54px;
@@ -1810,18 +1814,6 @@
             line-height: 1.2;
         }
         .botd-meta { font-size: 0.8rem; opacity: 0.8; margin-top: 2px; }
-        .botd-close {
-            margin-left: auto;
-            background: none;
-            border: none;
-            color: white;
-            opacity: 0.7;
-            font-size: 1.25rem;
-            cursor: pointer;
-            padding: 2px 6px;
-            line-height: 1;
-        }
-        .botd-close:hover { opacity: 1; }
 
         /* ── Keyboard shortcut hint ─────────────────────────── */
         .kbd-hint {

@@ -48,14 +48,13 @@
     <p class="page-subtitle">Live bird detections shared by BirdWatchAI users around the world.</p>
 
     <!-- Bird of the Day banner -->
-    <div id="botd-banner">
+    <div id="botd-banner" role="button" tabindex="0" onclick="openBotdDetail()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openBotdDetail();}" title="View detection details">
         <img id="botd-img" class="botd-img" src="" alt="" style="display:none;">
         <div>
             <div class="botd-label">🏆 Bird of the Day</div>
             <div id="botd-species" class="botd-species"></div>
             <div id="botd-meta"    class="botd-meta"></div>
         </div>
-        <button class="botd-close" onclick="dismissBotd()" title="Dismiss">✕</button>
     </div>
 
     <!-- Filter bar -->
