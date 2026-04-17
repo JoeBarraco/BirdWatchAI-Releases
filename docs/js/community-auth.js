@@ -1185,7 +1185,12 @@ async function saveUserProfile() {
     if (!name) { status.textContent = 'Display name is required.'; status.className = 'user-login-status error'; status.style.display = ''; return; }
 
     try {
-        if (isModAsCommunityUser) {
+        // Moderators save their display name via a dedicated RPC, because
+        // user_profiles.id has a foreign key to auth.users and mods don't
+        // necessarily have a Supabase Auth session. This path is used
+        // whenever a mod is logged in, regardless of whether an additional
+        // community account is also signed in.
+        if (isModLoggedIn()) {
             const creds = getModCreds();
             const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/moderator_update_display_name`, {
                 method: 'POST',
@@ -1194,7 +1199,7 @@ async function saveUserProfile() {
             });
             if (!res.ok) {
                 const err = await res.json().catch(() => ({}));
-                throw new Error(err.message || 'Failed to save');
+                throw new Error(err.message || err.hint || 'Failed to save');
             }
             sessionStorage.setItem('bwai-mod-display-name', name);
             currentProfile = { ...currentProfile, display_name: name, bio };
