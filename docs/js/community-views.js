@@ -7,6 +7,8 @@ function renderFeed() {
     const sortOrder = document.getElementById('sort-filter')?.value || 'recent';
     if (sortOrder === 'liked') {
         visible = [...visible].sort((a, b) => getReactionTotal(b.id) - getReactionTotal(a.id));
+    } else if (sortOrder === 'commented') {
+        visible = [...visible].sort((a, b) => (commentCounts[b.id] || 0) - (commentCounts[a.id] || 0));
     }
 
     const newTopId = visible[0]?.id ?? null;

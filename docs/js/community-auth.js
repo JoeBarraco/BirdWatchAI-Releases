@@ -1623,7 +1623,7 @@ async function loadCommentsHistory() {
         const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/mod_get_comment_history`, {
             method: 'POST',
             headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ p_email: creds.email, p_password: creds.password, p_limit: 200, p_offset: 0 }),
+            body: JSON.stringify({ p_email: creds.email, p_password: creds.password, p_limit: 500, p_offset: 0 }),
         });
         const comments = await res.json();
 
@@ -1662,8 +1662,24 @@ async function loadCommentsHistory() {
 
 function viewDetectionFromHistory(detectionId) {
     if (!detectionId) return;
-    const url = `${window.location.pathname}?id=${encodeURIComponent(detectionId)}`;
-    window.location.href = url;
+    closeCommentsHistory();
+    // If the detection is already loaded in memory, open the modal directly.
+    if (allDetections.find(x => String(x.id) === String(detectionId))) {
+        openDetailModal(detectionId);
+        return;
+    }
+    // Otherwise fetch just that row, add it to allDetections, then open.
+    fetch(
+        `${SUPABASE_URL}/rest/v1/community_detections?select=*,feeders(display_name)&id=eq.${encodeURIComponent(detectionId)}`,
+        { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` } }
+    )
+        .then(r => r.json())
+        .then(rows => {
+            if (!Array.isArray(rows) || !rows.length) { showToast('Detection not found'); return; }
+            allDetections = [rows[0], ...allDetections];
+            openDetailModal(detectionId);
+        })
+        .catch(e => showToast('Error: ' + e.message));
 }
 
 async function deleteCommentFromHistory(commentId) {

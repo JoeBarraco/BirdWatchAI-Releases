@@ -2359,17 +2359,24 @@
         #comments-history-modal.open { display: flex; }
         .comments-history-box {
             background: var(--bg-card); border-radius: 12px;
-            padding: 2rem; width: 720px; max-width: 92vw;
-            max-height: 82vh; overflow-y: auto;
+            padding: 1.5rem; width: 720px; max-width: 92vw;
+            max-height: 82vh; height: 82vh;
+            display: flex; flex-direction: column;
             box-shadow: 0 8px 32px rgba(0,0,0,0.2);
         }
         .comments-history-box h3 {
             font-family: 'Fraunces', serif; margin-bottom: 0.25rem;
-            color: var(--color-gray-900); font-size: 1.25rem;
+            color: var(--color-gray-900); font-size: 1.25rem; flex-shrink: 0;
         }
         .comments-history-subtitle {
-            font-size: 0.8rem; color: var(--color-gray-500); margin-bottom: 1rem;
+            font-size: 0.8rem; color: var(--color-gray-500); margin-bottom: 1rem; flex-shrink: 0;
         }
+        #comments-history-list {
+            flex: 1 1 auto; min-height: 0; overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding-right: 4px;
+        }
+        .comments-history-box > div:last-child { flex-shrink: 0; }
         .comment-history-item {
             padding: 12px; border: 1px solid var(--border); border-radius: 8px;
             margin-bottom: 8px; display: flex; gap: 12px; align-items: flex-start;

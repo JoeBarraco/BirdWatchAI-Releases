@@ -111,6 +111,16 @@ async function refilter() {
             const ids = allDetections.map(d => d.id);
             if (ids.length) await loadReactionCounts(ids);
         }
+        // Ensure comment counts are loaded for the full dataset when sorting by Most Commented
+        if (sortOrder === 'commented') {
+            if (!feedExhausted) {
+                document.getElementById('feed-view').innerHTML =
+                    '<div class="feed-loading">Loading all detections…</div>';
+                await loadAllDetections();
+            }
+            const ids = allDetections.map(d => d.id);
+            if (ids.length) await loadCommentCounts(ids);
+        }
         renderFeed();
         if (currentView === 'map')     renderMap();
         if (currentView === 'gallery') renderGallery();
@@ -296,7 +306,7 @@ async function loadFeed(append = false) {
             document.getElementById('zip-filter').value.trim() ||
             (document.getElementById('search-input')?.value || '').trim() ||
             favoritesOnly;
-        const needsAll = sortOrder === 'liked' || hasActiveFilter ||
+        const needsAll = sortOrder === 'liked' || sortOrder === 'commented' || hasActiveFilter ||
             currentView === 'stats' || currentView === 'gallery';
         if (!append && !feedExhausted && needsAll) {
             await loadAllDetections();
@@ -308,6 +318,10 @@ async function loadFeed(append = false) {
             await loadReactionTotals();
             await loadReactionCounts(ids);
             await loadCommentCounts(ids);
+        } else if (sortOrder === 'commented') {
+            await loadCommentCounts(ids);
+            loadReactionCounts(ids).then(() => renderFeed());
+            if (!append) loadReactionTotals().then(() => renderFeed());
         } else {
             const pageIds = page.map(d => d.id);
             loadReactionCounts(pageIds).then(() => renderFeed());
