@@ -43,7 +43,28 @@ self.addEventListener('fetch', e => {
         return;
     }
 
-    // Static assets (fonts, CSS, JS, images): cache-first
+    // Same-origin JS/CSS: stale-while-revalidate so fixes propagate
+    // without requiring a cache version bump.
+    const sameOrigin = new URL(url).origin === self.location.origin;
+    const isScriptOrStyle = /\.(?:js|css)(?:\?|$)/.test(url);
+    if (sameOrigin && isScriptOrStyle) {
+        e.respondWith(
+            caches.open(CACHE).then(cache =>
+                cache.match(e.request).then(cached => {
+                    const network = fetch(e.request).then(res => {
+                        if (res.ok && e.request.method === 'GET') {
+                            cache.put(e.request, res.clone());
+                        }
+                        return res;
+                    }).catch(() => cached);
+                    return cached || network;
+                })
+            )
+        );
+        return;
+    }
+
+    // Other static assets (fonts, images, third-party libs): cache-first
     e.respondWith(
         caches.match(e.request).then(cached => {
             if (cached) return cached;
