@@ -366,6 +366,7 @@ begin
     'user_id', c.user_id,
     'display_name', coalesce(
       nullif(p.display_name, ''),
+      nullif(m.display_name, ''),
       case when m.id is not null
            then initcap(m.role) || ': ' || split_part(m.email, '@', 1)
            else null end,
@@ -661,6 +662,7 @@ begin
     'user_id', p_user_id,
     'display_name', coalesce(
       nullif((select display_name from user_profiles where id = p_user_id::uuid), ''),
+      nullif((select display_name from moderators    where id = p_user_id::uuid), ''),
       (select initcap(role) || ': ' || split_part(email, '@', 1)
          from moderators where id = p_user_id::uuid),
       'Birder'
@@ -757,6 +759,7 @@ begin
       c.user_id,
       coalesce(
         nullif(p.display_name, ''),
+        nullif(m.display_name, ''),
         case when m.id is not null
              then initcap(m.role) || ': ' || split_part(m.email, '@', 1)
              else null end,

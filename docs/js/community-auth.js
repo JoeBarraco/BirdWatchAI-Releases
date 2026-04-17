@@ -338,10 +338,11 @@ function getModCreds() {
 // Bridge moderator/admin session into a community user so they
 // can use life lists, comments, follow feeders, etc. without
 // needing a separate magic-link sign-in.
-function bridgeModAsCommunityUser(email, role, modId) {
+function bridgeModAsCommunityUser(email, role, modId, displayName) {
     const label = role === 'admin' ? 'Admin' : 'Moderator';
+    const name = (displayName && displayName.trim()) || `${label}: ${email.split('@')[0]}`;
     currentUser = { id: modId, email: email, role: 'moderator' };
-    currentProfile = { id: modId, display_name: `${label}: ${email.split('@')[0]}`, bio: '' };
+    currentProfile = { id: modId, display_name: name, bio: '' };
     isModAsCommunityUser = true;
     updateCommunityUI();
 }
@@ -375,6 +376,7 @@ function toggleModLogin() {
         sessionStorage.removeItem('bwai-mod-user');
         sessionStorage.removeItem('bwai-mod-pass');
         sessionStorage.removeItem('bwai-mod-role');
+        sessionStorage.removeItem('bwai-mod-display-name');
         // Clear bridged community user if it came from mod login
         if (isModAsCommunityUser) {
             currentUser = null;
@@ -423,8 +425,9 @@ async function doModLogin() {
         sessionStorage.setItem('bwai-mod-user', email);
         sessionStorage.setItem('bwai-mod-pass', password);
         sessionStorage.setItem('bwai-mod-role', data.role);
+        sessionStorage.setItem('bwai-mod-display-name', data.display_name || '');
         // Bridge: give moderators community user access automatically
-        bridgeModAsCommunityUser(email, data.role, data.id);
+        bridgeModAsCommunityUser(email, data.role, data.id, data.display_name);
         updateModUI();
         closeModLogin();
         showToast(`Logged in as ${data.role}: ${email}`);
@@ -1180,9 +1183,29 @@ async function saveUserProfile() {
     const status = document.getElementById('user-profile-status');
 
     if (!name) { status.textContent = 'Display name is required.'; status.className = 'user-login-status error'; status.style.display = ''; return; }
-    if (!authAccessToken) { status.textContent = 'Sign in required.'; status.className = 'user-login-status error'; status.style.display = ''; return; }
 
     try {
+        if (isModAsCommunityUser) {
+            const creds = getModCreds();
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/moderator_update_display_name`, {
+                method: 'POST',
+                headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ p_email: creds.email, p_password: creds.password, p_display_name: name }),
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.message || 'Failed to save');
+            }
+            sessionStorage.setItem('bwai-mod-display-name', name);
+            currentProfile = { ...currentProfile, display_name: name, bio };
+            updateCommunityUI();
+            closeUserProfile();
+            showToast('Profile saved');
+            return;
+        }
+
+        if (!authAccessToken) { status.textContent = 'Sign in required.'; status.className = 'user-login-status error'; status.style.display = ''; return; }
+
         const res = await fetch(`${SUPABASE_URL}/rest/v1/user_profiles?id=eq.${currentUser.id}`, {
             method: 'PATCH',
             headers: sbHeaders(true),
@@ -1714,8 +1737,9 @@ updateModUI();
 if (isModLoggedIn()) {
     const email = sessionStorage.getItem('bwai-mod-user');
     const role = sessionStorage.getItem('bwai-mod-role');
+    const name = sessionStorage.getItem('bwai-mod-display-name');
     // Use the anonymous user ID as a stable ID for the bridged mod
-    bridgeModAsCommunityUser(email, role, getReactionUserId());
+    bridgeModAsCommunityUser(email, role, getReactionUserId(), name);
 }
 
 // ── Init ─────────────────────────────────────────────────

@@ -21,6 +21,8 @@ alter table moderators
   add column if not exists role text not null default 'moderator' check (role in ('admin', 'moderator'));
 alter table moderators
   add column if not exists must_change_password boolean not null default false;
+alter table moderators
+  add column if not exists display_name text;
 
 -- If migrating from username-based auth, rename column
 -- (Skip if column already named 'email')
@@ -69,6 +71,7 @@ begin
     'id', id,
     'role', role,
     'email', email,
+    'display_name', display_name,
     'must_change_password', must_change_password
   )
   into result
@@ -78,6 +81,38 @@ begin
   return result;
 end;
 $$;
+
+-- RPC: Update moderator's display name (used by Profile modal when
+-- signed in via moderator bridge, since user_profiles is gated on
+-- auth.users and moderators don't have a Supabase Auth session).
+drop function if exists moderator_update_display_name(text, text, text);
+create or replace function moderator_update_display_name(
+  p_email        text,
+  p_password     text,
+  p_display_name text
+)
+returns json
+language plpgsql security definer
+as $$
+declare
+  mod_id uuid;
+  cleaned text;
+begin
+  select id into mod_id from moderators
+  where email = lower(trim(p_email))
+    and password_hash = crypt(p_password, password_hash);
+  if mod_id is null then raise exception 'Invalid moderator credentials'; end if;
+
+  cleaned := nullif(trim(coalesce(p_display_name, '')), '');
+  if cleaned is null then raise exception 'Display name is required'; end if;
+  if length(cleaned) > 60 then raise exception 'Display name is too long'; end if;
+
+  update moderators set display_name = cleaned where id = mod_id;
+  return json_build_object('display_name', cleaned);
+end;
+$$;
+
+grant execute on function moderator_update_display_name(text, text, text) to anon;
 
 -- 4. RPC: Update a detection (rename species, adjust rarity,
 --    optionally clear attached photo and/or video)
