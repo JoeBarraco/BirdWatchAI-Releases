@@ -123,8 +123,21 @@
 
         @media (max-width: 640px) {
             .top-navbar { padding: 0 0.75rem; font-size: 0.78rem; }
-            .navbar-btn { font-size: 0.72rem; padding: 3px 8px; }
+            .navbar-btn { font-size: 0.72rem; padding: 3px 8px; flex-shrink: 0; }
             .top-navbar .navbar-user { display: none; }
+            .top-navbar .navbar-left { flex-shrink: 0; }
+            .top-navbar .navbar-right {
+                flex: 1;
+                overflow-x: auto;
+                flex-wrap: nowrap;
+                justify-content: flex-end;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                mask-image: linear-gradient(to right, transparent 0, #000 16px);
+                -webkit-mask-image: linear-gradient(to right, transparent 0, #000 16px);
+                padding-right: 4px;
+            }
+            .top-navbar .navbar-right::-webkit-scrollbar { display: none; }
         }
 
         .container {
