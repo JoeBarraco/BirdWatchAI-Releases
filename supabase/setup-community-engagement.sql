@@ -364,14 +364,21 @@ begin
     'id', c.id,
     'detection_id', c.detection_id,
     'user_id', c.user_id,
-    'display_name', p.display_name,
+    'display_name', coalesce(
+      nullif(p.display_name, ''),
+      case when m.id is not null
+           then initcap(m.role) || ': ' || split_part(m.email, '@', 1)
+           else null end,
+      'Birder'
+    ),
     'body', c.body,
     'parent_id', c.parent_id,
     'created_at', c.created_at
   ) order by c.created_at asc)
   into result
   from detection_comments c
-  join user_profiles p on p.id = c.user_id
+  left join user_profiles p on p.id = c.user_id
+  left join moderators    m on m.id = c.user_id
   where c.detection_id = p_detection_id;
 
   return coalesce(result, '[]'::json);
@@ -652,7 +659,12 @@ begin
     'id', new_id,
     'detection_id', p_detection_id,
     'user_id', p_user_id,
-    'display_name', (select display_name from user_profiles where id = p_user_id::uuid),
+    'display_name', coalesce(
+      nullif((select display_name from user_profiles where id = p_user_id::uuid), ''),
+      (select initcap(role) || ': ' || split_part(email, '@', 1)
+         from moderators where id = p_user_id::uuid),
+      'Birder'
+    ),
     'body', p_body,
     'parent_id', p_parent_id,
     'created_at', now()
@@ -743,7 +755,13 @@ begin
       c.id            as comment_id,
       c.detection_id,
       c.user_id,
-      p.display_name,
+      coalesce(
+        nullif(p.display_name, ''),
+        case when m.id is not null
+             then initcap(m.role) || ': ' || split_part(m.email, '@', 1)
+             else null end,
+        'Birder'
+      ) as display_name,
       c.body,
       c.parent_id,
       c.created_at,
@@ -751,6 +769,7 @@ begin
       d.image_url
     from detection_comments c
     left join user_profiles p on p.id = c.user_id
+    left join moderators    m on m.id = c.user_id
     left join community_detections d on d.id = c.detection_id
     order by c.created_at desc
     limit greatest(1, least(coalesce(p_limit, 100), 500))
