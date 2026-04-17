@@ -717,8 +717,53 @@ begin
 end;
 $$;
 
+-- Mod: global comment history across all detections (chronological)
+drop function if exists mod_get_comment_history(text, text, int, int);
+create or replace function mod_get_comment_history(
+  p_email    text,
+  p_password text,
+  p_limit    int default 100,
+  p_offset   int default 0
+)
+returns json
+language plpgsql security definer
+as $$
+declare
+  mod_id uuid;
+  result json;
+begin
+  select id into mod_id from moderators
+  where email = lower(trim(p_email))
+    and password_hash = crypt(p_password, password_hash);
+  if mod_id is null then raise exception 'Invalid moderator credentials'; end if;
+
+  select json_agg(row_to_json(t)) into result
+  from (
+    select
+      c.id            as comment_id,
+      c.detection_id,
+      c.user_id,
+      p.display_name,
+      c.body,
+      c.parent_id,
+      c.created_at,
+      d.species,
+      d.image_url
+    from detection_comments c
+    left join user_profiles p on p.id = c.user_id
+    left join community_detections d on d.id = c.detection_id
+    order by c.created_at desc
+    limit greatest(1, least(coalesce(p_limit, 100), 500))
+    offset greatest(0, coalesce(p_offset, 0))
+  ) t;
+
+  return coalesce(result, '[]'::json);
+end;
+$$;
+
 grant execute on function mod_add_to_life_list(text, text, text, text, uuid, text) to anon;
 grant execute on function mod_remove_from_life_list(text, text, text, text) to anon;
 grant execute on function mod_post_comment(text, text, text, uuid, text, uuid) to anon;
 grant execute on function mod_delete_comment(text, text, uuid) to anon;
 grant execute on function mod_toggle_feeder_follow(text, text, text, uuid) to anon;
+grant execute on function mod_get_comment_history(text, text, int, int) to anon;

@@ -355,6 +355,7 @@ function updateModUI() {
     document.getElementById('navbar-changepw-btn').style.display = loggedIn ? '' : 'none';
     document.getElementById('navbar-admin-btn').style.display = (loggedIn && admin) ? '' : 'none';
     document.getElementById('navbar-flags-btn').style.display = loggedIn ? '' : 'none';
+    document.getElementById('navbar-comments-history-btn').style.display = loggedIn ? '' : 'none';
     // Show logged-in user
     const userEl = document.getElementById('navbar-user');
     if (loggedIn) {
@@ -1595,6 +1596,99 @@ async function resolveFlag(flagId, action) {
     // If empty, show message
     if (!document.querySelectorAll('.flag-queue-item').length) {
         document.getElementById('flag-queue-list').innerHTML = '<div style="text-align:center;color:var(--color-gray-500);padding:1rem;">No pending flags. All clear!</div>';
+    }
+}
+
+// ── Mod: comments history ────────────────────────────────
+function openCommentsHistory() {
+    if (!isModLoggedIn()) return;
+    document.getElementById('comments-history-modal').classList.add('open');
+    loadCommentsHistory();
+}
+
+function closeCommentsHistory() {
+    document.getElementById('comments-history-modal').classList.remove('open');
+}
+
+document.getElementById('comments-history-modal').addEventListener('click', e => {
+    if (e.target.id === 'comments-history-modal') closeCommentsHistory();
+});
+
+async function loadCommentsHistory() {
+    const list = document.getElementById('comments-history-list');
+    list.innerHTML = '<div style="text-align:center;color:var(--color-gray-500);padding:1rem;">Loading...</div>';
+
+    const creds = getModCreds();
+    try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/mod_get_comment_history`, {
+            method: 'POST',
+            headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ p_email: creds.email, p_password: creds.password, p_limit: 200, p_offset: 0 }),
+        });
+        const comments = await res.json();
+
+        if (!Array.isArray(comments) || !comments.length) {
+            list.innerHTML = '<div style="text-align:center;color:var(--color-gray-500);padding:1rem;">No comments yet.</div>';
+            return;
+        }
+
+        list.innerHTML = comments.map(c => {
+            const when = timeAgo(c.created_at);
+            const img = c.image_url
+                ? `<img src="${esc(c.image_url)}" alt="">`
+                : '<div style="width:54px;height:54px;background:var(--bg-input);border-radius:6px;flex-shrink:0;"></div>';
+            return `
+                <div class="comment-history-item" data-comment-id="${c.comment_id}">
+                    ${img}
+                    <div class="comment-history-info">
+                        <div class="comment-history-header">
+                            <span class="comment-history-author">${esc(c.display_name || 'user')}</span>
+                            <span>${when}</span>
+                        </div>
+                        <div class="comment-history-species">on ${esc(c.species || 'Unknown')}${c.parent_id ? ' · reply' : ''}</div>
+                        <div class="comment-history-body">${esc(c.body || '')}</div>
+                    </div>
+                    <div class="comment-history-actions">
+                        <button class="btn-view" onclick="viewDetectionFromHistory('${c.detection_id}')">View</button>
+                        <button class="btn-delete" onclick="deleteCommentFromHistory('${c.comment_id}')">Delete</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch (e) {
+        list.innerHTML = `<div style="text-align:center;color:#e74c3c;padding:1rem;">Error loading comments: ${esc(e.message)}</div>`;
+    }
+}
+
+function viewDetectionFromHistory(detectionId) {
+    if (!detectionId) return;
+    const url = `${window.location.pathname}?id=${encodeURIComponent(detectionId)}`;
+    window.location.href = url;
+}
+
+async function deleteCommentFromHistory(commentId) {
+    if (!confirm('Delete this comment? This cannot be undone.')) return;
+    const creds = getModCreds();
+    try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/mod_delete_comment`, {
+            method: 'POST',
+            headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ p_email: creds.email, p_password: creds.password, p_comment_id: commentId }),
+        });
+        const ok = await res.json();
+        if (ok === true) {
+            const item = document.querySelector(`.comment-history-item[data-comment-id="${commentId}"]`);
+            if (item) item.remove();
+            showToast('Comment deleted');
+            if (!document.querySelectorAll('.comment-history-item').length) {
+                document.getElementById('comments-history-list').innerHTML =
+                    '<div style="text-align:center;color:var(--color-gray-500);padding:1rem;">No comments yet.</div>';
+            }
+        } else {
+            showToast('Could not delete comment');
+        }
+    } catch (e) {
+        showToast('Error: ' + e.message);
     }
 }
 

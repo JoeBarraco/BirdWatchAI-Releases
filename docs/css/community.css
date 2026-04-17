@@ -2337,3 +2337,53 @@
         .flag-queue-actions .btn-resolve:hover { background: #2eaa4f; color: white; }
         .flag-queue-actions .btn-dismiss:hover { border-color: var(--color-gray-500); }
 
+        /* ── Mod comments history ─────────────────────────────── */
+        #comments-history-modal {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.5); z-index: 9560;
+            justify-content: center; align-items: center;
+        }
+        #comments-history-modal.open { display: flex; }
+        .comments-history-box {
+            background: var(--bg-card); border-radius: 12px;
+            padding: 2rem; width: 720px; max-width: 92vw;
+            max-height: 82vh; overflow-y: auto;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+        .comments-history-box h3 {
+            font-family: 'Fraunces', serif; margin-bottom: 0.25rem;
+            color: var(--color-gray-900); font-size: 1.25rem;
+        }
+        .comments-history-subtitle {
+            font-size: 0.8rem; color: var(--color-gray-500); margin-bottom: 1rem;
+        }
+        .comment-history-item {
+            padding: 12px; border: 1px solid var(--border); border-radius: 8px;
+            margin-bottom: 8px; display: flex; gap: 12px; align-items: flex-start;
+        }
+        .comment-history-item img {
+            width: 54px; height: 54px; object-fit: cover; border-radius: 6px; flex-shrink: 0;
+        }
+        .comment-history-info { flex: 1; min-width: 0; }
+        .comment-history-header {
+            display: flex; justify-content: space-between; gap: 8px;
+            font-size: 0.8rem; color: var(--color-gray-500); margin-bottom: 4px;
+        }
+        .comment-history-author { font-weight: 600; color: var(--color-gray-900); }
+        .comment-history-species {
+            font-size: 0.75rem; color: var(--color-gray-500); margin-top: 2px;
+        }
+        .comment-history-body {
+            font-size: 0.9rem; color: var(--color-gray-900);
+            white-space: pre-wrap; word-wrap: break-word; margin-top: 4px;
+        }
+        .comment-history-actions { display: flex; gap: 6px; flex-shrink: 0; flex-direction: column; }
+        .comment-history-actions button {
+            font-size: 0.75rem; padding: 4px 10px; border-radius: 5px;
+            border: 1px solid var(--border); cursor: pointer;
+            font-family: inherit; background: var(--bg-card); color: var(--color-gray-700);
+        }
+        .comment-history-actions .btn-view:hover { border-color: var(--color-brand, #2d5a3d); color: var(--color-brand, #2d5a3d); }
+        .comment-history-actions .btn-delete { border-color: #e74c3c; color: #e74c3c; }
+        .comment-history-actions .btn-delete:hover { background: #e74c3c; color: white; }
+

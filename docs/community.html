@@ -39,6 +39,7 @@
         <button id="navbar-changepw-btn" class="navbar-btn" onclick="showChangePassword()" title="Change password" style="display:none;">🔑 Password</button>
         <button id="navbar-admin-btn" class="navbar-btn" onclick="openAdminPanel()" title="Manage moderators" style="display:none;">👥 Moderators</button>
         <button id="navbar-flags-btn" class="navbar-btn" onclick="openFlagQueue()" title="Review flagged detections" style="display:none;">🚩 Flags</button>
+        <button id="navbar-comments-history-btn" class="navbar-btn" onclick="openCommentsHistory()" title="Review comments across all detections" style="display:none;">💬 Comments</button>
     </div>
 </nav>
 
@@ -404,6 +405,20 @@
         </div>
         <div style="display:flex;gap:8px;margin-top:1rem;">
             <button class="btn-cancel" style="flex:1;padding:10px 14px;border-radius:6px;border:1px solid var(--border);cursor:pointer;font-family:inherit;font-size:0.875rem;font-weight:600;background:var(--bg-card);color:var(--color-gray-700);" onclick="closeFlagQueue()">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Mod comments history modal ────────────────────────────── -->
+<div id="comments-history-modal" role="dialog" aria-modal="true">
+    <div class="comments-history-box">
+        <h3>All Comments</h3>
+        <p class="comments-history-subtitle">Chronological listing of comments across all detections. Newest first.</p>
+        <div id="comments-history-list">
+            <div style="text-align:center;color:var(--color-gray-500);padding:1rem;">Loading...</div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:1rem;">
+            <button class="btn-cancel" style="flex:1;padding:10px 14px;border-radius:6px;border:1px solid var(--border);cursor:pointer;font-family:inherit;font-size:0.875rem;font-weight:600;background:var(--bg-card);color:var(--color-gray-700);" onclick="closeCommentsHistory()">Close</button>
         </div>
     </div>
 </div>
