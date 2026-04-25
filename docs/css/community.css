@@ -385,6 +385,7 @@
             width: 120px;
             height: 90px;
             object-fit: cover;
+            object-position: center top;
             border-radius: 6px;
             flex-shrink: 0;
             cursor: zoom-in;
