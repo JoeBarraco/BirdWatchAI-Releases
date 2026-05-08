@@ -2460,8 +2460,10 @@
             transition: box-shadow 0.15s;
         }
         .feeder-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-        .feeder-card.online  { border-left-color: #2eaa4f; }
-        .feeder-card.offline { border-left-color: #c0392b; }
+        .feeder-card.online,
+        .feeder-card.monitoring { border-left-color: #2eaa4f; }
+        .feeder-card.idle       { border-left-color: #e6a817; }
+        .feeder-card.offline    { border-left-color: #c0392b; }
         .feeder-card-header {
             display: flex;
             align-items: center;
@@ -2487,16 +2489,27 @@
             background: var(--color-gray-500);
             flex-shrink: 0;
         }
-        .feeder-status-dot.online {
+        .feeder-status-dot.online,
+        .feeder-status-dot.monitoring {
             background: #2eaa4f;
             box-shadow: 0 0 0 0 rgba(46, 170, 79, 0.6);
             animation: feeder-pulse 2s infinite;
+        }
+        .feeder-status-dot.idle {
+            background: #e6a817;
+            box-shadow: 0 0 0 0 rgba(230, 168, 23, 0.6);
+            animation: feeder-pulse-idle 2s infinite;
         }
         .feeder-status-dot.offline { background: #c0392b; }
         @keyframes feeder-pulse {
             0%   { box-shadow: 0 0 0 0   rgba(46, 170, 79, 0.6); }
             70%  { box-shadow: 0 0 0 8px rgba(46, 170, 79, 0); }
             100% { box-shadow: 0 0 0 0   rgba(46, 170, 79, 0); }
+        }
+        @keyframes feeder-pulse-idle {
+            0%   { box-shadow: 0 0 0 0   rgba(230, 168, 23, 0.6); }
+            70%  { box-shadow: 0 0 0 8px rgba(230, 168, 23, 0); }
+            100% { box-shadow: 0 0 0 0   rgba(230, 168, 23, 0); }
         }
         .feeder-state-pill {
             font-size: 0.7rem;
@@ -2507,8 +2520,10 @@
             border-radius: 999px;
             flex-shrink: 0;
         }
-        .feeder-state-pill.online  { background: #e6f5ec; color: #1f7a3a; }
-        .feeder-state-pill.offline { background: #fbe9e7; color: #b03a2e; }
+        .feeder-state-pill.online,
+        .feeder-state-pill.monitoring { background: #e6f5ec; color: #1f7a3a; }
+        .feeder-state-pill.idle       { background: #fdf3d8; color: #8a6410; }
+        .feeder-state-pill.offline    { background: #fbe9e7; color: #b03a2e; }
         .feeder-meta {
             margin: 0;
             display: grid;
