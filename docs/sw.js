@@ -1,5 +1,5 @@
 // BirdWatchAI Community Feed — Service Worker
-const CACHE        = 'bwai-v6';
+const CACHE        = 'bwai-v7';
 const FEED_CACHE   = 'bwai-feed-v1';   // separate cache for API responses
 const PRECACHE = [
     'https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Source+Sans+3:wght@400;500;600&display=swap',
@@ -40,6 +40,27 @@ self.addEventListener('fetch', e => {
         return;
     }
 
+    // Same-origin JS/CSS: network-first so deploys are picked up without
+    // needing a cache version bump. Falls back to the cached copy when
+    // offline. (Cache-first here is what stranded users on old JS that
+    // didn't know about new HTML elements like the Feeders tab.)
+    if (e.request.method === 'GET' &&
+        new URL(url).origin === self.location.origin &&
+        (url.endsWith('.js') || url.endsWith('.css'))) {
+        e.respondWith(
+            fetch(e.request)
+                .then(res => {
+                    if (res.ok) {
+                        const clone = res.clone();
+                        caches.open(CACHE).then(c => c.put(e.request, clone));
+                    }
+                    return res;
+                })
+                .catch(() => caches.match(e.request))
+        );
+        return;
+    }
+
     // Supabase community_detections: network-first, cache last response for offline
     if (url.includes('supabase.co') && url.includes('community_detections')) {
         e.respondWith(
@@ -69,7 +90,8 @@ self.addEventListener('fetch', e => {
         return;
     }
 
-    // Static assets (fonts, Leaflet): cache-first
+    // Static third-party assets (fonts, Leaflet from unpkg): cache-first.
+    // These are version-pinned in the URL so cache-first is safe.
     e.respondWith(
         caches.match(e.request).then(cached => {
             if (cached) return cached;
