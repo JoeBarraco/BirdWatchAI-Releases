@@ -351,9 +351,12 @@ function switchView(view, btn) {
     document.getElementById('map-view').style.display     = view === 'map'     ? 'block' : 'none';
     document.getElementById('gallery-view').style.display = view === 'gallery' ? 'block' : 'none';
     document.getElementById('stats-view').style.display   = view === 'stats'   ? 'block' : 'none';
+    document.getElementById('feeders-view').style.display = view === 'feeders' ? 'block' : 'none';
 
     // Stop likes polling when leaving stats view
     if (view !== 'stats') stopLikesPoll();
+    // Stop feeder auto-refresh when leaving feeders view
+    if (view !== 'feeders') stopFeedersAutoRefresh();
 
     if (view === 'map') {
         // Double rAF: wait for the browser to actually paint the div
@@ -367,7 +370,165 @@ function switchView(view, btn) {
         loadAllThenRenderGallery();
     } else if (view === 'stats') {
         loadAllThenRenderStats();
+    } else if (view === 'feeders') {
+        loadFeeders();
+        startFeedersAutoRefresh();
     }
+}
+
+// ── Feeders status view ─────────────────────────────────
+const FEEDER_OFFLINE_THRESHOLD_MS = 10 * 60 * 1000;
+let allFeeders = [];
+let feedersAutoRefreshTimer = null;
+let feedersControlsBound = false;
+
+function startFeedersAutoRefresh() {
+    stopFeedersAutoRefresh();
+    feedersAutoRefreshTimer = setInterval(() => {
+        if (currentView === 'feeders' && !document.hidden) loadFeeders();
+    }, 30000);
+}
+
+function stopFeedersAutoRefresh() {
+    if (feedersAutoRefreshTimer) {
+        clearInterval(feedersAutoRefreshTimer);
+        feedersAutoRefreshTimer = null;
+    }
+}
+
+function bindFeedersControls() {
+    if (feedersControlsBound) return;
+    feedersControlsBound = true;
+    document.getElementById('feeders-search').addEventListener('input', renderFeeders);
+    document.getElementById('feeders-status-filter').addEventListener('change', renderFeeders);
+    document.getElementById('feeders-sort').addEventListener('change', renderFeeders);
+}
+
+async function loadFeeders() {
+    bindFeedersControls();
+    const grid = document.getElementById('feeders-grid');
+    if (!allFeeders.length) {
+        grid.innerHTML = '<div class="feeders-loading">Loading feeders…</div>';
+    }
+    try {
+        const url = `${SUPABASE_URL}/rest/v1/feeders?select=id,display_name,zip_code,status,last_heatbeat_at&order=display_name.asc&limit=1000`;
+        const res = await fetch(url, {
+            headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` }
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        allFeeders = await res.json();
+        renderFeeders();
+    } catch (err) {
+        grid.innerHTML = `<div class="feed-error">Error loading feeders: ${esc(err.message)}</div>`;
+    }
+}
+
+function feederIsOnline(f) {
+    if (!f.last_heatbeat_at) return false;
+    const age = Date.now() - new Date(f.last_heatbeat_at).getTime();
+    return age >= 0 && age < FEEDER_OFFLINE_THRESHOLD_MS;
+}
+
+function fmtFeederHeartbeat(iso) {
+    if (!iso) return 'Never';
+    const t = new Date(iso).getTime();
+    if (Number.isNaN(t)) return 'Unknown';
+    const diff = Date.now() - t;
+    if (diff < 0) return 'Just now';
+    const sec = Math.floor(diff / 1000);
+    if (sec < 60)      return `${sec}s ago`;
+    const min = Math.floor(sec / 60);
+    if (min < 60)      return `${min} min${min === 1 ? '' : 's'} ago`;
+    const hr  = Math.floor(min / 60);
+    if (hr  < 24)      return `${hr} hour${hr === 1 ? '' : 's'} ago`;
+    const day = Math.floor(hr / 24);
+    if (day < 30)      return `${day} day${day === 1 ? '' : 's'} ago`;
+    return new Date(iso).toLocaleDateString();
+}
+
+function renderFeeders() {
+    const grid    = document.getElementById('feeders-grid');
+    const summary = document.getElementById('feeders-summary');
+    if (!grid) return;
+
+    const search   = (document.getElementById('feeders-search')?.value || '').trim().toLowerCase();
+    const statusFi = document.getElementById('feeders-status-filter')?.value || '';
+    const sortBy   = document.getElementById('feeders-sort')?.value || 'status';
+
+    const onlineCount = allFeeders.filter(feederIsOnline).length;
+    summary.innerHTML = allFeeders.length
+        ? `<strong>${allFeeders.length}</strong> registered feeder${allFeeders.length === 1 ? '' : 's'}
+           &nbsp;·&nbsp; <span class="feeder-status-dot online"></span> ${onlineCount} online
+           &nbsp;·&nbsp; <span class="feeder-status-dot offline"></span> ${allFeeders.length - onlineCount} offline`
+        : '';
+
+    let visible = allFeeders.filter(f => {
+        const online = feederIsOnline(f);
+        if (statusFi === 'online'  && !online) return false;
+        if (statusFi === 'offline' &&  online) return false;
+        if (search) {
+            const hay = [f.display_name, f.zip_code, f.status].filter(Boolean).join(' ').toLowerCase();
+            if (!hay.includes(search)) return false;
+        }
+        return true;
+    });
+
+    if (sortBy === 'name') {
+        visible.sort((a, b) => (a.display_name || '').localeCompare(b.display_name || ''));
+    } else if (sortBy === 'recent') {
+        visible.sort((a, b) => {
+            const ta = a.last_heatbeat_at ? new Date(a.last_heatbeat_at).getTime() : 0;
+            const tb = b.last_heatbeat_at ? new Date(b.last_heatbeat_at).getTime() : 0;
+            return tb - ta;
+        });
+    } else {
+        // status: online first, then by most-recent heartbeat
+        visible.sort((a, b) => {
+            const oa = feederIsOnline(a) ? 1 : 0;
+            const ob = feederIsOnline(b) ? 1 : 0;
+            if (oa !== ob) return ob - oa;
+            const ta = a.last_heatbeat_at ? new Date(a.last_heatbeat_at).getTime() : 0;
+            const tb = b.last_heatbeat_at ? new Date(b.last_heatbeat_at).getTime() : 0;
+            return tb - ta;
+        });
+    }
+
+    if (!visible.length) {
+        grid.innerHTML = allFeeders.length
+            ? '<div class="feeders-empty">No feeders match your filters.</div>'
+            : '<div class="feeders-empty">No feeders registered yet.</div>';
+        return;
+    }
+
+    grid.innerHTML = visible.map(f => {
+        const online = feederIsOnline(f);
+        const stateClass = online ? 'online' : 'offline';
+        const stateLabel = online ? 'Online' : 'Offline';
+        const statusText = f.status ? esc(f.status) : '—';
+        return `
+        <div class="feeder-card ${stateClass}">
+            <div class="feeder-card-header">
+                <span class="feeder-status-dot ${stateClass}" aria-hidden="true"></span>
+                <h3 class="feeder-name">${esc(f.display_name || 'Unnamed feeder')}</h3>
+                <span class="feeder-state-pill ${stateClass}">${stateLabel}</span>
+            </div>
+            <dl class="feeder-meta">
+                <div><dt>Status</dt><dd>${statusText}</dd></div>
+                <div><dt>Zip</dt><dd>${f.zip_code ? esc(f.zip_code) : '—'}</dd></div>
+                <div><dt>Last heartbeat</dt><dd title="${f.last_heatbeat_at ? esc(new Date(f.last_heatbeat_at).toLocaleString()) : ''}">${esc(fmtFeederHeartbeat(f.last_heatbeat_at))}</dd></div>
+            </dl>
+            ${f.display_name ? `<button class="feeder-view-detections" onclick="viewFeederDetections('${esc(f.display_name)}')">View detections →</button>` : ''}
+        </div>`;
+    }).join('');
+}
+
+function viewFeederDetections(displayName) {
+    const sel = document.getElementById('feeder-filter');
+    if (sel) sel.value = displayName;
+    const feedTab = Array.from(document.querySelectorAll('.view-tab'))
+        .find(b => /switchView\('feed'/.test(b.getAttribute('onclick') || ''));
+    if (feedTab) switchView('feed', feedTab);
+    refilter();
 }
 
 // ── Stats ────────────────────────────────────────────────
@@ -1539,6 +1700,8 @@ function filterBySpecies(btn) {
     document.getElementById('map-view').style.display     = 'none';
     document.getElementById('gallery-view').style.display = 'none';
     document.getElementById('stats-view').style.display   = 'none';
+    document.getElementById('feeders-view').style.display = 'none';
+    stopFeedersAutoRefresh();
     renderFeed();
     showBackToStatsBanner(speciesName);
 }
