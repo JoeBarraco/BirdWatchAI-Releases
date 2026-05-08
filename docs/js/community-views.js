@@ -411,11 +411,17 @@ async function loadFeeders() {
         grid.innerHTML = '<div class="feeders-loading">Loading feeders…</div>';
     }
     try {
-        const url = `${SUPABASE_URL}/rest/v1/feeders?select=id,display_name,zip_code,status,last_heatbeat_at&order=display_name.asc&limit=1000`;
+        // Select * so we don't 400 on column-name spelling differences
+        // (e.g. last_heatbeat_at vs last_heartbeat_at). We pick the right
+        // field at render time via feederHeartbeat().
+        const url = `${SUPABASE_URL}/rest/v1/feeders?select=*&order=display_name.asc&limit=1000`;
         const res = await fetch(url, {
             headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` }
         });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (!res.ok) {
+            const body = await res.text().catch(() => '');
+            throw new Error(`HTTP ${res.status}${body ? ' — ' + body.slice(0, 200) : ''}`);
+        }
         allFeeders = await res.json();
         renderFeeders();
     } catch (err) {
@@ -423,9 +429,14 @@ async function loadFeeders() {
     }
 }
 
+function feederHeartbeat(f) {
+    return f.last_heartbeat_at || f.last_heatbeat_at || f.last_seen_at || null;
+}
+
 function feederIsOnline(f) {
-    if (!f.last_heatbeat_at) return false;
-    const age = Date.now() - new Date(f.last_heatbeat_at).getTime();
+    const hb = feederHeartbeat(f);
+    if (!hb) return false;
+    const age = Date.now() - new Date(hb).getTime();
     return age >= 0 && age < FEEDER_OFFLINE_THRESHOLD_MS;
 }
 
@@ -473,23 +484,21 @@ function renderFeeders() {
         return true;
     });
 
+    const hbTime = f => {
+        const hb = feederHeartbeat(f);
+        return hb ? new Date(hb).getTime() : 0;
+    };
     if (sortBy === 'name') {
         visible.sort((a, b) => (a.display_name || '').localeCompare(b.display_name || ''));
     } else if (sortBy === 'recent') {
-        visible.sort((a, b) => {
-            const ta = a.last_heatbeat_at ? new Date(a.last_heatbeat_at).getTime() : 0;
-            const tb = b.last_heatbeat_at ? new Date(b.last_heatbeat_at).getTime() : 0;
-            return tb - ta;
-        });
+        visible.sort((a, b) => hbTime(b) - hbTime(a));
     } else {
         // status: online first, then by most-recent heartbeat
         visible.sort((a, b) => {
             const oa = feederIsOnline(a) ? 1 : 0;
             const ob = feederIsOnline(b) ? 1 : 0;
             if (oa !== ob) return ob - oa;
-            const ta = a.last_heatbeat_at ? new Date(a.last_heatbeat_at).getTime() : 0;
-            const tb = b.last_heatbeat_at ? new Date(b.last_heatbeat_at).getTime() : 0;
-            return tb - ta;
+            return hbTime(b) - hbTime(a);
         });
     }
 
@@ -505,6 +514,7 @@ function renderFeeders() {
         const stateClass = online ? 'online' : 'offline';
         const stateLabel = online ? 'Online' : 'Offline';
         const statusText = f.status ? esc(f.status) : '—';
+        const hb = feederHeartbeat(f);
         return `
         <div class="feeder-card ${stateClass}">
             <div class="feeder-card-header">
@@ -515,7 +525,7 @@ function renderFeeders() {
             <dl class="feeder-meta">
                 <div><dt>Status</dt><dd>${statusText}</dd></div>
                 <div><dt>Zip</dt><dd>${f.zip_code ? esc(f.zip_code) : '—'}</dd></div>
-                <div><dt>Last heartbeat</dt><dd title="${f.last_heatbeat_at ? esc(new Date(f.last_heatbeat_at).toLocaleString()) : ''}">${esc(fmtFeederHeartbeat(f.last_heatbeat_at))}</dd></div>
+                <div><dt>Last heartbeat</dt><dd title="${hb ? esc(new Date(hb).toLocaleString()) : ''}">${esc(fmtFeederHeartbeat(hb))}</dd></div>
             </dl>
             ${f.display_name ? `<button class="feeder-view-detections" onclick="viewFeederDetections('${esc(f.display_name)}')">View detections →</button>` : ''}
         </div>`;
