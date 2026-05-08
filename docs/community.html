@@ -153,6 +153,7 @@
         <button class="view-tab" role="tab" aria-selected="false" aria-controls="map-view" onclick="switchView('map', this)">🗺️ Map</button>
         <button class="view-tab" role="tab" aria-selected="false" aria-controls="gallery-view" onclick="switchView('gallery', this)">🖼️ Gallery</button>
         <button class="view-tab" role="tab" aria-selected="false" aria-controls="stats-view" onclick="switchView('stats', this)">📊 Stats</button>
+        <button class="view-tab" role="tab" aria-selected="false" aria-controls="feeders-view" onclick="switchView('feeders', this)">🪺 Feeders</button>
     </div>
 
     <!-- Notification permission banner (shown when needed) -->
@@ -230,6 +231,30 @@
             <div class="slideshow-progress"><div class="slideshow-progress-fill" id="slideshow-progress-fill"></div></div>
             <button class="slideshow-ctrl" id="slideshow-transition-btn" onclick="cycleSlideshowTransition()" title="Transition style (t)" aria-label="Transition style">✦ Fade</button>
             <button class="slideshow-ctrl" id="slideshow-fullscreen-btn" onclick="toggleSlideshowFullscreen()" title="Toggle fullscreen (f)" aria-label="Toggle fullscreen">⛶</button>
+        </div>
+    </div>
+
+    <!-- Feeders view -->
+    <div id="feeders-view" role="tabpanel" style="display:none;">
+        <div class="feeders-toolbar">
+            <div class="feeders-summary" id="feeders-summary"></div>
+            <div class="feeders-controls">
+                <input id="feeders-search" class="filter-input" type="search" placeholder="Search feeders…" aria-label="Search feeders">
+                <select id="feeders-status-filter" class="filter-select" aria-label="Filter feeders by status">
+                    <option value="">All</option>
+                    <option value="online">Online</option>
+                    <option value="offline">Offline</option>
+                </select>
+                <select id="feeders-sort" class="filter-select" aria-label="Sort feeders">
+                    <option value="status">Status</option>
+                    <option value="name">Name (A–Z)</option>
+                    <option value="recent">Last update</option>
+                </select>
+                <button class="refresh-btn" onclick="loadFeeders()">↺ Refresh</button>
+            </div>
+        </div>
+        <div id="feeders-grid" class="feeders-grid">
+            <div class="feeders-loading">Loading feeders…</div>
         </div>
     </div>
 
