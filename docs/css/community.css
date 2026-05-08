@@ -2543,4 +2543,37 @@
             border-color: var(--color-primary);
             color: var(--color-primary);
         }
+        .feeder-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            align-self: stretch;
+        }
+        .feeder-show-on-map {
+            font-family: inherit;
+            font-size: 0.8rem;
+            font-weight: 500;
+            padding: 6px 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--bg-card);
+            color: var(--color-gray-700);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .feeder-show-on-map:hover {
+            border-color: var(--color-primary);
+            color: var(--color-primary);
+        }
+        .feeder-meta dd a {
+            color: var(--color-primary);
+            text-decoration: none;
+        }
+        .feeder-meta dd a:hover { text-decoration: underline; }
+        .card-meta .card-loc-link {
+            color: inherit;
+            text-decoration: none;
+            border-bottom: 1px dotted currentColor;
+        }
+        .card-meta .card-loc-link:hover { color: var(--color-primary); border-bottom-color: var(--color-primary); }
 

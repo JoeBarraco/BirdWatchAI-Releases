@@ -248,7 +248,13 @@ function openDetailModal(id) {
     const metaRows = [
         `<span>🕐 ${time}</span>`,
         d.feeders?.display_name ? `<span><svg viewBox="0 0 24 24" width="1em" height="1em" aria-hidden="true" style="vertical-align:-.15em;flex-shrink:0"><rect x="5" y="11" width="14" height="10" fill="#f5b945"/><path d="M2 11L12 3L22 11Z" fill="#e68a1a"/><circle cx="12" cy="15" r="2.2" fill="#3d2a0d"/><rect x="11" y="17" width="2" height="2.5" fill="#8b5a2b"/></svg> ${esc(d.feeders.display_name)}</span>` : '',
-        d.zip_code              ? `<span>📍 ZIP ${esc(d.zip_code)}</span>` : '',
+        (typeof hasGps === 'function' && hasGps(d))
+            ? (() => {
+                const lat = +d.latitude, lng = +d.longitude;
+                const url = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}&zoom=13#map=13/${lat}/${lng}`;
+                return `<span>📍 <a href="${url}" target="_blank" rel="noopener" style="color:inherit;border-bottom:1px dotted currentColor;text-decoration:none;">${fmtLatLng(lat, lng, 4)}</a></span>`;
+            })()
+            : (d.zip_code ? `<span>📍 ZIP ${esc(d.zip_code)}</span>` : ''),
         d.temperature != null   ? `<span>🌡️ ${d.temperature}°F</span>` : '',
     ].filter(Boolean).join('');
     document.getElementById('detail-meta').innerHTML = metaRows;

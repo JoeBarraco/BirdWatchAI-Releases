@@ -58,12 +58,17 @@ const geocodeCache = {};   // zip -> {lat, lng} or null
 let selectedSpecies = '';   // tracks the committed species filter value
 
 function getFilters() {
+    const locRaw = document.getElementById('zip-filter').value.trim();
+    const loc    = parseLocationFilter(locRaw);
+    const radius = parseFloat(document.getElementById('radius-filter')?.value || '25') || 25;
     return {
         period:        document.querySelector('.period-btn.active')?.dataset.period ?? '',
         species:       selectedSpecies,
         rarity:        document.getElementById('rarity-filter').value,
         feeder:        document.getElementById('feeder-filter').value,
-        zip:           document.getElementById('zip-filter').value.trim(),
+        zip:           loc?.zip || '',
+        coords:        (loc && loc.lat != null) ? { lat: loc.lat, lng: loc.lng } : null,
+        radiusMiles:   radius,
         search:        (document.getElementById('search-input')?.value || '').trim().toLowerCase(),
         favoritesOnly,
     };
@@ -87,10 +92,11 @@ async function commitSpecies(name) {
 async function refilter() {
     refiltering = true;
     try {
+        const locFilter = document.getElementById('zip-filter').value.trim();
         const hasFilter = selectedSpecies ||
             document.getElementById('rarity-filter').value ||
             document.getElementById('feeder-filter').value ||
-            document.getElementById('zip-filter').value.trim() ||
+            locFilter ||
             (document.getElementById('search-input')?.value || '').trim() ||
             favoritesOnly;
         if (hasFilter && !feedExhausted) {
@@ -130,30 +136,35 @@ async function refilter() {
     }
 }
 
-// ── Near me (ZIP from geolocation) ───────────────────────
+// ── Near me (GPS proximity) ──────────────────────────────
+// Parses the location filter input; supports either:
+//  - "lat, lng"  (numeric coordinates) → returns { lat, lng }
+//  - "12345"     (US zip)              → returns { zip }
+//  - empty                             → returns null
+function parseLocationFilter(raw) {
+    const s = (raw || '').trim();
+    if (!s) return null;
+    const m = s.match(/^\s*(-?\d{1,3}(?:\.\d+)?)\s*[, ]\s*(-?\d{1,3}(?:\.\d+)?)\s*$/);
+    if (m) {
+        const lat = parseFloat(m[1]);
+        const lng = parseFloat(m[2]);
+        if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180) return { lat, lng };
+    }
+    if (/^\d{4,10}$/.test(s)) return { zip: s };
+    return { zip: s };  // free-text: fall through as zip equality
+}
+
 function useMyLocation() {
     if (!navigator.geolocation) { alert('Geolocation is not supported by your browser.'); return; }
     const btn = document.getElementById('near-me-btn');
     btn.disabled = true;
     btn.textContent = '📍 Locating…';
     navigator.geolocation.getCurrentPosition(
-        async pos => {
+        pos => {
             const { latitude, longitude } = pos.coords;
-            try {
-                const res  = await fetch(`https://api.zippopotam.us/us/${latitude.toFixed(4)},${longitude.toFixed(4)}`).catch(() => null);
-                // zippopotam doesn't support reverse geocoding; use a free reverse-geocode API
-                const res2 = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`);
-                const data = await res2.json();
-                const zip  = data?.address?.postcode?.split('-')[0];
-                if (zip) {
-                    document.getElementById('zip-filter').value = zip;
-                    refilter();
-                } else {
-                    alert('Could not determine ZIP code for your location.');
-                }
-            } catch {
-                alert('Could not determine ZIP code for your location.');
-            }
+            document.getElementById('zip-filter').value =
+                `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+            refilter();
             btn.disabled = false;
             btn.textContent = '📍 Near me';
         },
@@ -162,7 +173,7 @@ function useMyLocation() {
             btn.disabled = false;
             btn.textContent = '📍 Near me';
         },
-        { timeout: 8000 }
+        { timeout: 8000, enableHighAccuracy: true }
     );
 }
 
@@ -187,12 +198,18 @@ function periodToISO(period) {
 }
 
 function applyClientFilters(data) {
-    const { feeder, zip, species, rarity, search, favoritesOnly } = getFilters();
+    const { feeder, zip, coords, radiusMiles, species, rarity, search, favoritesOnly } = getFilters();
     return data.filter(d => {
         if (species       && d.species               !== species) return false;
         if (rarity        && d.rarity                !== rarity)  return false;
         if (feeder        && d.feeders?.display_name !== feeder)  return false;
-        if (zip           && d.zip_code              !== zip)      return false;
+        if (coords) {
+            if (d.latitude == null || d.longitude == null) return false;
+            const dist = haversineMiles(coords.lat, coords.lng, +d.latitude, +d.longitude);
+            if (dist > radiusMiles) return false;
+        } else if (zip && d.zip_code !== zip) {
+            return false;
+        }
         if (favoritesOnly && !hasUserReaction(d.id))                 return false;
         if (search) {
             const haystack = [
