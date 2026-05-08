@@ -527,14 +527,35 @@ function renderFeeders() {
                 <div><dt>Zip</dt><dd>${f.zip_code ? esc(f.zip_code) : '—'}</dd></div>
                 <div><dt>Last heartbeat</dt><dd title="${hb ? esc(new Date(hb).toLocaleString()) : ''}">${esc(fmtFeederHeartbeat(f))}</dd></div>
             </dl>
-            ${f.display_name ? `<button class="feeder-view-detections" onclick="viewFeederDetections('${esc(f.display_name)}')">View detections →</button>` : ''}
+            ${f.display_name ? `<button class="feeder-view-detections" data-feeder-name="${esc(f.display_name)}" onclick="viewFeederDetections(this)">View detections →</button>` : ''}
         </div>`;
     }).join('');
 }
 
-function viewFeederDetections(displayName) {
+function viewFeederDetections(btn) {
+    // Read the name from a data attribute (not interpolated into the
+    // onclick string) so feeder names containing quotes don't break
+    // the click handler.
+    const displayName = btn && btn.dataset ? btn.dataset.feederName : '';
+    if (!displayName) return;
+
     const sel = document.getElementById('feeder-filter');
-    if (sel) sel.value = displayName;
+    if (sel) {
+        // The Feed's feeder dropdown is populated from recent detection
+        // data; a feeder with no detections in the active period won't
+        // have an <option>, and assigning value would silently no-op
+        // (leaving any previous selection in place — i.e. "wrong feeder").
+        // Inject the option if it isn't already there.
+        const exists = Array.from(sel.options).some(o => o.value === displayName);
+        if (!exists) {
+            const opt = document.createElement('option');
+            opt.value = displayName;
+            opt.textContent = displayName;
+            sel.appendChild(opt);
+        }
+        sel.value = displayName;
+    }
+
     const feedTab = Array.from(document.querySelectorAll('.view-tab'))
         .find(b => /switchView\('feed'/.test(b.getAttribute('onclick') || ''));
     if (feedTab) switchView('feed', feedTab);
