@@ -579,6 +579,17 @@ function feederIsOnline(f) {
     return feederAgeMs(f) < FEEDER_OFFLINE_THRESHOLD_MS;
 }
 
+function feederIsMonitoring(f) {
+    if (!feederIsOnline(f)) return false;
+    const s = (f.status || '').trim();
+    return /^monitoring\b/i.test(s);
+}
+
+function feederState(f) {
+    if (!feederIsOnline(f)) return 'offline';
+    return feederIsMonitoring(f) ? 'monitoring' : 'idle';
+}
+
 function fmtFeederHeartbeat(f) {
     const hb = feederHeartbeat(f);
     if (!hb) return 'Never';
@@ -605,17 +616,23 @@ function renderFeeders() {
     const statusFi = document.getElementById('feeders-status-filter')?.value || '';
     const sortBy   = document.getElementById('feeders-sort')?.value || 'status';
 
-    const onlineCount = allFeeders.filter(feederIsOnline).length;
+    const monitoringCount = allFeeders.filter(feederIsMonitoring).length;
+    const onlineCount     = allFeeders.filter(feederIsOnline).length;
+    const idleCount       = onlineCount - monitoringCount;
+    const offlineCount    = allFeeders.length - onlineCount;
     summary.innerHTML = allFeeders.length
         ? `<strong>${allFeeders.length}</strong> registered feeder${allFeeders.length === 1 ? '' : 's'}
-           &nbsp;·&nbsp; <span class="feeder-status-dot online"></span> ${onlineCount} online
-           &nbsp;·&nbsp; <span class="feeder-status-dot offline"></span> ${allFeeders.length - onlineCount} offline`
+           &nbsp;·&nbsp; <span class="feeder-status-dot monitoring"></span> ${monitoringCount} monitoring
+           &nbsp;·&nbsp; <span class="feeder-status-dot idle"></span> ${idleCount} idle
+           &nbsp;·&nbsp; <span class="feeder-status-dot offline"></span> ${offlineCount} offline`
         : '';
 
     let visible = allFeeders.filter(f => {
-        const online = feederIsOnline(f);
-        if (statusFi === 'online'  && !online) return false;
-        if (statusFi === 'offline' &&  online) return false;
+        const state = feederState(f);
+        if (statusFi === 'monitoring' && state !== 'monitoring') return false;
+        if (statusFi === 'idle'       && state !== 'idle')       return false;
+        if (statusFi === 'online'     && state === 'offline')    return false;
+        if (statusFi === 'offline'    && state !== 'offline')    return false;
         if (search) {
             const hay = [f.display_name, f.zip_code, f.status].filter(Boolean).join(' ').toLowerCase();
             if (!hay.includes(search)) return false;
@@ -628,11 +645,12 @@ function renderFeeders() {
     } else if (sortBy === 'recent') {
         visible.sort((a, b) => feederAgeMs(a) - feederAgeMs(b));
     } else {
-        // status: online first, then by smallest age
+        // status: monitoring first, then idle, then offline; tiebreak by smallest age
+        const rank = { monitoring: 0, idle: 1, offline: 2 };
         visible.sort((a, b) => {
-            const oa = feederIsOnline(a) ? 1 : 0;
-            const ob = feederIsOnline(b) ? 1 : 0;
-            if (oa !== ob) return ob - oa;
+            const ra = rank[feederState(a)];
+            const rb = rank[feederState(b)];
+            if (ra !== rb) return ra - rb;
             return feederAgeMs(a) - feederAgeMs(b);
         });
     }
@@ -645,9 +663,11 @@ function renderFeeders() {
     }
 
     grid.innerHTML = visible.map(f => {
-        const online = feederIsOnline(f);
-        const stateClass = online ? 'online' : 'offline';
-        const stateLabel = online ? 'Online' : 'Offline';
+        const state = feederState(f);
+        const stateClass = state;
+        const stateLabel = state === 'monitoring' ? 'Monitoring'
+                         : state === 'idle'       ? 'Idle'
+                                                  : 'Offline';
         const statusText = f.status ? esc(f.status) : '—';
         const hb = feederHeartbeat(f);
         const locationCell = renderFeederLocationCell(f);
