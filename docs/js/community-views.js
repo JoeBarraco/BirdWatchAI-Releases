@@ -405,8 +405,9 @@ function bindFeedersControls() {
 }
 
 async function loadFeeders() {
-    bindFeedersControls();
     const grid = document.getElementById('feeders-grid');
+    if (!grid) return;   // tab markup not on page (stale cache); bail quietly
+    bindFeedersControls();
     if (!allFeeders.length) {
         grid.innerHTML = '<div class="feeders-loading">Loading feeders…</div>';
     }
