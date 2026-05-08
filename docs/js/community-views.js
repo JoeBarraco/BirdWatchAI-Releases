@@ -1,4 +1,36 @@
 // BirdWatchAI Community Feed - Views (feed, map, stats rendering)
+
+// ── Location helpers (GPS preferred, zip fallback) ───────
+function hasGps(o) {
+    return o && o.latitude != null && o.longitude != null
+        && Number.isFinite(+o.latitude) && Number.isFinite(+o.longitude);
+}
+
+function fmtLatLng(lat, lng, digits = 4) {
+    return `${(+lat).toFixed(digits)}, ${(+lng).toFixed(digits)}`;
+}
+
+function formatLocationChip(o) {
+    if (hasGps(o)) {
+        const lat = +o.latitude, lng = +o.longitude;
+        const url = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}&zoom=12#map=12/${lat}/${lng}`;
+        return ` · <a class="card-loc-link" href="${url}" target="_blank" rel="noopener" title="Open on OpenStreetMap">📍 ${fmtLatLng(lat, lng, 3)}</a>`;
+    }
+    if (o && o.zip_code) return ` · 📍 ${esc(o.zip_code)}`;
+    return '';
+}
+
+// Haversine distance in miles between two lat/lng pairs
+function haversineMiles(lat1, lng1, lat2, lng2) {
+    const R = 3958.7613; // Earth radius in miles
+    const toRad = d => (d * Math.PI) / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLng = toRad(lng2 - lng1);
+    const a = Math.sin(dLat / 2) ** 2
+        + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+}
+
 // ── Render feed ──────────────────────────────────────────
 function renderFeed() {
     let visible = applyClientFilters(allDetections);
@@ -57,8 +89,7 @@ function renderFeed() {
                         ? `<button class="life-list-add-btn${onLifeList ? ' on-list' : ''}" onclick="toggleLifeListSpecies('${esc(d.species)}', '${d.id}', this)" title="${onLifeList ? 'Remove from life list' : 'Add to life list'}">${onLifeList ? '✓ Listed' : '+ Life List'}</button>` : ''}
                 </div>
                 <div class="card-meta">
-                    🕐 ${fmtDetectedAt(d.detected_at)}${d.zip_code
-                        ? ` · 📍 ${esc(d.zip_code)}` : ''}${d.temperature != null
+                    🕐 ${fmtDetectedAt(d.detected_at)}${formatLocationChip(d)}${d.temperature != null
                         ? ` · 🌡️ ${d.temperature}°F` : ''}
                 </div>
                 ${d.feeders?.display_name ? `<div class="card-feeder"><svg viewBox="0 0 24 24" width="1em" height="1em" aria-hidden="true" style="vertical-align:-.15em;flex-shrink:0"><rect x="5" y="11" width="14" height="10" fill="#f5b945"/><path d="M2 11L12 3L22 11Z" fill="#e68a1a"/><circle cx="12" cy="15" r="2.2" fill="#3d2a0d"/><rect x="11" y="17" width="2" height="2.5" fill="#8b5a2b"/></svg> ${esc(d.feeders.display_name)}${currentUser && feederId ? `<button class="follow-feeder-btn${isFollowing ? ' following' : ''}" onclick="toggleFollowFeeder('${feederId}', this)">${isFollowing ? '★ Following' : '☆ Follow'}</button>` : ''}</div>` : ''}
@@ -94,6 +125,84 @@ function setMapLayer(layer, btn) {
         .forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     renderMap();
+}
+
+// ── Feeder pins on map ───────────────────────────────────
+let feederMarkerGroup = null;
+let showFeedersOnMap  = true;   // toggleable from filter bar
+
+function toggleFeedersOnMap(btn) {
+    showFeedersOnMap = !showFeedersOnMap;
+    if (btn) {
+        btn.classList.toggle('active', showFeedersOnMap);
+        btn.setAttribute('aria-pressed', String(showFeedersOnMap));
+    }
+    renderMap();
+}
+
+function makeFeederIcon(online) {
+    const fill = online ? '#2d5a3d' : '#9a9088';
+    return L.divIcon({
+        className: '',
+        html: `<div title="Bird feeder" style="
+            width:26px;height:26px;border-radius:6px;
+            background:${fill};
+            display:flex;align-items:center;justify-content:center;
+            color:#fff;font-size:14px;line-height:1;
+            border:2px solid rgba(255,255,255,0.95);
+            box-shadow:0 2px 6px rgba(0,0,0,0.4);
+        ">🪺</div>`,
+        iconSize: [26, 26],
+        iconAnchor: [13, 13],
+        popupAnchor: [0, -14],
+    });
+}
+
+function collectFeederPins() {
+    if (!Array.isArray(allFeeders) || !allFeeders.length) return [];
+    const seen = new Set();
+    const pins = [];
+    for (const f of allFeeders) {
+        if (!hasGps(f)) continue;
+        const lat = +f.latitude, lng = +f.longitude;
+        const key = `${lat.toFixed(4)},${lng.toFixed(4)}|${f.display_name || ''}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const hb = feederHeartbeat(f);
+        pins.push({
+            lat, lng,
+            name: f.display_name || 'Unnamed feeder',
+            online: feederIsOnline(f),
+            heartbeat: hb,
+            heartbeatLabel: fmtFeederHeartbeat(f),
+        });
+    }
+    return pins;
+}
+
+// Trigger feeder load when map view is opened so feeder pins are available
+async function ensureFeedersLoaded() {
+    if (Array.isArray(allFeeders) && allFeeders.length) return;
+    try { await loadFeeders(); } catch { /* ignore */ }
+}
+
+function filterByFeederFromMap(name) {
+    if (!name) return;
+    const sel = document.getElementById('feeder-filter');
+    if (sel) {
+        const exists = Array.from(sel.options).some(o => o.value === name);
+        if (!exists) {
+            const opt = document.createElement('option');
+            opt.value = name;
+            opt.textContent = name;
+            sel.appendChild(opt);
+        }
+        sel.value = name;
+    }
+    const feedTab = Array.from(document.querySelectorAll('.view-tab'))
+        .find(b => /switchView\('feed'/.test(b.getAttribute('onclick') || ''));
+    if (feedTab) switchView('feed', feedTab);
+    refilter();
 }
 
 // ── Map rendering ────────────────────────────────────────
@@ -180,6 +289,7 @@ async function renderMap() {
 
     if (markerGroup) { map.removeLayer(markerGroup); markerGroup = null; }
     if (heatLayer)   { map.removeLayer(heatLayer);   heatLayer   = null; }
+    if (feederMarkerGroup) { map.removeLayer(feederMarkerGroup); feederMarkerGroup = null; }
     renderLegend([]);
 
     const speciesFilter = document.getElementById('map-species-filter').value;
@@ -189,55 +299,31 @@ async function renderMap() {
 
     try {
         // Group detections by (location key, species)
-        // locSpecies: "locKey|species" -> { lat, lng, species, count }
         let locSpecies = {};
-        let allLatLngs = [];
 
-        async function addDetections(detections, getKey) {
-            for (const d of detections) {
-                const sp  = d.species || 'Unknown';
-                const key = `${getKey(d)}|${sp}`;
-                if (!locSpecies[key]) {
-                    locSpecies[key] = { lat: null, lng: null, species: sp, count: 0 };
-                }
-                locSpecies[key].count++;
-                // coords set below after geocoding
+        // ① Detections with direct GPS — preferred
+        const withCoords = visible.filter(hasGps);
+        for (const d of withCoords) {
+            const sp      = d.species || 'Unknown';
+            const lat     = +d.latitude, lng = +d.longitude;
+            const locKey  = `${lat.toFixed(3)},${lng.toFixed(3)}`;
+            const fullKey = `${locKey}|${sp}`;
+            if (!locSpecies[fullKey]) {
+                locSpecies[fullKey] = { lat, lng, species: sp, count: 0, images: [] };
             }
+            locSpecies[fullKey].count++;
+            if (d.image_url) locSpecies[fullKey].images.push(d.image_url);
         }
 
-        // ① Direct lat/lng
-        const withCoords = visible.filter(d => d.latitude != null && d.longitude != null);
-        if (withCoords.length > 0) {
-            for (const d of withCoords) {
-                const sp      = d.species || 'Unknown';
-                const locKey  = `${(+d.latitude).toFixed(3)},${(+d.longitude).toFixed(3)}`;
-                const fullKey = `${locKey}|${sp}`;
-                if (!locSpecies[fullKey]) {
-                    locSpecies[fullKey] = { lat: +d.latitude, lng: +d.longitude, species: sp, count: 0, images: [] };
-                }
-                locSpecies[fullKey].count++;
-                locSpecies[fullKey].lat = +d.latitude;
-                locSpecies[fullKey].lng = +d.longitude;
-                if (d.image_url) locSpecies[fullKey].images.push(d.image_url);
-            }
-
-        // ② Zip geocoding
-        } else {
-            const zipDetections = {};
-            for (const d of visible) {
-                if (d.zip_code) {
-                    if (!zipDetections[d.zip_code]) zipDetections[d.zip_code] = [];
-                    zipDetections[d.zip_code].push(d);
-                }
-            }
-            const uniqueZips = Object.keys(zipDetections);
-            if (uniqueZips.length === 0) {
-                noData.textContent = 'No location data for the current filters.';
-                noData.style.display = '';
-                return;
-            }
-            noData.style.display = 'none';
-
+        // ② Zip-only detections — fall back to geocoding
+        const zipDetections = {};
+        for (const d of visible) {
+            if (hasGps(d)) continue;       // already plotted via lat/lng
+            if (!d.zip_code) continue;
+            (zipDetections[d.zip_code] ||= []).push(d);
+        }
+        const uniqueZips = Object.keys(zipDetections);
+        if (uniqueZips.length > 0) {
             loading.textContent = `Geocoding ${uniqueZips.length} location${uniqueZips.length !== 1 ? 's' : ''}…`;
             loading.style.display = 'block';
             const coords = await Promise.all(uniqueZips.map(z => geocodeZip(z)));
@@ -258,23 +344,44 @@ async function renderMap() {
         }
 
         const entries = Object.values(locSpecies).filter(e => e.lat != null);
-        if (entries.length === 0) {
-            noData.textContent = 'Could not resolve any locations. Check that zip codes are valid US zip codes.';
+        const feederPins = showFeedersOnMap ? collectFeederPins() : [];
+
+        if (entries.length === 0 && feederPins.length === 0) {
+            noData.textContent = 'No location data for the current filters. Detections and feeders need GPS coordinates (or a US zip code) to appear on the map.';
             noData.style.display = '';
             return;
         }
         noData.style.display = 'none';
 
         const usedSpecies = [...new Set(entries.map(e => e.species))].sort();
-        const bounds = L.latLngBounds(entries.map(e => [e.lat, e.lng]));
+        const allPoints = [
+            ...entries.map(e => [e.lat, e.lng]),
+            ...feederPins.map(f => [f.lat, f.lng]),
+        ];
+        const bounds = allPoints.length ? L.latLngBounds(allPoints) : null;
 
         if (mapLayer === 'heat') {
             // ── Heatmap layer ──────────────────────────────────
-            const heatPoints = entries.map(e => [e.lat, e.lng, e.count]);
-            heatLayer = L.heatLayer(heatPoints, {
-                radius: 35, blur: 25, maxZoom: 12,
-                gradient: { 0.2: '#4575b4', 0.4: '#91cf60', 0.65: '#fee090', 0.85: '#f46d43', 1.0: '#a50026' },
-            }).addTo(map);
+            if (entries.length) {
+                const heatPoints = entries.map(e => [e.lat, e.lng, e.count]);
+                heatLayer = L.heatLayer(heatPoints, {
+                    radius: 35, blur: 25, maxZoom: 12,
+                    gradient: { 0.2: '#4575b4', 0.4: '#91cf60', 0.65: '#fee090', 0.85: '#f46d43', 1.0: '#a50026' },
+                }).addTo(map);
+            }
+            // Feeders still shown as pins on top of heat
+            if (feederPins.length) {
+                if (!feederMarkerGroup) feederMarkerGroup = L.layerGroup();
+                feederMarkerGroup.clearLayers();
+                feederMarkerGroup.addTo(map);
+                for (const f of feederPins) {
+                    L.marker([f.lat, f.lng], { icon: makeFeederIcon(f.online) })
+                        .bindPopup(`<strong>🪺 ${esc(f.name)}</strong><br><span style="font-size:0.8rem;color:${f.online ? '#2d5a3d' : '#888'};">${f.online ? '● Online' : '○ Offline'}</span>`)
+                        .addTo(feederMarkerGroup);
+                }
+            } else if (feederMarkerGroup) {
+                feederMarkerGroup.clearLayers();
+            }
             renderLegend([]);
         } else {
             // ── Pin layer ──────────────────────────────────────
@@ -324,12 +431,39 @@ async function renderMap() {
                 );
                 marker.addTo(markerGroup);
             }
+
+            // Feeder pins (overlay on top of detections)
+            if (feederPins.length) {
+                if (!feederMarkerGroup) feederMarkerGroup = L.layerGroup();
+                feederMarkerGroup.clearLayers();
+                feederMarkerGroup.addTo(map);
+                for (const f of feederPins) {
+                    const m = L.marker([f.lat, f.lng], { icon: makeFeederIcon(f.online) });
+                    const lastSeen = f.heartbeat
+                        ? `<div style="font-size:0.75rem;color:#777;margin-top:2px;">Last seen ${esc(f.heartbeatLabel)}</div>`
+                        : '';
+                    m.bindPopup(
+                        `<div style="min-width:160px;">` +
+                        `<strong style="font-size:0.95rem;">🪺 ${esc(f.name)}</strong><br>` +
+                        `<span style="font-size:0.8rem;color:${f.online ? '#2d5a3d' : '#888'};font-weight:600;">${f.online ? '● Online' : '○ Offline'}</span>` +
+                        lastSeen +
+                        (f.name ? `<div style="margin-top:8px;"><a href="#" style="font-size:0.8rem;color:#2d5a3d;font-weight:600;" ` +
+                            `onclick="event.preventDefault();filterByFeederFromMap(${JSON.stringify(f.name)})">View detections →</a></div>` : '') +
+                        `</div>`,
+                        { maxWidth: 260 }
+                    );
+                    m.addTo(feederMarkerGroup);
+                }
+            } else if (feederMarkerGroup) {
+                feederMarkerGroup.clearLayers();
+            }
+
             renderLegend(usedSpecies);
         }
 
         // Fit map to all data points
         map.invalidateSize();
-        map.fitBounds(bounds.pad(0.5), { maxZoom: 12 });
+        if (bounds) map.fitBounds(bounds.pad(0.5), { maxZoom: 12 });
 
     } catch (err) {
         loading.style.display = 'none';
@@ -359,6 +493,8 @@ function switchView(view, btn) {
     if (view !== 'feeders') stopFeedersAutoRefresh();
 
     if (view === 'map') {
+        // Kick off feeder load in parallel so feeder pins are available
+        ensureFeedersLoaded().then(() => { if (currentView === 'map') renderMap(); });
         // Double rAF: wait for the browser to actually paint the div
         // before Leaflet measures its dimensions
         requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -514,6 +650,7 @@ function renderFeeders() {
         const stateLabel = online ? 'Online' : 'Offline';
         const statusText = f.status ? esc(f.status) : '—';
         const hb = feederHeartbeat(f);
+        const locationCell = renderFeederLocationCell(f);
         return `
         <div class="feeder-card ${stateClass}">
             <div class="feeder-card-header">
@@ -524,12 +661,40 @@ function renderFeeders() {
             <dl class="feeder-meta">
                 <div><dt>Status</dt><dd>${statusText}</dd></div>
                 <div><dt>Version</dt><dd>${f.app_version ? esc(f.app_version) : '—'}</dd></div>
-                <div><dt>Zip</dt><dd>${f.zip_code ? esc(f.zip_code) : '—'}</dd></div>
+                <div><dt>Location</dt><dd>${locationCell}</dd></div>
                 <div><dt>Last heartbeat</dt><dd title="${hb ? esc(new Date(hb).toLocaleString()) : ''}">${esc(fmtFeederHeartbeat(f))}</dd></div>
             </dl>
-            ${f.display_name ? `<button class="feeder-view-detections" data-feeder-name="${esc(f.display_name)}" onclick="viewFeederDetections(this)">View detections →</button>` : ''}
+            <div class="feeder-actions">
+                ${f.display_name ? `<button class="feeder-view-detections" data-feeder-name="${esc(f.display_name)}" onclick="viewFeederDetections(this)">View detections →</button>` : ''}
+                ${hasGps(f) ? `<button class="feeder-show-on-map" data-feeder-id="${esc(f.feeder_id || f.id || f.display_name || '')}" data-feeder-lat="${(+f.latitude).toFixed(6)}" data-feeder-lng="${(+f.longitude).toFixed(6)}" data-feeder-name="${esc(f.display_name || '')}" onclick="showFeederOnMap(this)">🗺️ Show on map</button>` : ''}
+            </div>
         </div>`;
     }).join('');
+}
+
+function renderFeederLocationCell(f) {
+    if (hasGps(f)) {
+        const lat = +f.latitude, lng = +f.longitude;
+        const url = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}&zoom=14#map=14/${lat}/${lng}`;
+        return `<a href="${url}" target="_blank" rel="noopener" title="Open on OpenStreetMap">📍 ${fmtLatLng(lat, lng, 4)}</a>`;
+    }
+    if (f.zip_code) return `📮 ${esc(f.zip_code)}`;
+    return '—';
+}
+
+function showFeederOnMap(btn) {
+    const lat = parseFloat(btn?.dataset?.feederLat);
+    const lng = parseFloat(btn?.dataset?.feederLng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+    const mapTab = Array.from(document.querySelectorAll('.view-tab'))
+        .find(b => /switchView\('map'/.test(b.getAttribute('onclick') || ''));
+    if (mapTab) switchView('map', mapTab);
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+        if (!map) initMap();
+        map.invalidateSize();
+        map.setView([lat, lng], 13);
+        if (typeof renderMap === 'function') renderMap();
+    }));
 }
 
 function viewFeederDetections(btn) {
@@ -680,7 +845,16 @@ function renderStats() {
 
     // ── Summary KPIs ─────────────────────────────────────
     const uniqueSpecies = new Set(visible.map(d => d.species).filter(Boolean));
-    const uniqueZips    = new Set(visible.map(d => d.zip_code).filter(Boolean));
+    // Count distinct locations: GPS bucketed to ~1.1mi cells, else zip
+    const uniqueLocations = new Set(visible.map(d => {
+        if (hasGps(d)) {
+            const lat = Math.round((+d.latitude) / 0.02) * 0.02;
+            const lng = Math.round((+d.longitude) / 0.02) * 0.02;
+            return `gps:${lat.toFixed(2)},${lng.toFixed(2)}`;
+        }
+        return d.zip_code ? `zip:${d.zip_code}` : null;
+    }).filter(Boolean));
+    const uniqueZips = uniqueLocations;  // legacy alias used below
     const withTemp      = visible.filter(d => d.temperature != null);
     const avgTemp       = withTemp.length
         ? (withTemp.reduce((s, d) => s + d.temperature, 0) / withTemp.length).toFixed(1)
@@ -875,37 +1049,76 @@ function renderStats() {
     if (activitySpeciesList.length > 0) renderActivitySpeciesChart();
 
     // ── Hotspots ──────────────────────────────────────────
-    const zipStats = {};
+    // Group by feeder display name when present (since each feeder has its
+    // own GPS), then bucket GPS-only detections to ~1.1mi cells, and finally
+    // fall back to zip code for legacy data.
+    const hotspotStats = {};
+    function ensureBucket(key, label, sample) {
+        if (!hotspotStats[key]) {
+            hotspotStats[key] = {
+                key, label,
+                count: 0, species: new Set(),
+                lat: sample?.lat ?? null,
+                lng: sample?.lng ?? null,
+                kind: sample?.kind || 'unknown',
+            };
+        }
+        return hotspotStats[key];
+    }
     visible.forEach(d => {
-        if (!d.zip_code) return;
-        if (!zipStats[d.zip_code]) zipStats[d.zip_code] = { count: 0, species: new Set() };
-        zipStats[d.zip_code].count++;
-        if (d.species) zipStats[d.zip_code].species.add(d.species);
+        let bucket;
+        const feederName = d.feeders?.display_name;
+        if (feederName) {
+            bucket = ensureBucket(`feeder:${feederName}`, `🪺 ${feederName}`, {
+                lat: hasGps(d) ? +d.latitude : null,
+                lng: hasGps(d) ? +d.longitude : null,
+                kind: 'feeder',
+            });
+        } else if (hasGps(d)) {
+            // Bucket to ~0.02° (~1.1 mi) cells so nearby GPS detections cluster
+            const lat = +d.latitude, lng = +d.longitude;
+            const cellLat = Math.round(lat / 0.02) * 0.02;
+            const cellLng = Math.round(lng / 0.02) * 0.02;
+            const key = `gps:${cellLat.toFixed(2)},${cellLng.toFixed(2)}`;
+            bucket = ensureBucket(key, `📍 ${fmtLatLng(cellLat, cellLng, 2)}`, { lat: cellLat, lng: cellLng, kind: 'gps' });
+        } else if (d.zip_code) {
+            bucket = ensureBucket(`zip:${d.zip_code}`, `📮 ${d.zip_code}`, { kind: 'zip' });
+        } else {
+            return;
+        }
+        bucket.count++;
+        if (d.species) bucket.species.add(d.species);
     });
-    const maxZip   = Math.max(...Object.values(zipStats).map(z => z.count), 1);
-    const hotspots = Object.entries(zipStats)
-        .map(([zip, data]) => ({ zip, count: data.count, species: data.species.size }))
+
+    const hotspots = Object.values(hotspotStats)
+        .map(h => ({ ...h, species: h.species.size }))
         .sort((a, b) => b.count - a.count)
         .slice(0, 25);
+    const maxHot = Math.max(...hotspots.map(h => h.count), 1);
 
     document.getElementById('stats-hotspots').innerHTML = hotspots.length === 0
         ? '<div class="feed-empty">No location data for the current filters.</div>'
         : `<table class="stats-table">
             <thead><tr>
-                <th class="stats-rank">#</th><th>Zip Code</th><th class="stats-count">Detections</th>
+                <th class="stats-rank">#</th><th>Location</th><th class="stats-count">Detections</th>
                 <th class="stats-pct">% of Total</th><th class="stats-count">Unique Species</th>
             </tr></thead>
-            <tbody>${hotspots.map((h, i) => `
+            <tbody>${hotspots.map((h, i) => {
+                const mapLink = (h.lat != null && h.lng != null)
+                    ? ` <a href="https://www.openstreetmap.org/?mlat=${h.lat}&mlon=${h.lng}&zoom=12#map=12/${h.lat}/${h.lng}" target="_blank" rel="noopener" title="Open on OpenStreetMap" style="font-size:0.8em;text-decoration:none;">🗺️</a>`
+                    : '';
+                return `
                 <tr>
                     <td class="stats-rank">${i + 1}</td>
-                    <td class="stats-species-name">${esc(h.zip)}</td>
+                    <td class="stats-species-name">${esc(h.label)}${mapLink}</td>
                     <td class="stats-count">${h.count.toLocaleString()}</td>
                     <td class="stats-pct">
-                        <span class="pct-bar-wrap"><span class="pct-bar" style="width:${(h.count/maxZip*100).toFixed(1)}%"></span></span>
+                        <span class="pct-bar-wrap"><span class="pct-bar" style="width:${(h.count/maxHot*100).toFixed(1)}%"></span></span>
                         ${total > 0 ? ((h.count/total)*100).toFixed(1) : '0.0'}%
                     </td>
                     <td class="stats-count">${h.species}</td>
-                </tr>`).join('')}
+                </tr>`;
+            }).join('')}
             </tbody>
         </table>`;
 
@@ -1618,12 +1831,14 @@ function renderPairs() {
 function exportCSV() {
     const visible = applyClientFilters(allDetections);
     if (!visible.length) { alert('No detections to export.'); return; }
-    const cols = ['detected_at', 'species', 'rarity', 'zip_code', 'temperature', 'feeder', 'likes', 'image_url', 'video_url'];
+    const cols = ['detected_at', 'species', 'rarity', 'latitude', 'longitude', 'zip_code', 'temperature', 'feeder', 'likes', 'image_url', 'video_url'];
     const header = cols.join(',');
     const rows = visible.map(d => [
         d.detected_at,
         d.species || '',
         d.rarity || '',
+        d.latitude != null ? d.latitude : '',
+        d.longitude != null ? d.longitude : '',
         d.zip_code || '',
         d.temperature != null ? d.temperature : '',
         d.feeders?.display_name || '',

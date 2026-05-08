@@ -101,9 +101,16 @@
         </div>
 
         <div class="filter-group">
-            <label class="filter-label" for="zip-filter">Zip</label>
-            <input id="zip-filter" class="filter-input" type="text" placeholder="e.g. 90210" maxlength="10" aria-label="Filter by zip code">
-            <button id="near-me-btn" class="near-me-btn" onclick="useMyLocation()" title="Use my location" aria-label="Use my location">📍 Near me</button>
+            <label class="filter-label" for="zip-filter">Location</label>
+            <input id="zip-filter" class="filter-input" type="text" placeholder="Zip or lat,lng" maxlength="32" aria-label="Filter by zip code or coordinates">
+            <select id="radius-filter" class="filter-select" aria-label="Search radius" onchange="refilter()" title="Search radius (only used with GPS coordinates)">
+                <option value="10">10 mi</option>
+                <option value="25" selected>25 mi</option>
+                <option value="50">50 mi</option>
+                <option value="100">100 mi</option>
+                <option value="250">250 mi</option>
+            </select>
+            <button id="near-me-btn" class="near-me-btn" onclick="useMyLocation()" title="Use my GPS location" aria-label="Use my location">📍 Near me</button>
         </div>
 
         <div class="filter-group">
@@ -189,11 +196,12 @@
                 <button class="period-btn active" id="map-layer-pins"  onclick="setMapLayer('pins',  this)">📍 Pins</button>
                 <button class="period-btn"         id="map-layer-heat" onclick="setMapLayer('heat',  this)">🔥 Heatmap</button>
             </div>
+            <button class="toggle-btn active" id="map-feeders-toggle" aria-pressed="true" style="margin-left:1rem;" onclick="toggleFeedersOnMap(this)" title="Show bird feeder locations on the map">🪺 Feeders</button>
         </div>
         <div id="map-loading" style="display:none">Geocoding locations…</div>
         <div class="map-wrap"><div id="map"></div></div>
         <div id="map-no-data" style="display:none;text-align:center;padding:1rem;color:var(--color-gray-500);font-size:0.875rem;">
-            No location data available for the current filters. Detections need a zip code to appear on the map.
+            No location data available for the current filters. Detections and feeders need GPS coordinates (or a US zip code) to appear on the map.
         </div>
         <div id="map-legend" class="map-legend"></div>
     </div>
