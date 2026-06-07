@@ -102,7 +102,7 @@
 
         <div class="filter-group">
             <label class="filter-label" for="zip-filter">Location</label>
-            <input id="zip-filter" class="filter-input" type="text" placeholder="Zip or lat,lng" maxlength="32" aria-label="Filter by zip code or coordinates">
+            <input id="zip-filter" name="zip-filter" class="filter-input" type="text" placeholder="Zip or lat,lng" maxlength="32" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-1p-ignore data-lpignore="true" aria-label="Filter by zip code or coordinates">
             <select id="radius-filter" class="filter-select" aria-label="Search radius" onchange="refilter()" title="Search radius (only used with GPS coordinates)">
                 <option value="10">10 mi</option>
                 <option value="25" selected>25 mi</option>
@@ -317,12 +317,14 @@
     <div class="mod-login-box">
         <h3>Moderator Login</h3>
         <div id="mod-login-error" class="mod-login-error">Invalid credentials.</div>
-        <input type="email" id="mod-username" placeholder="Email address" autocomplete="email">
-        <input type="password" id="mod-password" placeholder="Password" autocomplete="current-password">
-        <div class="mod-btn-row">
-            <button class="mod-btn-cancel" onclick="closeModLogin()">Cancel</button>
-            <button class="mod-btn-primary" onclick="doModLogin()">Log in</button>
-        </div>
+        <form onsubmit="return false;">
+            <input type="email" id="mod-username" name="mod-username" placeholder="Email address" autocomplete="username">
+            <input type="password" id="mod-password" name="mod-password" placeholder="Password" autocomplete="current-password">
+            <div class="mod-btn-row">
+                <button type="button" class="mod-btn-cancel" onclick="closeModLogin()">Cancel</button>
+                <button type="button" class="mod-btn-primary" onclick="doModLogin()">Log in</button>
+            </div>
+        </form>
         <div style="text-align:center;margin-top:0.75rem;">
             <a href="#" onclick="showForgotPassword();return false;" style="font-size:0.8rem;color:var(--color-primary);">Forgot password?</a>
         </div>
@@ -464,13 +466,16 @@
         <h3 id="mod-changepw-title">Change Password</h3>
         <p id="mod-changepw-msg" style="font-size:0.85rem;color:var(--color-gray-500);margin-bottom:1rem;">Enter your current password and choose a new one.</p>
         <div id="mod-changepw-error" class="mod-login-error"></div>
-        <input type="password" id="mod-changepw-current" placeholder="Current password" autocomplete="current-password">
-        <input type="password" id="mod-changepw-new" placeholder="New password (min 8 characters)" autocomplete="new-password">
-        <input type="password" id="mod-changepw-confirm" placeholder="Confirm new password" autocomplete="new-password">
-        <div class="mod-btn-row">
-            <button class="mod-btn-cancel" id="mod-changepw-cancel" onclick="closeChangePassword()">Cancel</button>
-            <button class="mod-btn-primary" onclick="doChangePassword()">Change Password</button>
-        </div>
+        <form onsubmit="return false;">
+            <input type="text" id="mod-changepw-username" name="username" autocomplete="username" style="display:none;" aria-hidden="true" tabindex="-1">
+            <input type="password" id="mod-changepw-current" name="current-password" placeholder="Current password" autocomplete="current-password">
+            <input type="password" id="mod-changepw-new" name="new-password" placeholder="New password (min 8 characters)" autocomplete="new-password">
+            <input type="password" id="mod-changepw-confirm" name="confirm-password" placeholder="Confirm new password" autocomplete="new-password">
+            <div class="mod-btn-row">
+                <button type="button" class="mod-btn-cancel" id="mod-changepw-cancel" onclick="closeChangePassword()">Cancel</button>
+                <button type="button" class="mod-btn-primary" onclick="doChangePassword()">Change Password</button>
+            </div>
+        </form>
     </div>
 </div>
 
