@@ -1,0 +1,1187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BirdWatchAI — Complete User Manual</title>
+<style>
+  :root{
+    --green:#2d5a3d;
+    --green-dark:#1f4029;
+    --green-light:#e8f0ea;
+    --cream:#faf8f5;
+    --ink:#23282a;
+    --muted:#5d6b62;
+    --line:#dfe5e0;
+    --amber:#b3811b;
+    --amber-bg:#fdf6e3;
+    --red:#a8392f;
+    --red-bg:#fbecea;
+    --blue:#2b5b78;
+    --blue-bg:#e9f2f7;
+    --code-bg:#f1f4f1;
+    --maxw:920px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;background:var(--cream);color:var(--ink);
+    font-family:"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-size:16.5px;line-height:1.65;
+  }
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 28px 120px;}
+  h1,h2,h3,h4{font-family:"Segoe UI Semibold","Segoe UI",sans-serif;color:var(--green-dark);line-height:1.25;}
+  h2{font-size:1.9rem;margin:3.2rem 0 .4rem;padding-top:.6rem;border-bottom:3px solid var(--green);padding-bottom:.35rem;}
+  h3{font-size:1.35rem;margin:2.1rem 0 .3rem;color:var(--green);}
+  h4{font-size:1.08rem;margin:1.5rem 0 .25rem;color:var(--green-dark);}
+  p{margin:.6rem 0;}
+  a{color:var(--blue);}
+  ul,ol{margin:.5rem 0 .8rem;padding-left:1.5rem;}
+  li{margin:.28rem 0;}
+  code{background:var(--code-bg);padding:.12em .4em;border-radius:4px;font-family:"Cascadia Code",Consolas,monospace;font-size:.88em;color:#244;}
+  kbd{background:#fff;border:1px solid #bbb;border-bottom-width:2px;border-radius:5px;padding:.06em .45em;font-family:Consolas,monospace;font-size:.82em;box-shadow:0 1px 0 #ddd;}
+  hr{border:none;border-top:1px solid var(--line);margin:2.4rem 0;}
+  /* Cover */
+  .cover{
+    background:linear-gradient(150deg,var(--green) 0%,var(--green-dark) 100%);
+    color:#fff;text-align:center;padding:90px 28px 70px;margin-bottom:10px;
+  }
+  .cover .bird{font-size:74px;line-height:1;}
+  .cover h1{color:#fff;font-size:3.2rem;margin:.2rem 0 0;letter-spacing:-.5px;}
+  .cover .sub{font-size:1.35rem;opacity:.95;margin-top:.3rem;font-weight:300;}
+  .cover .tag{font-style:italic;opacity:.85;margin-top:1.2rem;font-size:1.05rem;}
+  .cover .meta{margin-top:2.4rem;font-size:.95rem;opacity:.9;}
+  .cover .pill{display:inline-block;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);
+    border-radius:30px;padding:.3em 1.1em;margin:.25em .3em;font-size:.9rem;}
+  /* TOC */
+  .toc{background:#fff;border:1px solid var(--line);border-radius:12px;padding:24px 30px;margin:30px 0;box-shadow:0 2px 14px rgba(45,90,61,.06);}
+  .toc h2{border:none;margin-top:0;padding-top:0;font-size:1.5rem;}
+  .toc ol{list-style:none;counter-reset:part;padding-left:0;}
+  .toc > ol > li{counter-increment:part;margin:1rem 0 .3rem;font-weight:600;color:var(--green-dark);}
+  .toc > ol > li::before{content:"Part " counter(part) " — ";color:var(--muted);font-weight:600;}
+  .toc ul{list-style:none;padding-left:1.2rem;margin:.3rem 0 .8rem;columns:2;column-gap:34px;}
+  .toc ul li{font-weight:400;margin:.18rem 0;break-inside:avoid;}
+  .toc a{text-decoration:none;color:var(--blue);}
+  .toc a:hover{text-decoration:underline;}
+  /* Callouts */
+  .box{border-radius:10px;padding:14px 18px 14px 18px;margin:1.1rem 0;border-left:5px solid;}
+  .box p:first-child{margin-top:0;} .box p:last-child{margin-bottom:0;}
+  .box .lbl{font-weight:700;display:block;margin-bottom:.15rem;font-size:.82rem;letter-spacing:.06em;text-transform:uppercase;}
+  .tip{background:var(--green-light);border-color:var(--green);}
+  .tip .lbl{color:var(--green-dark);}
+  .warn{background:var(--amber-bg);border-color:var(--amber);}
+  .warn .lbl{color:var(--amber);}
+  .danger{background:var(--red-bg);border-color:var(--red);}
+  .danger .lbl{color:var(--red);}
+  .note{background:var(--blue-bg);border-color:var(--blue);}
+  .note .lbl{color:var(--blue);}
+  /* Tables */
+  table{border-collapse:collapse;width:100%;margin:1.1rem 0;font-size:.95rem;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.04);}
+  th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--line);vertical-align:top;}
+  th{background:var(--green);color:#fff;font-weight:600;}
+  tr:nth-child(even) td{background:#fafcfa;}
+  td code{white-space:nowrap;}
+  /* Step list */
+  .steps{counter-reset:step;list-style:none;padding-left:0;}
+  .steps>li{counter-increment:step;position:relative;padding:.2rem 0 .2rem 2.6rem;margin:.6rem 0;}
+  .steps>li::before{content:counter(step);position:absolute;left:0;top:.05rem;background:var(--green);color:#fff;
+    width:1.85rem;height:1.85rem;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.95rem;}
+  /* UI label chip */
+  .ui{display:inline-block;background:#fff;border:1px solid var(--green);color:var(--green-dark);
+    border-radius:6px;padding:.02em .5em;font-size:.9em;font-weight:600;white-space:nowrap;}
+  .back{display:block;text-align:right;font-size:.82rem;margin-top:.4rem;}
+  .lead{font-size:1.1rem;color:var(--muted);}
+  .section-tag{font-size:.8rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-weight:700;margin-top:2.5rem;}
+  @media print{
+    body{background:#fff;font-size:11pt;}
+    .cover{padding:60px 0;}
+    .toc{box-shadow:none;}
+    h2{page-break-after:avoid;}
+    .box,table,h2,h3{page-break-inside:avoid;}
+    a{color:var(--ink);text-decoration:none;}
+    .back{display:none;}
+  }
+  @media (max-width:640px){.toc ul{columns:1;} .cover h1{font-size:2.3rem;}}
+</style>
+</head>
+<body>
+
+<header class="cover">
+  <div class="bird">🐦</div>
+  <h1>BirdWatchAI</h1>
+  <div class="sub">Complete User Manual</div>
+  <div class="tag">"Never Miss a Feathered Friend"</div>
+  <div class="meta">
+    <div><span class="pill">Application v2.1</span><span class="pill">Community at www.birdwatchai.com</span></div>
+    <div style="margin-top:1rem;">Windows&nbsp;10 / 11 Desktop Application &amp; Community Platform<br>
+    Published by Bird Brain Solutions LLC</div>
+  </div>
+</header>
+
+<div class="wrap">
+
+<p class="lead">Welcome! This manual is a complete, standalone guide to the BirdWatchAI desktop
+application and the BirdWatchAI community website. It walks you from unboxing your camera all
+the way through advanced features, settings, and the online community — with no prior
+experience assumed. You can read it top to bottom or jump to any section using the table of
+contents below. To save a copy as a PDF, open this file in any web browser and choose
+<span class="ui">Print → Save as PDF</span>.</p>
+
+<!-- ============================ TABLE OF CONTENTS ============================ -->
+<nav class="toc">
+<h2>📖 Table of Contents</h2>
+<ol>
+  <li>Getting Started
+    <ul>
+      <li><a href="#intro">1. What is BirdWatchAI?</a></li>
+      <li><a href="#how-works">2. How it works (the big picture)</a></li>
+      <li><a href="#requirements">3. System requirements</a></li>
+      <li><a href="#install">4. Installing the application</a></li>
+      <li><a href="#license">5. Licensing &amp; the free trial</a></li>
+      <li><a href="#firstrun">6. First launch &amp; the Setup Wizard</a></li>
+    </ul>
+  </li>
+  <li>Setting Up Your Camera
+    <ul>
+      <li><a href="#rtsp">7. Understanding RTSP cameras</a></li>
+      <li><a href="#tapo">8. TP-Link Tapo step-by-step</a></li>
+      <li><a href="#othercams">9. Other camera brands</a></li>
+      <li><a href="#connect">10. Connecting &amp; testing the camera</a></li>
+      <li><a href="#placement">11. Camera placement tips</a></li>
+    </ul>
+  </li>
+  <li>Everyday Use
+    <ul>
+      <li><a href="#mainwindow">12. The main window — a tour</a></li>
+      <li><a href="#tray">13. The system tray</a></li>
+      <li><a href="#monitoring">14. Monitoring: start &amp; stop</a></li>
+      <li><a href="#pipeline">15. How a detection happens</a></li>
+      <li><a href="#history">16. The detection history list</a></li>
+      <li><a href="#birdid">17. Bird identification &amp; AI models</a></li>
+    </ul>
+  </li>
+  <li>Notifications &amp; Reports
+    <ul>
+      <li><a href="#email">18. Email notifications</a></li>
+      <li><a href="#pushover">19. Pushover (mobile push)</a></li>
+      <li><a href="#ntfy">20. NTFY &amp; Windows notifications</a></li>
+      <li><a href="#photoframe">21. Digital photo frame</a></li>
+      <li><a href="#reports">22. Summary reports</a></li>
+    </ul>
+  </li>
+  <li>Photos, Video &amp; Insights
+    <ul>
+      <li><a href="#video">23. Video recording</a></li>
+      <li><a href="#videosummary">24. Video summaries (highlight reels)</a></li>
+      <li><a href="#videomaint">25. Video maintenance</a></li>
+      <li><a href="#slideshow">26. The slideshow viewer</a></li>
+      <li><a href="#testimage">27. Test Image analysis</a></li>
+      <li><a href="#statistics">28. Statistics dashboard</a></li>
+      <li><a href="#telemetry">29. Telemetry viewer</a></li>
+      <li><a href="#badges">30. Achievements &amp; badges</a></li>
+    </ul>
+  </li>
+  <li>Complete Settings Reference
+    <ul>
+      <li><a href="#settings">31. Every settings tab explained</a></li>
+    </ul>
+  </li>
+  <li>The BirdWatchAI Community
+    <ul>
+      <li><a href="#community-overview">32. What the community is</a></li>
+      <li><a href="#sharing">33. Sharing from the app &amp; privacy</a></li>
+      <li><a href="#website">34. The website &amp; landing page</a></li>
+      <li><a href="#accounts">35. Accounts &amp; signing in</a></li>
+      <li><a href="#feed">36. Browsing: feed, map, gallery, stats, feeders</a></li>
+      <li><a href="#social">37. Social features</a></li>
+      <li><a href="#newsletter">38. The Weekly Bird Digest</a></li>
+      <li><a href="#pwa">39. Installing the site as an app (PWA)</a></li>
+      <li><a href="#screensaver">40. The community screensaver</a></li>
+      <li><a href="#widget">41. The embeddable widget</a></li>
+      <li><a href="#moderation">42. Moderation</a></li>
+    </ul>
+  </li>
+  <li>Reference
+    <ul>
+      <li><a href="#files">43. File &amp; folder locations</a></li>
+      <li><a href="#troubleshooting">44. Troubleshooting</a></li>
+      <li><a href="#faq">45. Frequently asked questions</a></li>
+      <li><a href="#shortcuts">46. Keyboard shortcuts</a></li>
+      <li><a href="#glossary">47. Glossary</a></li>
+      <li><a href="#support">48. Support, pricing &amp; credits</a></li>
+    </ul>
+  </li>
+</ol>
+</nav>
+
+<!-- ======================================================================= -->
+<!-- PART 1 -->
+<!-- ======================================================================= -->
+<div class="section-tag">Part 1 · Getting Started</div>
+
+<h2 id="intro">1. What is BirdWatchAI?</h2>
+<p>BirdWatchAI is a Windows desktop application that turns any ordinary network security
+camera pointed at your bird feeder into an automatic, AI-powered bird-watching station.
+It watches your camera's video feed 24/7, notices when something moves, decides whether it's
+actually a bird, identifies the <strong>species</strong> using built-in artificial
+intelligence, and then saves a photo and a short video clip and (optionally) sends you a
+notification — all without you lifting a finger.</p>
+
+<p>Key things it does for you:</p>
+<ul>
+  <li><strong>Identifies species automatically</strong> — recognizes up to 965 (or, with an optional model, 2,498) bird species entirely on your own PC.</li>
+  <li><strong>Captures the moment</strong> — saves a high-resolution snapshot and a short video of every visit, with on-image labels (species, confidence, time, temperature).</li>
+  <li><strong>Tells you what's rare</strong> — looks up how common each species is for your region and season.</li>
+  <li><strong>Notifies you</strong> — by email, mobile push (Pushover or NTFY), Windows toast, or even a digital photo frame.</li>
+  <li><strong>Builds a journal</strong> — a searchable history, life list, statistics dashboards, and gamified achievement badges.</li>
+  <li><strong>Connects you to others</strong> — optionally share sightings to the worldwide BirdWatchAI community feed at <a href="https://www.birdwatchai.com">www.birdwatchai.com</a>.</li>
+</ul>
+
+<div class="box tip"><span class="lbl">100% private by default</span>
+All bird identification happens <em>locally on your computer</em> — no images are sent to any
+cloud service for identification. Sharing to the online community is entirely optional and
+opt-in, and you control exactly how much is shared (see <a href="#sharing">Section 33</a>).</div>
+
+<h2 id="how-works">2. How it works (the big picture)</h2>
+<p>Before diving into menus, it helps to understand the flow. BirdWatchAI sits between your
+camera and you:</p>
+<ol class="steps">
+  <li><strong>Your camera</strong> streams live video over your home Wi-Fi/network using a standard called <strong>RTSP</strong>.</li>
+  <li><strong>BirdWatchAI connects</strong> to that stream and continuously watches for motion.</li>
+  <li><strong>When motion is detected</strong>, the app grabs a high-resolution snapshot and starts recording a short clip.</li>
+  <li><strong>An object detector</strong> checks whether the moving thing is actually a bird (filtering out squirrels, swaying branches, shadows).</li>
+  <li><strong>The AI classifier</strong> identifies the species and gives a confidence percentage.</li>
+  <li><strong>If confidence is high enough</strong>, the detection is saved (photo + video + data), enriched with temperature and rarity, and notifications fire.</li>
+  <li><strong>You review</strong> everything in the history list, statistics, and (optionally) the online community.</li>
+</ol>
+<p>The three things you need are: a Windows PC, an RTSP-capable camera, and this application.
+That's it — weather data, the AI models, and video tools are all built in and free.</p>
+
+<h2 id="requirements">3. System requirements</h2>
+<table>
+  <tr><th>Component</th><th>Requirement</th></tr>
+  <tr><td>Operating system</td><td>Windows 10 or Windows 11, <strong>64-bit only</strong></td></tr>
+  <tr><td>Runtime</td><td><strong>.NET 8.0 Desktop Runtime (x64)</strong> — the installer checks for this and offers to download it if missing</td></tr>
+  <tr><td>WebView2 Runtime</td><td>Needed only for the "Pick on Map" location feature; normally pre-installed on Windows 10/11</td></tr>
+  <tr><td>Camera</td><td>Any camera that streams over <strong>RTSP</strong> on your local network (see <a href="#rtsp">Section 7</a>)</td></tr>
+  <tr><td>Memory</td><td>~200–300&nbsp;MB RAM in use</td></tr>
+  <tr><td>CPU</td><td>Under 5% when idle; roughly 10–20% briefly during a detection</td></tr>
+  <tr><td>Network</td><td>Camera and PC on the same local network; minimal internet (weather, optional sharing, updates)</td></tr>
+  <tr><td>Disk</td><td>Grows with saved photos/videos — plan for a few GB if you keep lots of clips</td></tr>
+</table>
+<div class="note"><span class="lbl">Everything else is bundled</span>
+The AI models (<code>bird_model.onnx</code>, <code>yolov8n.onnx</code>), the video engine
+(<code>ffmpeg.exe</code>), and the video player libraries all ship inside the app. You do not
+need to install FFmpeg, VLC, or any AI tools separately.</div>
+
+<h2 id="install">4. Installing the application</h2>
+<h3>Option A — The installer (recommended)</h3>
+<ol class="steps">
+  <li>Download <code>BirdWatchAI_Setup_2.1.2.0.exe</code> from <a href="https://www.birdwatchai.com">www.birdwatchai.com</a> (Download section).</li>
+  <li>Run it. If .NET 8 is missing, the installer offers to open the download page — install .NET, then re-run the setup.</li>
+  <li>Accept the license agreement.</li>
+  <li>Choose a destination. The default is <code>C:\Users\&lt;you&gt;\AppData\Local\BirdWatch AI</code>.</li>
+  <li>Optionally tick <span class="ui">Create a desktop icon</span> and/or <span class="ui">Start BirdWatch AI when Windows starts</span> (both off by default).</li>
+  <li>Finish, and optionally launch the app immediately.</li>
+</ol>
+<p>The installer adds Start-menu shortcuts for the app and its Help, and creates the data
+folders (<code>Data\Snapshots</code>, <code>Data\Videos</code>, <code>Data\Logs</code>, etc.).</p>
+
+<h3>Option B — Portable ZIP</h3>
+<p>You can also download a ZIP, extract it anywhere, and run <code>BirdWatchAI.exe</code>
+directly. Because all data lives in a <code>Data</code> subfolder beside the program, the app
+is effectively portable.</p>
+
+<div class="box tip"><span class="lbl">Running more than one camera?</span>
+BirdWatchAI allows <strong>one running copy per install folder</strong>. To monitor several
+feeders at once, simply install (or copy the portable build) into separate folders — e.g.
+<code>BirdWatchAI-Backyard\</code> and <code>BirdWatchAI-FrontPorch\</code> — and run each.
+Each folder keeps its own settings, history, and snapshots.</div>
+
+<h3>Uninstalling</h3>
+<p>Use Windows <span class="ui">Add or remove programs</span>. The uninstaller asks whether
+to also delete your user data (snapshots, videos, logs, settings). Choose <strong>No</strong>
+to keep your bird photos and history.</p>
+
+<h2 id="license">5. Licensing &amp; the free trial</h2>
+<p>BirdWatchAI includes a <strong>14-day free trial</strong> with full functionality. After
+the trial you'll need a license key (a one-time purchase — see <a href="#support">Section 48</a>).</p>
+
+<h4>What you'll see on first run</h4>
+<ul>
+  <li><strong>If you've never started a trial:</strong> a welcome dialog asks whether to begin your 14-day free trial. Choose <strong>Yes</strong> to start it, or <strong>No</strong> to enter a license key instead. (If you decline but don't enter a key, the trial starts anyway.)</li>
+  <li><strong>While trialing:</strong> the title bar shows <em>Trial (N days remaining)</em>, and a small watermark appears on saved video overlays.</li>
+  <li><strong>When the trial expires:</strong> you'll be prompted to enter a license key; without a valid key the app will close.</li>
+</ul>
+
+<h4>Activating a license</h4>
+<ol class="steps">
+  <li>Open the <span class="ui">License Activation</span> dialog (it appears automatically, or via the prompt at startup).</li>
+  <li>Paste your license key into the <span class="ui">Enter License Key</span> box.</li>
+  <li>Click <span class="ui">Activate</span>. On success you'll see "Licensed to: &lt;your name&gt;" and the green ✓ Licensed status.</li>
+</ol>
+<p>A license may be <strong>perpetual</strong> (no expiry) or time-limited (shows days
+remaining). You can <span class="ui">Deactivate</span> a license on one machine to move it to
+another. The license is saved as <code>license.key</code> in the program folder.</p>
+<div class="note"><span class="lbl">About the trial clock</span>
+The trial start date is stored in two protected locations so the trial can't be reset by
+deleting a single file. The license key itself is cryptographically signed, so keys cannot be
+forged or edited.</div>
+
+<h2 id="firstrun">6. First launch &amp; the Setup Wizard</h2>
+<p>The very first time you run BirdWatchAI, a splash screen loads the AI model and camera
+system, then the <strong>Setup Wizard</strong> appears to walk you through the essentials in
+five steps. You can press <span class="ui">Skip</span> on most steps and configure things
+later in <span class="ui">Settings</span>, and you can re-run the wizard any time from the
+Help menu.</p>
+
+<h4>Step 1 — Welcome</h4>
+<p>Lists what you'll need: an RTSP camera (Tapo, Wyze, Amcrest, etc.), the camera on your
+Wi-Fi, the camera maker's phone app for initial setup, and optionally an email address and
+your zip code.</p>
+
+<h4>Step 2 — Camera Setup</h4>
+<p>Pick your camera type from the dropdown (Tapo, Wyze, Amcrest, Reolink, Hikvision, or Other).
+Tabbed instructions adapt to your choice. Then fill in:</p>
+<ul>
+  <li><span class="ui">Camera IP Address</span> — use the <span class="ui">How to Find IP</span> button if unsure.</li>
+  <li><span class="ui">RTSP Port</span> — default <code>554</code>.</li>
+  <li><span class="ui">RTSP Username</span> / <span class="ui">RTSP Password</span> — the <em>camera account</em> credentials (for Tapo this is separate from your TP-Link login — see <a href="#tapo">Section 8</a>).</li>
+</ul>
+<p>Click <span class="ui">Build URL</span> to assemble the RTSP address, then
+<span class="ui">🔗 Test Connection</span> to verify. A successful test shows the camera
+resolution. There's also a <span class="ui">📖 Full TAPO Guide</span> button.</p>
+
+<h4>Step 3 — Notifications</h4>
+<p>Optionally enable <strong>email</strong> (with a handy <span class="ui">Use Gmail Defaults</span>
+button) and/or <strong>Pushover</strong> mobile push. You can skip this and set it up later.</p>
+
+<h4>Step 4 — Location</h4>
+<p>Enter your <span class="ui">ZIP Code</span> and click <span class="ui">Look Up</span>. Your
+location powers temperature display, regional rarity ratings, and accurate daylight hours.</p>
+
+<h4>Step 5 — Complete</h4>
+<p>A summary shows the status of Camera, Email, Push, and Location. Click
+<span class="ui">Finish ✓</span> to save. Then, in the main window: <span class="ui">Connect to
+Camera</span> → <span class="ui">Start Monitoring</span>.</p>
+
+<hr>
+<!-- ======================================================================= -->
+<!-- PART 2 -->
+<!-- ======================================================================= -->
+<div class="section-tag">Part 2 · Setting Up Your Camera</div>
+
+<h2 id="rtsp">7. Understanding RTSP cameras</h2>
+<p><strong>RTSP</strong> (Real-Time Streaming Protocol) is a standard way for cameras to send
+live video over a network. BirdWatchAI connects to your camera using an RTSP address that
+looks like this:</p>
+<p style="text-align:center;"><code>rtsp://username:password@camera_ip:port/stream_path</code></p>
+<p>For example: <code>rtsp://birduser:secret123@192.168.1.105/stream1</code>. The pieces are:</p>
+<ul>
+  <li><strong>username:password</strong> — your camera's RTSP/"camera account" credentials.</li>
+  <li><strong>camera_ip</strong> — the camera's address on your network (e.g. <code>192.168.1.105</code>).</li>
+  <li><strong>port</strong> — almost always <code>554</code> (can be omitted when it's 554).</li>
+  <li><strong>stream_path</strong> — brand-specific (e.g. <code>/stream1</code> for Tapo).</li>
+</ul>
+<p>Common stream paths by brand:</p>
+<table>
+  <tr><th>Brand</th><th>Stream path</th><th>Notes</th></tr>
+  <tr><td>TP-Link Tapo</td><td><code>/stream1</code> (HD) · <code>/stream2</code> (SD)</td><td>Use stream1 for best identification</td></tr>
+  <tr><td>Wyze (RTSP firmware)</td><td><code>/live</code></td><td>Requires custom RTSP firmware flashed</td></tr>
+  <tr><td>Amcrest / Dahua</td><td><code>/cam/realmonitor?channel=1&amp;subtype=0</code></td><td></td></tr>
+  <tr><td>Reolink</td><td><code>/h264Preview_01_main</code></td><td></td></tr>
+  <tr><td>Hikvision</td><td><code>/Streaming/Channels/101</code></td><td></td></tr>
+</table>
+<div class="box tip"><span class="lbl">Test in VLC first</span>
+If you have VLC Media Player, you can verify an RTSP URL works before using it here:
+<span class="ui">Media → Open Network Stream</span> (<kbd>Ctrl</kbd>+<kbd>N</kbd>), paste the URL,
+and click Play. If VLC shows live video, BirdWatchAI will connect too.</div>
+
+<h2 id="tapo">8. TP-Link Tapo step-by-step</h2>
+<p>Tapo cameras (C100/C110/C120/C200/C210/C310/C320WS/C500/C510W/C520WS, etc.) are popular,
+affordable, and well supported. The most important thing to understand is the
+<strong>Camera Account</strong>.</p>
+
+<div class="box warn"><span class="lbl">The Camera Account is separate from your Tapo login</span>
+RTSP requires a dedicated <em>Camera Account</em> that you create inside the Tapo app. This is
+<strong>not</strong> the same as your TP-Link/Tapo cloud login. Use a different username and
+password for it.</div>
+
+<h4>Create the Camera Account (for RTSP)</h4>
+<ol class="steps">
+  <li>Open the <strong>Tapo app</strong> and tap your camera to open Live View.</li>
+  <li>Tap the <strong>⚙️ gear</strong> (top-right) → <span class="ui">Advanced Settings</span> → <span class="ui">Camera Account</span>.</li>
+  <li>Tap <span class="ui">Understand and Agree to Use</span>.</li>
+  <li>Set a <strong>username</strong> (6–32 characters) and <strong>password</strong> (6–32 characters), then Save. Use these in BirdWatchAI's RTSP fields.</li>
+</ol>
+
+<h4>Find the camera's IP address</h4>
+<p>Tapo app → ⚙️ gear → <span class="ui">Device Info</span> → <strong>IP Address</strong>
+(e.g. <code>192.168.1.105</code>). Alternatively, check your router's connected-devices list
+for a name like <code>TAPO_C120_XXXX</code>.</p>
+<div class="box warn"><span class="lbl">Important: reserve the camera's IP address in your router</span>
+<p>By default, your router hands out IP addresses dynamically (via DHCP), which means your
+camera's address <strong>can change</strong> after a power outage, a reboot, or simply over
+time. If the camera's IP changes, BirdWatchAI will no longer find it at the old address and the
+connection will fail until you update the IP by hand.</p>
+<p>The fix is a <strong>DHCP reservation</strong> (also called "IP reservation," "static lease,"
+"address reservation," or "bind IP to MAC") — you tell the router to <em>always</em> give this
+particular camera the same IP address. This is strongly recommended for every camera you use
+with BirdWatchAI.</p>
+</div>
+
+<h4>How to reserve the camera's IP (the general idea)</h4>
+<p>Every router brand has a slightly different menu, but the concept is identical everywhere:</p>
+<ol class="steps">
+  <li>Open your router's admin page in a web browser (commonly <code>192.168.1.1</code> or <code>192.168.0.1</code> — check the label on your router) and sign in.</li>
+  <li>Find the <strong>DHCP</strong> settings. Depending on the brand this lives under a menu such as <em>LAN</em>, <em>Network</em>, <em>DHCP Server</em>, <em>Address Reservation</em>, or <em>Connected Devices / Client List</em>.</li>
+  <li>Locate your camera in the list of connected devices (look for a name like <code>TAPO_C120_XXXX</code>, or match it by its <strong>MAC address</strong> — a unique hardware ID printed on the camera and shown in the camera's app under Device Info).</li>
+  <li>Choose <strong>Reserve</strong> / <strong>Bind</strong> / <strong>Add Static Lease</strong> for that device, and either keep its current IP or assign one you'll remember.</li>
+  <li>Save/apply. Then reboot the camera (or wait for its lease to renew) so it picks up the reserved address.</li>
+  <li>Use that same reserved IP in BirdWatchAI's <span class="ui">Camera IP Address</span> field.</li>
+</ol>
+<div class="box tip"><span class="lbl">Where to find the exact steps for your router</span>
+Search the web for "<em>[your router brand/model]</em> DHCP reservation" (for example, "Netgear
+Nighthawk address reservation" or "TP-Link bind IP to MAC"). The terminology differs by brand,
+but you're always doing the same thing: tying the camera's MAC address to a fixed IP. If you
+can't reserve in the router, an alternative is to set a static IP directly in the camera's own
+settings — just make sure it's outside the router's automatic DHCP range to avoid conflicts.</div>
+
+<h4>Streams &amp; quality</h4>
+<ul>
+  <li><code>/stream1</code> — 2K (e.g. 2304×1296). Best for identification. Set Tapo app → Camera Settings → Video Quality → <strong>Best Quality</strong>.</li>
+  <li><code>/stream2</code> — 640×360. Low bandwidth; BirdWatchAI uses this automatically as the lightweight "analysis stream" for software motion detection.</li>
+</ul>
+
+<h4>Quick reference</h4>
+<table>
+  <tr><th>Setting</th><th>Value</th></tr>
+  <tr><td>RTSP Port</td><td><code>554</code></td></tr>
+  <tr><td>ONVIF Port (motion events)</td><td><code>2020</code></td></tr>
+  <tr><td>Camera account username / password</td><td>6–32 characters each</td></tr>
+</table>
+
+<div class="box warn"><span class="lbl">Stream limits</span>
+Tapo cameras allow only a limited number of simultaneous RTSP streams. If you also run
+TAPO Care cloud recording, microSD recording, and an NVR at the same time, RTSP may stop
+working — disable one of them if you have connection trouble.</div>
+
+<h4>Optional: remote camera reboot</h4>
+<p>BirdWatchAI can power-cycle a frozen Tapo camera automatically (or via the tray menu's
+<span class="ui">🔄 Restart Camera</span>). This feature needs your <strong>TP-Link cloud
+account</strong> email and password, entered in <span class="ui">Settings → Camera (RTSP) →
+TAPO Camera Reboot</span>. These are your cloud-login credentials, distinct from the RTSP
+camera account.</p>
+
+<h2 id="othercams">9. Other camera brands</h2>
+<p>Any RTSP camera works. General tips:</p>
+<ul>
+  <li><strong>Enable RTSP</strong> in the camera's app/web interface if it's off by default.</li>
+  <li><strong>Wyze</strong> cameras need custom RTSP firmware (e.g. Dafang Hacks / wz_mini_hacks); the stream path is then <code>/live</code>.</li>
+  <li>Use port <code>554</code> unless your camera documents otherwise.</li>
+  <li>Find the IP via the camera app, your router, or a network scanner such as <strong>Fing</strong> or <strong>Advanced IP Scanner</strong>.</li>
+  <li>Use the correct stream path for your brand (table in <a href="#rtsp">Section 7</a>).</li>
+</ul>
+
+<h2 id="connect">10. Connecting &amp; testing the camera</h2>
+<p>In <span class="ui">Settings → Camera (RTSP)</span> you can either type your IP, port,
+username, and password and click <span class="ui">Build RTSP URL</span>, or paste a complete
+RTSP URL directly into the <span class="ui">RTSP URL</span> box. Then click
+<span class="ui">Test Connection</span> to confirm video. Save, close settings, and on the
+main window press <span class="ui">Connect to Camera</span>.</p>
+<p>When connected:</p>
+<ul>
+  <li>The live video appears in the left panel with status overlays (location, status, temperature, clock, logo).</li>
+  <li>The <span class="ui">Connect to Camera</span> button changes to <span class="ui">Disconnect</span>.</li>
+  <li><span class="ui">Start Monitoring</span> becomes available.</li>
+</ul>
+<div class="box danger"><span class="lbl">If it won't connect</span>
+Check, in order: (1) the RTSP URL is exactly right, (2) the camera is powered on, (3) camera
+and PC are on the same network, (4) the username/password are the <em>camera account</em>
+credentials (not the cloud login). Try <code>/stream2</code> if HD won't load. Test the URL in
+VLC to isolate whether the problem is the camera or the app.</div>
+
+<h4>Staying connected</h4>
+<ul>
+  <li><strong>Auto-reconnect</strong> (on by default) retries with increasing delays if the stream drops.</li>
+  <li>After repeated failures, if Tapo cloud credentials are set, the app will <strong>reboot the camera</strong> and reconnect.</li>
+  <li><strong>Periodic reconnect</strong> (optional) can force a fresh connection every N minutes to clear latency drift.</li>
+  <li>If you enable <strong>NTFY system alerts</strong>, you'll get a push when the camera disconnects and again when it reconnects.</li>
+</ul>
+
+<h2 id="placement">11. Camera placement tips</h2>
+<ul>
+  <li>Aim the camera <strong>at the feeder</strong> from 3–10 feet for a clear, bird-filling frame — distant birds are harder to identify.</li>
+  <li>Avoid pointing into direct sun; backlighting silhouettes the birds.</li>
+  <li>Minimize swaying branches and busy backgrounds in the frame to reduce false motion.</li>
+  <li>Strong Wi-Fi at the camera = fewer dropouts and choppy video.</li>
+  <li>Position so the bird is well-lit and roughly centered where it lands/feeds.</li>
+</ul>
+
+<hr>
+<!-- ======================================================================= -->
+<!-- PART 3 -->
+<!-- ======================================================================= -->
+<div class="section-tag">Part 3 · Everyday Use</div>
+
+<h2 id="mainwindow">12. The main window — a tour</h2>
+<p>The window opens at 1400×800 by default. From top to bottom:</p>
+
+<h4>Top status bar</h4>
+<p>A single bold status line, e.g. <em>Status: 🔍 Monitoring (Detections: 12)</em>. It changes
+to reflect the current state — Connecting, Night Mode (outside daylight hours), Paused,
+Reconnecting — and always appends the current motion percentage.</p>
+
+<h4>The button bar</h4>
+<p>A row of action buttons (it wraps to fit the window):</p>
+<table>
+  <tr><th>Button</th><th>What it does</th></tr>
+  <tr><td><span class="ui">Connect to Camera</span></td><td>Connects/disconnects the live stream (toggles to <span class="ui">Disconnect</span>)</td></tr>
+  <tr><td><span class="ui">Start Monitoring</span></td><td>Begins/stops automatic detection (enabled once connected)</td></tr>
+  <tr><td><span class="ui">🖼️ Test Image</span></td><td>Identify birds in a saved image file, no camera needed</td></tr>
+  <tr><td><span class="ui">🎥 Test Recording</span></td><td>Record a short clip and analyze stream health</td></tr>
+  <tr><td><span class="ui">📊 Statistics</span></td><td>Open the full statistics dashboard</td></tr>
+  <tr><td><span class="ui">📈 Telemetry</span></td><td>Open the motion/temperature/threshold charts</td></tr>
+  <tr><td><span class="ui">🏆 Badges</span></td><td>Open Achievements</td></tr>
+  <tr><td><span class="ui">📧 Report</span></td><td>Generate a daily/weekly/monthly summary report on demand</td></tr>
+  <tr><td><span class="ui">🎬 Video Summary</span></td><td>Build a highlight reel from your clips</td></tr>
+  <tr><td><span class="ui">🔧 Video Maint.</span></td><td>Trim dead footage from saved videos</td></tr>
+  <tr><td><span class="ui">🌐 Community</span></td><td>Open the community website in your browser</td></tr>
+  <tr><td><span class="ui">❓ Help</span> / <span class="ui">ℹ About</span></td><td>Help documentation / version info</td></tr>
+  <tr><td><span class="ui">⚙ Settings</span></td><td>Open the full settings dialog (right-aligned)</td></tr>
+</table>
+
+<h4>The content area</h4>
+<p>Split into resizable panels:</p>
+<ul>
+  <li><strong>Left — Live Video:</strong> the camera feed, with overlay panels showing your location and temperature (top) and the BirdWatchAI logo plus a live clock (bottom). Before connecting, it reads "No Camera Connected."</li>
+  <li><strong>Right — Bird Detections:</strong> a filter row, the detections table, and below it a preview of the selected detection's captured image plus a matching species photo from Wikipedia.</li>
+</ul>
+
+<h4>Bottom status bar</h4>
+<p>A row of <strong>view toggles</strong> lets you show/hide panels (these persist between
+sessions): <span class="ui">Live Video</span>, <span class="ui">Detections Table</span>,
+<span class="ui">Captured Image Preview</span>, <span class="ui">Species Image</span>,
+<span class="ui">Debug Log</span>. Two indicators show camera status (Connected/Disconnected)
+and monitoring status (Idle / Monitoring).</p>
+<p class="back"><a href="#intro">↑ Back to top</a></p>
+
+<h2 id="tray">13. The system tray</h2>
+<p>BirdWatchAI lives in your Windows system tray (the bird icon near the clock).</p>
+<div class="box warn"><span class="lbl">Closing the window does NOT quit the app</span>
+Clicking the window's <strong>✕</strong> minimizes BirdWatchAI to the tray so it keeps
+monitoring in the background. To fully quit, right-click the tray icon and choose
+<span class="ui">Exit</span>.</div>
+<ul>
+  <li><strong>Double-click</strong> the tray icon to restore the window.</li>
+  <li><strong>Hover</strong> to see a tooltip: camera name, monitoring status, camera status, and detections today.</li>
+  <li><strong>Right-click</strong> for a menu: Show/Hide Window, Start/Stop Monitoring, Settings, 🔄 Restart Camera, and Exit.</li>
+  <li>When the window is minimized, a detection shows a tray balloon: "🐦 &lt;Bird&gt; Detected!" with confidence and time.</li>
+</ul>
+
+<h2 id="monitoring">14. Monitoring: start &amp; stop</h2>
+<p>After connecting, click <span class="ui">Start Monitoring</span>. The button becomes
+<span class="ui">Stop Monitoring</span> and the status shows 🔍 Monitoring. The app now watches
+for motion every couple of seconds and processes detections automatically. Click
+<span class="ui">Stop Monitoring</span> to pause (the status shows ⏸️ Paused; motion percentage
+keeps displaying so you can tune thresholds).</p>
+<p>Several automatic guardrails govern monitoring:</p>
+<ul>
+  <li><strong>Daylight only</strong> (default on, 7:00–20:00): outside these hours the status shows 🌙 Night Mode and detections pause. Adjust or disable in Settings → Monitoring.</li>
+  <li><strong>Cooldown</strong> (default 3 s): minimum gap between detections, to avoid bursts.</li>
+  <li><strong>Daily limit</strong> (default 500): caps snapshots per day.</li>
+  <li><strong>Auto-connect on startup</strong> (optional): the app can connect and begin monitoring by itself when launched.</li>
+</ul>
+
+<h2 id="pipeline">15. How a detection happens</h2>
+<p>Understanding the pipeline helps you tune the app and trust its results. When monitoring:</p>
+<ol class="steps">
+  <li><strong>Motion is detected</strong> — either by the camera's own hardware via <strong>ONVIF</strong> (recommended for Tapo; lower CPU) or by the app comparing recent low-resolution frames (software motion). If the changed-pixels percentage exceeds the <span class="ui">Motion Threshold</span>, a detection begins.</li>
+  <li><strong>A high-resolution snapshot</strong> is captured immediately, and <strong>video recording</strong> starts (using a rolling pre-buffer so the clip includes the seconds <em>before</em> the trigger).</li>
+  <li><strong>Best-frame extraction</strong> (on by default) examines multiple frames from the clip and picks the clearest one — important when the bird arrives a moment after the motion trigger.</li>
+  <li><strong>Object detection</strong> (YOLOv8) finds the bird, crops to it, and filters out non-bird motion like squirrels or branches (those are silently ignored — no detection row).</li>
+  <li><strong>Species identification</strong> runs the AI classifier and returns the best guess with a confidence percentage.</li>
+  <li><strong>Enrichment</strong>: current temperature and regional rarity are looked up (if your location is set).</li>
+  <li><strong>Threshold check</strong> against <span class="ui">Minimum Confidence Threshold</span>:
+    <ul>
+      <li><strong>Above threshold</strong> → the snapshot is saved with an on-image overlay (time, species, confidence, temp, location, camera name), the video is kept and labeled, the detection is added to the history and statistics, and notifications fire.</li>
+      <li><strong>Below threshold</strong> → discarded by default. If you enable <span class="ui">Save detections below confidence threshold</span>, these go to a <code>ForReview</code> folder and appear with a ⚠️ "uncertain" marker for you to confirm or correct.</li>
+    </ul>
+  </li>
+</ol>
+<div class="box tip"><span class="lbl">Why didn't a squirrel show up?</span>
+That's intentional. The object detector returns "Not a bird" for non-bird motion, so the
+classifier is skipped and no row is created. This keeps your history clean.</div>
+
+<h2 id="history">16. The detection history list</h2>
+<p>The right-hand <span class="ui">Bird Detections</span> table is your searchable journal.
+The header shows how many rows match your filters out of the total in the database. Columns:</p>
+<table>
+  <tr><th>Column</th><th>Meaning</th></tr>
+  <tr><td>Date/Time</td><td>When the bird was detected</td></tr>
+  <tr><td>Bird Species</td><td>Identified species name</td></tr>
+  <tr><td>Confidence</td><td>AI certainty (e.g. 87.3%)</td></tr>
+  <tr><td>Temp</td><td>Temperature at detection time</td></tr>
+  <tr><td>Rarity</td><td>🟢 Common · 🟡 Uncommon · 🟠 Rare · 🔴 Very Rare</td></tr>
+  <tr><td>⭐</td><td>Favorite (click to toggle)</td></tr>
+  <tr><td>🎬</td><td>A video clip exists</td></tr>
+  <tr><td>❓</td><td>⚠️ marks an uncertain (below-threshold) detection</td></tr>
+</table>
+<p>Click any column header to sort. Click a row to load its captured image (left) and a
+matching Wikipedia species photo with a "View on Wikipedia" link (right). Double-click a row to
+open it in the slideshow viewer.</p>
+
+<h4>Filtering</h4>
+<p>The filter row above the grid lets you narrow by <span class="ui">Species</span> (partial
+text), a <span class="ui">From</span>/<span class="ui">To</span> date range, a confidence
+range, rarity, and toggles for ⭐ favorites only and ⚠️ uncertain only. Use
+<span class="ui">Clear</span> to reset, <span class="ui">🔄</span> to refresh from the database,
+and <span class="ui">▶️</span> to launch a slideshow of the filtered results.</p>
+
+<h4>Right-click actions</h4>
+<p>Right-click one or more rows for a rich context menu:</p>
+<ul>
+  <li><strong>Open Image</strong>, <strong>🎬 Play Video</strong>, and folder shortcuts (📁 Videos, 🖼️ Images).</li>
+  <li><strong>Google Image Search</strong> / <strong>Reverse Image Search</strong> to verify an ID.</li>
+  <li><strong>⭐ Toggle Favorite</strong>.</li>
+  <li><strong>✅ Confirm Detection</strong> — accept an uncertain one (moves it out of ForReview).</li>
+  <li><strong>Correct Identification…</strong> — fix a wrong species; the correction is saved (and helps future training) and re-rated for rarity.</li>
+  <li><strong>🌐 Push to Community…</strong> — manually share this sighting.</li>
+  <li><strong>🖼️ Send to Photo Frame</strong>.</li>
+  <li><strong>Delete Selected Row(s)</strong> (also removes the photo/video files).</li>
+  <li><strong>📤 Export Detections</strong> → CSV, JSON, or a chosen date range.</li>
+</ul>
+
+<h2 id="birdid">17. Bird identification &amp; AI models</h2>
+<p>Identification runs entirely on your PC using local neural-network models (ONNX format).
+Nothing is uploaded for identification. In <span class="ui">Settings → Bird Identification</span>
+you choose the <span class="ui">AI Model</span>:</p>
+<table>
+  <tr><th>Model</th><th>Species</th><th>Best for</th></tr>
+  <tr><td><strong>Bird Model</strong> (default)</td><td>965</td><td>North American feeder birds; fast and accurate for everyday use</td></tr>
+  <tr><td><strong>SpeciesNet</strong> (experimental)</td><td>2,498</td><td>Broader/global coverage; larger input, slower; Google's camera-trap model</td></tr>
+</table>
+<p>Supporting features:</p>
+<ul>
+  <li><strong>Minimum Confidence Threshold</strong> — only detections above this percentage are recorded. A new install defaults to <strong>35%</strong>. Raise it to reduce false IDs; lower it to catch more (and consider enabling the ForReview workflow).</li>
+  <li><strong>Object detector (YOLOv8)</strong> — crops to the bird and filters non-bird motion before classification.</li>
+  <li><strong>Rarity</strong> — when your location is set, each species is rated against regional/seasonal eBird data.</li>
+  <li><strong>Test Mode</strong> — generates fake random detections so you can test notifications and the UI without a live bird. Turn this <strong>off</strong> for real monitoring.</li>
+</ul>
+<div class="box note"><span class="lbl">Improving accuracy</span>
+Point the camera close to the feeder, keep the glass clean, use the HD stream, and leave
+best-frame extraction and the object detector enabled. When the AI gets one wrong, use
+<span class="ui">Correct Identification…</span> — it records the fix.</div>
+
+<hr>
+<!-- ======================================================================= -->
+<!-- PART 4 -->
+<!-- ======================================================================= -->
+<div class="section-tag">Part 4 · Notifications &amp; Reports</div>
+
+<p>BirdWatchAI can alert you through five channels, each with its own <strong>Test</strong>
+button so you can confirm it works before relying on it. Every alert includes the labeled
+snapshot plus species statistics and rarity. All channels are off by default — enable the ones
+you want.</p>
+
+<h2 id="email">18. Email notifications</h2>
+<p>In <span class="ui">Settings → Email Notifications</span>:</p>
+<ol class="steps">
+  <li>Tick <span class="ui">Enable email notifications</span>.</li>
+  <li>Set the <span class="ui">SMTP Server</span> and <span class="ui">Port</span> (Gmail: <code>smtp.gmail.com</code> / <code>587</code>), keep <span class="ui">Enable SSL/TLS</span> on.</li>
+  <li>Enter your sending <span class="ui">Email Address</span> and <span class="ui">Password</span>.</li>
+  <li>Enter one or more <span class="ui">Recipient Email(s)</span> (comma-separated).</li>
+  <li>Click <span class="ui">Send Test Email</span> to verify.</li>
+</ol>
+<div class="box warn"><span class="lbl">Gmail needs an "App Password"</span>
+Don't use your normal Gmail password. Enable 2-Step Verification on your Google account, then
+create a 16-character <strong>App Password</strong> (Google Account → Security → App passwords →
+Mail) and use that here.</div>
+<p>Emails are rich HTML with the snapshot, species, confidence, time, temperature, rarity, and
+running statistics — plus a celebration when you spot a species for the first time.</p>
+
+<h2 id="pushover">19. Pushover (mobile push)</h2>
+<p>Pushover delivers instant push notifications (with the photo) to your phone, tablet, or
+desktop. It's a low-cost one-time purchase after a free trial.</p>
+<ol class="steps">
+  <li>Create an account at <a href="https://pushover.net">pushover.net</a> and install the app.</li>
+  <li>Create an application at <a href="https://pushover.net/apps/build">pushover.net/apps/build</a>.</li>
+  <li>In <span class="ui">Settings → Pushover</span>, enable it and paste your <span class="ui">Application API Token</span> and <span class="ui">User Key</span>.</li>
+  <li>Click <span class="ui">📱 Send Test Notification</span>.</li>
+</ol>
+<div class="box tip"><span class="lbl">Custom sound</span>
+Upload a custom sound named "BirdWatch" in Pushover to give bird alerts their own distinctive tone.</div>
+
+<h2 id="ntfy">20. NTFY &amp; Windows notifications</h2>
+<p><strong>NTFY</strong> is a free, open-source push service that needs no account.</p>
+<ol class="steps">
+  <li>Install the ntfy app on your phone.</li>
+  <li>In <span class="ui">Settings → NTFY &amp; Windows</span>, enable NTFY, keep the server <code>https://ntfy.sh</code>, and choose a <strong>unique topic name</strong> (e.g. <code>birdwatch-myfeeder-12345</code>).</li>
+  <li>Subscribe to the same topic in the ntfy app.</li>
+  <li>Click <span class="ui">📱 Send Test Notification</span>.</li>
+</ol>
+<p>The same tab includes:</p>
+<ul>
+  <li><strong>📡 Camera System Alerts</strong> — get a push when the camera disconnects/reconnects (uses a separate topic).</li>
+  <li><strong>Windows Desktop Notifications</strong> — native Windows 10/11 toast pop-ups; fast and local.</li>
+</ul>
+
+<h2 id="photoframe">21. Digital photo frame</h2>
+<p>BirdWatchAI can push snapshots (and optionally videos) straight to a digital photo frame,
+turning it into a live bird gallery. In <span class="ui">Settings → Photo Frame</span>:</p>
+<ul>
+  <li>Enable it, name the frame, and choose whether to send snapshots, videos, and whether to auto-send on every detection.</li>
+  <li>Pick a delivery method: <strong>FTP Upload</strong> (host, port, credentials, remote path, optional FTPS) or <strong>Email to Frame</strong> (the frame's email address + SMTP details).</li>
+  <li>Click <span class="ui">🖼️ Test Photo Frame</span>.</li>
+</ul>
+<p>You can also send any single detection on demand via the history right-click menu →
+<span class="ui">🖼️ Send to Photo Frame</span>.</p>
+
+<h2 id="reports">22. Summary reports</h2>
+<p>Reports roll up your activity into a tidy digest with statistics, charts, and snapshots.</p>
+<h4>On demand</h4>
+<p>Click <span class="ui">📧 Report</span> on the main window and pick Daily, Weekly, or
+Monthly, then <span class="ui">Generate &amp; Send</span>.</p>
+<h4>Scheduled</h4>
+<p>In <span class="ui">Settings → Summary Reports</span>, enable any of:</p>
+<ul>
+  <li><strong>Daily</strong> at a chosen time (default 11:30 PM).</li>
+  <li><strong>Weekly</strong> on a chosen weekday.</li>
+  <li><strong>Monthly</strong> on a chosen day (1–28).</li>
+</ul>
+<p>Set the recipient email(s) and the <span class="ui">Delivery Method</span> (Email only,
+Pushover only, or Both). Email reports include total detections, unique species, the most
+common visitor, peak activity hour, a 24-hour activity chart, a species breakdown, and up to 20
+snapshots. Reports are skipped automatically when there were no detections in the period.</p>
+
+<hr>
+<!-- ======================================================================= -->
+<!-- PART 5 -->
+<!-- ======================================================================= -->
+<div class="section-tag">Part 5 · Photos, Video &amp; Insights</div>
+
+<h2 id="video">23. Video recording</h2>
+<p>By default BirdWatchAI records a short clip for each detection. Key behaviors:</p>
+<ul>
+  <li><strong>Duration</strong> — about 12 seconds after the trigger (configurable 5–120 s).</li>
+  <li><strong>Pre-buffer</strong> — a rolling buffer captures ~3 seconds <em>before</em> the trigger, so clips start before the bird arrives.</li>
+  <li><strong>Overlay</strong> — clips are labeled with the logo, timestamp, species, confidence, temperature, and location.</li>
+  <li>Clips are saved next to snapshots as <code>&lt;timestamp&gt;_&lt;Species&gt;.mp4</code>.</li>
+</ul>
+<p>The <span class="ui">🎥 Test Recording</span> button records a short test clip and analyzes
+it (FPS, resolution, codec) so you can validate your stream's health.</p>
+
+<h2 id="videosummary">24. Video summaries (highlight reels)</h2>
+<p>Click <span class="ui">🎬 Video Summary</span> to stitch your clips into a polished highlight
+reel. In the dialog you can:</p>
+<ul>
+  <li>Choose a range — <strong>Today / Yesterday / Last Week / Custom</strong> — or hand-pick specific clips.</li>
+  <li>Add an <strong>intro title card</strong> (branding, date range, clip/species counts).</li>
+  <li>Add <strong>background music</strong> with a fade-out (drop tracks into the <code>Data\Music</code> folder or browse for one).</li>
+  <li>Enable <strong>intelligent highlight extraction</strong> to include only the high-confidence moments.</li>
+  <li>Apply a <strong>Ken Burns</strong> pan/zoom effect to snapshots and cap per-clip duration.</li>
+</ul>
+<p>You can also schedule a <strong>daily summary</strong> (Settings → Video Summary) to be
+generated automatically at a set time and delivered by email/Pushover/NTFY.</p>
+
+<h2 id="videomaint">25. Video maintenance</h2>
+<p>Over time, clips accumulate trailing "dead" footage after the bird leaves. The
+<span class="ui">🔧 Video Maint.</span> tool scans your videos, finds the last frame containing
+a bird, estimates how much space you'd save by trimming, and can trim selected or all videos
+(optionally replacing the originals). It shows a log, a progress bar, and a "View Video"
+button.</p>
+
+<h2 id="slideshow">26. The slideshow viewer</h2>
+<p>Launch the slideshow by double-clicking a detection, clicking the filter row's
+<span class="ui">▶️</span>, or via the right-click menu. It's a full media viewer for your bird
+photos and videos with: previous/play-pause/next, fullscreen, shuffle, loop, frame-step, speed
+control, a media-type filter (All / Photos / Videos), a Ken Burns effect on photos, an info
+overlay (species/time), and keyboard control.</p>
+
+<h2 id="testimage">27. Test Image analysis</h2>
+<p>The <span class="ui">🖼️ Test Image</span> tool lets you run identification on any image file
+— great for testing the AI or identifying a photo you took elsewhere. Pick an image, choose the
+model (Bird Model 965 or SpeciesNet 2,498), and see the ranked predictions with an embedded
+Google Image Search pane to help verify.</p>
+
+<h2 id="statistics">28. Statistics dashboard</h2>
+<p>The <span class="ui">📊 Statistics</span> window analyzes your <em>entire</em> detection
+history (not just what's visible in the grid). A summary panel shows total detections, unique
+species, most common species, date range, rare species, and your daily streak. Tabs include:</p>
+<ul>
+  <li><strong>Species</strong> — per-species table and image gallery.</li>
+  <li><strong>Time Analysis</strong> &amp; <strong>Activity Heatmap</strong> — when birds visit.</li>
+  <li><strong>Rarity</strong>, <strong>Confidence</strong>, <strong>Temperature</strong> — distributions.</li>
+  <li><strong>Trends</strong> &amp; <strong>Comparisons</strong> — change over time.</li>
+  <li><strong>Life List</strong> — first sightings, species not seen recently, and low-confidence IDs.</li>
+</ul>
+<p>Use <span class="ui">Export</span> to save the data.</p>
+
+<h2 id="telemetry">29. Telemetry viewer</h2>
+<p>The <span class="ui">📈 Telemetry</span> window plots the behind-the-scenes signals recorded
+on every monitoring cycle: <strong>motion %</strong>, <strong>temperature</strong>, your
+<strong>motion threshold</strong> and <strong>confidence threshold</strong>, and detection
+markers. With date-range pickers, a Live mode, series toggles, and zoom/pan, it's the best tool
+for <strong>tuning thresholds</strong> — e.g. seeing how high motion spikes during real bird
+visits versus background sway, so you can set the Motion Threshold just below the real visits.</p>
+
+<h2 id="badges">30. Achievements &amp; badges</h2>
+<p>BirdWatchAI gamifies your bird-watching with ~140 badges across 10 categories and 10 ranks.
+Open <span class="ui">🏆 Badges</span> to see your current rank, points, badge count, and
+progress to the next rank.</p>
+<p>Badge categories include Detection Milestones, Species Collection, Daily Activity, Streaks &amp;
+Consistency, Weather Warrior, Rarity Hunter, Species Families, Media Milestones, Special
+Achievements, and Dedication &amp; Loyalty. Ranks climb from 🐣 <em>Novice Watcher</em> through
+🪶 <em>Bird Enthusiast</em>, 🦅 <em>Avid Birder</em>, 👑 <em>Legendary Watcher</em>, all the way to
+💎 <em>Grand Master</em>. Pop-ups celebrate new badges and rank-ups, and badges are re-checked as
+your history grows or changes.</p>
+
+<hr>
+<!-- ======================================================================= -->
+<!-- PART 6 — SETTINGS REFERENCE -->
+<!-- ======================================================================= -->
+<div class="section-tag">Part 6 · Complete Settings Reference</div>
+
+<h2 id="settings">31. Every settings tab explained</h2>
+<p>Open the dialog with <span class="ui">⚙ Settings</span>. It has twelve tabs; click
+<span class="ui">Save</span> to apply or <span class="ui">Cancel</span> to discard. Sensitive
+fields (all passwords and API keys) are encrypted on disk. The default values below are what a
+fresh install uses.</p>
+
+<h3>Camera (RTSP)</h3>
+<table>
+  <tr><th>Setting</th><th>Default</th><th>Purpose</th></tr>
+  <tr><td>Camera Name</td><td>—</td><td>Friendly name (e.g. "Backyard Feeder"); shown in the title bar and used as your public feeder name</td></tr>
+  <tr><td>Camera IP Address</td><td>192.168.1.100</td><td>The camera's network address</td></tr>
+  <tr><td>RTSP Port</td><td>554</td><td>Streaming port</td></tr>
+  <tr><td>RTSP Username / Password</td><td>—</td><td>Camera account credentials</td></tr>
+  <tr><td>RTSP URL</td><td>auto</td><td>Built from the above, or paste a full URL. Build/Test buttons here.</td></tr>
+  <tr><td>Analysis Stream URL</td><td>auto</td><td>Optional low-res stream for software motion (Tapo: <code>/stream2</code> used automatically)</td></tr>
+  <tr><td>Use ONVIF motion detection</td><td>On</td><td>Use the camera's hardware motion events (recommended for Tapo)</td></tr>
+  <tr><td>TAPO Reboot (TP-Link email/password)</td><td>—</td><td>Cloud login enabling remote camera reboot</td></tr>
+</table>
+
+<h3>Bird Identification</h3>
+<table>
+  <tr><th>Setting</th><th>Default</th><th>Purpose</th></tr>
+  <tr><td>AI Model</td><td>Bird Model (965)</td><td>Local classifier; or SpeciesNet (2,498, experimental)</td></tr>
+  <tr><td>Minimum Confidence Threshold</td><td>35%</td><td>Only detections above this are recorded</td></tr>
+  <tr><td>Use Test Mode</td><td>Off</td><td>Generates fake detections for testing — leave off for real use</td></tr>
+</table>
+
+<h3>Email Notifications</h3>
+<p>Enable/SMTP server/port/SSL, email address &amp; password, recipient(s), from-name, and a
+<span class="ui">Send Test Email</span> button. Off by default. (See <a href="#email">Section 18</a>.)</p>
+
+<h3>Summary Reports</h3>
+<p>Daily / Weekly / Monthly toggles with schedules, recipient list, and delivery method (Email
+/ Pushover / Both). All off by default. (See <a href="#reports">Section 22</a>.)</p>
+
+<h3>Pushover</h3>
+<p>Enable, Application API Token, User Key, and a test button. (See <a href="#pushover">Section 19</a>.)</p>
+
+<h3>NTFY &amp; Windows</h3>
+<p>NTFY enable/server/topic/auth-token, camera system-alert topic, and Windows desktop
+notifications, each with a test button. (See <a href="#ntfy">Section 20</a>.)</p>
+
+<h3>Monitoring</h3>
+<table>
+  <tr><th>Setting</th><th>Default</th><th>Purpose</th></tr>
+  <tr><td>Check Interval (seconds)</td><td>2</td><td>How often the app samples for motion</td></tr>
+  <tr><td>Motion Threshold</td><td>5</td><td>% of pixels that must change to count as motion</td></tr>
+  <tr><td>Cooldown Period (seconds)</td><td>3</td><td>Minimum gap between detections</td></tr>
+  <tr><td>Monitor daylight hours only</td><td>On (7–20)</td><td>Pauses overnight; set start/end hours</td></tr>
+  <tr><td>Auto-reconnect</td><td>On</td><td>Retry dropped connections automatically</td></tr>
+  <tr><td>Periodic reconnect (minutes)</td><td>0 (off)</td><td>Force a fresh connection every N minutes</td></tr>
+  <tr><td>Feeder Zip Code / GPS</td><td>—</td><td>Location for weather, rarity, daylight. GPS optional (with "Pick on Map")</td></tr>
+  <tr><td>Temperature Unit</td><td>Fahrenheit</td><td>°F or °C</td></tr>
+</table>
+
+<h3>Advanced</h3>
+<table>
+  <tr><th>Setting</th><th>Default</th><th>Purpose</th></tr>
+  <tr><td>Snapshot Folder</td><td>Data\Snapshots</td><td>Where photos/videos are saved (Select/Open buttons)</td></tr>
+  <tr><td>Save snapshots locally</td><td>On</td><td>Keep image files on disk</td></tr>
+  <tr><td>Max Snapshots Per Day</td><td>500</td><td>Daily cap</td></tr>
+  <tr><td>Auto-delete old snapshots</td><td>Off</td><td>Optionally purge after N days (default 30)</td></tr>
+  <tr><td>Enable video recording</td><td>On</td><td>Record a clip per detection (duration, pre-buffer)</td></tr>
+  <tr><td>Best frame extraction</td><td>On</td><td>Pick the clearest frame from the clip for ID</td></tr>
+  <tr><td>Object Detector (YOLOv8)</td><td>On</td><td>Crop to the bird; filter non-bird motion</td></tr>
+  <tr><td>Save below-threshold detections</td><td>Off</td><td>Keep uncertain ones in a ForReview folder</td></tr>
+  <tr><td>Check for updates on startup</td><td>On</td><td>Notify when a newer version is available</td></tr>
+  <tr><td>Auto-connect &amp; start on startup</td><td>Off</td><td>Begin monitoring automatically at launch</td></tr>
+</table>
+
+<h3>Debug Logging</h3>
+<p>Per-component log levels (None / Low / Medium / High) for Bird Identification, Camera, Motion
+Detection, Monitoring Loop, and MainForm/UI, plus log-file rotation settings (max size, max
+files, folder). All default to None. (See <a href="#troubleshooting">Section 44</a>.)</p>
+
+<h3>Photo Frame</h3>
+<p>Enable, frame name, what to send, FTP or Email delivery, and a test button. Off by default.
+(See <a href="#photoframe">Section 21</a>.)</p>
+
+<h3>Community</h3>
+<p>Enable sharing, auto vs. manual push, <strong>Share Level</strong> (1–4), your read-only
+Feeder Display Name and anonymous Device Key, plus an admin section. (See <a href="#sharing">Section 33</a>.)</p>
+
+<h3>Video Summary</h3>
+<p>Intro card, highlight extraction, compression, per-clip duration, Ken Burns, credits video,
+background music, email attachment, and the scheduled daily-summary time. (See <a href="#videosummary">Section 24</a>.)</p>
+
+<hr>
+<!-- ======================================================================= -->
+<!-- PART 7 — COMMUNITY -->
+<!-- ======================================================================= -->
+<div class="section-tag">Part 7 · The BirdWatchAI Community</div>
+
+<h2 id="community-overview">32. What the community is</h2>
+<p>The BirdWatchAI community is a free, worldwide live feed of bird sightings shared by
+BirdWatchAI users, hosted at <a href="https://www.birdwatchai.com">www.birdwatchai.com</a>.
+There are two halves:</p>
+<ul>
+  <li><strong>In the app</strong> — an optional, opt-in feature that publishes your detections to the community (you control exactly how much is shared).</li>
+  <li><strong>On the website</strong> — anyone can browse the live feed, an interactive map, photo galleries, statistics, and a directory of active feeders, and (with a free account) like, comment, follow feeders, and build a life list.</li>
+</ul>
+<p>You can <strong>browse the website without any account</strong>. You only need to sign in to
+participate socially.</p>
+
+<h2 id="sharing">33. Sharing from the app &amp; privacy</h2>
+<p>Sharing is controlled in <span class="ui">Settings → Community</span>. The most important
+control is the <strong>Share Level</strong>, which precisely governs what leaves your PC:</p>
+<table>
+  <tr><th>Level</th><th>What is shared</th></tr>
+  <tr><td><strong>0 — Off</strong></td><td>Nothing is shared</td></tr>
+  <tr><td><strong>1</strong></td><td>Species + timestamp only (plus confidence, rarity, and temperature when available)</td></tr>
+  <tr><td><strong>2</strong></td><td>The above <strong>+ your zip code</strong> (or GPS coordinates if you've enabled GPS instead of zip)</td></tr>
+  <tr><td><strong>3</strong></td><td>The above <strong>+ the snapshot image</strong></td></tr>
+  <tr><td><strong>4</strong></td><td>The above <strong>+ the video clip</strong></td></tr>
+</table>
+<div class="box tip"><span class="lbl">You stay anonymous</span>
+Your feeder is identified only by a random <strong>Device Key</strong> (a UUID) — never linked
+to your name or email. Your public identity is just the <strong>Feeder Display Name</strong>
+(which mirrors your Camera Name). Location is shared <em>only</em> at Level 2 and above, and GPS
+is used in place of zip only if you explicitly enable GPS coordinates.</div>
+<p>Other options on the tab:</p>
+<ul>
+  <li><strong>Enable Community Sharing</strong> — the master switch.</li>
+  <li><strong>Automatically push each detection</strong> — uncheck to share only manually (right-click a detection → <span class="ui">🌐 Push to Community…</span>).</li>
+  <li>When you <strong>correct or delete</strong> a detection locally, the change syncs to the community automatically.</li>
+  <li>Your app periodically sends a <strong>heartbeat</strong> so the website can show your feeder as online/monitoring.</li>
+</ul>
+<p>The <span class="ui">🛠️ Launch Community Admin</span> button (with a service-role key) is for
+the site operator to moderate any feeder's data and is not needed for normal use.</p>
+
+<h2 id="website">34. The website &amp; landing page</h2>
+<p>The home page at <a href="https://www.birdwatchai.com">www.birdwatchai.com</a> is both a
+showcase and a live community window. Notable sections:</p>
+<ul>
+  <li><strong>Live Detection Ticker</strong> — a scrolling banner of the most recent sightings.</li>
+  <li><strong>Detection Hotspots</strong> — a map of recent detections, with rare-bird hotspots highlighted.</li>
+  <li><strong>Live From the Community</strong> — a gallery of the latest sighting photos.</li>
+  <li><strong>On This Day Last Year</strong> and <strong>This Week's Highlights</strong> — fun retrospectives and KPIs (rarest bird, most active feeder, new species, etc.).</li>
+  <li><strong>Migration Pulse</strong> — the month's most-detected species.</li>
+  <li><strong>Community Feeders</strong> — a directory of the most active feeders.</li>
+  <li><strong>Pricing &amp; Download</strong>, system requirements, FAQ, and a 🌙 dark-mode toggle.</li>
+</ul>
+<p>The big <span class="ui">🔴 Live Community Feed</span> link opens the full interactive
+community app (<code>community.html</code>).</p>
+
+<h2 id="accounts">35. Accounts &amp; signing in</h2>
+<p>Creating a community account is <strong>free and passwordless</strong>:</p>
+<ol class="steps">
+  <li>On the community feed page, click <span class="ui">Sign In</span>.</li>
+  <li>Enter your email and click <span class="ui">Send Magic Link</span> — no password to remember.</li>
+  <li>Open the email and click the link; you'll be returned to the feed, signed in. Your session persists across visits.</li>
+  <li>Open <span class="ui">Profile</span> to set a <strong>Display Name</strong> and a short <strong>Bio</strong>.</li>
+</ol>
+<p>Signing in unlocks likes, comments, following feeders, and your life list.
+(<em>Moderators</em> use a separate email-and-password login — see <a href="#moderation">Section 42</a>.)</p>
+
+<h2 id="feed">36. Browsing: feed, map, gallery, stats, feeders</h2>
+<p>The community feed page offers a powerful filter bar (search by species/feeder/notes;
+filter by time period, species, rarity, feeder, and location/radius including 📍 "Near me"; sort
+by recent/most-liked/most-commented; show only ❤️ "My Likes"). A status bar provides
+auto-refresh, a sound chime for new detections, rare-bird browser notifications, and CSV export.
+There are five views:</p>
+<ul>
+  <li><strong>📋 Feed</strong> — an infinite-scroll card grid. Each card shows the photo, species, rarity, time, location, temperature, and feeder, with buttons to add to your life list, follow the feeder, like, watch video, research the species, share a link, comment, or flag.</li>
+  <li><strong>🗺️ Map</strong> — pins or a heat-map of detections, with an optional feeder layer (green = online, gray = offline).</li>
+  <li><strong>🖼️ Gallery</strong> — species-grouped photo tiles with a full-screen slideshow (fade / slide / Ken Burns / blur transitions).</li>
+  <li><strong>📊 Stats</strong> — sub-tabs for Life List, Activity, Calendar, Hotspots, Temperature, Leaderboard, Trend, Records, Pairs, Compare, and Likes.</li>
+  <li><strong>🪺 Feeders</strong> — every registered feeder with its status, app version, location, and last heartbeat; a feeder is shown <em>offline</em> after ~10–15 minutes without a heartbeat.</li>
+</ul>
+<p>A <strong>🏆 Bird of the Day</strong> banner highlights today's rarest sighting, and new
+Very Rare detections trigger a celebratory confetti burst.</p>
+
+<h2 id="social">37. Social features</h2>
+<ul>
+  <li><strong>❤️ Likes</strong> — a single shared reaction; a "Liked by…" popover lists who liked it.</li>
+  <li><strong>💬 Comments</strong> — threaded comments (with one level of replies); sign in to post or delete your own.</li>
+  <li><strong>☆ Follow a Feeder</strong> — follow feeders you like, with an option to be notified of rare sightings.</li>
+  <li><strong>Life List</strong> — your personal list of species seen, with first-seen dates; share a read-only link to your list.</li>
+  <li><strong>Leaderboards</strong> — top feeders and most-seen species.</li>
+  <li><strong>Profiles</strong> — your display name and bio appear on your comments and likes.</li>
+  <li><strong>🚩 Report</strong> — flag a detection (wrong ID, inappropriate, duplicate, spam, other) for moderators.</li>
+</ul>
+
+<h2 id="newsletter">38. The Weekly Bird Digest</h2>
+<p>Sign up with your email in either newsletter box on the site to get the free
+<strong>Weekly Bird Digest</strong>, sent every <strong>Sunday morning</strong>. It includes
+the week's total detections, a rare sighting of the week, "first of the season" species, and a
+top-species chart. Every digest has a one-click unsubscribe link.</p>
+
+<h2 id="pwa">39. Installing the site as an app (PWA)</h2>
+<p>The community site is a Progressive Web App, so you can install it like a native app:</p>
+<ul>
+  <li><strong>Desktop (Chrome/Edge):</strong> click the install icon in the address bar.</li>
+  <li><strong>iPhone/iPad (Safari):</strong> Share → <span class="ui">Add to Home Screen</span>.</li>
+  <li><strong>Android (Chrome):</strong> menu → <span class="ui">Install app</span>.</li>
+</ul>
+<p>Installed, it opens in its own window, loads faster, and shows an offline shell when you have
+no connection.</p>
+
+<h2 id="screensaver">40. The community screensaver</h2>
+<p>A free companion <strong>Windows screensaver</strong> (downloadable from the site) turns your
+idle screens into a live community bird gallery — one independent slideshow per monitor, pulling
+fresh sightings every few minutes.</p>
+<ul>
+  <li><strong>Install</strong> with the included <code>install.bat</code> (no admin needed); it registers the screensaver and opens Windows Screen Saver Settings.</li>
+  <li><strong>Configure</strong> the transition effect, photo duration (3–30 s), photo order (random / most recent / most photographed / alphabetical), and whether to show species names and a progress bar.</li>
+  <li>Move the mouse or press a key to exit, as with any screensaver.</li>
+</ul>
+
+<h2 id="widget">41. The embeddable widget</h2>
+<p>You can embed a tiny live bird feed on your own website or blog using an iframe snippet (copy
+it from the site's "Embed Live Birds on Your Site" section). It supports parameters to filter to
+a specific feeder, limit how many detections show (max 20), and set a custom title, and it
+refreshes itself periodically.</p>
+
+<h2 id="moderation">42. Moderation</h2>
+<p>The community is kept tidy by moderators who log in with an email and password (separate from
+the passwordless member sign-in). Moderators can review the flag queue, browse and delete
+comments, edit a detection's species or rarity, and delete detections (removing the stored media
+too). Admins can additionally invite or remove other moderators. If you spot a problem,
+use the <strong>🚩</strong> button on any detection.</p>
+
+<hr>
+<!-- ======================================================================= -->
+<!-- PART 8 — REFERENCE -->
+<!-- ======================================================================= -->
+<div class="section-tag">Part 8 · Reference</div>
+
+<h2 id="files">43. File &amp; folder locations</h2>
+<p>All your data lives in a <code>Data</code> folder beside the program (e.g.
+<code>C:\Users\&lt;you&gt;\AppData\Local\BirdWatch AI\Data\</code>):</p>
+<table>
+  <tr><th>Item</th><th>Location</th></tr>
+  <tr><td>Settings</td><td><code>Data\config.json</code> (passwords encrypted)</td></tr>
+  <tr><td>Detection database</td><td><code>Data\detections.db</code> (with a JSON backup)</td></tr>
+  <tr><td>Snapshots</td><td><code>Data\Snapshots\</code> (configurable)</td></tr>
+  <tr><td>Videos</td><td><code>Data\Videos\</code></td></tr>
+  <tr><td>Uncertain detections</td><td><code>…\ForReview\</code> subfolder</td></tr>
+  <tr><td>Video summaries</td><td><code>Data\VideoSummaries\</code></td></tr>
+  <tr><td>Music for summaries</td><td><code>Data\Music\</code></td></tr>
+  <tr><td>ID corrections log</td><td><code>Data\corrections.jsonl</code></td></tr>
+  <tr><td>Logs</td><td><code>Data\Logs\</code></td></tr>
+  <tr><td>License</td><td><code>license.key</code> (program folder)</td></tr>
+</table>
+
+<h2 id="troubleshooting">44. Troubleshooting</h2>
+<table>
+  <tr><th>Symptom</th><th>Things to try</th></tr>
+  <tr><td>Camera won't connect</td><td>Verify the RTSP URL, that the camera is powered and on the same network, and that you're using the <em>camera account</em> credentials (not the cloud login). Test the URL in VLC. Try <code>/stream2</code>.</td></tr>
+  <tr><td>Connection keeps dropping</td><td>Improve Wi-Fi at the camera; reserve a static IP; reduce simultaneous streams (cloud/SD/NVR); enable periodic reconnect; set Tapo cloud credentials so the app can auto-reboot the camera.</td></tr>
+  <tr><td>No detections at all</td><td>Make sure you clicked <span class="ui">Start Monitoring</span>; check you're within daylight hours (or disable that limit); lower the Motion Threshold; confirm Test Mode is off and the camera shows live video.</td></tr>
+  <tr><td>Too many false detections</td><td>Raise the Motion Threshold, increase the Cooldown, keep the object detector on, and frame out swaying branches. Use the Telemetry viewer to find a good threshold.</td></tr>
+  <tr><td>Wrong species / low confidence</td><td>Get the camera closer, use the HD stream, keep best-frame extraction on, raise the confidence threshold, and use <span class="ui">Correct Identification…</span> to fix mistakes.</td></tr>
+  <tr><td>Squirrels/other animals ignored</td><td>Expected — the object detector filters non-bird motion.</td></tr>
+  <tr><td>Email won't send</td><td>For Gmail, use a 16-character App Password (not your normal password) and keep SSL on; click Send Test Email.</td></tr>
+  <tr><td>App seems gone but still running</td><td>It minimized to the tray. Double-click the tray bird icon; use tray → Exit to quit.</td></tr>
+  <tr><td>"Pick on Map" shows no map</td><td>Install the Microsoft WebView2 Runtime; manual latitude/longitude entry still works without it.</td></tr>
+  <tr><td>Need diagnostics</td><td>In Settings → Debug Logging, raise component levels (or "Set All to High"), reproduce the issue, then open the Debug Log panel or the <code>Data\Logs</code> folder.</td></tr>
+</table>
+
+<h2 id="faq">45. Frequently asked questions</h2>
+<h4>Are my bird photos sent to the cloud?</h4>
+<p>No — identification is fully local. Images only leave your PC if you turn on Community Sharing
+at Level 3 or higher, which is opt-in and off unless you enable it.</p>
+<h4>Do I need internet?</h4>
+<p>Not for monitoring or identification. Internet is only used for weather, optional community
+sharing, optional notifications, and update checks.</p>
+<h4>Can I watch more than one feeder?</h4>
+<p>Yes — install the app into separate folders, one per camera; each runs independently.</p>
+<h4>Does it run at night?</h4>
+<p>By default it pauses outside 7:00–20:00 ("daylight only"). You can change the hours or disable
+the limit in Settings → Monitoring.</p>
+<h4>Why are some detections marked ⚠️?</h4>
+<p>Those are below your confidence threshold and were kept for review (only if you enabled
+"Save detections below confidence threshold"). Confirm or correct them from the right-click menu.</p>
+<h4>Will sharing reveal my home address?</h4>
+<p>Only at Share Level 2+ do you share a zip code or GPS, and your identity stays anonymous
+(random Device Key). Use Level 1, or 2 with just a zip code, if you prefer more privacy.</p>
+
+<h2 id="shortcuts">46. Keyboard shortcuts</h2>
+<h4>Desktop app</h4>
+<ul>
+  <li><kbd>Delete</kbd> — delete the selected detection row(s).</li>
+  <li>Slideshow: arrow keys navigate, <kbd>Space</kbd> play/pause, <kbd>F</kbd> fullscreen.</li>
+</ul>
+<h4>Community website feed</h4>
+<ul>
+  <li><kbd>j</kbd> / <kbd>k</kbd> — next / previous card.</li>
+  <li><kbd>/</kbd> — focus the search box.</li>
+  <li><kbd>f</kbd> — toggle "My Likes".</li>
+  <li><kbd>r</kbd> — refresh.</li>
+  <li><kbd>1</kbd>–<kbd>4</kbd> — switch Feed / Map / Gallery / Stats.</li>
+  <li><kbd>Esc</kbd> — close overlays.</li>
+</ul>
+
+<h2 id="glossary">47. Glossary</h2>
+<table>
+  <tr><th>Term</th><th>Meaning</th></tr>
+  <tr><td><strong>RTSP</strong></td><td>Real-Time Streaming Protocol — how the camera streams live video to the app</td></tr>
+  <tr><td><strong>ONVIF</strong></td><td>A camera standard; here used for hardware motion events (lower CPU)</td></tr>
+  <tr><td><strong>Camera Account</strong></td><td>Dedicated RTSP username/password set in the camera app (separate from the cloud login)</td></tr>
+  <tr><td><strong>Confidence</strong></td><td>How sure the AI is about a species (0–100%)</td></tr>
+  <tr><td><strong>Confidence Threshold</strong></td><td>Minimum confidence required to record a detection</td></tr>
+  <tr><td><strong>Motion Threshold</strong></td><td>% of changed pixels needed to count as motion</td></tr>
+  <tr><td><strong>Pre-buffer</strong></td><td>Footage captured just before the motion trigger, so clips start before the bird arrives</td></tr>
+  <tr><td><strong>Best-frame extraction</strong></td><td>Picking the clearest frame from a clip for identification</td></tr>
+  <tr><td><strong>Object detector (YOLOv8)</strong></td><td>Locates the bird and filters out non-bird motion</td></tr>
+  <tr><td><strong>Rarity</strong></td><td>How unusual a species is for your region/season (Common → Very Rare)</td></tr>
+  <tr><td><strong>Share Level</strong></td><td>Controls how much of a detection is published to the community (0–4)</td></tr>
+  <tr><td><strong>Device Key</strong></td><td>Anonymous random ID for your feeder in the community</td></tr>
+  <tr><td><strong>Heartbeat</strong></td><td>Periodic "I'm online" signal that drives feeder status on the website</td></tr>
+  <tr><td><strong>PWA</strong></td><td>Progressive Web App — the website installable like a native app</td></tr>
+</table>
+
+<h2 id="support">48. Support, pricing &amp; credits</h2>
+<h4>Pricing</h4>
+<ul>
+  <li><strong>Free Trial</strong> — 14 days, full features, no credit card.</li>
+  <li><strong>Full License</strong> — a one-time purchase (no subscription).</li>
+  <li><strong>"The Full Nest" kits</strong> — optional bundled camera kits (indoor/outdoor) available from the website.</li>
+</ul>
+<h4>Getting help</h4>
+<ul>
+  <li>In-app: <span class="ui">❓ Help</span> button, and re-run the Setup Wizard from the Help menu.</li>
+  <li>Online: <a href="https://www.birdwatchai.com">www.birdwatchai.com</a> — downloads, FAQ, setup guides, and the community.</li>
+  <li>Updates: the app checks for new versions on startup and offers to download them.</li>
+</ul>
+<h4>Credits</h4>
+<p>BirdWatchAI is created by Joe Barraco / Bird Brain Solutions LLC. It builds on open
+technologies including ONNX Runtime (local AI), FFmpeg (video), LibVLC (streaming), OpenStreetMap
+&amp; Leaflet (maps), Open-Meteo (weather), eBird-derived data (rarity), Wikipedia (species
+photos), and Supabase (community backend). Thank you for watching the birds with us.</p>
+
+<hr>
+<p style="text-align:center;color:var(--muted);font-size:.9rem;margin-top:2.5rem;">
+🐦 &nbsp;<strong>BirdWatchAI</strong> — Complete User Manual &nbsp;·&nbsp; "Never Miss a Feathered Friend" &nbsp;·&nbsp;
+<a href="https://www.birdwatchai.com">www.birdwatchai.com</a><br>
+<span style="font-size:.82rem;">© Bird Brain Solutions LLC. This manual covers the desktop application (v2.1) and the community platform.</span>
+</p>
+
+</div>
+</body>
+</html>
