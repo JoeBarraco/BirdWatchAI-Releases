@@ -868,6 +868,7 @@ async function doForgotPassword() {
 // ── Change password ──────────────────────────────────────────
 function showChangePassword() {
     const modal = document.getElementById('mod-changepw-modal');
+    document.getElementById('mod-changepw-username').value = sessionStorage.getItem('bwai-mod-user') || '';
     document.getElementById('mod-changepw-title').textContent = 'Change Password';
     document.getElementById('mod-changepw-msg').textContent = 'Enter your current password and choose a new one.';
     document.getElementById('mod-changepw-cancel').style.display = '';
@@ -877,6 +878,7 @@ function showChangePassword() {
 
 function showMustChangePassword() {
     const modal = document.getElementById('mod-changepw-modal');
+    document.getElementById('mod-changepw-username').value = sessionStorage.getItem('bwai-mod-user') || '';
     document.getElementById('mod-changepw-title').textContent = 'Set Your Password';
     document.getElementById('mod-changepw-msg').textContent = 'You are using a temporary password. Please set a new password to continue.';
     document.getElementById('mod-changepw-cancel').style.display = 'none';
