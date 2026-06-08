@@ -67,6 +67,8 @@ const captionEl       = document.getElementById('slideshow-caption');
 const counterEl       = document.getElementById('slideshow-counter');
 const progressFill    = document.getElementById('slideshow-progress-fill');
 const loadingEl       = document.getElementById('slideshow-loading');
+const emptyEl         = document.getElementById('slideshow-empty');
+const emptyMsgEl      = document.getElementById('slideshow-empty-msg');
 
 // ── State ──────────────────────────────────────────────────
 let photos       = [];
@@ -187,13 +189,14 @@ async function loadPhotos() {
         if (!photos.length) {
             const filtered = (settings.feeders && settings.feeders.length) ||
                 (settings.photoAge && settings.photoAge !== 'all');
-            loadingEl.querySelector('p').textContent = filtered
-                ? 'No photos match your feeder / photo-age filters.'
-                : 'No photos available.';
+            showEmptyState(filtered
+                ? 'No photos match your feeder and photo-age settings.'
+                : 'No photos available yet — check back soon.');
             return;
         }
 
         // Hide loading, start playback (after optional stagger delay for multi-monitor)
+        hideEmptyState();
         loadingEl.classList.add('hidden');
         const delay = settings.staggerDelay || 0;
         if (delay > 0) {
@@ -204,8 +207,7 @@ async function loadPhotos() {
 
     } catch (err) {
         console.error('Failed to load photos:', err);
-        loadingEl.querySelector('p').textContent =
-            'Unable to load photos. Check your internet connection.';
+        showEmptyState('Unable to load photos. Check your internet connection.');
     }
 }
 
@@ -330,6 +332,7 @@ setInterval(async () => {
         if (!res.ok) return;
 
         const detections = await res.json();
+        const wasEmpty = photos.length === 0;
         const existingIds = new Set(photos.map(p => p.id));
         const newPhotos = [];
 
@@ -348,13 +351,33 @@ setInterval(async () => {
 
         if (newPhotos.length) {
             shuffleArray(newPhotos);
-            // Insert after current position so they appear naturally
-            photos.splice(photoIdx + 1, 0, ...newPhotos);
+            if (wasEmpty) {
+                // We were showing the empty-state logo; photos now match, so
+                // dismiss it and begin playback.
+                photos = newPhotos;
+                hideEmptyState();
+                loadingEl.classList.add('hidden');
+                startPlayback();
+            } else {
+                // Insert after current position so they appear naturally
+                photos.splice(photoIdx + 1, 0, ...newPhotos);
+            }
         }
     } catch {
         // Silently ignore refresh failures
     }
 }, 5 * 60 * 1000);
+
+// ── Empty state (floating logo) ────────────────────────────
+function showEmptyState(message) {
+    loadingEl.classList.add('hidden');
+    if (message) emptyMsgEl.textContent = message;
+    emptyEl.classList.add('visible');
+}
+
+function hideEmptyState() {
+    emptyEl.classList.remove('visible');
+}
 
 // ── Utilities ──────────────────────────────────────────────
 function shuffleArray(arr) {

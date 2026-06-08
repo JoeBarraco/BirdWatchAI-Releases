@@ -32,6 +32,24 @@
             <div class="loading-spinner"></div>
             <p>Loading bird photos...</p>
         </div>
+
+        <!-- Empty state: floating BirdWatchAI logo when no photos match -->
+        <div id="slideshow-empty" class="slideshow-empty">
+            <div class="empty-logo">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="160" height="160" aria-hidden="true">
+                    <circle cx="50" cy="50" r="48" fill="#2d5a3d"/>
+                    <ellipse cx="50" cy="56" rx="18" ry="12" fill="white"/>
+                    <circle cx="64" cy="44" r="9" fill="white"/>
+                    <polygon points="73,42 82,45 73,48" fill="#d4a574"/>
+                    <ellipse cx="44" cy="53" rx="13" ry="6" fill="#c8e6c9" transform="rotate(-15 44 53)"/>
+                    <ellipse cx="33" cy="61" rx="10" ry="4" fill="white" transform="rotate(20 33 61)"/>
+                    <circle cx="66" cy="42" r="2.5" fill="#2d5a3d"/>
+                    <circle cx="66.8" cy="41.2" r="0.8" fill="white"/>
+                </svg>
+            </div>
+            <p class="empty-title">BirdWatchAI</p>
+            <p id="slideshow-empty-msg" class="empty-msg">No photos match your settings.</p>
+        </div>
     </div>
 
     <script src="slideshow.js"></script>
