@@ -14,6 +14,51 @@ const TRANSITIONS = [
     { id: 'blur',     label: 'Blur'      },
 ];
 
+// ── Query helpers ──────────────────────────────────────────
+// Convert a photo-age setting into an ISO cutoff (or null for "all time").
+// Mirrors periodToISO() from the community gallery so filtering is consistent.
+function periodToISO(period) {
+    const now = new Date();
+    switch (period) {
+        case 'today':
+            return new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+        case 'week': {
+            const d = new Date(now);
+            d.setDate(d.getDate() - d.getDay());
+            d.setHours(0, 0, 0, 0);
+            return d.toISOString();
+        }
+        case 'month':
+            return new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+        case 'year':
+            return new Date(now.getFullYear(), 0, 1).toISOString();
+        default:
+            return null;
+    }
+}
+
+// Build the Supabase REST URL, applying the photo-age cutoff when set.
+function buildPhotosUrl() {
+    let url = `${SUPABASE_URL}/rest/v1/community_detections` +
+        `?select=id,species,image_url,detected_at,feeders(display_name)` +
+        `&image_url=not.is.null` +
+        `&order=detected_at.desc` +
+        `&limit=500`;
+
+    const since = periodToISO(settings.photoAge);
+    if (since) url += `&detected_at=gte.${encodeURIComponent(since)}`;
+
+    return url;
+}
+
+// True if a detection's feeder is allowed by the current feeder filter.
+// An empty/unset feeders list means "all feeders".
+function feederAllowed(detection) {
+    if (!settings.feeders || settings.feeders.length === 0) return true;
+    const name = detection.feeders?.display_name || '';
+    return settings.feeders.includes(name);
+}
+
 // ── DOM refs ───────────────────────────────────────────────
 const slideshowEl     = document.getElementById('slideshow');
 const slideA          = document.getElementById('slide-a');
@@ -38,6 +83,8 @@ let settings = {
     transition:   'random',
     interval:     6000,
     sortMode:     'random',
+    photoAge:     'all',     // all | today | week | month | year
+    feeders:      [],        // [] = all feeders; otherwise array of display names
     showCaption:  true,
     showProgress: true,
 };
@@ -69,11 +116,7 @@ document.addEventListener('mousedown', () => {
 // ── Fetch photos from Supabase ─────────────────────────────
 async function loadPhotos() {
     try {
-        const url = `${SUPABASE_URL}/rest/v1/community_detections` +
-            `?select=id,species,image_url,detected_at,feeders(display_name)` +
-            `&image_url=not.is.null` +
-            `&order=detected_at.desc` +
-            `&limit=500`;
+        const url = buildPhotosUrl();
 
         const res = await fetch(url, {
             headers: {
@@ -90,6 +133,7 @@ async function loadPhotos() {
         const speciesMap = {};
         for (const d of detections) {
             if (!d.species || !d.image_url) continue;
+            if (!feederAllowed(d)) continue;
             if (!speciesMap[d.species]) {
                 speciesMap[d.species] = {
                     species: d.species,
@@ -141,7 +185,11 @@ async function loadPhotos() {
         }
 
         if (!photos.length) {
-            loadingEl.querySelector('p').textContent = 'No photos available.';
+            const filtered = (settings.feeders && settings.feeders.length) ||
+                (settings.photoAge && settings.photoAge !== 'all');
+            loadingEl.querySelector('p').textContent = filtered
+                ? 'No photos match your feeder / photo-age filters.'
+                : 'No photos available.';
             return;
         }
 
@@ -271,11 +319,7 @@ function bumpIdle() {
 // ── Periodic refresh — pull new photos every 5 minutes ─────
 setInterval(async () => {
     try {
-        const url = `${SUPABASE_URL}/rest/v1/community_detections` +
-            `?select=id,species,image_url,detected_at,feeders(display_name)` +
-            `&image_url=not.is.null` +
-            `&order=detected_at.desc` +
-            `&limit=500`;
+        const url = buildPhotosUrl();
 
         const res = await fetch(url, {
             headers: {
@@ -291,6 +335,7 @@ setInterval(async () => {
 
         for (const d of detections) {
             if (!d.species || !d.image_url) continue;
+            if (!feederAllowed(d)) continue;
             if (existingIds.has(d.id)) continue;
             newPhotos.push({
                 id: d.id,

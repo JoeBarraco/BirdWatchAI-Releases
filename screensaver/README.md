@@ -105,5 +105,12 @@ Settings are stored in `%APPDATA%/birdwatchai-screensaver/screensaver-settings.j
 | `transition` | `random` | Transition effect (fade/slide/kenburns/blur/random) |
 | `interval` | `6000` | Milliseconds per photo |
 | `sortMode` | `random` | Photo order (random/recent/count/alpha) |
+| `photoAge` | `all` | Age of photos to show (all/today/week/month/year) |
+| `feeders` | `[]` | Feeders to show photos from (empty array = all feeders) |
 | `showCaption` | `true` | Show species name and feeder overlay |
 | `showProgress` | `true` | Show progress bar at bottom |
+
+The **Feeders** list in the settings window is populated live from the community
+gallery, so it always reflects the feeders that currently have photos. Leaving
+every feeder checked stores an empty list, which means "all feeders" — any
+feeders added later are then included automatically.
