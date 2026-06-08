@@ -75,7 +75,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (screensaverBtn) {
         screensaverBtn.addEventListener('click', function(e) {
             e.preventDefault();
-            const screensaverUrl = 'https://github.com/JoeBarraco/BirdWatchAI-Releases/releases/download/v1.0.0-screensaver/BirdWatchAI_Screensaver_1.0.0.zip';
+            const screensaverUrl = 'https://github.com/JoeBarraco/BirdWatchAI-Releases/releases/download/v2.1.2.0/BirdWatchAI_Screensaver_1.0.0.zip';
             console.log('Screensaver download initiated');
             window.location.href = screensaverUrl;
         });
