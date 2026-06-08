@@ -46,6 +46,24 @@
             </select>
         </div>
 
+        <div class="form-group">
+            <label for="photoAge">Photo Age</label>
+            <select id="photoAge">
+                <option value="all" selected>All time</option>
+                <option value="today">Today</option>
+                <option value="week">This week</option>
+                <option value="month">This month</option>
+                <option value="year">This year</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Feeders</label>
+            <div id="feeder-list" class="feeder-list">
+                <p class="feeder-loading">Loading feeders…</p>
+            </div>
+        </div>
+
         <div class="form-group checkbox-group">
             <label>
                 <input type="checkbox" id="showCaption" checked>

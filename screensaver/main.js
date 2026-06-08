@@ -29,6 +29,8 @@ const DEFAULT_SETTINGS = {
     transition: 'random',   // fade | slide | kenburns | blur | random
     interval:   6000,       // ms per photo
     sortMode:   'random',   // random | recent | count | alpha
+    photoAge:   'all',      // all | today | week | month | year
+    feeders:    [],         // [] = all feeders; otherwise array of feeder display names
     showCaption: true,
     showProgress: true,
 };
@@ -143,7 +145,7 @@ function launchScreensaver() {
 function launchConfig() {
     const win = new BrowserWindow({
         width: 480,
-        height: 520,
+        height: 700,
         resizable: false,
         frame: true,
         title: 'BirdWatchAI Screensaver Settings',
