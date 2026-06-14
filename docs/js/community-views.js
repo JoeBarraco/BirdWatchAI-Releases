@@ -687,6 +687,7 @@ function renderFeeders() {
             <div class="feeder-actions">
                 ${f.display_name ? `<button class="feeder-view-detections" data-feeder-name="${esc(f.display_name)}" onclick="viewFeederDetections(this)">View detections →</button>` : ''}
                 ${hasGps(f) ? `<button class="feeder-show-on-map" data-feeder-id="${esc(f.feeder_id || f.id || f.display_name || '')}" data-feeder-lat="${(+f.latitude).toFixed(6)}" data-feeder-lng="${(+f.longitude).toFixed(6)}" data-feeder-name="${esc(f.display_name || '')}" onclick="showFeederOnMap(this)">🗺️ Show on map</button>` : ''}
+                ${isModLoggedIn() && (f.id || f.feeder_id) ? `<button class="feeder-mod-delete" data-feeder-id="${esc(f.id || f.feeder_id)}" data-feeder-name="${esc(f.display_name || 'Unnamed feeder')}" onclick="confirmModDeleteFeeder(this)" title="Delete this feeder and all of its community detections">🗑️ Delete feeder</button>` : ''}
             </div>
         </div>`;
     }).join('');

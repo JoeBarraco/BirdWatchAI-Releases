@@ -353,6 +353,57 @@ grant execute on function moderator_login(text, text) to anon;
 grant execute on function moderator_update_detection(text, text, uuid, text, text, boolean, boolean) to anon;
 grant execute on function moderator_delete_detection(text, text, uuid) to anon;
 grant execute on function moderator_list_users(text, text) to anon;
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- moderator_delete_feeder: remove a feeder row and every community_detection
+-- that referenced it, in one transaction. Used by the mod-only "🗑️ Delete
+-- feeder" button on the community Feeders tab to clean up the duplicate
+-- feeders that accumulated before the activation-key feeder identity (a
+-- config reset used to spawn a fresh device_key and leave the old row
+-- behind under the same display_name).
+--
+-- The accompanying edge function (moderator-delete-media, action="delete_feeder")
+-- removes the photo/video files from Supabase Storage BEFORE calling this RPC,
+-- so by the time we get here it's just DB rows.
+-- ────────────────────────────────────────────────────────────────────────────
+drop function if exists moderator_delete_feeder(text, text, uuid);
+
+create or replace function moderator_delete_feeder(
+  p_email     text,
+  p_password  text,
+  p_feeder_id uuid
+)
+returns json
+language plpgsql security definer
+as $$
+declare
+  mod_id              uuid;
+  detections_deleted  int;
+  feeder_existed      boolean;
+begin
+  select id into mod_id
+  from moderators
+  where email = lower(trim(p_email))
+    and password_hash = crypt(p_password, password_hash);
+
+  if mod_id is null then
+    raise exception 'Invalid moderator credentials';
+  end if;
+
+  delete from community_detections where feeder_id = p_feeder_id;
+  get diagnostics detections_deleted = row_count;
+
+  delete from feeders where id = p_feeder_id;
+  feeder_existed := found;
+
+  return json_build_object(
+    'feeder_deleted',     feeder_existed,
+    'detections_deleted', detections_deleted
+  );
+end;
+$$;
+
+grant execute on function moderator_delete_feeder(text, text, uuid) to anon;
 grant execute on function moderator_add_user(text, text, text, text) to anon;
 grant execute on function moderator_remove_user(text, text, uuid) to anon;
 grant execute on function moderator_change_password(text, text, text) to anon;
