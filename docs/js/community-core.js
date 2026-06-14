@@ -383,6 +383,8 @@ async function loadFeed(append = false) {
         }
         // Fetch all species/feeder names so dropdowns are complete
         loadAllDropdownOptions();
+        // First-load only: honor ?feeder=… deep-links by switching to the Feed view pre-filtered.
+        if (typeof applyDeepLinkParams === 'function') applyDeepLinkParams();
     }
 }
 

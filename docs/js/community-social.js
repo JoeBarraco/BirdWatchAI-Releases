@@ -9,7 +9,15 @@ document.querySelectorAll('.period-btn').forEach(btn => {
 });
 
 document.getElementById('rarity-filter').addEventListener('change', () => refilter());
-document.getElementById('feeder-filter').addEventListener('change', () => refilter());
+document.getElementById('feeder-filter').addEventListener('change', () => {
+    // Mirror the choice into the URL so the address bar stays a copy-pasteable
+    // deep-link to "this feeder". history.replaceState avoids piling up history
+    // entries the user would have to back out of.
+    if (typeof syncFeederFilterToUrl === 'function') {
+        syncFeederFilterToUrl(document.getElementById('feeder-filter').value);
+    }
+    refilter();
+});
 
 let zipDebounce;
 document.getElementById('zip-filter').addEventListener('input', () => {

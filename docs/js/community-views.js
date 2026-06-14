@@ -686,6 +686,7 @@ function renderFeeders() {
             </dl>
             <div class="feeder-actions">
                 ${f.display_name ? `<button class="feeder-view-detections" data-feeder-name="${esc(f.display_name)}" onclick="viewFeederDetections(this)">View detections →</button>` : ''}
+                ${f.display_name ? `<button class="feeder-copy-link" data-feeder-name="${esc(f.display_name)}" onclick="copyFeederDeepLink(this)" title="Copy a shareable link to this feeder's view">🔗 Copy link</button>` : ''}
                 ${hasGps(f) ? `<button class="feeder-show-on-map" data-feeder-id="${esc(f.feeder_id || f.id || f.display_name || '')}" data-feeder-lat="${(+f.latitude).toFixed(6)}" data-feeder-lng="${(+f.longitude).toFixed(6)}" data-feeder-name="${esc(f.display_name || '')}" onclick="showFeederOnMap(this)">🗺️ Show on map</button>` : ''}
                 ${isModLoggedIn() && (f.id || f.feeder_id) ? `<button class="feeder-mod-delete" data-feeder-id="${esc(f.id || f.feeder_id)}" data-feeder-name="${esc(f.display_name || 'Unnamed feeder')}" onclick="confirmModDeleteFeeder(this)" title="Delete this feeder and all of its community detections">🗑️ Delete feeder</button>` : ''}
             </div>
@@ -746,6 +747,65 @@ function viewFeederDetections(btn) {
         .find(b => /switchView\('feed'/.test(b.getAttribute('onclick') || ''));
     if (feedTab) switchView('feed', feedTab);
     refilter();
+}
+
+// ── Deep-link support ────────────────────────────────────
+// Shareable links to a specific feeder's view. Two halves:
+//
+//   read:  on the first loadFeed completion, if URL has ?feeder=Name
+//          (decoded), switch to the Feed view pre-filtered to that
+//          feeder — same end-state as clicking the feeder card's
+//          "View detections →" button.
+//   write: whenever the user changes the feeder filter manually we
+//          mirror the choice into the URL with history.replaceState
+//          (no new history entry per keystroke), so the address bar
+//          is always copy-pasteable as a deep link.
+let deepLinkApplied = false;
+
+function applyDeepLinkParams() {
+    if (deepLinkApplied) return;
+    deepLinkApplied = true;
+    try {
+        const params = new URLSearchParams(location.search);
+        const feeder = params.get('feeder');
+        if (feeder) {
+            // viewFeederDetections handles the dropdown (injecting the
+            // option if it isn't there yet because feed data hasn't loaded
+            // every feeder's name), the view switch, and the refilter. We
+            // synthesize the {dataset} object it expects so we don't have
+            // to duplicate any of that logic here.
+            viewFeederDetections({ dataset: { feederName: feeder } });
+        }
+    } catch { /* malformed URL — ignore */ }
+}
+
+/** Update ?feeder=… in the URL bar without pushing a new history entry. */
+function syncFeederFilterToUrl(displayName) {
+    try {
+        const url = new URL(location.href);
+        if (displayName) url.searchParams.set('feeder', displayName);
+        else             url.searchParams.delete('feeder');
+        history.replaceState(null, '', url.toString());
+    } catch { /* ignore */ }
+}
+
+/**
+ * Copy a deep-link to this feeder to the clipboard. Invoked from the
+ * "🔗 Copy link" button on each feeder card. Falls back to a prompt() so
+ * older browsers / non-secure contexts can still grab the URL manually.
+ */
+function copyFeederDeepLink(btn) {
+    const displayName = btn && btn.dataset ? btn.dataset.feederName : '';
+    if (!displayName) return;
+    const url = new URL(location.href);
+    url.searchParams.set('feeder', displayName);
+    const link = url.toString();
+    const showOk = () => { if (typeof showToast === 'function') showToast(`Link to "${displayName}" copied.`); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(link).then(showOk, () => prompt('Copy link', link));
+    } else {
+        prompt('Copy link', link);
+    }
 }
 
 // ── Stats ────────────────────────────────────────────────
