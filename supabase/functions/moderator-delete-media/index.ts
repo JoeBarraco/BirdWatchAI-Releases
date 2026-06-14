@@ -65,17 +65,19 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { action, email, password, detection_id, feeder_id } = body;
+    const { action, email, password, detection_id, feeder_id, tier, renews_at } = body;
 
-    // Per-action required-field validation — feeder-delete uses feeder_id, the
-    // detection actions use detection_id, but all three need an action + creds.
+    // Per-action required-field validation. Three "shapes" of action:
+    //   * delete_feeder / set_feeder_tier  → feeder_id
+    //   * update / delete                  → detection_id
+    //   * (all)                            → action + email + password
     if (!action || !email || !password) {
       return new Response(
         JSON.stringify({ error: 'Missing required fields' }),
         { status: 400, headers: corsHeaders }
       );
     }
-    if (action === 'delete_feeder') {
+    if (action === 'delete_feeder' || action === 'set_feeder_tier') {
       if (!feeder_id) {
         return new Response(
           JSON.stringify({ error: 'Missing required fields' }),
@@ -140,6 +142,42 @@ Deno.serve(async (req) => {
           feeder_deleted:     result?.feeder_deleted ?? false,
           detections_deleted: result?.detections_deleted ?? 0,
         }),
+        { status: 200, headers: corsHeaders }
+      );
+    }
+
+    // ── ACTION: set_feeder_tier ──────────────────────────────────────────────
+    // Admin-only path to grant a subscription tier to a feeder. Wraps the
+    // admin_set_feeder_tier RPC, which already enforces role=admin and
+    // validates the tier value. The "renews_at" body field is optional —
+    // null means the grant is indefinite (the common case for comped
+    // accounts); a timestamp means it auto-downgrades on that date.
+    if (action === 'set_feeder_tier') {
+      const cleanTier = (tier || '').toString().trim().toLowerCase();
+      if (cleanTier !== 'free' && cleanTier !== 'plus' && cleanTier !== 'pro') {
+        return new Response(
+          JSON.stringify({ error: `Invalid tier "${tier}". Use free|plus|pro.` }),
+          { status: 400, headers: corsHeaders }
+        );
+      }
+      const { data: result, error: rpcErr } = await supabase.rpc('admin_set_feeder_tier', {
+        p_email:     email,
+        p_password:  password,
+        p_feeder_id: feeder_id,
+        p_tier:      cleanTier,
+        p_renews_at: renews_at ?? null,
+      });
+      if (rpcErr) {
+        // The RPC throws "Admin access required" for a non-admin moderator —
+        // surface that as 403 so the UI can show a useful message.
+        const isPerm = /admin access required/i.test(rpcErr.message ?? '');
+        return new Response(
+          JSON.stringify({ error: rpcErr.message }),
+          { status: isPerm ? 403 : 400, headers: corsHeaders }
+        );
+      }
+      return new Response(
+        JSON.stringify({ success: true, ...(result ?? {}) }),
         { status: 200, headers: corsHeaders }
       );
     }
@@ -219,7 +257,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ error: 'Invalid action. Use "update", "delete", or "delete_feeder".' }),
+      JSON.stringify({ error: 'Invalid action. Use "update", "delete", "delete_feeder", or "set_feeder_tier".' }),
       { status: 400, headers: corsHeaders }
     );
 

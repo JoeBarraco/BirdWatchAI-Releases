@@ -80,7 +80,11 @@ function renderFeed() {
 
         return `
         <div class="card${isNew ? ' new' : ''}" data-id="${d.id}">
-            ${d.image_url ? `<img src="${d.image_url}" alt="${esc(d.species)}" loading="lazy" data-carousel-species="${esc(d.species)}">` : ''}
+            ${d.image_url
+                ? `<img src="${d.image_url}" alt="${esc(d.species)}" loading="lazy" data-carousel-species="${esc(d.species)}">`
+                : (d.media_purged_at
+                    ? `<div class="card-media-expired" title="Photo was removed from community storage on ${esc(new Date(d.media_purged_at).toLocaleString())}. The detection itself is kept for stats / life list. Upgrade the feeder's tier to keep future photos longer.">📷<br>photo expired</div>`
+                    : '')}
             <div class="card-body">
                 <div class="card-title">
                     <span class="species-link" data-species="${esc(d.species)}" style="cursor:pointer;text-decoration:underline dotted;">${esc(d.species)}</span>${d.rarity
@@ -557,9 +561,42 @@ async function loadFeeders() {
             throw new Error(`HTTP ${res.status}${body ? ' — ' + body.slice(0, 200) : ''}`);
         }
         allFeeders = await res.json();
+
+        // Side-fetch subscription tiers from the base feeders table — keeps us independent of
+        // whether the feeder_status view exposes the new columns (the view shipped before
+        // tiers existed and may explicitly list its columns). Merge by id; missing → 'free'.
+        await mergeFeederTiers();
+
         renderFeeders();
     } catch (err) {
         grid.innerHTML = `<div class="feed-error">Error loading feeders: ${esc(err.message)}</div>`;
+    }
+}
+
+async function mergeFeederTiers() {
+    try {
+        const url = `${SUPABASE_URL}/rest/v1/feeders` +
+            `?select=id,subscription_tier,subscription_renews_at,subscription_granted_by,subscription_granted_at`;
+        const res = await fetch(url, {
+            headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` }
+        });
+        if (!res.ok) {
+            for (const f of allFeeders) f.subscription_tier ??= 'free';
+            return;
+        }
+        const tiers = await res.json();
+        const byId = new Map(tiers.map(t => [t.id, t]));
+        for (const f of allFeeders) {
+            const fid = f.id || f.feeder_id;
+            const tier = fid ? byId.get(fid) : null;
+            f.subscription_tier        = tier?.subscription_tier        ?? 'free';
+            f.subscription_renews_at   = tier?.subscription_renews_at   ?? null;
+            f.subscription_granted_by  = tier?.subscription_granted_by  ?? null;
+            f.subscription_granted_at  = tier?.subscription_granted_at  ?? null;
+        }
+    } catch {
+        // Tier overlay is best-effort; UI defaults to free without it.
+        for (const f of allFeeders) f.subscription_tier ??= 'free';
     }
 }
 
@@ -671,6 +708,11 @@ function renderFeeders() {
         const statusText = f.status ? esc(f.status) : '—';
         const hb = feederHeartbeat(f);
         const locationCell = renderFeederLocationCell(f);
+        const tier = (f.subscription_tier ?? 'free').toLowerCase();
+        const tierLabel = tier === 'pro' ? 'Pro' : tier === 'plus' ? 'Plus' : 'Free';
+        const tierRetention = tier === 'pro' ? '1-year' : tier === 'plus' ? '90-day' : '7-day';
+        const tierTitle = `${tierLabel} tier — ${tierRetention} community media retention` +
+            (f.subscription_granted_by ? ` · granted by ${f.subscription_granted_by}` : '');
         return `
         <div class="feeder-card ${stateClass}">
             <div class="feeder-card-header">
@@ -682,12 +724,14 @@ function renderFeeders() {
                 <div><dt>Status</dt><dd>${statusText}</dd></div>
                 <div><dt>Version</dt><dd>${f.app_version ? esc(f.app_version) : '—'}</dd></div>
                 <div><dt>Location</dt><dd>${locationCell}</dd></div>
+                <div><dt>Tier</dt><dd><span class="feeder-tier-badge feeder-tier-badge--${tier}" title="${esc(tierTitle)}">${tierLabel}</span></dd></div>
                 <div><dt>Last heartbeat</dt><dd title="${hb ? esc(new Date(hb).toLocaleString()) : ''}">${esc(fmtFeederHeartbeat(f))}</dd></div>
             </dl>
             <div class="feeder-actions">
                 ${f.display_name ? `<button class="feeder-view-detections" data-feeder-name="${esc(f.display_name)}" onclick="viewFeederDetections(this)">View detections →</button>` : ''}
                 ${f.display_name ? `<button class="feeder-copy-link" data-feeder-name="${esc(f.display_name)}" onclick="copyFeederDeepLink(this)" title="Copy a shareable link to this feeder's view">🔗 Copy link</button>` : ''}
                 ${hasGps(f) ? `<button class="feeder-show-on-map" data-feeder-id="${esc(f.feeder_id || f.id || f.display_name || '')}" data-feeder-lat="${(+f.latitude).toFixed(6)}" data-feeder-lng="${(+f.longitude).toFixed(6)}" data-feeder-name="${esc(f.display_name || '')}" onclick="showFeederOnMap(this)">🗺️ Show on map</button>` : ''}
+                ${isAdmin() && (f.id || f.feeder_id) ? `<button class="feeder-mod-tier" data-feeder-id="${esc(f.id || f.feeder_id)}" data-feeder-name="${esc(f.display_name || 'Unnamed feeder')}" data-feeder-tier="${esc(tier)}" onclick="openTierModal(this)" title="Grant or change this feeder's community-storage tier">⭐ Change tier</button>` : ''}
                 ${isModLoggedIn() && (f.id || f.feeder_id) ? `<button class="feeder-mod-delete" data-feeder-id="${esc(f.id || f.feeder_id)}" data-feeder-name="${esc(f.display_name || 'Unnamed feeder')}" onclick="confirmModDeleteFeeder(this)" title="Delete this feeder and all of its community detections">🗑️ Delete feeder</button>` : ''}
             </div>
         </div>`;

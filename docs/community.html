@@ -260,6 +260,11 @@
                     <option value="recent">Last update</option>
                 </select>
                 <button class="refresh-btn" onclick="loadFeeders()">↺ Refresh</button>
+                <!-- Admin-only: manually trigger the media purge. The recurring path is the
+                     scheduled purge-expired-media edge function (pg_cron / cron-schedule);
+                     this button is the "run it now" override. Visibility is gated client-
+                     side; the function itself re-checks the admin role server-side. -->
+                <button id="feeders-admin-purge" class="refresh-btn" onclick="runMediaPurge()" style="display:none;" title="Run a community-media retention purge now">🧹 Purge expired media</button>
             </div>
         </div>
         <div id="feeders-grid" class="feeders-grid">
@@ -499,6 +504,40 @@
         <div id="mod-add-status" style="font-size:0.8rem;margin-top:0.5rem;display:none;"></div>
         <div class="mod-btn-row" style="margin-top:1.25rem;">
             <button class="mod-btn-cancel" onclick="closeAdminPanel()">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Admin: set a feeder's community-storage tier. Opened from the 🟉 Change tier
+     button on each feeder card (admin-only). Detection rows / stats are never
+     purged regardless of tier; only the media (image_url / video_url) is. -->
+<div id="tier-modal" role="dialog" aria-modal="true">
+    <div class="mod-edit-box">
+        <h3 id="tier-modal-title">Set tier</h3>
+        <p style="font-size:0.85rem;color:var(--color-gray-500);margin-bottom:1rem;">
+            Tier determines how long this feeder's community media is kept.
+            <strong>Free</strong> = 7 days, <strong>Plus</strong> = 90 days,
+            <strong>Pro</strong> = 1 year. Detection rows live forever for stats
+            and life-list integrity — only the photos / videos are removed past
+            the window.
+        </p>
+        <label for="tier-modal-select">Tier</label>
+        <select id="tier-modal-select">
+            <option value="free">Free (7-day media retention)</option>
+            <option value="plus">Plus (90-day media retention)</option>
+            <option value="pro">Pro (1-year media retention)</option>
+        </select>
+        <label for="tier-modal-renews">Auto-downgrade on (optional)</label>
+        <input type="date" id="tier-modal-renews">
+        <p style="font-size:0.75rem;color:var(--color-gray-500);margin-top:-0.5rem;margin-bottom:0.75rem;">
+            Leave blank for an indefinite grant — the typical "I'm comping this
+            account" case. A date sets the tier to auto-downgrade to Free on
+            that day (e.g., when a paid subscription would expire).
+        </p>
+        <div id="tier-modal-error" style="color:#e74c3c;font-size:0.8rem;margin-bottom:0.5rem;display:none;"></div>
+        <div class="mod-btn-row">
+            <button class="mod-btn-cancel" onclick="closeTierModal()">Cancel</button>
+            <button class="mod-btn-primary" onclick="submitTierChange()">Save tier</button>
         </div>
     </div>
 </div>
