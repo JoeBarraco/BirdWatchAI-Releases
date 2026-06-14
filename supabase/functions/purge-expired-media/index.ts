@@ -106,28 +106,41 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Mark + return expired rows in one shot via the RPC, then walk them to
-    // remove the storage objects. The RPC is the one place the retention
-    // policy is encoded (free/plus/pro intervals) so it stays in sync with
-    // the schema migration.
-    const { data: rows, error: rpcErr } = await supabase.rpc('purge_expired_feeder_media');
-    if (rpcErr) {
-      return new Response(JSON.stringify({ error: rpcErr.message }), { status: 500, headers: corsHeaders });
+    // Two phases, one invocation. Phase 1 marks rows past the tier window as
+    // soft-expired (URLs moved to archive cols, public feed hides them).
+    // Phase 2 walks rows whose soft-expire stamp is older than the 30-day
+    // grace period, returns their archived URLs so this function can remove
+    // the storage objects, then nulls the archive cols. Splitting it this way
+    // gives users a recovery window — a tier upgrade during the grace period
+    // restores the media via restore_recoverable_feeder_media.
+
+    // Phase 1
+    const { data: softRows, error: softErr } = await supabase.rpc('soft_expire_feeder_media');
+    if (softErr) {
+      return new Response(JSON.stringify({ error: 'soft_expire: ' + softErr.message }), { status: 500, headers: corsHeaders });
+    }
+    const softExpired = softRows?.length ?? 0;
+
+    // Phase 2
+    const { data: hardRows, error: hardErr } = await supabase.rpc('hard_delete_feeder_media');
+    if (hardErr) {
+      return new Response(JSON.stringify({ error: 'hard_delete: ' + hardErr.message }), { status: 500, headers: corsHeaders });
     }
 
     let imagesRemoved = 0;
     let videosRemoved = 0;
-    for (const r of (rows ?? [])) {
+    for (const r of (hardRows ?? [])) {
       if (r.image_url) { await removeStorageFile(r.image_url); imagesRemoved++; }
       if (r.video_url) { await removeStorageFile(r.video_url); videosRemoved++; }
     }
 
     return new Response(
       JSON.stringify({
-        success:        true,
-        rows_purged:    rows?.length ?? 0,
-        images_removed: imagesRemoved,
-        videos_removed: videosRemoved,
+        success:          true,
+        soft_expired:     softExpired,        // moved to archive this run
+        hard_deleted:     hardRows?.length ?? 0, // archive + storage cleared this run
+        images_removed:   imagesRemoved,
+        videos_removed:   videosRemoved,
       }),
       { status: 200, headers: corsHeaders }
     );

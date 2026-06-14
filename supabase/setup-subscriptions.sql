@@ -105,18 +105,102 @@ $$;
 grant execute on function admin_set_feeder_tier(text, text, uuid, text, timestamptz) to anon;
 
 -- ────────────────────────────────────────────────────────────────────────────
--- purge_expired_feeder_media: marks community_detections rows whose media is
--- past its feeder's tier retention. Returns the rows (id, image_url, video_url)
--- so the calling edge function can remove the storage objects. The row itself
--- stays (stats / life-list integrity); only the image_url / video_url get
--- nulled out and media_purged_at gets stamped.
+-- Two-phase media retention.
 --
--- security definer so it can be invoked by the edge function with the anon
--- key; the function itself only does the safe metadata-only purge.
+--   Phase 1 — SOFT EXPIRE (visible to public removed, media held for grace):
+--     Past tier retention (free=7d, plus=90d, pro=365d), the media URLs are
+--     moved off image_url/video_url into archived_image_url/archived_video_url
+--     and media_purged_at gets stamped. The public feed no longer shows the
+--     photo (the "📷 photo expired (recoverable)" placeholder takes over),
+--     but the storage object stays put so a tier upgrade can restore it.
+--
+--   Phase 2 — HARD DELETE (after a 30-day grace, truly gone):
+--     Past media_purged_at + grace_period (30 days), the archived URLs are
+--     returned to the caller so the storage objects can be removed, then
+--     archived_image_url/archived_video_url get nulled too. media_purged_at
+--     stays as the marker that "this row had media once" so the placeholder
+--     can still surface ("📷 photo permanently deleted").
+--
+--   RESTORE (called on tier upgrade): for any row in soft-expired state
+--     whose detected_at fits the NEW tier's window, the archived URLs are
+--     copied back to image_url/video_url and media_purged_at is cleared.
+--     Hard-deleted rows can't be restored (the archive's gone) — this is
+--     why the 30-day grace matters.
 -- ────────────────────────────────────────────────────────────────────────────
-drop function if exists purge_expired_feeder_media();
 
-create or replace function purge_expired_feeder_media()
+alter table community_detections
+    add column if not exists archived_image_url text,
+    add column if not exists archived_video_url text;
+
+-- Hard-coded as a sql constant for now. If you ever want different grace
+-- periods per tier, lift this to a column on the feeders table.
+drop function if exists media_grace_period();
+create or replace function media_grace_period() returns interval
+    language sql immutable
+as $$ select interval '30 days' $$;
+
+grant execute on function media_grace_period() to anon;
+
+-- Tier retention as a re-usable helper so the three functions below stay in
+-- sync without copy-pasting the case-expression.
+drop function if exists tier_retention(text);
+create or replace function tier_retention(p_tier text) returns interval
+    language sql immutable
+as $$
+    select case p_tier
+               when 'pro'  then interval '365 days'
+               when 'plus' then interval '90 days'
+               else             interval '7 days'
+           end
+$$;
+
+grant execute on function tier_retention(text) to anon;
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- Phase 1: soft_expire_feeder_media — hide media from the public feed by
+-- moving the URLs into the archive columns and stamping media_purged_at.
+-- Storage objects are NOT touched — that's phase 2.
+-- ────────────────────────────────────────────────────────────────────────────
+drop function if exists soft_expire_feeder_media();
+create or replace function soft_expire_feeder_media()
+returns table (detection_id uuid)
+language plpgsql security definer
+as $$
+begin
+    return query
+    with expired as (
+        select d.id, d.image_url, d.video_url
+          from community_detections d
+          join feeders f on f.id = d.feeder_id
+         where d.media_purged_at is null
+           and (d.image_url is not null or d.video_url is not null)
+           and d.detected_at < now() - tier_retention(f.subscription_tier)
+    ),
+    moved as (
+        update community_detections d
+           set archived_image_url = coalesce(d.archived_image_url, e.image_url),
+               archived_video_url = coalesce(d.archived_video_url, e.video_url),
+               image_url          = null,
+               video_url          = null,
+               media_purged_at    = now()
+          from expired e
+         where d.id = e.id
+        returning d.id
+    )
+    select m.id from moved m;
+end;
+$$;
+
+grant execute on function soft_expire_feeder_media() to anon;
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- Phase 2: hard_delete_feeder_media — for soft-expired rows whose
+-- media_purged_at is past the grace period, return the archived URLs (so the
+-- caller can remove the storage objects), then clear the archive columns.
+-- media_purged_at stays so the UI can still render the "expired" placeholder.
+-- ────────────────────────────────────────────────────────────────────────────
+drop function if exists hard_delete_feeder_media();
+create or replace function hard_delete_feeder_media()
 returns table (
     detection_id uuid,
     image_url    text,
@@ -126,37 +210,60 @@ language plpgsql security definer
 as $$
 begin
     return query
-    with cutoff as (
-        select f.id as feeder_id,
-               case f.subscription_tier
-                   when 'pro'  then interval '365 days'
-                   when 'plus' then interval '90 days'
-                   else             interval '7 days'
-               end as retention
-          from feeders f
-    ),
-    expired as (
-        select d.id, d.image_url, d.video_url
+    with stale as (
+        select d.id, d.archived_image_url, d.archived_video_url
           from community_detections d
-          join cutoff c on c.feeder_id = d.feeder_id
-         where d.media_purged_at is null
-           and (d.image_url is not null or d.video_url is not null)
-           and d.detected_at < now() - c.retention
+         where d.media_purged_at is not null
+           and d.media_purged_at < now() - media_grace_period()
+           and (d.archived_image_url is not null or d.archived_video_url is not null)
     ),
-    updated as (
+    cleared as (
         update community_detections d
-           set image_url       = null,
-               video_url       = null,
-               media_purged_at = now()
-          from expired e
-         where d.id = e.id
-        returning d.id, e.image_url, e.video_url
+           set archived_image_url = null,
+               archived_video_url = null
+          from stale s
+         where d.id = s.id
+        returning d.id, s.archived_image_url, s.archived_video_url
     )
-    select u.id, u.image_url, u.video_url from updated u;
+    select c.id, c.archived_image_url, c.archived_video_url from cleared c;
 end;
 $$;
 
-grant execute on function purge_expired_feeder_media() to anon;
+grant execute on function hard_delete_feeder_media() to anon;
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- restore_recoverable_feeder_media: for the given feeder, restore any
+-- soft-expired rows (archive populated, media_purged_at set) whose detected_at
+-- fits inside the feeder's CURRENT tier window. Used after a tier upgrade so
+-- the user sees their photos come back without manual intervention.
+-- Returns the number of rows restored.
+-- ────────────────────────────────────────────────────────────────────────────
+drop function if exists restore_recoverable_feeder_media(uuid);
+create or replace function restore_recoverable_feeder_media(p_feeder_id uuid)
+returns integer
+language plpgsql security definer
+as $$
+declare
+    restored int;
+begin
+    update community_detections d
+       set image_url          = d.archived_image_url,
+           video_url          = d.archived_video_url,
+           archived_image_url = null,
+           archived_video_url = null,
+           media_purged_at    = null
+      from feeders f
+     where d.feeder_id = p_feeder_id
+       and f.id = p_feeder_id
+       and d.media_purged_at is not null
+       and (d.archived_image_url is not null or d.archived_video_url is not null)
+       and d.detected_at >= now() - tier_retention(f.subscription_tier);
+    get diagnostics restored = row_count;
+    return restored;
+end;
+$$;
+
+grant execute on function restore_recoverable_feeder_media(uuid) to anon;
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- Optional: schedule the nightly purge via pg_cron.

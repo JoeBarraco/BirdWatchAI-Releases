@@ -78,13 +78,30 @@ function renderFeed() {
         const feederId = d.feeder_id || d.feeders?.id;
         const isFollowing = feederId && userFollowedFeeders.includes(feederId);
 
+        // Soft-expired vs hard-deleted differ by whether the archive's still
+        // populated. The PostgREST select doesn't pull the archive columns
+        // by default (privacy — the URLs are kept server-side for the grace
+        // period only), so we derive the "recoverable" window from
+        // media_purged_at + the documented 30-day grace.
+        let mediaCell = '';
+        if (d.image_url) {
+            mediaCell = `<img src="${d.image_url}" alt="${esc(d.species)}" loading="lazy" data-carousel-species="${esc(d.species)}">`;
+        } else if (d.media_purged_at) {
+            const purgedAt = new Date(d.media_purged_at);
+            const graceEnd = new Date(purgedAt.getTime() + 30 * 24 * 60 * 60 * 1000);
+            const recoverable = graceEnd > new Date();
+            const daysLeft = recoverable ? Math.max(1, Math.ceil((graceEnd - new Date()) / (24 * 60 * 60 * 1000))) : 0;
+            const title = recoverable
+                ? `Photo hidden from the feed on ${purgedAt.toLocaleDateString()} — past the feeder's storage retention. Still recoverable for ${daysLeft} more day${daysLeft === 1 ? '' : 's'}: upgrade the feeder's tier and any photo whose detection falls inside the new window comes back automatically.`
+                : `Photo was permanently deleted on ${graceEnd.toLocaleDateString()} (30-day recovery grace expired). The detection itself is kept for stats / life list.`;
+            const label = recoverable
+                ? `photo expired<br><small style="font-size:0.6rem;opacity:0.8;">recoverable · ${daysLeft}d left</small>`
+                : `photo deleted<br><small style="font-size:0.6rem;opacity:0.8;">past recovery</small>`;
+            mediaCell = `<div class="card-media-expired" title="${esc(title)}">📷<br>${label}</div>`;
+        }
         return `
         <div class="card${isNew ? ' new' : ''}" data-id="${d.id}">
-            ${d.image_url
-                ? `<img src="${d.image_url}" alt="${esc(d.species)}" loading="lazy" data-carousel-species="${esc(d.species)}">`
-                : (d.media_purged_at
-                    ? `<div class="card-media-expired" title="Photo was removed from community storage on ${esc(new Date(d.media_purged_at).toLocaleString())}. The detection itself is kept for stats / life list. Upgrade the feeder's tier to keep future photos longer.">📷<br>photo expired</div>`
-                    : '')}
+            ${mediaCell}
             <div class="card-body">
                 <div class="card-title">
                     <span class="species-link" data-species="${esc(d.species)}" style="cursor:pointer;text-decoration:underline dotted;">${esc(d.species)}</span>${d.rarity

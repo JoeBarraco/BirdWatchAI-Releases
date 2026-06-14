@@ -176,8 +176,29 @@ Deno.serve(async (req) => {
           { status: isPerm ? 403 : 400, headers: corsHeaders }
         );
       }
+
+      // Auto-restore any soft-expired media that fits inside the new tier's
+      // window. Best-effort — a restore failure shouldn't block the tier
+      // change itself, just surface in the response so the UI can mention it.
+      let mediaRestored: number | null = null;
+      let restoreError: string | null = null;
+      try {
+        const { data: r, error: restoreErr } = await supabase.rpc('restore_recoverable_feeder_media', {
+          p_feeder_id: feeder_id,
+        });
+        if (restoreErr) restoreError = restoreErr.message;
+        else mediaRestored = typeof r === 'number' ? r : (r ?? 0);
+      } catch (e) {
+        restoreError = String(e);
+      }
+
       return new Response(
-        JSON.stringify({ success: true, ...(result ?? {}) }),
+        JSON.stringify({
+          success: true,
+          ...(result ?? {}),
+          media_restored: mediaRestored,
+          restore_error:  restoreError,
+        }),
         { status: 200, headers: corsHeaders }
       );
     }

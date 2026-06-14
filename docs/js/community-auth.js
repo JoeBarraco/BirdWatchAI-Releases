@@ -946,9 +946,19 @@ async function submitTierChange() {
                 f.subscription_granted_at  = new Date().toISOString();
             }
         }
+        // Reload detections so any restored media reappears in the Feed view
+        // immediately. Best-effort — falls back to the local update only.
+        const body = await res.json().catch(() => ({}));
+        if (typeof loadFeed === 'function') {
+            try { await loadFeed(); } catch { /* ignore */ }
+        }
+
         closeTierModal();
         if (typeof renderFeeders === 'function') renderFeeders();
-        showToast(`Feeder "${displayName}" → ${tier} tier.`);
+        const restoredNote = body && typeof body.media_restored === 'number' && body.media_restored > 0
+            ? ` Restored ${body.media_restored} previously-expired photo${body.media_restored === 1 ? '' : 's'}.`
+            : '';
+        showToast(`Feeder "${displayName}" → ${tier} tier.${restoredNote}`);
     } catch (e) {
         const errEl = document.getElementById('tier-modal-error');
         if (errEl) { errEl.textContent = e.message; errEl.style.display = 'block'; }
