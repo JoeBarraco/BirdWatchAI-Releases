@@ -65,9 +65,24 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { action, email, password, detection_id } = body;
+    const { action, email, password, detection_id, feeder_id } = body;
 
-    if (!action || !email || !password || !detection_id) {
+    // Per-action required-field validation — feeder-delete uses feeder_id, the
+    // detection actions use detection_id, but all three need an action + creds.
+    if (!action || !email || !password) {
+      return new Response(
+        JSON.stringify({ error: 'Missing required fields' }),
+        { status: 400, headers: corsHeaders }
+      );
+    }
+    if (action === 'delete_feeder') {
+      if (!feeder_id) {
+        return new Response(
+          JSON.stringify({ error: 'Missing required fields' }),
+          { status: 400, headers: corsHeaders }
+        );
+      }
+    } else if (!detection_id) {
       return new Response(
         JSON.stringify({ error: 'Missing required fields' }),
         { status: 400, headers: corsHeaders }
@@ -83,6 +98,49 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({ error: 'Invalid moderator credentials' }),
         { status: 401, headers: corsHeaders }
+      );
+    }
+
+    // ── ACTION: delete_feeder ────────────────────────────────────────────────
+    // Cleanup path for the duplicate-feeder problem (a config reset on the
+    // server used to spawn a fresh device_key and leave the old row stranded
+    // under the same display_name). The accompanying RPC
+    // moderator_delete_feeder does the DB side; we clear the storage files
+    // here first so they don't become orphaned blobs.
+    if (action === 'delete_feeder') {
+      const { data: detections, error: listErr } = await supabase
+        .from('community_detections')
+        .select('image_url, video_url')
+        .eq('feeder_id', feeder_id);
+      if (listErr) {
+        return new Response(
+          JSON.stringify({ error: 'Failed to list feeder detections: ' + listErr.message }),
+          { status: 500, headers: corsHeaders }
+        );
+      }
+      for (const d of (detections ?? [])) {
+        await removeStorageFile(d.image_url);
+        await removeStorageFile(d.video_url);
+      }
+
+      const { data: result, error: rpcErr } = await supabase.rpc('moderator_delete_feeder', {
+        p_email:     email,
+        p_password:  password,
+        p_feeder_id: feeder_id,
+      });
+      if (rpcErr) {
+        return new Response(
+          JSON.stringify({ error: rpcErr.message }),
+          { status: 400, headers: corsHeaders }
+        );
+      }
+      return new Response(
+        JSON.stringify({
+          success:            true,
+          feeder_deleted:     result?.feeder_deleted ?? false,
+          detections_deleted: result?.detections_deleted ?? 0,
+        }),
+        { status: 200, headers: corsHeaders }
       );
     }
 
@@ -161,7 +219,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ error: 'Invalid action. Use "update" or "delete".' }),
+      JSON.stringify({ error: 'Invalid action. Use "update", "delete", or "delete_feeder".' }),
       { status: 400, headers: corsHeaders }
     );
 

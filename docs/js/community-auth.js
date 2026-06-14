@@ -809,6 +809,65 @@ async function confirmModDelete(detectionId) {
     }
 }
 
+// Moderator-only: delete a community feeder row and every community_detection that
+// referenced it (including the photos/videos in storage). Used to clean up the
+// duplicate feeders that accumulated before the activation-key feeder identity
+// (a config reset used to spawn a fresh device key, and the old feeder row
+// stayed in the table with its display_name).
+//
+// Routes through the same moderator-delete-media edge function as the
+// per-detection delete: the function validates moderator credentials, fetches
+// the feeder's detections so it can remove the storage files, then calls the
+// `moderator_delete_feeder` RPC to remove the rows in a single transaction.
+async function confirmModDeleteFeeder(btn) {
+    const feederId   = btn && btn.dataset ? btn.dataset.feederId   : '';
+    const displayName = btn && btn.dataset ? btn.dataset.feederName : 'Unnamed feeder';
+    if (!feederId) return;
+    if (!confirm(`Delete the feeder "${displayName}"?\n\nThis also removes every community detection (and its photo / video) that was shared by this feeder. It cannot be undone.`)) return;
+
+    const { email, password } = getModCreds();
+    try {
+        const functionsUrl = SUPABASE_URL.replace('.supabase.co', '.supabase.co/functions/v1');
+        const res = await fetch(`${functionsUrl}/moderator-delete-media`, {
+            method: 'POST',
+            headers: {
+                apikey: ANON_KEY,
+                Authorization: `Bearer ${ANON_KEY}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                action:    'delete_feeder',
+                email,
+                password,
+                feeder_id: feederId,
+            }),
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.error || err.message || 'Delete failed');
+        }
+        const result = await res.json().catch(() => ({}));
+        // Reflect the deletion locally so the card disappears immediately. Both id
+        // shapes can appear depending on how the feeder_status view is built.
+        if (typeof allFeeders !== 'undefined') {
+            allFeeders = allFeeders.filter(x => String(x.id || x.feeder_id) !== String(feederId));
+        }
+        // Also drop any cached detections that referenced this feeder so the Feed
+        // tab doesn't keep showing them until the next refresh.
+        if (typeof allDetections !== 'undefined') {
+            allDetections = allDetections.filter(x => String(x.feeder_id) !== String(feederId));
+        }
+        if (typeof renderFeeders === 'function') renderFeeders();
+        if (typeof renderFeed === 'function') renderFeed();
+        const detCount = result && typeof result.detections_deleted === 'number'
+            ? `, ${result.detections_deleted} detection${result.detections_deleted === 1 ? '' : 's'} removed`
+            : '';
+        showToast(`Feeder "${displayName}" deleted${detCount}.`);
+    } catch (err) {
+        showToast('Error: ' + err.message);
+    }
+}
+
 // ── Forgot password ────────────────────────────────────────
 function showForgotPassword() {
     closeModLogin();

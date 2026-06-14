@@ -2473,7 +2473,9 @@
         .feeder-card.offline    { border-left-color: #c0392b; }
         .feeder-card-header {
             display: flex;
-            align-items: center;
+            /* Top-align so when the name wraps to two lines the dot and the state pill
+               stay anchored to the first line instead of floating to the middle. */
+            align-items: flex-start;
             gap: 8px;
         }
         .feeder-name {
@@ -2484,14 +2486,21 @@
             margin: 0;
             flex: 1;
             min-width: 0;
+            /* Allow the name to wrap to two lines so longer names show fully instead
+               of being truncated mid-word, while still clamping very long names so
+               they don't blow out the card. */
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
             overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
+            word-break: break-word;
+            line-height: 1.25;
         }
         .feeder-status-dot {
             display: inline-block;
             width: 10px;
             height: 10px;
+            margin-top: 6px;  /* nudge down so the dot aligns with the first line of the (possibly wrapped) name */
             border-radius: 50%;
             background: var(--color-gray-500);
             flex-shrink: 0;
@@ -2526,6 +2535,10 @@
             padding: 2px 8px;
             border-radius: 999px;
             flex-shrink: 0;
+            /* Stay on the first line of the name even when the name wraps. */
+            align-self: flex-start;
+            margin-top: 2px;
+            white-space: nowrap;
         }
         .feeder-state-pill.online,
         .feeder-state-pill.monitoring { background: #e6f5ec; color: #1f7a3a; }
@@ -2586,6 +2599,26 @@
         .feeder-show-on-map:hover {
             border-color: var(--color-primary);
             color: var(--color-primary);
+        }
+        /* Moderator-only "delete feeder" button. Styled red to match the mod-delete
+           pattern on detection cards, and pushed to the right so it doesn't get
+           confused with the regular per-feeder actions. */
+        .feeder-mod-delete {
+            font-family: inherit;
+            font-size: 0.8rem;
+            font-weight: 500;
+            padding: 6px 10px;
+            border: 1px solid #f1c4be;
+            border-radius: 6px;
+            background: #fdecea;
+            color: #b03a2e;
+            cursor: pointer;
+            margin-left: auto;
+            transition: all 0.15s;
+        }
+        .feeder-mod-delete:hover {
+            border-color: #b03a2e;
+            background: #f8d7d3;
         }
         .feeder-meta dd a {
             color: var(--color-primary);
