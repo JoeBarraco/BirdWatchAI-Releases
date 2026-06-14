@@ -40,6 +40,16 @@ create or replace function feeders_anon_update_guard()
 returns trigger
 language plpgsql
 as $$
+declare
+    -- Compare through jsonb so columns that don't exist yet on this database
+    -- (e.g. the subscription_* columns, which only land once
+    -- setup-subscriptions.sql is applied) are simply absent from the maps
+    -- rather than raising 42703 "record new has no field …". A missing key
+    -- yields SQL NULL on both sides, so the is-distinct-from check is a
+    -- no-op for any column not present — the trigger is safe to install
+    -- before OR after the subscription migration.
+    n jsonb := to_jsonb(new);
+    o jsonb := to_jsonb(old);
 begin
     -- Service role and SECURITY DEFINER RPCs run as their definer (usually
     -- 'postgres'), not 'anon', so they skip the guard. Only direct
@@ -48,29 +58,32 @@ begin
         return new;
     end if;
 
-    -- Identity / ownership columns — must never change via anon.
+    -- Identity / ownership columns — must never change via anon. id and
+    -- device_key are core columns guaranteed to exist (device_key is the
+    -- upsert conflict target), so reference them directly.
     if new.id is distinct from old.id then
         raise exception 'feeders.id is immutable';
     end if;
     if new.device_key is distinct from old.device_key then
         raise exception 'feeders.device_key cannot be changed via anon (use the appropriate RPC).';
     end if;
-    if coalesce(new.created_at, old.created_at) is distinct from old.created_at then
+    if (n -> 'created_at') is distinct from (o -> 'created_at') then
         raise exception 'feeders.created_at is immutable';
     end if;
 
     -- Subscription columns — must only flow through admin_set_feeder_tier
-    -- (today) or a future Stripe webhook running as service_role.
-    if new.subscription_tier is distinct from old.subscription_tier then
+    -- (today) or a future Stripe webhook running as service_role. Guarded
+    -- via jsonb so this trigger doesn't assume the columns exist.
+    if (n -> 'subscription_tier') is distinct from (o -> 'subscription_tier') then
         raise exception 'feeders.subscription_tier must be changed via admin_set_feeder_tier';
     end if;
-    if new.subscription_renews_at is distinct from old.subscription_renews_at then
+    if (n -> 'subscription_renews_at') is distinct from (o -> 'subscription_renews_at') then
         raise exception 'feeders.subscription_renews_at is read-only via anon';
     end if;
-    if new.subscription_granted_by is distinct from old.subscription_granted_by then
+    if (n -> 'subscription_granted_by') is distinct from (o -> 'subscription_granted_by') then
         raise exception 'feeders.subscription_granted_by is read-only via anon';
     end if;
-    if new.subscription_granted_at is distinct from old.subscription_granted_at then
+    if (n -> 'subscription_granted_at') is distinct from (o -> 'subscription_granted_at') then
         raise exception 'feeders.subscription_granted_at is read-only via anon';
     end if;
 
