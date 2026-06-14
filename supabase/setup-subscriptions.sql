@@ -157,3 +157,45 @@ end;
 $$;
 
 grant execute on function purge_expired_feeder_media() to anon;
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- Optional: schedule the nightly purge via pg_cron.
+--
+-- Approach A — call the edge function from pg_cron (preferred, since the
+-- function also removes the storage objects in addition to nulling the URLs).
+-- Replace SUPABASE_URL, ANON_KEY and CRON_SECRET below. The CRON_SECRET must
+-- match what's set on the purge-expired-media function:
+--     supabase secrets set CRON_SECRET=<long-random>
+--
+-- /*
+--     create extension if not exists pg_cron;
+--     select cron.schedule(
+--         'purge-expired-community-media',
+--         '15 4 * * *',  -- daily at 04:15 UTC
+--         $cmd$
+--             select net.http_post(
+--                 url     := 'https://<SUPABASE_URL>.functions.supabase.co/purge-expired-media',
+--                 headers := jsonb_build_object(
+--                     'Authorization', 'Bearer <CRON_SECRET>',
+--                     'Content-Type',  'application/json'
+--                 ),
+--                 body    := '{}'::jsonb
+--             );
+--         $cmd$
+--     );
+-- */
+--
+-- Approach B — call the RPC directly from pg_cron. Simpler, but the orphaned
+-- storage objects then accumulate until the next edge-function purge runs
+-- (admin "Purge expired media" button is fine for that). Use this if you'd
+-- rather not deal with edge-function secrets.
+--
+-- /*
+--     create extension if not exists pg_cron;
+--     select cron.schedule(
+--         'mark-expired-community-media',
+--         '15 4 * * *',
+--         $cmd$ select count(*) from purge_expired_feeder_media(); $cmd$
+--     );
+-- */
+-- ────────────────────────────────────────────────────────────────────────────
