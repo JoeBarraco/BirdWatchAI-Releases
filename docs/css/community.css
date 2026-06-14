@@ -2600,6 +2600,24 @@
             border-color: var(--color-primary);
             color: var(--color-primary);
         }
+        /* "🔗 Copy link" — same neutral styling as the other secondary actions on
+           the feeder card, brand-color on hover to signal the click. */
+        .feeder-copy-link {
+            font-family: inherit;
+            font-size: 0.8rem;
+            font-weight: 500;
+            padding: 6px 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--bg-card);
+            color: var(--color-gray-700);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .feeder-copy-link:hover {
+            border-color: var(--color-primary);
+            color: var(--color-primary);
+        }
         /* Moderator-only "delete feeder" button. Styled red to match the mod-delete
            pattern on detection cards, and pushed to the right so it doesn't get
            confused with the regular per-feeder actions. */
