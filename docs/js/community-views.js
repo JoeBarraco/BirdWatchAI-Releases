@@ -1064,7 +1064,11 @@ function renderStats() {
                 const fill = sp === 'Unknown' ? '#c8c4bd' : speciesColor(sp);
                 const startCls = idx === 0 ? '' : ' bar-seg--group';
                 const tip = `${r.key}: ${sp} — ${n.toLocaleString()}`;
-                return `<div class="bar-seg${startCls}" style="flex:${n} 0 0;background:${fill};"
+                // data-bw-species lets the document-level click delegate (below) drive the
+                // Activity-tab diurnal picker. Unknown is excluded — it's a catch-all bucket,
+                // not a single species to pin in the picker.
+                const speciesAttr = sp === 'Unknown' ? '' : ` data-bw-species="${escAttr(sp)}"`;
+                return `<div class="bar-seg${startCls}"${speciesAttr} style="flex:${n} 0 0;background:${fill};"
                              data-bw-tip="${escAttr(tip)}"></div>`;
             }).join('');
             return `
@@ -1168,10 +1172,15 @@ function renderStats() {
         const shownSum = top.reduce((s, [, c]) => s + c, 0);
         const otherCount = total - shownSum;
         const widthPct = (total / scaleMax) * 100;
+        // data-bw-species is the raw species name (no formatting) — the document-level click
+        // delegate below uses it to drive the Activity-tab diurnal picker without parsing tooltip
+        // text. Other / Unknown / pseudo-buckets are emitted without the attribute so they don't
+        // get the clickable cursor.
         const segs = top.map(([sp, c], i) => {
             const tip = tipFor(sp, c);
             const startCls = i === 0 ? '' : ' bar-seg--group';
-            return `<div class="bar-seg${startCls}" style="flex:${c} 0 0;background:${speciesColor(sp)};"
+            return `<div class="bar-seg${startCls}" data-bw-species="${escAttr(sp)}"
+                         style="flex:${c} 0 0;background:${speciesColor(sp)};"
                          data-bw-tip="${escAttr(tip)}"></div>`;
         }).join('');
         const otherSeg = otherCount > 0
@@ -2191,4 +2200,40 @@ function filterBySpecies(btn) {
     renderFeed();
     showBackToStatsBanner(speciesName);
 }
+
+// Click any species-colored segment in the Stats charts (Activity hour/DOW, Temperature,
+// Rarity Mix) → auto-select that species in the Activity tab's Diurnal Pattern picker and
+// reveal the resulting chart. Document-level delegation so it survives the renderStats()
+// re-renders that blow away the chart DOM on every filter change.
+document.addEventListener('click', (ev) => {
+    const seg = ev.target.closest && ev.target.closest('[data-bw-species]');
+    if (!seg) return;
+    const sp = seg.getAttribute('data-bw-species');
+    if (!sp) return;
+    const picker = document.getElementById('activity-species-pick');
+    if (!picker) return;
+
+    // Only proceed if the species actually exists in the picker (which is filtered to the
+    // current visible-detections window). Silently no-op otherwise so a stale click isn't
+    // confusing.
+    const opt = Array.from(picker.options).find(o => o.value === sp);
+    if (!opt) return;
+
+    picker.value = sp;
+    if (typeof renderActivitySpeciesChart === 'function') renderActivitySpeciesChart();
+
+    // If we're on a different stats sub-tab (Temperature, Life List), jump to Activity so the
+    // user sees what their click did. Find the Activity tab button the same way the back-to-
+    // stats banner does — by sniffing the onclick attribute.
+    if (typeof activeStatsTab !== 'undefined' && activeStatsTab !== 'activity') {
+        const activityBtn = Array.from(document.querySelectorAll('.stats-tab'))
+            .find(b => /switchStatsTab\('activity'/.test(b.getAttribute('onclick') || ''));
+        if (activityBtn) switchStatsTab('activity', activityBtn);
+    }
+
+    // Smooth-scroll the diurnal chart into view after the (possibly-just-shown) panel paints.
+    requestAnimationFrame(() => {
+        document.getElementById('activity-species-chart')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+});
 
