@@ -1001,7 +1001,16 @@ function renderStats() {
         }))
         .sort((a, b) => b.count - a.count);
 
+    // HTML-attribute escaper used by every chart block in this function. Wraps a value
+    // intended for an attribute that uses either single- OR double-quote delimiters.
+    function escAttr(s) {
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
     // ── Rarity mix (stacked bar at top of Life List) ──────
+    // Each rarity bucket is split into species sub-segments colored from speciesColor() so the
+    // hover surfaces "Rare: Northern Cardinal — 12" instead of just the rarity total. The first
+    // segment of every rarity group is tagged --group-start so the CSS can drop a thin divider.
     const RARITY_ORDER = [
         { key: 'Very Rare', cls: 'very-rare', color: '#c62828' },
         { key: 'Rare',      cls: 'rare',      color: '#e65100' },
@@ -1009,25 +1018,40 @@ function renderStats() {
         { key: 'Common',    cls: 'common',    color: '#2e7d32' },
     ];
     const rarityCounts = {};
+    const raritySpecies = {}; // rarity → { species: count }
     visible.forEach(d => {
         const r = d.rarity || 'Unknown';
+        const sp = d.species || 'Unknown';
         rarityCounts[r] = (rarityCounts[r] || 0) + 1;
+        if (!raritySpecies[r]) raritySpecies[r] = Object.create(null);
+        raritySpecies[r][sp] = (raritySpecies[r][sp] || 0) + 1;
     });
     const rarityTotal = Object.values(rarityCounts).reduce((a, b) => a + b, 0);
     const rarityMixHtml = rarityTotal === 0 ? '' : (() => {
+        // Helper: turn a rarity bucket into N species sub-segments (sorted heaviest → lightest)
+        // whose total width matches the rarity's percentage of the grand total. Each segment
+        // gets a data-bw-tip line for the chart-tooltip runtime.
+        function rarityGroupSegs(rarityKey, rarityColor) {
+            const map = raritySpecies[rarityKey] || {};
+            const sorted = Object.entries(map).sort((a, b) => b[1] - a[1]);
+            if (sorted.length === 0) return '';
+            const rarityTot = sorted.reduce((s, [, c]) => s + c, 0);
+            return sorted.map(([sp, c], i) => {
+                const pct = (c / rarityTotal) * 100;
+                // Palette color for the species. Falls back to the rarity color for the
+                // unknown-species case so we never end up with a transparent block.
+                const fill = sp === 'Unknown' ? rarityColor : speciesColor(sp);
+                const groupStart = i === 0 ? ' rarity-mix-seg-group-start' : '';
+                const tip = `${rarityKey}: ${sp} — ${c.toLocaleString()} (${pct.toFixed(1)}%)`;
+                return `<div class="rarity-mix-seg${groupStart}" style="width:${pct.toFixed(2)}%;background:${fill};"
+                            data-bw-tip="${escAttr(tip)}"></div>`;
+            }).join('');
+        }
         const segments = RARITY_ORDER
             .filter(r => rarityCounts[r.key])
-            .map(r => {
-                const c   = rarityCounts[r.key];
-                const pct = (c / rarityTotal) * 100;
-                return `<div class="rarity-mix-seg" style="width:${pct.toFixed(2)}%;background:${r.color};"
-                           title="${r.key}: ${c.toLocaleString()} (${pct.toFixed(1)}%)"></div>`;
-            }).join('');
+            .map(r => rarityGroupSegs(r.key, r.color)).join('');
         const unknown = rarityCounts['Unknown'];
-        const unknownSeg = unknown
-            ? `<div class="rarity-mix-seg" style="width:${((unknown / rarityTotal) * 100).toFixed(2)}%;background:#c8c4bd;"
-                   title="Unknown: ${unknown.toLocaleString()}"></div>`
-            : '';
+        const unknownSeg = unknown ? rarityGroupSegs('Unknown', '#c8c4bd') : '';
         const legend = RARITY_ORDER
             .filter(r => rarityCounts[r.key])
             .map(r => {
@@ -1046,7 +1070,7 @@ function renderStats() {
         return `
             <div class="rarity-mix-wrap">
                 <div class="stats-section-title" style="margin-bottom:0.5rem;">Rarity Mix</div>
-                <div class="rarity-mix-bar">${segments}${unknownSeg}</div>
+                <div class="rarity-mix-bar" data-bw-chart="rarity-stack">${segments}${unknownSeg}</div>
                 <div class="rarity-mix-legend">${legend}</div>
             </div>`;
     })();
@@ -1078,14 +1102,23 @@ function renderStats() {
     // ── Hourly & Daily Activity ───────────────────────────
     const hourCounts = new Array(24).fill(0);
     const dayCounts  = new Array(7).fill(0);
+    // Per-species breakdowns powering the hover tooltips on each bar — { hour|dow: { species: count } }.
+    const hourSpecies = Array.from({ length: 24 }, () => Object.create(null));
+    const daySpecies  = Array.from({ length: 7  }, () => Object.create(null));
     visible.forEach(d => {
         const dt = new Date(d.detected_at);
-        hourCounts[dt.getHours()]++;
-        dayCounts[dt.getDay()]++;
+        const sp = d.species || 'Unknown';
+        const h = dt.getHours();
+        const dw = dt.getDay();
+        hourCounts[h]++;
+        dayCounts[dw]++;
+        hourSpecies[h][sp] = (hourSpecies[h][sp] || 0) + 1;
+        daySpecies[dw][sp] = (daySpecies[dw][sp] || 0) + 1;
     });
     const maxHour = Math.max(...hourCounts, 1);
     const maxDay  = Math.max(...dayCounts,  1);
-    const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const DAY_NAMES_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const DAY_NAMES      = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
     // Cache per-species hour buckets for the picker below (reuses spMap.hours)
     window._activitySpMap = spMap;
@@ -1099,23 +1132,48 @@ function renderStats() {
         ? prevPick
         : (activitySpeciesList.includes(selectedSpecies) ? selectedSpecies : (activitySpeciesList[0] || ''));
 
+    // Top-N + "Other" rolling tooltip rows for a per-bucket species breakdown. Picks the heaviest
+    // contributors so a busy hour reads as the actual mix, not a wall of single-detection rows.
+    function bucketSpeciesRows(speciesMap, total, topN) {
+        const entries = Object.entries(speciesMap).sort((a, b) => b[1] - a[1]);
+        const rows = entries.slice(0, topN).map(([sp, c]) => ({
+            species: sp,
+            color: speciesColor(sp),
+            count: c
+        }));
+        const shown = rows.reduce((s, r) => s + r.count, 0);
+        if (total > shown) rows.push({ species: 'Other', color: '#7a8694', count: total - shown });
+        return rows;
+    }
+
+    const hourBuckets = hourCounts.map((c, h) => ({
+        title: `${fmtHour(h)} — ${c} detection${c === 1 ? '' : 's'}`,
+        rows: bucketSpeciesRows(hourSpecies[h], c, 8)
+    }));
+    const dayBuckets = dayCounts.map((c, d) => ({
+        title: `${DAY_NAMES_FULL[d]} — ${c} detection${c === 1 ? '' : 's'}`,
+        rows: bucketSpeciesRows(daySpecies[d], c, 8)
+    }));
+
     document.getElementById('stats-activity').innerHTML = `
         <div class="stats-section-title">Detections by Hour of Day</div>
-        <div class="bar-chart-h">${hourCounts.map((c, h) => `
-            <div class="bar-row">
+        <div class="bar-chart-h" data-bw-chart="bars-h" data-bw-buckets='${escAttr(JSON.stringify(hourBuckets))}'>${hourCounts.map((c, h) => `
+            <div class="bar-row" data-bw-bucket="${h}">
                 <div class="bar-label">${fmtHour(h)}</div>
                 <div class="bar-track"><div class="bar-fill" style="width:${(c/maxHour*100).toFixed(1)}%"></div></div>
                 <div class="bar-value">${c}</div>
             </div>`).join('')}
         </div>
+        <div class="chart-axis-title" style="text-align:center;color:var(--color-gray-500);font-size:0.72rem;margin-top:0.35rem;">Hour of day (local)</div>
         <div class="stats-section-title" style="margin-top:2rem;">Detections by Day of Week</div>
-        <div class="bar-chart-h">${dayCounts.map((c, d) => `
-            <div class="bar-row">
+        <div class="bar-chart-h" data-bw-chart="bars-h" data-bw-buckets='${escAttr(JSON.stringify(dayBuckets))}'>${dayCounts.map((c, d) => `
+            <div class="bar-row" data-bw-bucket="${d}">
                 <div class="bar-label">${DAY_NAMES[d]}</div>
                 <div class="bar-track"><div class="bar-fill" style="width:${(c/maxDay*100).toFixed(1)}%"></div></div>
                 <div class="bar-value">${c}</div>
             </div>`).join('')}
         </div>
+        <div class="chart-axis-title" style="text-align:center;color:var(--color-gray-500);font-size:0.72rem;margin-top:0.35rem;">Day of week</div>
         ${activitySpeciesList.length > 0 ? `
         <div class="stats-section-title" style="margin-top:2rem;display:flex;flex-wrap:wrap;align-items:center;gap:0.75rem;">
             <span>Diurnal Pattern by Species</span>
@@ -1464,16 +1522,24 @@ function renderTrendChart() {
         xLabels += `<text x="${x}" y="${H - PAD.bottom + 16}" text-anchor="middle" font-size="10" fill="#7a756d">${label}</text>`;
     });
 
-    // Polylines per shown species
+    // Polylines per shown species. Dots are drawn for v>0 as a visual cue; the per-day per-
+    // species count surfaces via the hover crosshair tooltip (community-charts.js), not via
+    // browser-native SVG <title> popups (which are sluggish and inconsistently styled).
     let polylines = '', dots = '';
+    // Per-series xs / ys, captured here for the JSON sidecar so the crosshair runtime can snap to
+    // the nearest day without re-doing the projection math.
+    const xs = days.map((_, i) => xScale(i));
+    const trendSeriesJson = [];
     shownSpecies.forEach(sp => {
         const color = PALETTE[spColorIdx[sp] % PALETTE.length];
-        const pts = days.map((d, i) => `${xScale(i)},${yScale(dayMap[d][sp] || 0)}`).join(' ');
+        const counts = days.map(d => dayMap[d][sp] || 0);
+        const ys = counts.map(v => yScale(v));
+        const pts = xs.map((x, i) => `${x},${ys[i]}`).join(' ');
         polylines += `<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" opacity="0.85"/>`;
-        days.forEach((d, i) => {
-            const v = dayMap[d][sp] || 0;
-            if (v > 0) dots += `<circle cx="${xScale(i)}" cy="${yScale(v)}" r="3.5" fill="${color}" stroke="white" stroke-width="1.5"><title>${sp}: ${v} on ${d}</title></circle>`;
+        counts.forEach((v, i) => {
+            if (v > 0) dots += `<circle cx="${xs[i]}" cy="${ys[i]}" r="3.5" fill="${color}" stroke="white" stroke-width="1.5" pointer-events="none"/>`;
         });
+        trendSeriesJson.push({ species: sp, color, counts, ys });
     });
 
     // Rarity markers — show Rare / Very Rare as distinctive symbols above the baseline
@@ -1521,14 +1587,28 @@ function renderTrendChart() {
         </div>`
         : '';
 
+    // Friendly date headings for the crosshair tooltip — "Tue Jun 17" vs the raw "06-17".
+    const fmtDayHeading = (key) => {
+        const d = new Date(key + 'T00:00:00');
+        return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+    };
+    const trendDataJson = JSON.stringify({
+        xs,
+        plotTop: PAD.top,
+        plotBottom: PAD.top + chartH,
+        days: days.map(fmtDayHeading),
+        series: trendSeriesJson
+    }).replace(/'/g, '&#39;');
+
     chartEl.innerHTML = `
-        <div class="trend-svg-wrap">
+        <div class="trend-svg-wrap" data-bw-chart="trend-svg" data-trend='${trendDataJson}'>
             <svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px;display:block;">
                 ${gridLines}${yLabels}
                 <line x1="${PAD.left}" y1="${PAD.top}" x2="${PAD.left}" y2="${PAD.top+chartH}" stroke="#d0cbc3" stroke-width="1"/>
                 <line x1="${PAD.left}" y1="${PAD.top+chartH}" x2="${PAD.left+chartW}" y2="${PAD.top+chartH}" stroke="#d0cbc3" stroke-width="1"/>
                 ${xLabels}${polylines}${dots}
                 ${rarityMarkers}
+                <rect class="trend-hover" x="${PAD.left}" y="${PAD.top}" width="${chartW}" height="${chartH}" fill="transparent"/>
             </svg>
             ${rarityLegend}
         </div>`;
@@ -1544,11 +1624,16 @@ function renderCalendar() {
         return;
     }
 
-    // Count detections per local day (YYYY-MM-DD)
+    // Count detections per local day (YYYY-MM-DD), plus a per-day species breakdown for the
+    // hover tooltip — "Wed Jun 17 — 42 detections: Cardinal 12, Blue Jay 8, …".
     const dayCounts = {};
+    const daySpeciesMap = {};
     visible.forEach(d => {
         const key = d.detected_at.slice(0, 10);
         dayCounts[key] = (dayCounts[key] || 0) + 1;
+        const sp = d.species || 'Unknown';
+        if (!daySpeciesMap[key]) daySpeciesMap[key] = Object.create(null);
+        daySpeciesMap[key][sp] = (daySpeciesMap[key][sp] || 0) + 1;
     });
 
     // Always show a full 53-week span ending at the most recent detection
@@ -1614,7 +1699,9 @@ function renderCalendar() {
             : ''
     ).join('');
 
-    // Cell rects
+    // Cell rects. Each in-range cell carries a data-bw-bucket index into calBuckets so the chart
+    // runtime can render a styled tooltip with the species breakdown (replacing the SVG <title>).
+    const calBuckets = [];
     let rects = '';
     cells.forEach((c, idx) => {
         if (!c.inRange) return;
@@ -1622,14 +1709,29 @@ function renderCalendar() {
         const dow = idx % 7;
         const x   = 40 + w * STEP;
         const y   = 20 + dow * STEP;
-        const title = c.count === 0
-            ? `${c.key} — no detections`
-            : `${c.key} — ${c.count} detection${c.count === 1 ? '' : 's'}`;
+        const bucketIdx = calBuckets.length;
+        const headingDate = new Date(c.key + 'T00:00:00');
+        const heading = headingDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+        if (c.count === 0) {
+            calBuckets.push({ title: `${heading} — no detections`, rows: [] });
+        } else {
+            const spMap = daySpeciesMap[c.key] || {};
+            const sorted = Object.entries(spMap).sort((a, b) => b[1] - a[1]);
+            const TOP_N = 10;
+            const rows = sorted.slice(0, TOP_N).map(([sp, cn]) => ({ species: sp, color: speciesColor(sp), count: cn }));
+            const shown = rows.reduce((s, r) => s + r.count, 0);
+            if (c.count > shown) rows.push({ species: 'Other', color: '#7a8694', count: c.count - shown });
+            calBuckets.push({
+                title: `${heading} — ${c.count} detection${c.count === 1 ? '' : 's'}`,
+                rows
+            });
+        }
         rects += `<rect x="${x}" y="${y}" width="${CELL}" height="${CELL}" rx="2" ry="2"
-                    fill="${shade(c.count)}" stroke="var(--border)" stroke-width="0.5">
-                    <title>${title}</title>
-                  </rect>`;
+                    fill="${shade(c.count)}" stroke="var(--border)" stroke-width="0.5"
+                    data-bw-bucket="${bucketIdx}"></rect>`;
     });
+    const calBucketsJson = JSON.stringify(calBuckets)
+        .replace(/&/g, '&amp;').replace(/'/g, '&#39;');
 
     // Legend (shade scale)
     const legendShades = [0, 1, Math.round(maxCount * 0.375), Math.round(maxCount * 0.625), maxCount];
@@ -1652,7 +1754,7 @@ function renderCalendar() {
                 ? ` &middot; busiest day: <strong>${bestDay.key}</strong> with ${bestDay.count} detections`
                 : ''}
         </div>
-        <div class="calendar-wrap">
+        <div class="calendar-wrap" data-bw-chart="calendar" data-bw-buckets='${calBucketsJson}'>
             <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet"
                  style="display:block;width:100%;height:auto;max-height:240px;">
                 ${monthLabels}

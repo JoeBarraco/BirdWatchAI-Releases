@@ -2650,3 +2650,90 @@
         }
         .card-meta .card-loc-link:hover { color: var(--color-primary); border-bottom-color: var(--color-primary); }
 
+        /* === Interactive chart runtime (js/community-charts.js) ============================ */
+
+        /* Shared floating tooltip used by the trend / Activity / Calendar / Rarity charts. JS
+           sets position via fixed coords; we fade in when content is ready so the box doesn't
+           flash empty on first hover. */
+        .chart-tooltip {
+            position: fixed;
+            z-index: 1000;
+            pointer-events: none;
+            background: var(--color-cream, #faf7f0);
+            color: var(--color-gray-900, #2a2520);
+            border: 1px solid var(--color-gray-300, #cdc7bd);
+            border-radius: 8px;
+            padding: 0.45rem 0.65rem;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+            font-size: 0.78rem;
+            font-variant-numeric: tabular-nums;
+            line-height: 1.35;
+            max-width: 22rem;
+            opacity: 0;
+            transform: translateY(2px);
+            transition: opacity 0.12s ease-out;
+        }
+        .chart-tooltip.is-visible { opacity: 1; }
+        .chart-tooltip-title {
+            font-weight: 600;
+            margin-bottom: 0.3rem;
+            color: var(--color-gray-900, #2a2520);
+        }
+        .chart-tooltip-row {
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            padding: 0.05rem 0;
+        }
+        .chart-tooltip-row .chart-tooltip-swatch {
+            width: 9px;
+            height: 9px;
+            border-radius: 2px;
+            flex-shrink: 0;
+        }
+        .chart-tooltip-row .chart-tooltip-species {
+            flex: 1 1 auto;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .chart-tooltip-row .chart-tooltip-count {
+            margin-left: 0.5rem;
+            font-weight: 600;
+        }
+        .chart-tooltip-row.is-dim .chart-tooltip-species,
+        .chart-tooltip-row.is-dim .chart-tooltip-count {
+            color: var(--color-gray-500, #7a756d);
+            font-weight: 400;
+        }
+
+        /* Trend chart hover decorations — JS appends <line.trend-crosshair> and dots dynamically. */
+        .trend-svg-wrap { position: relative; }
+        .trend-hover { cursor: crosshair; }
+
+        /* Horizontal bar chart hover state (Activity tab: hour-of-day, day-of-week). */
+        .bar-chart-h .bar-row { transition: background-color 0.1s ease-out; }
+        .bar-chart-h .bar-row.is-hover {
+            background: rgba(0, 0, 0, 0.04);
+            border-radius: 4px;
+        }
+        .bar-chart-h .bar-row.is-hover .bar-fill { filter: brightness(1.1); }
+
+        /* Calendar cells become a thin outlined cell on hover so the user can read which day
+           the cursor is over even when the shade is close to a neighbor. */
+        [data-bw-chart="calendar"] rect[data-bw-bucket] { transition: filter 0.1s ease-out; }
+        [data-bw-chart="calendar"] rect[data-bw-bucket].is-hover {
+            filter: brightness(1.2) saturate(1.1);
+            stroke: var(--color-gray-700, #4f4a42);
+            stroke-width: 1.5;
+        }
+
+        /* Rarity mix bar: each species sub-segment can brighten on hover so it pops out of the
+           shared track. The grouping divider is rendered as a thin inset shadow. */
+        .rarity-mix-seg { transition: filter 0.1s ease-out; }
+        .rarity-mix-seg.is-hover { filter: brightness(1.15) saturate(1.05); }
+        .rarity-mix-seg + .rarity-mix-seg-group-start {
+            box-shadow: inset 1px 0 0 rgba(0, 0, 0, 0.25);
+        }
+
