@@ -1412,11 +1412,14 @@ function renderActivitySpeciesChart() {
     if (!chartEl || !pick || !spMap[pick]) return;
     const hours  = spMap[pick].hours;
     const maxVal = Math.max(...hours, 1);
+    // Use the selected species' palette color so this chart's identity matches its appearance in
+    // the trend chart, life list swatches, and the stacked Activity bars above.
+    const color = speciesColor(pick);
     chartEl.innerHTML = `
         <div class="bar-chart-h">${hours.map((c, h) => `
             <div class="bar-row">
                 <div class="bar-label">${fmtHour(h)}</div>
-                <div class="bar-track"><div class="bar-fill" style="width:${(c/maxVal*100).toFixed(1)}%"></div></div>
+                <div class="bar-track"><div class="bar-fill" style="width:${(c/maxVal*100).toFixed(1)}%;background:${color};"></div></div>
                 <div class="bar-value">${c}</div>
             </div>`).join('')}
         </div>`;
