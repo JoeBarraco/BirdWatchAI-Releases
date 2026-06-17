@@ -1602,7 +1602,7 @@ function renderTrendChart() {
 
     chartEl.innerHTML = `
         <div class="trend-svg-wrap" data-bw-chart="trend-svg" data-trend='${trendDataJson}'>
-            <svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px;display:block;">
+            <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" width="100%" style="display:block;height:auto;">
                 ${gridLines}${yLabels}
                 <line x1="${PAD.left}" y1="${PAD.top}" x2="${PAD.left}" y2="${PAD.top+chartH}" stroke="#d0cbc3" stroke-width="1"/>
                 <line x1="${PAD.left}" y1="${PAD.top+chartH}" x2="${PAD.left+chartW}" y2="${PAD.top+chartH}" stroke="#d0cbc3" stroke-width="1"/>
