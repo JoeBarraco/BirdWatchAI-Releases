@@ -1317,16 +1317,18 @@ function renderStats() {
         .join('');
 
     // Stack each temperature range by species so the bar reads as "who shows up in the cold,
-    // who shows up in the heat". Bucket tooltips give the same top-N summary as the other charts;
-    // individual segment tooltips name the bird.
-    const tempBuckets = TEMP_RANGES.map(r => ({
+    // who shows up in the heat". Bars are sorted heaviest → lightest so the dominant band reads
+    // first regardless of where it sits on the temperature scale. The species table below keeps
+    // the natural cold → hot order so it still reads as a weather scan.
+    const tempRangesSorted = TEMP_RANGES.slice().sort((a, b) => b.count - a.count);
+    const tempBuckets = tempRangesSorted.map(r => ({
         title: `${r.label} — ${r.count.toLocaleString()} detection${r.count === 1 ? '' : 's'} · ${r.species.size} species`,
         rows: bucketSpeciesRows(r.spCounts, r.count, 8)
     }));
     document.getElementById('stats-temperature').innerHTML = tempTotal === 0
         ? '<div class="feed-empty">No temperature data for the current filters.</div>'
         : `<div class="stats-section-title">Detections by Temperature Range</div>
-           <div class="bar-chart-h" data-bw-chart="bars-h" data-bw-buckets='${escAttr(JSON.stringify(tempBuckets))}'>${TEMP_RANGES.map((r, i) => `
+           <div class="bar-chart-h" data-bw-chart="bars-h" data-bw-buckets='${escAttr(JSON.stringify(tempBuckets))}'>${tempRangesSorted.map((r, i) => `
                <div class="bar-row" data-bw-bucket="${i}">
                    <div class="bar-label-wide">${r.label}</div>
                    <div class="bar-track">${stackedTrack(r.spCounts, r.count, maxTemp, (sp, n) => `${sp} — ${n.toLocaleString()} in ${r.label}`)}</div>
