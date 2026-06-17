@@ -1146,6 +1146,32 @@ function renderStats() {
         return rows;
     }
 
+    // Render the species-stacked inner of a horizontal bar: a flex container whose total width is
+    // `(total/scaleMax)*100%`, sliced into colored segments proportional to per-species count.
+    // Each segment carries its own data-bw-tip so hovering one names exactly that bird; the
+    // surrounding .bar-row keeps its data-bw-bucket as a fallback for hovering the label / count
+    // area. Top-N + "Other" lump matches the rest of the page so stacks stay readable even when a
+    // bucket has 20+ species.
+    function stackedTrack(speciesMap, total, scaleMax, tipFor, topN = 8) {
+        if (total === 0) return '<div class="bar-stack" style="width:0;"></div>';
+        const entries = Object.entries(speciesMap).sort((a, b) => b[1] - a[1]);
+        const top = entries.slice(0, topN);
+        const shownSum = top.reduce((s, [, c]) => s + c, 0);
+        const otherCount = total - shownSum;
+        const widthPct = (total / scaleMax) * 100;
+        const segs = top.map(([sp, c], i) => {
+            const tip = tipFor(sp, c);
+            const startCls = i === 0 ? '' : ' bar-seg--group';
+            return `<div class="bar-seg${startCls}" style="flex:${c} 0 0;background:${speciesColor(sp)};"
+                         data-bw-tip="${escAttr(tip)}"></div>`;
+        }).join('');
+        const otherSeg = otherCount > 0
+            ? `<div class="bar-seg bar-seg--group bar-seg--other" style="flex:${otherCount} 0 0;background:#7a8694;"
+                    data-bw-tip="${escAttr(tipFor('Other', otherCount))}"></div>`
+            : '';
+        return `<div class="bar-stack" style="width:${widthPct.toFixed(2)}%;">${segs}${otherSeg}</div>`;
+    }
+
     const hourBuckets = hourCounts.map((c, h) => ({
         title: `${fmtHour(h)} — ${c} detection${c === 1 ? '' : 's'}`,
         rows: bucketSpeciesRows(hourSpecies[h], c, 8)
@@ -1160,7 +1186,7 @@ function renderStats() {
         <div class="bar-chart-h" data-bw-chart="bars-h" data-bw-buckets='${escAttr(JSON.stringify(hourBuckets))}'>${hourCounts.map((c, h) => `
             <div class="bar-row" data-bw-bucket="${h}">
                 <div class="bar-label">${fmtHour(h)}</div>
-                <div class="bar-track"><div class="bar-fill" style="width:${(c/maxHour*100).toFixed(1)}%"></div></div>
+                <div class="bar-track">${stackedTrack(hourSpecies[h], c, maxHour, (sp, n) => `${sp} — ${n.toLocaleString()} at ${fmtHour(h)}`)}</div>
                 <div class="bar-value">${c}</div>
             </div>`).join('')}
         </div>
@@ -1169,7 +1195,7 @@ function renderStats() {
         <div class="bar-chart-h" data-bw-chart="bars-h" data-bw-buckets='${escAttr(JSON.stringify(dayBuckets))}'>${dayCounts.map((c, d) => `
             <div class="bar-row" data-bw-bucket="${d}">
                 <div class="bar-label">${DAY_NAMES[d]}</div>
-                <div class="bar-track"><div class="bar-fill" style="width:${(c/maxDay*100).toFixed(1)}%"></div></div>
+                <div class="bar-track">${stackedTrack(daySpecies[d], c, maxDay, (sp, n) => `${sp} — ${n.toLocaleString()} on ${DAY_NAMES_FULL[d]}`)}</div>
                 <div class="bar-value">${c}</div>
             </div>`).join('')}
         </div>
@@ -1290,13 +1316,20 @@ function renderStats() {
         .map(([sp, c]) => `<span class="temp-topsp-chip">${esc(sp)} <span class="temp-topsp-count">${c}</span></span>`)
         .join('');
 
+    // Stack each temperature range by species so the bar reads as "who shows up in the cold,
+    // who shows up in the heat". Bucket tooltips give the same top-N summary as the other charts;
+    // individual segment tooltips name the bird.
+    const tempBuckets = TEMP_RANGES.map(r => ({
+        title: `${r.label} — ${r.count.toLocaleString()} detection${r.count === 1 ? '' : 's'} · ${r.species.size} species`,
+        rows: bucketSpeciesRows(r.spCounts, r.count, 8)
+    }));
     document.getElementById('stats-temperature').innerHTML = tempTotal === 0
         ? '<div class="feed-empty">No temperature data for the current filters.</div>'
         : `<div class="stats-section-title">Detections by Temperature Range</div>
-           <div class="bar-chart-h">${TEMP_RANGES.map(r => `
-               <div class="bar-row">
+           <div class="bar-chart-h" data-bw-chart="bars-h" data-bw-buckets='${escAttr(JSON.stringify(tempBuckets))}'>${TEMP_RANGES.map((r, i) => `
+               <div class="bar-row" data-bw-bucket="${i}">
                    <div class="bar-label-wide">${r.label}</div>
-                   <div class="bar-track"><div class="bar-fill" style="width:${(r.count/maxTemp*100).toFixed(1)}%"></div></div>
+                   <div class="bar-track">${stackedTrack(r.spCounts, r.count, maxTemp, (sp, n) => `${sp} — ${n.toLocaleString()} in ${r.label}`)}</div>
                    <div class="bar-value">${r.count} <span class="bar-sub">${r.species.size} sp.</span></div>
                </div>`).join('')}
            </div>

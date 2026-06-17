@@ -216,18 +216,32 @@
         }
 
         chart.addEventListener('mousemove', (ev) => {
+            // Walk from the cursor up looking for two things: the row container (for the hover
+            // highlight + bucket fallback) and the closest element with its own data-bw-tip (a
+            // species segment). If a segment tip is found, it wins — the user is asking about
+            // that specific bird, not the bucket as a whole. The bucket tooltip is still shown
+            // when hovering the label / count / empty track area.
+            let tipNode = null;
+            let rowNode = null;
             let node = ev.target;
-            while (node && node !== chart && !(node.classList && node.classList.contains(hoverChildSelector))) {
+            while (node && node !== chart) {
+                if (!tipNode && node.getAttribute && node.getAttribute('data-bw-tip')) tipNode = node;
+                if (!rowNode && node.classList && node.classList.contains(hoverChildSelector)) rowNode = node;
+                if (tipNode && rowNode) break;
                 node = node.parentNode;
             }
-            if (!node || node === chart) {
+            if (!rowNode && !tipNode) {
                 setHover(null);
                 hideTooltip();
                 return;
             }
-            setHover(node);
+            setHover(rowNode);
 
-            const bucketIdx = node.getAttribute('data-bw-bucket');
+            if (tipNode) {
+                showTooltip(escapeHtml(tipNode.getAttribute('data-bw-tip')), ev.clientX, ev.clientY);
+                return;
+            }
+            const bucketIdx = rowNode && rowNode.getAttribute('data-bw-bucket');
             if (buckets && bucketIdx != null) {
                 const b = buckets[+bucketIdx];
                 if (b) {
@@ -235,8 +249,9 @@
                     return;
                 }
             }
-            const tip = node.getAttribute('data-bw-tip');
-            if (tip) showTooltip(escapeHtml(tip), ev.clientX, ev.clientY);
+            // Fall back to the row's own data-bw-tip if it carries one (used by simpler charts).
+            const rowTip = rowNode && rowNode.getAttribute('data-bw-tip');
+            if (rowTip) showTooltip(escapeHtml(rowTip), ev.clientX, ev.clientY);
         });
         chart.addEventListener('mouseleave', () => {
             setHover(null);
