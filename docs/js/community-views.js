@@ -1172,34 +1172,44 @@ function renderStats() {
         return `<div class="bar-stack" style="width:${widthPct.toFixed(2)}%;">${segs}${otherSeg}</div>`;
     }
 
-    const hourBuckets = hourCounts.map((c, h) => ({
+    // Sort the bar list descending by detection count so the busiest hour / day reads first —
+    // matches the rest of the page's top-N ordering. We bind each entry to its original index so
+    // hourSpecies / daySpecies still resolve correctly when we render the stacked segments below.
+    const hourOrdered = hourCounts
+        .map((c, h) => ({ c, h }))
+        .sort((a, b) => b.c - a.c);
+    const dayOrdered = dayCounts
+        .map((c, d) => ({ c, d }))
+        .sort((a, b) => b.c - a.c);
+
+    const hourBuckets = hourOrdered.map(({ c, h }) => ({
         title: `${fmtHour(h)} — ${c} detection${c === 1 ? '' : 's'}`,
         rows: bucketSpeciesRows(hourSpecies[h], c, 8)
     }));
-    const dayBuckets = dayCounts.map((c, d) => ({
+    const dayBuckets = dayOrdered.map(({ c, d }) => ({
         title: `${DAY_NAMES_FULL[d]} — ${c} detection${c === 1 ? '' : 's'}`,
         rows: bucketSpeciesRows(daySpecies[d], c, 8)
     }));
 
     document.getElementById('stats-activity').innerHTML = `
         <div class="stats-section-title">Detections by Hour of Day</div>
-        <div class="bar-chart-h" data-bw-chart="bars-h" data-bw-buckets='${escAttr(JSON.stringify(hourBuckets))}'>${hourCounts.map((c, h) => `
-            <div class="bar-row" data-bw-bucket="${h}">
+        <div class="bar-chart-h" data-bw-chart="bars-h" data-bw-buckets='${escAttr(JSON.stringify(hourBuckets))}'>${hourOrdered.map(({ c, h }, i) => `
+            <div class="bar-row" data-bw-bucket="${i}">
                 <div class="bar-label">${fmtHour(h)}</div>
                 <div class="bar-track">${stackedTrack(hourSpecies[h], c, maxHour, (sp, n) => `${sp} — ${n.toLocaleString()} at ${fmtHour(h)}`)}</div>
                 <div class="bar-value">${c}</div>
             </div>`).join('')}
         </div>
-        <div class="chart-axis-title" style="text-align:center;color:var(--color-gray-500);font-size:0.72rem;margin-top:0.35rem;">Hour of day (local)</div>
+        <div class="chart-axis-title" style="text-align:center;color:var(--color-gray-500);font-size:0.72rem;margin-top:0.35rem;">Hour of day (local), busiest first</div>
         <div class="stats-section-title" style="margin-top:2rem;">Detections by Day of Week</div>
-        <div class="bar-chart-h" data-bw-chart="bars-h" data-bw-buckets='${escAttr(JSON.stringify(dayBuckets))}'>${dayCounts.map((c, d) => `
-            <div class="bar-row" data-bw-bucket="${d}">
+        <div class="bar-chart-h" data-bw-chart="bars-h" data-bw-buckets='${escAttr(JSON.stringify(dayBuckets))}'>${dayOrdered.map(({ c, d }, i) => `
+            <div class="bar-row" data-bw-bucket="${i}">
                 <div class="bar-label">${DAY_NAMES[d]}</div>
                 <div class="bar-track">${stackedTrack(daySpecies[d], c, maxDay, (sp, n) => `${sp} — ${n.toLocaleString()} on ${DAY_NAMES_FULL[d]}`)}</div>
                 <div class="bar-value">${c}</div>
             </div>`).join('')}
         </div>
-        <div class="chart-axis-title" style="text-align:center;color:var(--color-gray-500);font-size:0.72rem;margin-top:0.35rem;">Day of week</div>
+        <div class="chart-axis-title" style="text-align:center;color:var(--color-gray-500);font-size:0.72rem;margin-top:0.35rem;">Day of week, busiest first</div>
         ${activitySpeciesList.length > 0 ? `
         <div class="stats-section-title" style="margin-top:2rem;display:flex;flex-wrap:wrap;align-items:center;gap:0.75rem;">
             <span>Diurnal Pattern by Species</span>
