@@ -1028,50 +1028,59 @@ function renderStats() {
     });
     const rarityTotal = Object.values(rarityCounts).reduce((a, b) => a + b, 0);
     const rarityMixHtml = rarityTotal === 0 ? '' : (() => {
-        // Helper: turn a rarity bucket into N species sub-segments (sorted heaviest → lightest)
-        // whose total width matches the rarity's percentage of the grand total. Each segment
-        // gets a data-bw-tip line for the chart-tooltip runtime.
-        function rarityGroupSegs(rarityKey, rarityColor) {
-            const map = raritySpecies[rarityKey] || {};
+        // One row per rarity, each row's track split into species sub-segments — mirrors the
+        // server's Stats "Rarity composition" panel. Each track is 100% width within its row so
+        // species segments read as "what makes up this rarity" rather than "rarity vs rarity"
+        // (the head label already carries the absolute count and % of the grand total).
+        const ROW_ORDER = [
+            { key: 'Very Rare', cls: 'very-rare' },
+            { key: 'Rare',      cls: 'rare'      },
+            { key: 'Uncommon',  cls: 'uncommon'  },
+            { key: 'Common',    cls: 'common'    },
+            { key: 'Unknown',   cls: 'unknown'   },
+        ];
+        const presentRows = ROW_ORDER.filter(r => rarityCounts[r.key] > 0);
+
+        // Per-row bucket data — hovering the head / empty track area falls back to a full
+        // species summary for that rarity (top 8 + Other), same pattern as the Activity bars.
+        const buckets = presentRows.map(r => {
+            const c = rarityCounts[r.key];
+            const pct = ((c / rarityTotal) * 100).toFixed(1);
+            return {
+                title: `${r.key} — ${c.toLocaleString()} detection${c === 1 ? '' : 's'} (${pct}% of total)`,
+                rows: bucketSpeciesRows(raritySpecies[r.key] || {}, c, 8)
+            };
+        });
+
+        const rowsHtml = presentRows.map((r, i) => {
+            const c = rarityCounts[r.key];
+            const pct = ((c / rarityTotal) * 100).toFixed(1);
+            // Build species sub-segments inside a full-width stack — flex:count proportional to
+            // each species' contribution within this rarity. Sorted heaviest → lightest so the
+            // dominant bird in this rarity reads first.
+            const map = raritySpecies[r.key] || {};
             const sorted = Object.entries(map).sort((a, b) => b[1] - a[1]);
-            if (sorted.length === 0) return '';
-            const rarityTot = sorted.reduce((s, [, c]) => s + c, 0);
-            return sorted.map(([sp, c], i) => {
-                const pct = (c / rarityTotal) * 100;
-                // Palette color for the species. Falls back to the rarity color for the
-                // unknown-species case so we never end up with a transparent block.
-                const fill = sp === 'Unknown' ? rarityColor : speciesColor(sp);
-                const groupStart = i === 0 ? ' rarity-mix-seg-group-start' : '';
-                const tip = `${rarityKey}: ${sp} — ${c.toLocaleString()} (${pct.toFixed(1)}%)`;
-                return `<div class="rarity-mix-seg${groupStart}" style="width:${pct.toFixed(2)}%;background:${fill};"
-                            data-bw-tip="${escAttr(tip)}"></div>`;
+            const segs = sorted.map(([sp, n], idx) => {
+                const fill = sp === 'Unknown' ? '#c8c4bd' : speciesColor(sp);
+                const startCls = idx === 0 ? '' : ' bar-seg--group';
+                const tip = `${r.key}: ${sp} — ${n.toLocaleString()}`;
+                return `<div class="bar-seg${startCls}" style="flex:${n} 0 0;background:${fill};"
+                             data-bw-tip="${escAttr(tip)}"></div>`;
             }).join('');
-        }
-        const segments = RARITY_ORDER
-            .filter(r => rarityCounts[r.key])
-            .map(r => rarityGroupSegs(r.key, r.color)).join('');
-        const unknown = rarityCounts['Unknown'];
-        const unknownSeg = unknown ? rarityGroupSegs('Unknown', '#c8c4bd') : '';
-        const legend = RARITY_ORDER
-            .filter(r => rarityCounts[r.key])
-            .map(r => {
-                const c   = rarityCounts[r.key];
-                const pct = ((c / rarityTotal) * 100).toFixed(1);
-                return `<span class="rarity-mix-legend-item">
-                    <span class="rarity-mix-swatch" style="background:${r.color};"></span>
-                    ${r.key} · ${c.toLocaleString()} <span class="rarity-mix-pct">${pct}%</span>
-                </span>`;
-            }).join('') + (unknown
-                ? `<span class="rarity-mix-legend-item">
-                    <span class="rarity-mix-swatch" style="background:#c8c4bd;"></span>
-                    Unknown · ${unknown.toLocaleString()}
-                </span>`
-                : '');
+            return `
+                <div class="bar-row rarity-row" data-bw-bucket="${i}">
+                    <div class="rarity-row-head">
+                        <span class="rarity-badge rarity-${r.cls}">${r.key}</span>
+                        <span class="rarity-row-count">${c.toLocaleString()} <span class="rarity-row-pct">${pct}%</span></span>
+                    </div>
+                    <div class="bar-track"><div class="bar-stack" style="width:100%;">${segs}</div></div>
+                </div>`;
+        }).join('');
+
         return `
             <div class="rarity-mix-wrap">
                 <div class="stats-section-title" style="margin-bottom:0.5rem;">Rarity Mix</div>
-                <div class="rarity-mix-bar" data-bw-chart="rarity-stack">${segments}${unknownSeg}</div>
-                <div class="rarity-mix-legend">${legend}</div>
+                <div class="rarity-mix-rows bar-chart-h" data-bw-chart="bars-h" data-bw-buckets='${escAttr(JSON.stringify(buckets))}'>${rowsHtml}</div>
             </div>`;
     })();
 

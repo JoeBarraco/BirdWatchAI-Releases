@@ -821,6 +821,43 @@
         }
         .rarity-mix-pct { color: var(--color-gray-500); }
 
+        /* Multi-row rarity mix — one bar per rarity slug, each track split into species
+           sub-segments. Mirrors the server's "Rarity composition" panel; reuses .bar-track /
+           .bar-stack / .bar-seg from the Activity charts so the segment styling and hover
+           runtime stay shared. The row's head sits in a fixed-width column so all tracks line
+           up vertically regardless of rarity name length. */
+        .rarity-mix-rows {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .rarity-row {
+            display: grid;
+            grid-template-columns: 150px 1fr;
+            align-items: center;
+            gap: 0.85rem;
+            font-size: 0.8125rem;
+        }
+        .rarity-row-head {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.2rem;
+            min-width: 0;
+        }
+        .rarity-row-count {
+            font-variant-numeric: tabular-nums;
+            color: var(--color-gray-700, #4a4740);
+            font-size: 0.78rem;
+        }
+        .rarity-row-pct {
+            color: var(--color-gray-500);
+            margin-left: 0.15rem;
+        }
+        @media (max-width: 640px) {
+            .rarity-row { grid-template-columns: 110px 1fr; gap: 0.5rem; }
+        }
+
         /* ── Temperature top-species chips ──────────────── */
         .temp-topsp-table { max-width: 640px; }
         .temp-topsp-chip {
