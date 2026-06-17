@@ -167,15 +167,23 @@
             crosshair.setAttribute('x2', String(xPx));
             crosshair.style.display = '';
 
+            // Only surface species that actually occurred at this x — dots and tooltip rows are
+            // gated on count > 0 so a 15-species window doesn't fill the tooltip with zeros (and
+            // the dot doesn't drop a misleading marker on the x-axis for species that weren't
+            // present that day).
             const rows = [];
             for (let i = 0; i < data.series.length; i++) {
                 const s = data.series[i];
-                const y = s.ys[idx];
+                const count = s.counts[idx];
                 const dot = dots[i];
-                dot.setAttribute('cx', String(xPx));
-                dot.setAttribute('cy', String(y));
-                dot.style.display = '';
-                rows.push({ species: s.species, color: s.color, count: s.counts[idx] });
+                if (count > 0) {
+                    dot.setAttribute('cx', String(xPx));
+                    dot.setAttribute('cy', String(s.ys[idx]));
+                    dot.style.display = '';
+                    rows.push({ species: s.species, color: s.color, count });
+                } else {
+                    dot.style.display = 'none';
+                }
             }
             rows.sort((a, b) => b.count - a.count);
             showTooltip(renderRowsTooltip(data.days[idx], rows), ev.clientX, ev.clientY);
