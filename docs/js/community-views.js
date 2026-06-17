@@ -1040,6 +1040,10 @@ function renderStats() {
             { key: 'Unknown',   cls: 'unknown'   },
         ];
         const presentRows = ROW_ORDER.filter(r => rarityCounts[r.key] > 0);
+        // Scale each rarity's stack width to the heaviest rarity in the window so the bars share
+        // a single horizontal scale — Very Rare with 4 detections reads as a short bar next to
+        // Common with 400, instead of every track filling its row regardless of count.
+        const maxRarityCount = Math.max(...presentRows.map(r => rarityCounts[r.key]), 1);
 
         // Per-row bucket data — hovering the head / empty track area falls back to a full
         // species summary for that rarity (top 8 + Other), same pattern as the Activity bars.
@@ -1077,7 +1081,7 @@ function renderStats() {
                         <span class="rarity-badge rarity-${r.cls}">${r.key}</span>
                         <span class="rarity-row-count">${c.toLocaleString()} <span class="rarity-row-pct">${pct}%</span></span>
                     </div>
-                    <div class="bar-track"><div class="bar-stack" style="width:100%;">${segs}</div></div>
+                    <div class="bar-track"><div class="bar-stack" style="width:${((c / maxRarityCount) * 100).toFixed(2)}%;">${segs}</div></div>
                 </div>`;
         }).join('');
 
