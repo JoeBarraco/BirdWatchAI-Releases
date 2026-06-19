@@ -2684,9 +2684,30 @@
             border-color: var(--color-primary);
             color: var(--color-primary);
         }
+        /* Moderator-only "merge into…" button. Neutral styling (this is a
+           reversible-in-spirit action — no data is lost, just consolidated),
+           and pushed to the right alongside the destructive delete button so
+           the two mod actions read as a group separate from the regular
+           per-feeder actions. */
+        .feeder-mod-merge {
+            font-family: inherit;
+            font-size: 0.8rem;
+            font-weight: 500;
+            padding: 6px 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--bg-card);
+            color: var(--color-gray-700);
+            cursor: pointer;
+            margin-left: auto;
+            transition: all 0.15s;
+        }
+        .feeder-mod-merge:hover {
+            border-color: var(--color-primary);
+            color: var(--color-primary);
+        }
         /* Moderator-only "delete feeder" button. Styled red to match the mod-delete
-           pattern on detection cards, and pushed to the right so it doesn't get
-           confused with the regular per-feeder actions. */
+           pattern on detection cards. */
         .feeder-mod-delete {
             font-family: inherit;
             font-size: 0.8rem;
@@ -2697,7 +2718,6 @@
             background: #fdecea;
             color: #b03a2e;
             cursor: pointer;
-            margin-left: auto;
             transition: all 0.15s;
         }
         .feeder-mod-delete:hover {
