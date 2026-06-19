@@ -868,6 +868,154 @@ async function confirmModDeleteFeeder(btn) {
     }
 }
 
+// Moderator-only: consolidate two duplicate feeder rows into one. The user
+// picked a source row from a feeder card; this opens a modal to choose the
+// target (any other feeder), then routes through the same
+// moderator-delete-media edge function (action="merge_feeder") which calls
+// the `moderator_merge_feeder` RPC. The RPC reassigns every detection's
+// feeder_id from source → target and deletes the now-empty source row.
+// Storage objects are not touched — every detection's image/video URL still
+// points at the right blob after the foreign-key swap.
+function openModMergeFeeder(btn) {
+    const sourceId   = btn && btn.dataset ? btn.dataset.feederId   : '';
+    const sourceName = btn && btn.dataset ? btn.dataset.feederName : 'Unnamed feeder';
+    if (!sourceId) return;
+
+    const modal     = document.getElementById('mod-merge-feeder-modal');
+    const sourceEl  = document.getElementById('mod-merge-feeder-source');
+    const targetSel = document.getElementById('mod-merge-feeder-target');
+    const errorEl   = document.getElementById('mod-merge-feeder-error');
+
+    errorEl.style.display = 'none';
+    sourceEl.dataset.feederId   = sourceId;
+    sourceEl.dataset.feederName = sourceName;
+    sourceEl.textContent        = sourceName;
+
+    // Populate target dropdown with every other feeder, alphabetized. We
+    // read from the already-loaded allFeeders cache so the modal opens
+    // instantly; if the cache is empty (the user opened the merge button
+    // on a card before the list finished hydrating, which shouldn't happen
+    // in practice but guard anyway), show a fallback option and disable.
+    const others = (typeof allFeeders !== 'undefined' ? allFeeders : [])
+        .filter(f => String(f.id || f.feeder_id) !== String(sourceId))
+        .sort((a, b) => (a.display_name || '').localeCompare(b.display_name || ''));
+
+    if (!others.length) {
+        targetSel.innerHTML = '<option value="">No other feeders available</option>';
+        targetSel.disabled = true;
+    } else {
+        targetSel.innerHTML = '<option value="">Choose a target feeder…</option>' +
+            others.map(f => {
+                const id   = f.id || f.feeder_id;
+                const name = f.display_name || 'Unnamed feeder';
+                return `<option value="${esc(id)}">${esc(name)}</option>`;
+            }).join('');
+        targetSel.disabled = false;
+        targetSel.value = '';
+    }
+
+    modal.style.display = 'flex';
+}
+
+function closeModMergeFeeder() {
+    const modal = document.getElementById('mod-merge-feeder-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+// Click-outside-to-close on the merge modal backdrop. The inner box stops
+// propagation by virtue of being a child — clicks on it bubble up with the
+// box's id, not the modal's, so the equality check below only fires on the
+// dim overlay.
+document.getElementById('mod-merge-feeder-modal').addEventListener('click', e => {
+    if (e.target.id === 'mod-merge-feeder-modal') closeModMergeFeeder();
+});
+
+async function doModMergeFeeder() {
+    const sourceEl  = document.getElementById('mod-merge-feeder-source');
+    const targetSel = document.getElementById('mod-merge-feeder-target');
+    const errorEl   = document.getElementById('mod-merge-feeder-error');
+
+    const sourceId   = sourceEl.dataset.feederId   || '';
+    const sourceName = sourceEl.dataset.feederName || 'source feeder';
+    const targetId   = targetSel.value || '';
+    const targetName = targetSel.selectedIndex > 0
+        ? targetSel.options[targetSel.selectedIndex].textContent
+        : '';
+
+    errorEl.style.display = 'none';
+
+    if (!sourceId || !targetId) {
+        errorEl.textContent = 'Pick a target feeder to merge into.';
+        errorEl.style.display = 'block';
+        return;
+    }
+    if (sourceId === targetId) {
+        errorEl.textContent = "Source and target can't be the same feeder.";
+        errorEl.style.display = 'block';
+        return;
+    }
+
+    if (!confirm(`Move every detection from "${sourceName}" into "${targetName}", then delete "${sourceName}"?\n\nThis cannot be undone.`)) {
+        return;
+    }
+
+    const { email, password } = getModCreds();
+    try {
+        const functionsUrl = SUPABASE_URL.replace('.supabase.co', '.supabase.co/functions/v1');
+        const res = await fetch(`${functionsUrl}/moderator-delete-media`, {
+            method: 'POST',
+            headers: {
+                apikey: ANON_KEY,
+                Authorization: `Bearer ${ANON_KEY}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                action:            'merge_feeder',
+                email,
+                password,
+                source_feeder_id:  sourceId,
+                target_feeder_id:  targetId,
+            }),
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.error || err.message || 'Merge failed');
+        }
+        const result = await res.json().catch(() => ({}));
+
+        // Reflect the merge locally so the Feeders grid and the cached
+        // Feed update immediately — no need to wait for the next refresh.
+        // Drop the source row, then rewrite every cached detection that
+        // pointed at it so the feed/feeder dropdowns stop showing the
+        // ghost name. Both id shapes can appear on the feeder_status view.
+        if (typeof allFeeders !== 'undefined') {
+            allFeeders = allFeeders.filter(x => String(x.id || x.feeder_id) !== String(sourceId));
+        }
+        if (typeof allDetections !== 'undefined') {
+            allDetections.forEach(x => {
+                if (String(x.feeder_id) === String(sourceId)) {
+                    x.feeder_id = targetId;
+                    if (x.feeders) x.feeders.display_name = targetName;
+                }
+            });
+        }
+        if (typeof renderFeeders === 'function') renderFeeders();
+        if (typeof renderFeed     === 'function') renderFeed();
+
+        const moved = result && typeof result.detections_moved === 'number'
+            ? result.detections_moved
+            : 0;
+        const movedLabel = moved
+            ? `, ${moved} detection${moved === 1 ? '' : 's'} moved`
+            : '';
+        showToast(`Merged "${sourceName}" into "${targetName}"${movedLabel}.`);
+        closeModMergeFeeder();
+    } catch (err) {
+        errorEl.textContent = 'Error: ' + err.message;
+        errorEl.style.display = 'block';
+    }
+}
+
 // ── Forgot password ────────────────────────────────────────
 function showForgotPassword() {
     closeModLogin();

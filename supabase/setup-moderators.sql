@@ -408,6 +408,74 @@ grant execute on function moderator_add_user(text, text, text, text) to anon;
 grant execute on function moderator_remove_user(text, text, uuid) to anon;
 grant execute on function moderator_change_password(text, text, text) to anon;
 
+-- ────────────────────────────────────────────────────────────────────────────
+-- moderator_merge_feeder: reassign every community_detection from a source
+-- feeder to a target feeder, then delete the (now empty) source row. Used by
+-- the mod-only "🔀 Merge into…" button on the community Feeders tab when two
+-- feeder rows represent the same physical feeder (e.g. one registered under
+-- the old display-name identity and one under the new activation-key identity)
+-- and we want to consolidate the detection history under the surviving row
+-- instead of throwing it away.
+--
+-- Storage objects are NOT touched — the photo/video URLs on each detection
+-- already point at the correct blobs; only the feeder_id foreign key changes.
+-- ────────────────────────────────────────────────────────────────────────────
+drop function if exists moderator_merge_feeder(text, text, uuid, uuid);
+
+create or replace function moderator_merge_feeder(
+  p_email     text,
+  p_password  text,
+  p_source_id uuid,
+  p_target_id uuid
+)
+returns json
+language plpgsql security definer
+as $$
+declare
+  mod_id            uuid;
+  detections_moved  int;
+  source_existed    boolean;
+  target_exists     boolean;
+begin
+  select id into mod_id
+  from moderators
+  where email = lower(trim(p_email))
+    and password_hash = crypt(p_password, password_hash);
+
+  if mod_id is null then
+    raise exception 'Invalid moderator credentials';
+  end if;
+
+  if p_source_id is null or p_target_id is null then
+    raise exception 'source and target feeder ids are required';
+  end if;
+
+  if p_source_id = p_target_id then
+    raise exception 'source and target must be different feeders';
+  end if;
+
+  select exists(select 1 from feeders where id = p_target_id) into target_exists;
+  if not target_exists then
+    raise exception 'target feeder does not exist';
+  end if;
+
+  update community_detections
+     set feeder_id = p_target_id
+   where feeder_id = p_source_id;
+  get diagnostics detections_moved = row_count;
+
+  delete from feeders where id = p_source_id;
+  source_existed := found;
+
+  return json_build_object(
+    'source_deleted',   source_existed,
+    'detections_moved', detections_moved
+  );
+end;
+$$;
+
+grant execute on function moderator_merge_feeder(text, text, uuid, uuid) to anon;
+
 -- moderator_reset_password should only be called by service role (via edge function)
 revoke execute on function moderator_reset_password(text) from anon;
 revoke execute on function moderator_reset_password(text) from authenticated;

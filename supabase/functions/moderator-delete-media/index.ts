@@ -65,10 +65,12 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { action, email, password, detection_id, feeder_id } = body;
+    const { action, email, password, detection_id, feeder_id,
+            source_feeder_id, target_feeder_id } = body;
 
-    // Per-action required-field validation — feeder-delete uses feeder_id, the
-    // detection actions use detection_id, but all three need an action + creds.
+    // Per-action required-field validation — feeder-level actions use
+    // feeder_id (delete) or source/target ids (merge), detection actions
+    // use detection_id, but all need an action + creds.
     if (!action || !email || !password) {
       return new Response(
         JSON.stringify({ error: 'Missing required fields' }),
@@ -79,6 +81,19 @@ Deno.serve(async (req) => {
       if (!feeder_id) {
         return new Response(
           JSON.stringify({ error: 'Missing required fields' }),
+          { status: 400, headers: corsHeaders }
+        );
+      }
+    } else if (action === 'merge_feeder') {
+      if (!source_feeder_id || !target_feeder_id) {
+        return new Response(
+          JSON.stringify({ error: 'Missing required fields' }),
+          { status: 400, headers: corsHeaders }
+        );
+      }
+      if (source_feeder_id === target_feeder_id) {
+        return new Response(
+          JSON.stringify({ error: 'Source and target must be different feeders' }),
           { status: 400, headers: corsHeaders }
         );
       }
@@ -139,6 +154,36 @@ Deno.serve(async (req) => {
           success:            true,
           feeder_deleted:     result?.feeder_deleted ?? false,
           detections_deleted: result?.detections_deleted ?? 0,
+        }),
+        { status: 200, headers: corsHeaders }
+      );
+    }
+
+    // ── ACTION: merge_feeder ─────────────────────────────────────────────────
+    // Consolidate two feeder rows that represent the same physical feeder
+    // (different activation keys, same display name, etc.) by reassigning the
+    // source's community detections to the target and deleting the now-empty
+    // source row. Storage is intentionally NOT touched — every detection's
+    // image_url/video_url already points at the correct blob; only the
+    // feeder_id foreign key changes.
+    if (action === 'merge_feeder') {
+      const { data: result, error: rpcErr } = await supabase.rpc('moderator_merge_feeder', {
+        p_email:     email,
+        p_password:  password,
+        p_source_id: source_feeder_id,
+        p_target_id: target_feeder_id,
+      });
+      if (rpcErr) {
+        return new Response(
+          JSON.stringify({ error: rpcErr.message }),
+          { status: 400, headers: corsHeaders }
+        );
+      }
+      return new Response(
+        JSON.stringify({
+          success:          true,
+          source_deleted:   result?.source_deleted ?? false,
+          detections_moved: result?.detections_moved ?? 0,
         }),
         { status: 200, headers: corsHeaders }
       );
@@ -219,7 +264,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ error: 'Invalid action. Use "update", "delete", or "delete_feeder".' }),
+      JSON.stringify({ error: 'Invalid action. Use "update", "delete", "delete_feeder", or "merge_feeder".' }),
       { status: 400, headers: corsHeaders }
     );
 
