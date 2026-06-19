@@ -558,7 +558,7 @@
 
 <!-- Moderator: merge feeder modal -->
 <div id="mod-merge-feeder-modal" role="dialog" aria-modal="true" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9520;justify-content:center;align-items:center;">
-    <div class="mod-login-box">
+    <div class="mod-login-box" style="max-width:480px;">
         <h3>Merge feeder</h3>
         <p style="font-size:0.85rem;color:var(--color-gray-500);margin-bottom:1rem;">
             Reassign every community detection from the source feeder into the target, then delete the (now empty) source feeder. Photos and videos stay where they are.
@@ -566,10 +566,11 @@
         <div id="mod-merge-feeder-error" class="mod-login-error"></div>
 
         <label style="font-size:0.85rem;color:var(--color-gray-700);display:block;margin-bottom:0.25rem;">Source (will be deleted)</label>
-        <div id="mod-merge-feeder-source" style="padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);margin-bottom:0.75rem;font-size:0.9rem;"></div>
+        <div id="mod-merge-feeder-source" class="mod-merge-feeder-card" style="margin-bottom:0.75rem;"></div>
 
         <label for="mod-merge-feeder-target" style="font-size:0.85rem;color:var(--color-gray-700);display:block;margin-bottom:0.25rem;">Merge into (target)</label>
-        <select id="mod-merge-feeder-target" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--color-gray-900);font-size:0.9rem;margin-bottom:0.5rem;"></select>
+        <select id="mod-merge-feeder-target" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--color-gray-900);font-size:0.9rem;margin-bottom:0.25rem;"></select>
+        <div id="mod-merge-feeder-target-preview" class="mod-merge-feeder-card" style="margin-bottom:0.5rem;display:none;"></div>
 
         <div class="mod-btn-row">
             <button type="button" class="mod-btn-cancel" onclick="closeModMergeFeeder()">Cancel</button>

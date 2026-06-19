@@ -2684,6 +2684,43 @@
             border-color: var(--color-primary);
             color: var(--color-primary);
         }
+        /* Mini-card used for source + target preview in the merge-feeder modal.
+           Same idea as the feeder cards on the Feeders tab but compressed:
+           bold display name on top, a metadata strip below with state pill,
+           last-heartbeat age, detection count, version, and short id tail —
+           enough to distinguish two duplicate rows that share a display name. */
+        .mod-merge-feeder-card {
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--bg-card);
+            font-size: 0.85rem;
+        }
+        .mod-merge-feeder-card .mmf-name {
+            font-weight: 600;
+            color: var(--color-gray-900);
+            margin-bottom: 4px;
+            word-break: break-word;
+        }
+        .mod-merge-feeder-card .mmf-meta {
+            font-size: 0.75rem;
+            color: var(--color-gray-500);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px 8px;
+            align-items: center;
+        }
+        .mod-merge-feeder-card .mmf-meta .feeder-state-pill {
+            font-size: 0.7rem;
+            padding: 1px 6px;
+        }
+        .mod-merge-feeder-card .mmf-count {
+            color: var(--color-gray-700);
+            font-weight: 500;
+        }
+        .mod-merge-feeder-card .mmf-id {
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        }
         /* Moderator-only "merge into…" button. Neutral styling (this is a
            reversible-in-spirit action — no data is lost, just consolidated),
            and pushed to the right alongside the destructive delete button so

@@ -876,29 +876,127 @@ async function confirmModDeleteFeeder(btn) {
 // feeder_id from source → target and deletes the now-empty source row.
 // Storage objects are not touched — every detection's image/video URL still
 // points at the right blob after the foreign-key swap.
+
+// Cache of feeder_id → detection-count, populated lazily the first time a
+// merge modal is opened (and refreshed whenever a merge succeeds so the
+// next open shows updated numbers). Counted client-side rather than via a
+// SQL view because feeder_status is deployed manually in Supabase and we
+// don't want a separate deploy step just to add this.
+let _feederDetectionCounts = null;
+
+async function loadFeederDetectionCounts(force) {
+    if (_feederDetectionCounts && !force) return _feederDetectionCounts;
+    try {
+        const url = `${SUPABASE_URL}/rest/v1/community_detections?select=feeder_id&limit=50000`;
+        const res = await fetch(url, {
+            headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` }
+        });
+        if (!res.ok) return new Map();
+        const rows = await res.json();
+        const counts = new Map();
+        rows.forEach(r => {
+            if (!r.feeder_id) return;
+            counts.set(r.feeder_id, (counts.get(r.feeder_id) || 0) + 1);
+        });
+        _feederDetectionCounts = counts;
+        return counts;
+    } catch {
+        return new Map();
+    }
+}
+
+// Format the metadata strip for the source / target preview cards. Pulls
+// state, heartbeat age, and detection count via the same helpers the
+// Feeders tab uses, plus the last 6 hex chars of the UUID so that two
+// rows sharing a display_name are still visually distinguishable.
+function formatMergeFeederPreviewHtml(f, count) {
+    const id = String(f.id || f.feeder_id || '');
+    const tail = id.replace(/-/g, '').slice(-6);
+    const state = (typeof feederState === 'function') ? feederState(f) : 'offline';
+    const stateLabel = state === 'monitoring' ? 'Monitoring'
+                     : state === 'idle'       ? 'Idle'
+                                              : 'Offline';
+    const heartbeat = (typeof fmtFeederHeartbeat === 'function')
+        ? fmtFeederHeartbeat(f)
+        : 'Unknown';
+    const countTxt = (typeof count === 'number')
+        ? `<span class="mmf-count">${count} detection${count === 1 ? '' : 's'}</span>`
+        : `<span class="mmf-count">counting…</span>`;
+    const version = f.app_version ? `<span>v${esc(f.app_version)}</span>` : '';
+    return `
+        <div class="mmf-name">${esc(f.display_name || 'Unnamed feeder')}</div>
+        <div class="mmf-meta">
+            <span class="feeder-state-pill ${state}">${stateLabel}</span>
+            <span>${esc(heartbeat)}</span>
+            ${countTxt}
+            ${version}
+            ${tail ? `<span class="mmf-id" title="${esc(id)}">id …${esc(tail)}</span>` : ''}
+        </div>`;
+}
+
+// Build a one-line text label for a <select> <option>. Plain text only —
+// HTML inside <option> isn't rendered cross-browser — so we use a · bullet
+// to separate fields.
+function formatMergeFeederOptionText(f, count) {
+    const id = String(f.id || f.feeder_id || '');
+    const tail = id.replace(/-/g, '').slice(-6);
+    const state = (typeof feederState === 'function') ? feederState(f) : 'offline';
+    const stateLabel = state === 'monitoring' ? 'Online'
+                     : state === 'idle'       ? 'Idle'
+                                              : 'Offline';
+    const heartbeat = (typeof fmtFeederHeartbeat === 'function')
+        ? fmtFeederHeartbeat(f)
+        : '';
+    const countTxt = (typeof count === 'number')
+        ? `${count} detection${count === 1 ? '' : 's'}`
+        : 'counting…';
+    const parts = [
+        f.display_name || 'Unnamed feeder',
+        `${stateLabel}${heartbeat ? ' (' + heartbeat + ')' : ''}`,
+        countTxt,
+    ];
+    if (tail) parts.push(`id …${tail}`);
+    return parts.filter(Boolean).join(' · ');
+}
+
 function openModMergeFeeder(btn) {
     const sourceId   = btn && btn.dataset ? btn.dataset.feederId   : '';
     const sourceName = btn && btn.dataset ? btn.dataset.feederName : 'Unnamed feeder';
     if (!sourceId) return;
 
-    const modal     = document.getElementById('mod-merge-feeder-modal');
-    const sourceEl  = document.getElementById('mod-merge-feeder-source');
-    const targetSel = document.getElementById('mod-merge-feeder-target');
-    const errorEl   = document.getElementById('mod-merge-feeder-error');
+    const modal      = document.getElementById('mod-merge-feeder-modal');
+    const sourceEl   = document.getElementById('mod-merge-feeder-source');
+    const targetSel  = document.getElementById('mod-merge-feeder-target');
+    const targetPrev = document.getElementById('mod-merge-feeder-target-preview');
+    const errorEl    = document.getElementById('mod-merge-feeder-error');
 
     errorEl.style.display = 'none';
-    sourceEl.dataset.feederId   = sourceId;
-    sourceEl.dataset.feederName = sourceName;
-    sourceEl.textContent        = sourceName;
+    targetPrev.style.display = 'none';
+    targetPrev.innerHTML = '';
 
-    // Populate target dropdown with every other feeder, alphabetized. We
-    // read from the already-loaded allFeeders cache so the modal opens
-    // instantly; if the cache is empty (the user opened the merge button
-    // on a card before the list finished hydrating, which shouldn't happen
-    // in practice but guard anyway), show a fallback option and disable.
-    const others = (typeof allFeeders !== 'undefined' ? allFeeders : [])
+    // Look up the source feeder row so we can render its full metadata
+    // strip. If allFeeders is somehow empty (e.g. cache cleared between
+    // card click and modal open), synthesize a minimal record from the
+    // button's data attributes so the modal at least shows a name.
+    const all = (typeof allFeeders !== 'undefined') ? allFeeders : [];
+    const sourceFeeder = all.find(f => String(f.id || f.feeder_id) === String(sourceId))
+        || { id: sourceId, display_name: sourceName };
+    sourceEl.dataset.feederId   = sourceId;
+    sourceEl.dataset.feederName = sourceFeeder.display_name || sourceName;
+    sourceEl.innerHTML = formatMergeFeederPreviewHtml(sourceFeeder, undefined);
+
+    // Populate target dropdown with every other feeder, alphabetized then
+    // (within the same name) by recency so the live row floats above the
+    // stale one. Counts are filled in once the count fetch resolves.
+    const others = all
         .filter(f => String(f.id || f.feeder_id) !== String(sourceId))
-        .sort((a, b) => (a.display_name || '').localeCompare(b.display_name || ''));
+        .sort((a, b) => {
+            const cmp = (a.display_name || '').localeCompare(b.display_name || '');
+            if (cmp !== 0) return cmp;
+            return (typeof feederAgeMs === 'function')
+                ? feederAgeMs(a) - feederAgeMs(b)
+                : 0;
+        });
 
     if (!others.length) {
         targetSel.innerHTML = '<option value="">No other feeders available</option>';
@@ -907,14 +1005,61 @@ function openModMergeFeeder(btn) {
         targetSel.innerHTML = '<option value="">Choose a target feeder…</option>' +
             others.map(f => {
                 const id   = f.id || f.feeder_id;
-                const name = f.display_name || 'Unnamed feeder';
-                return `<option value="${esc(id)}">${esc(name)}</option>`;
+                return `<option value="${esc(id)}">${esc(formatMergeFeederOptionText(f, undefined))}</option>`;
             }).join('');
         targetSel.disabled = false;
         targetSel.value = '';
     }
 
     modal.style.display = 'flex';
+
+    // Async: fetch detection counts, then enrich both the source card and
+    // every dropdown option. Done after the modal is visible so it opens
+    // instantly even on a slow connection — the counts just fade in.
+    loadFeederDetectionCounts().then(counts => {
+        const stillOpen = document.getElementById('mod-merge-feeder-modal').style.display !== 'none';
+        const stillSameSource = sourceEl.dataset.feederId === sourceId;
+        if (!stillOpen || !stillSameSource) return;
+
+        const srcCount = counts.get(sourceId) || 0;
+        sourceEl.innerHTML = formatMergeFeederPreviewHtml(sourceFeeder, srcCount);
+
+        if (!others.length) return;
+        const prevValue = targetSel.value;
+        targetSel.innerHTML = '<option value="">Choose a target feeder…</option>' +
+            others.map(f => {
+                const id    = f.id || f.feeder_id;
+                const count = counts.get(String(id)) || 0;
+                return `<option value="${esc(id)}">${esc(formatMergeFeederOptionText(f, count))}</option>`;
+            }).join('');
+        targetSel.value = prevValue;
+        // If a target was already picked, refresh its preview card too.
+        if (prevValue) renderModMergeTargetPreview();
+    });
+}
+
+// Re-render the target preview card whenever the dropdown selection changes
+// so the moderator can compare source vs. target side-by-side before
+// hitting Merge. Wired up via the <select onchange> below.
+function renderModMergeTargetPreview() {
+    const targetSel  = document.getElementById('mod-merge-feeder-target');
+    const targetPrev = document.getElementById('mod-merge-feeder-target-preview');
+    const targetId = targetSel.value || '';
+    if (!targetId) {
+        targetPrev.style.display = 'none';
+        targetPrev.innerHTML = '';
+        return;
+    }
+    const all = (typeof allFeeders !== 'undefined') ? allFeeders : [];
+    const f = all.find(x => String(x.id || x.feeder_id) === String(targetId));
+    if (!f) {
+        targetPrev.style.display = 'none';
+        return;
+    }
+    const counts = _feederDetectionCounts;
+    const count = counts ? (counts.get(String(targetId)) || 0) : undefined;
+    targetPrev.innerHTML = formatMergeFeederPreviewHtml(f, count);
+    targetPrev.style.display = '';
 }
 
 function closeModMergeFeeder() {
@@ -929,6 +1074,9 @@ function closeModMergeFeeder() {
 document.getElementById('mod-merge-feeder-modal').addEventListener('click', e => {
     if (e.target.id === 'mod-merge-feeder-modal') closeModMergeFeeder();
 });
+
+// Render the target preview whenever the dropdown changes.
+document.getElementById('mod-merge-feeder-target').addEventListener('change', renderModMergeTargetPreview);
 
 async function doModMergeFeeder() {
     const sourceEl  = document.getElementById('mod-merge-feeder-source');
@@ -1001,6 +1149,10 @@ async function doModMergeFeeder() {
         }
         if (typeof renderFeeders === 'function') renderFeeders();
         if (typeof renderFeed     === 'function') renderFeed();
+
+        // Invalidate the cached counts so the next merge modal open reflects
+        // the post-merge totals instead of stale per-feeder numbers.
+        _feederDetectionCounts = null;
 
         const moved = result && typeof result.detections_moved === 'number'
             ? result.detections_moved
