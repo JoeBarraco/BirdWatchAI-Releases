@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BirdWatchAI — User Manual</title>
+<meta name="description" content="The complete BirdWatchAI user manual: install, set up your camera, identify birds, and explore the community — Windows desktop, Raspberry Pi server, or Docker.">
+<link rel="stylesheet" href="manual.css">
+<link rel="icon" type="image/png" href="../../images/favicon.png">
+<script>
+    (function () {
+        try {
+            var t = localStorage.getItem('bwai-theme');
+            if (t) document.documentElement.setAttribute('data-theme', t);
+        } catch (e) {}
+    })();
+</script>
+</head>
+<body data-part="0">
+
+<header class="topbar">
+    <button class="menu-toggle" aria-label="Toggle table of contents">☰ Menu</button>
+    <a href="../../index.html" class="brand">🐦 BirdWatchAI</a>
+    <span class="crumb">User Manual</span>
+    <span class="spacer"></span>
+    <button id="manual-theme-toggle" class="site-link" type="button" title="Toggle theme">🌙 Theme</button>
+    <a href="../community.html" class="site-link">Community Feed</a>
+</header>
+
+<div class="layout">
+
+    <!-- ============================ SIDEBAR TOC ============================ -->
+    <nav class="toc" aria-label="Manual table of contents">
+        <h2>Contents</h2>
+        <ol>
+            <li data-part="1"><a href="part-1-introduction.html">Introduction</a>
+                <ul>
+                    <li><a href="part-1-introduction.html#what">What BirdWatchAI is</a></li>
+                    <li><a href="part-1-introduction.html#editions">Desktop vs. Server</a></li>
+                    <li><a href="part-1-introduction.html#features">Feature matrix</a></li>
+                    <li><a href="part-1-introduction.html#requirements">System requirements</a></li>
+                    <li><a href="part-1-introduction.html#how-it-works">How a detection happens</a></li>
+                </ul>
+            </li>
+            <li data-part="2"><a href="part-2-installation.html">Installation</a>
+                <ul>
+                    <li><a href="part-2-installation.html#windows-desktop">Windows desktop app</a></li>
+                    <li><a href="part-2-installation.html#raspberry-pi">Raspberry Pi server</a></li>
+                    <li><a href="part-2-installation.html#windows-docker">Windows + Docker server</a></li>
+                    <li><a href="part-2-installation.html#linux-x86">Other Linux (x86_64)</a></li>
+                    <li><a href="part-2-installation.html#licensing">Licensing &amp; the free trial</a></li>
+                </ul>
+            </li>
+            <li data-part="3"><a href="part-3-first-time-setup.html">First-Time Setup</a>
+                <ul>
+                    <li><a href="part-3-first-time-setup.html#wizard">The setup wizard</a></li>
+                    <li><a href="part-3-first-time-setup.html#camera-step">Camera step</a></li>
+                    <li><a href="part-3-first-time-setup.html#location">Location &amp; weather</a></li>
+                    <li><a href="part-3-first-time-setup.html#notifications">Notifications</a></li>
+                    <li><a href="part-3-first-time-setup.html#community">Community sharing</a></li>
+                </ul>
+            </li>
+            <li data-part="4"><a href="part-4-camera-hardware.html">Camera Hardware</a>
+                <ul>
+                    <li><a href="part-4-camera-hardware.html#rtsp">RTSP cameras</a></li>
+                    <li><a href="part-4-camera-hardware.html#tapo">TP-Link Tapo</a></li>
+                    <li><a href="part-4-camera-hardware.html#other-brands">Other brands</a></li>
+                    <li><a href="part-4-camera-hardware.html#pi-camera">Raspberry Pi camera</a></li>
+                    <li><a href="part-4-camera-hardware.html#placement">Placement &amp; lighting</a></li>
+                </ul>
+            </li>
+            <li data-part="5"><a href="part-5-configuration.html">Configuration Reference</a>
+                <ul>
+                    <li><a href="part-5-configuration.html#desktop-settings">Desktop app settings</a></li>
+                    <li><a href="part-5-configuration.html#server-settings">Server settings</a></li>
+                    <li><a href="part-5-configuration.html#notifications">Notification channels</a></li>
+                    <li><a href="part-5-configuration.html#community">Community sharing</a></li>
+                </ul>
+            </li>
+            <li data-part="6"><a href="part-6-daily-use.html">Daily Use</a>
+                <ul>
+                    <li><a href="part-6-daily-use.html#dashboard">The dashboard</a></li>
+                    <li><a href="part-6-daily-use.html#history">Detection history</a></li>
+                    <li><a href="part-6-daily-use.html#gallery">Gallery &amp; slideshow</a></li>
+                    <li><a href="part-6-daily-use.html#stats">Statistics</a></li>
+                    <li><a href="part-6-daily-use.html#community-site">The community site</a></li>
+                </ul>
+            </li>
+            <li data-part="7"><a href="part-7-troubleshooting.html">Troubleshooting</a>
+                <ul>
+                    <li><a href="part-7-troubleshooting.html#camera">Camera won't connect</a></li>
+                    <li><a href="part-7-troubleshooting.html#detection">No / wrong detections</a></li>
+                    <li><a href="part-7-troubleshooting.html#notifications">Notifications</a></li>
+                    <li><a href="part-7-troubleshooting.html#server">Server / Docker</a></li>
+                    <li><a href="part-7-troubleshooting.html#timezone">Wrong timestamps</a></li>
+                </ul>
+            </li>
+            <li data-part="8"><a href="part-8-advanced.html">Advanced Topics</a>
+                <ul>
+                    <li><a href="part-8-advanced.html#docker">Docker commands</a></li>
+                    <li><a href="part-8-advanced.html#data-dir">Custom data directory</a></li>
+                    <li><a href="part-8-advanced.html#headless">Headless / autostart</a></li>
+                    <li><a href="part-8-advanced.html#onvif">ONVIF &amp; motion tuning</a></li>
+                    <li><a href="part-8-advanced.html#backups">Backups &amp; migration</a></li>
+                </ul>
+            </li>
+        </ol>
+    </nav>
+
+    <!-- ============================ CONTENT ============================ -->
+    <main class="content">
+
+        <section class="cover" style="border-radius:14px;margin-bottom:2rem;">
+            <div class="bird">🐦</div>
+            <h1>BirdWatchAI User Manual</h1>
+            <div class="sub">Everything you need to identify birds at your feeder — automatically.</div>
+            <div style="margin-top:1.2rem;">
+                <span class="pill">Windows Desktop App</span>
+                <span class="pill">Raspberry Pi Server</span>
+                <span class="pill">Docker</span>
+                <span class="pill">Community at www.birdwatchai.com</span>
+            </div>
+        </section>
+
+        <p class="lead">
+            BirdWatchAI watches a camera pointed at your bird feeder and uses AI to identify the
+            species that visit — saving photos, recording short clips, and sending you a
+            notification when something interesting shows up. This manual covers both editions:
+            the original <strong>Windows desktop app</strong> and the newer cross-platform
+            <strong>server</strong> (Raspberry Pi, Docker on Windows, or any Linux box).
+        </p>
+
+        <div class="box tip">
+            <span class="lbl">New here? Start with these three.</span>
+            <p><strong>1.</strong> Read <a href="part-1-introduction.html">Part 1 — Introduction</a>
+                to understand what BirdWatchAI does and which edition fits your setup.</p>
+            <p><strong>2.</strong> Follow <a href="part-2-installation.html">Part 2 — Installation</a>
+                for your platform (Windows, Pi, or Docker).</p>
+            <p><strong>3.</strong> Walk through <a href="part-3-first-time-setup.html">Part 3 —
+                First-Time Setup</a> to point the app at your camera.</p>
+        </div>
+
+        <h2 style="margin-top:2.6rem;">Browse by part</h2>
+
+        <div class="parts-grid">
+            <a class="part-card" href="part-1-introduction.html">
+                <span class="badge">Part 1</span>
+                <h3>Introduction</h3>
+                <p>What BirdWatchAI is, how it works, which edition to choose, and what you need
+                    to run it.</p>
+            </a>
+            <a class="part-card" href="part-2-installation.html">
+                <span class="badge">Part 2</span>
+                <h3>Installation</h3>
+                <p>Step-by-step setup for the Windows desktop app, Raspberry Pi server, and the
+                    Docker stack on Windows or Linux.</p>
+            </a>
+            <a class="part-card" href="part-3-first-time-setup.html">
+                <span class="badge">Part 3</span>
+                <h3>First-Time Setup</h3>
+                <p>Walk through the setup wizard: camera, location, notifications, and community
+                    sharing.</p>
+            </a>
+            <a class="part-card" href="part-4-camera-hardware.html">
+                <span class="badge">Part 4</span>
+                <h3>Camera Hardware</h3>
+                <p>RTSP cameras (TP-Link Tapo, Reolink, Amcrest…), the wired Raspberry Pi
+                    camera, placement and lighting tips.</p>
+            </a>
+            <a class="part-card" href="part-5-configuration.html">
+                <span class="badge">Part 5</span>
+                <h3>Configuration</h3>
+                <p>Every setting explained for both editions, plus notification channels and
+                    community sharing levels.</p>
+            </a>
+            <a class="part-card" href="part-6-daily-use.html">
+                <span class="badge">Part 6</span>
+                <h3>Daily Use</h3>
+                <p>Dashboard tour, detection history, gallery, statistics, and the community
+                    site at www.birdwatchai.com.</p>
+            </a>
+            <a class="part-card" href="part-7-troubleshooting.html">
+                <span class="badge">Part 7</span>
+                <h3>Troubleshooting</h3>
+                <p>Common problems and fixes for cameras, detections, notifications, Docker
+                    containers, and time-zone surprises.</p>
+            </a>
+            <a class="part-card" href="part-8-advanced.html">
+                <span class="badge">Part 8</span>
+                <h3>Advanced Topics</h3>
+                <p>Docker commands, custom data folders, headless operation, ONVIF motion
+                    tuning, backups, and migration.</p>
+            </a>
+        </div>
+
+        <h2 id="editions-at-a-glance">Editions at a glance</h2>
+        <table>
+            <tr><th>If you have…</th><th>Use…</th><th>See</th></tr>
+            <tr>
+                <td>A Windows PC that's already on most of the time</td>
+                <td><strong>Windows desktop app</strong></td>
+                <td><a href="part-2-installation.html#windows-desktop">Part 2 → Windows desktop</a></td>
+            </tr>
+            <tr>
+                <td>A Raspberry Pi 4 / 5 (or any always-on Linux box)</td>
+                <td><strong>Server (Docker)</strong></td>
+                <td><a href="part-2-installation.html#raspberry-pi">Part 2 → Raspberry Pi</a></td>
+            </tr>
+            <tr>
+                <td>A dedicated Windows machine you'd rather run headless</td>
+                <td><strong>Server on Docker Desktop</strong></td>
+                <td><a href="part-2-installation.html#windows-docker">Part 2 → Windows + Docker</a></td>
+            </tr>
+            <tr>
+                <td>A wired Pi Camera Module (CSI ribbon)</td>
+                <td><strong>Server on a Raspberry Pi</strong></td>
+                <td><a href="part-4-camera-hardware.html#pi-camera">Part 4 → Pi camera</a></td>
+            </tr>
+        </table>
+
+        <p style="color:var(--muted);font-size:.9rem;margin-top:3rem;">
+            Looking for the old single-page manual? It still lives at
+            <a href="../manual.html">docs/manual.html</a> and is the Windows-app reference for
+            the moment. This new structure is where all platforms (desktop + server) come
+            together.
+        </p>
+
+    </main>
+</div>
+
+<script src="manual.js"></script>
+</body>
+</html>
