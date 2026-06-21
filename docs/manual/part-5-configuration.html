@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Part 5 — Configuration Reference · BirdWatchAI Manual</title>
+<link rel="stylesheet" href="manual.css">
+<link rel="icon" type="image/png" href="../../images/favicon.png">
+<script>
+    (function () {
+        try {
+            var t = localStorage.getItem('bwai-theme');
+            if (t) document.documentElement.setAttribute('data-theme', t);
+        } catch (e) {}
+    })();
+</script>
+</head>
+<body data-part="5">
+
+<header class="topbar">
+    <button class="menu-toggle" aria-label="Toggle table of contents">☰ Menu</button>
+    <a href="../../index.html" class="brand">🐦 BirdWatchAI</a>
+    <span class="crumb"><a href="index.html" style="color:inherit;">Manual</a></span>
+    <span class="crumb">Part 5 · Configuration</span>
+    <span class="spacer"></span>
+    <button id="manual-theme-toggle" class="site-link" type="button" title="Toggle theme">🌙 Theme</button>
+    <a href="../community.html" class="site-link">Community Feed</a>
+</header>
+
+<div class="layout">
+
+    <nav class="toc" aria-label="Manual table of contents">
+        <h2>Contents</h2>
+        <ol>
+            <li data-part="1"><a href="part-1-introduction.html">Introduction</a></li>
+            <li data-part="2"><a href="part-2-installation.html">Installation</a></li>
+            <li data-part="3"><a href="part-3-first-time-setup.html">First-Time Setup</a></li>
+            <li data-part="4"><a href="part-4-camera-hardware.html">Camera Hardware</a></li>
+            <li data-part="5"><a href="part-5-configuration.html">Configuration Reference</a>
+                <ul>
+                    <li><a href="#desktop-settings">Desktop app settings</a></li>
+                    <li><a href="#server-settings">Server settings</a></li>
+                    <li><a href="#notifications">Notification channels</a></li>
+                    <li><a href="#community">Community sharing</a></li>
+                    <li><a href="#advanced-tuning">Detection tuning</a></li>
+                </ul>
+            </li>
+            <li data-part="6"><a href="part-6-daily-use.html">Daily Use</a></li>
+            <li data-part="7"><a href="part-7-troubleshooting.html">Troubleshooting</a></li>
+            <li data-part="8"><a href="part-8-advanced.html">Advanced Topics</a></li>
+        </ol>
+    </nav>
+
+    <main class="content">
+        <span class="part-tag">Part 5</span>
+        <h1>Configuration Reference</h1>
+
+        <p class="lead">Every setting that matters, organized by what it controls. The
+            desktop app shows these in a tabbed <span class="ui">⚙ Settings</span> dialog;
+            the server shows them on a Blazor <code>/settings</code> page. The names and
+            defaults are the same on both editions unless noted.</p>
+
+        <div class="box tip">
+            <span class="lbl">Sensitive fields are encrypted</span>
+            All passwords and API keys are encrypted on disk. On the desktop app they live in
+            <code>Data\config.json</code>; on the server they live in
+            <code>data/config.json</code> inside the data folder you mounted into the
+            container.
+        </div>
+
+        <h2 id="desktop-settings">Desktop app settings</h2>
+
+        <p>Open with <span class="ui">⚙ Settings</span>. The dialog has twelve tabs; click
+            <span class="ui">Save</span> to apply or <span class="ui">Cancel</span> to discard.</p>
+
+        <h3>Camera (RTSP)</h3>
+        <table>
+            <tr><th>Setting</th><th>Default</th><th>Purpose</th></tr>
+            <tr><td>Camera Name</td><td>—</td><td>Friendly name (e.g. "Backyard Feeder");
+                shown in the title bar and used as your public feeder name</td></tr>
+            <tr><td>Camera IP Address</td><td>192.168.1.100</td><td>The camera's network
+                address</td></tr>
+            <tr><td>RTSP Port</td><td>554</td><td>Streaming port</td></tr>
+            <tr><td>RTSP Username / Password</td><td>—</td><td>Camera account credentials</td></tr>
+            <tr><td>RTSP URL</td><td>auto</td><td>Built from the above, or paste a full URL.
+                Build/Test buttons here.</td></tr>
+            <tr><td>Analysis Stream URL</td><td>auto</td><td>Optional low-res stream for
+                software motion (Tapo: <code>/stream2</code> used automatically)</td></tr>
+            <tr><td>Use ONVIF motion detection</td><td>On</td><td>Use the camera's hardware
+                motion events (recommended for Tapo)</td></tr>
+            <tr><td>TAPO Reboot (TP-Link email/password)</td><td>—</td><td>Cloud login
+                enabling remote camera reboot</td></tr>
+        </table>
+
+        <h3>Bird Identification</h3>
+        <table>
+            <tr><th>Setting</th><th>Default</th><th>Purpose</th></tr>
+            <tr><td>AI Model</td><td>Bird Model (965)</td><td>Local classifier; or SpeciesNet
+                (2,498, experimental)</td></tr>
+            <tr><td>Minimum Confidence Threshold</td><td>35%</td><td>Only detections above
+                this are recorded</td></tr>
+            <tr><td>Use Test Mode</td><td>Off</td><td>Generates fake detections for testing —
+                leave off for real use</td></tr>
+        </table>
+
+        <h3>Monitoring</h3>
+        <table>
+            <tr><th>Setting</th><th>Default</th><th>Purpose</th></tr>
+            <tr><td>Check Interval (seconds)</td><td>2</td><td>How often the app samples for
+                motion</td></tr>
+            <tr><td>Motion Threshold</td><td>5</td><td>% of pixels that must change to count
+                as motion</td></tr>
+            <tr><td>Cooldown Period (seconds)</td><td>3</td><td>Minimum gap between
+                detections</td></tr>
+            <tr><td>Monitor daylight hours only</td><td>On (7–20)</td><td>Pauses overnight;
+                set start/end hours</td></tr>
+            <tr><td>Auto-reconnect</td><td>On</td><td>Retry dropped connections automatically</td></tr>
+            <tr><td>Periodic reconnect (minutes)</td><td>0 (off)</td><td>Force a fresh
+                connection every N minutes</td></tr>
+            <tr><td>Feeder Zip Code / GPS</td><td>—</td><td>Location for weather, rarity,
+                daylight. GPS optional (with "Pick on Map")</td></tr>
+            <tr><td>Temperature Unit</td><td>Fahrenheit</td><td>°F or °C</td></tr>
+        </table>
+
+        <h3>Advanced</h3>
+        <table>
+            <tr><th>Setting</th><th>Default</th><th>Purpose</th></tr>
+            <tr><td>Snapshot Folder</td><td><code>Data\Snapshots</code></td><td>Where
+                photos/videos are saved</td></tr>
+            <tr><td>Save snapshots locally</td><td>On</td><td>Keep image files on disk</td></tr>
+            <tr><td>Max Snapshots Per Day</td><td>500</td><td>Daily cap</td></tr>
+            <tr><td>Auto-delete old snapshots</td><td>Off</td><td>Optionally purge after N
+                days (default 30)</td></tr>
+            <tr><td>Enable video recording</td><td>On</td><td>Record a clip per detection
+                (duration, pre-buffer)</td></tr>
+            <tr><td>Best frame extraction</td><td>On</td><td>Pick the clearest frame from the
+                clip for ID</td></tr>
+            <tr><td>Object Detector (YOLOv8)</td><td>On</td><td>Crop to the bird; filter
+                non-bird motion</td></tr>
+            <tr><td>Save below-threshold detections</td><td>Off</td><td>Keep uncertain ones in
+                a ForReview folder</td></tr>
+            <tr><td>Check for updates on startup</td><td>On</td><td>Notify when a newer
+                version is available</td></tr>
+            <tr><td>Auto-connect &amp; start on startup</td><td>Off</td><td>Begin monitoring
+                automatically at launch</td></tr>
+        </table>
+
+        <h3>Other tabs (summary)</h3>
+        <ul>
+            <li><strong>Email Notifications</strong>, <strong>Pushover</strong>,
+                <strong>NTFY &amp; Windows</strong> — see
+                <a href="#notifications">Notification channels</a>.</li>
+            <li><strong>Summary Reports</strong> — Daily / Weekly / Monthly digest schedules,
+                recipients, and delivery method.</li>
+            <li><strong>Photo Frame</strong> — FTP or email-to-frame delivery of snapshots.</li>
+            <li><strong>Community</strong> — see <a href="#community">Community sharing</a>.</li>
+            <li><strong>Video Summary</strong> — intro card, music, highlight extraction, Ken
+                Burns, scheduled daily summary time.</li>
+            <li><strong>Debug Logging</strong> — per-component log levels (None / Low /
+                Medium / High) for Bird Identification, Camera, Motion, Monitoring loop, and
+                MainForm/UI, plus log-file rotation.</li>
+        </ul>
+
+        <h2 id="server-settings">Server settings</h2>
+
+        <p>On the server edition, settings live on the Blazor <code>/settings</code> page.
+            They're grouped into the same logical sections as the desktop app, but presented
+            in one long scrollable page with anchored sub-sections rather than tabs. All
+            settings persist to <code>data/config.json</code> in your mounted data folder.</p>
+
+        <div class="box note">
+            <span class="lbl">Live-reload</span>
+            Most settings re-configure their services on save without restarting the
+            container. Stream URL changes and camera-type changes trigger a clean reconnect
+            in-place. You don't usually need to <code>docker restart birdwatch</code> after
+            a settings change.
+        </div>
+
+        <h3>Major sections</h3>
+        <ul>
+            <li><strong>Camera</strong> — RTSP URL (or Pi camera device path), Camera type
+                dropdown, Test camera button, ONVIF toggle.</li>
+            <li><strong>Detection</strong> — Confidence threshold, motion detection threshold,
+                cooldown, daily cap, daylight hours.</li>
+            <li><strong>Location &amp; weather</strong> — ZIP code or lat/long, temperature
+                unit.</li>
+            <li><strong>Notifications</strong> — Email (SMTP), ntfy push.</li>
+            <li><strong>Community</strong> — sharing toggle + Share Level.</li>
+            <li><strong>License</strong> — paste a license key; deactivate to move to another
+                machine.</li>
+            <li><strong>Storage</strong> — snapshot retention policy, video retention,
+                ForReview folder toggle.</li>
+            <li><strong>Backups &amp; Migrate</strong> — see <a href="part-8-advanced.html#backups">Part 8 →
+                Backups &amp; migration</a>.</li>
+        </ul>
+
+        <h2 id="notifications">Notification channels</h2>
+
+        <h3>Email (SMTP) — both editions</h3>
+        <ol class="steps">
+            <li>Enable email notifications.</li>
+            <li>Set the SMTP <strong>server</strong> and <strong>port</strong>
+                (Gmail: <code>smtp.gmail.com</code> / <code>587</code>), keep
+                <strong>SSL / TLS</strong> on.</li>
+            <li>Enter your sending email + password and one or more recipients
+                (comma-separated).</li>
+            <li>Click <span class="ui">Send Test Email</span>.</li>
+        </ol>
+        <div class="box warn">
+            <span class="lbl">Gmail needs an "App Password"</span>
+            Don't use your normal Gmail password. Enable 2-Step Verification on your Google
+            account, then create a 16-character <strong>App Password</strong> (Google Account
+            → Security → App passwords → Mail) and use that here.
+        </div>
+
+        <h3>ntfy push — both editions</h3>
+        <p><strong>ntfy</strong> is a free, open-source push service that needs no account.</p>
+        <ol class="steps">
+            <li>Install the ntfy app on your phone.</li>
+            <li>In settings, enable ntfy, keep the server <code>https://ntfy.sh</code>, and
+                choose a <strong>unique topic name</strong> (e.g.
+                <code>birdwatch-myfeeder-12345</code>).</li>
+            <li>Subscribe to the same topic in the phone app.</li>
+            <li>Click <span class="ui">Send Test Notification</span>.</li>
+        </ol>
+
+        <h3>Pushover — desktop only</h3>
+        <p>Pushover delivers instant push notifications (with the photo) to your phone,
+            tablet, or desktop. Low-cost one-time purchase per platform after a free
+            trial.</p>
+        <ol class="steps">
+            <li>Create an account at <a href="https://pushover.net">pushover.net</a> and
+                install the app.</li>
+            <li>Create an application at
+                <a href="https://pushover.net/apps/build">pushover.net/apps/build</a>.</li>
+            <li>In <span class="ui">Settings → Pushover</span>, enable it and paste your
+                <strong>Application API Token</strong> and <strong>User Key</strong>.</li>
+            <li>Click <span class="ui">📱 Send Test Notification</span>.</li>
+        </ol>
+        <div class="box tip">
+            <span class="lbl">Custom sound</span>
+            Upload a custom sound named <code>BirdWatch</code> in Pushover to give bird alerts
+            their own distinctive tone.
+        </div>
+
+        <h3>Windows desktop notifications — desktop only</h3>
+        <p>Native Windows 10 / 11 toast pop-ups. Fast and local — no internet round-trip.
+            Settings → NTFY &amp; Windows tab.</p>
+
+        <h3>Photo frame — desktop only</h3>
+        <p>BirdWatchAI can push snapshots (and optionally videos) straight to a digital photo
+            frame, turning it into a live bird gallery. In
+            <span class="ui">Settings → Photo Frame</span>:</p>
+        <ul>
+            <li>Enable it, name the frame, choose whether to send snapshots, videos, and
+                whether to auto-send on every detection.</li>
+            <li>Pick a delivery method: <strong>FTP Upload</strong> (host, port, credentials,
+                remote path, optional FTPS) or <strong>Email to Frame</strong> (the frame's
+                email address + SMTP details).</li>
+            <li>Click <span class="ui">🖼 Test Photo Frame</span>.</li>
+        </ul>
+        <p>You can also send any single detection on demand via the history right-click menu →
+            <span class="ui">🖼 Send to Photo Frame</span>.</p>
+
+        <h3>Summary reports — both editions</h3>
+        <p>Reports roll up your activity into a tidy digest with statistics, charts, and
+            snapshots. Enable any of Daily / Weekly / Monthly with a chosen schedule, the
+            recipient email(s), and the delivery method (Email / Pushover / Both on desktop;
+            Email / ntfy on server). Reports are skipped automatically when there were no
+            detections in the period.</p>
+
+        <h2 id="community">Community sharing</h2>
+
+        <p>Sharing is controlled in <span class="ui">Settings → Community</span> on both
+            editions. The most important control is the <strong>Share Level</strong>, which
+            precisely governs what leaves your machine:</p>
+
+        <table>
+            <tr><th>Level</th><th>What is shared</th></tr>
+            <tr><td><strong>0 — Off</strong></td><td>Nothing is shared</td></tr>
+            <tr><td><strong>1</strong></td><td>Species + timestamp only (plus confidence,
+                rarity, and temperature when available)</td></tr>
+            <tr><td><strong>2</strong></td><td>The above <strong>+ your ZIP code</strong>
+                (or GPS coordinates if you've enabled GPS instead of ZIP)</td></tr>
+            <tr><td><strong>3</strong></td><td>The above <strong>+ the snapshot image</strong></td></tr>
+            <tr><td><strong>4</strong></td><td>The above <strong>+ the video clip</strong></td></tr>
+        </table>
+
+        <div class="box tip">
+            <span class="lbl">You stay anonymous</span>
+            Your feeder is identified only by a random <strong>Device Key</strong> (a UUID)
+            — never linked to your name or email. Your public identity is just the
+            <strong>Feeder Display Name</strong> (which mirrors your Camera Name). Location
+            is shared <em>only</em> at Level 2 and above, and GPS is used in place of ZIP
+            only if you explicitly enable GPS coordinates.
+        </div>
+
+        <p>Other options on the tab:</p>
+        <ul>
+            <li><strong>Enable Community Sharing</strong> — the master switch.</li>
+            <li><strong>Automatically push each detection</strong> — uncheck to share only
+                manually (right-click a detection →
+                <span class="ui">🌐 Push to Community…</span>).</li>
+            <li>When you <strong>correct or delete</strong> a detection locally, the change
+                syncs to the community automatically.</li>
+            <li>Your install periodically sends a <strong>heartbeat</strong> so the website
+                can show your feeder as online / monitoring.</li>
+        </ul>
+
+        <h2 id="advanced-tuning">Detection tuning — when defaults aren't right</h2>
+
+        <p>The factory defaults work for most installs, but if you're getting too many false
+            positives, missing real birds, or finding the AI keeps misidentifying things,
+            here's what knob to turn:</p>
+
+        <table>
+            <tr><th>Symptom</th><th>Knob</th><th>Direction</th></tr>
+            <tr>
+                <td>Too many "false" detections (squirrels, wind)</td>
+                <td>Motion Threshold; YOLOv8 detector</td>
+                <td>Raise threshold; keep YOLOv8 on</td>
+            </tr>
+            <tr>
+                <td>Missing real birds</td>
+                <td>Motion Threshold; Cooldown</td>
+                <td>Lower threshold; lower cooldown</td>
+            </tr>
+            <tr>
+                <td>Wrong species often</td>
+                <td>Camera placement; Best-frame extraction; Min confidence</td>
+                <td>Get the camera closer; keep best-frame on; raise confidence to 40–50%</td>
+            </tr>
+            <tr>
+                <td>Bursts of duplicates of the same bird</td>
+                <td>Cooldown</td>
+                <td>Raise to 10–30 s</td>
+            </tr>
+            <tr>
+                <td>App ignores some real birds (low confidence)</td>
+                <td>Min confidence; "Save below-threshold detections"</td>
+                <td>Lower min confidence; enable the for-review folder and confirm
+                    manually</td>
+            </tr>
+        </table>
+
+        <p>On the desktop, the <span class="ui">📈 Telemetry</span> window plots motion %,
+            temperature, and your two thresholds against detection markers — the easiest way
+            to pick a Motion Threshold that's just below real visits and above background
+            sway.</p>
+
+        <nav class="pager" aria-label="Manual navigation">
+            <a class="prev" href="part-4-camera-hardware.html">
+                <span class="nav-label">Part 4</span>
+                <span class="nav-title">Camera Hardware</span>
+            </a>
+            <a class="next" href="part-6-daily-use.html">
+                <span class="nav-label">Part 6</span>
+                <span class="nav-title">Daily Use</span>
+            </a>
+        </nav>
+    </main>
+</div>
+
+<script src="manual.js"></script>
+</body>
+</html>
