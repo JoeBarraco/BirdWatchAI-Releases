@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Part 3 — First-Time Setup · BirdWatchAI Manual</title>
+<link rel="stylesheet" href="manual.css">
+<link rel="icon" type="image/png" href="../../images/favicon.png">
+<script>
+    (function () {
+        try {
+            var t = localStorage.getItem('bwai-theme');
+            if (t) document.documentElement.setAttribute('data-theme', t);
+        } catch (e) {}
+    })();
+</script>
+</head>
+<body data-part="3">
+
+<header class="topbar">
+    <button class="menu-toggle" aria-label="Toggle table of contents">☰ Menu</button>
+    <a href="../../index.html" class="brand">🐦 BirdWatchAI</a>
+    <span class="crumb"><a href="index.html" style="color:inherit;">Manual</a></span>
+    <span class="crumb">Part 3 · First-Time Setup</span>
+    <span class="spacer"></span>
+    <button id="manual-theme-toggle" class="site-link" type="button" title="Toggle theme">🌙 Theme</button>
+    <a href="../community.html" class="site-link">Community Feed</a>
+</header>
+
+<div class="layout">
+
+    <nav class="toc" aria-label="Manual table of contents">
+        <h2>Contents</h2>
+        <ol>
+            <li data-part="1"><a href="part-1-introduction.html">Introduction</a></li>
+            <li data-part="2"><a href="part-2-installation.html">Installation</a></li>
+            <li data-part="3"><a href="part-3-first-time-setup.html">First-Time Setup</a>
+                <ul>
+                    <li><a href="#wizard">The setup wizard</a></li>
+                    <li><a href="#camera-step">Camera step</a></li>
+                    <li><a href="#location">Location &amp; weather</a></li>
+                    <li><a href="#notifications">Notifications</a></li>
+                    <li><a href="#community">Community sharing</a></li>
+                    <li><a href="#first-detection">Your first detection</a></li>
+                </ul>
+            </li>
+            <li data-part="4"><a href="part-4-camera-hardware.html">Camera Hardware</a></li>
+            <li data-part="5"><a href="part-5-configuration.html">Configuration Reference</a></li>
+            <li data-part="6"><a href="part-6-daily-use.html">Daily Use</a></li>
+            <li data-part="7"><a href="part-7-troubleshooting.html">Troubleshooting</a></li>
+            <li data-part="8"><a href="part-8-advanced.html">Advanced Topics</a></li>
+        </ol>
+    </nav>
+
+    <main class="content">
+        <span class="part-tag">Part 3</span>
+        <h1>First-Time Setup</h1>
+
+        <p class="lead">Both editions greet you with a setup wizard the first time you start
+            them. This Part walks through it: pointing the app at your camera, setting your
+            location, configuring notifications, and (optionally) joining the community feed.
+            By the end you'll have a connected camera and your first detection rolling in.</p>
+
+        <h2 id="wizard">The setup wizard</h2>
+
+        <p>The very first time you run BirdWatchAI, you'll see a splash screen (desktop) or
+            "👋 First-time setup" card (server) directing you to the wizard. Both wizards
+            cover the same ground in slightly different UIs.</p>
+
+        <p>On the <strong>desktop</strong>, the wizard appears automatically after the
+            splash. You can press <span class="ui">Skip</span> on most steps and configure
+            things later in <span class="ui">Settings</span>, and you can re-run the wizard
+            any time from the Help menu.</p>
+
+        <p>On the <strong>server</strong>, the dashboard at
+            <code>http://&lt;your-host&gt;:8080</code> shows a "First-time setup" card on the
+            home page. Click <span class="ui">Start setup</span> to go to <code>/setup</code>.</p>
+
+        <h3>The five steps</h3>
+        <ol>
+            <li><strong>Welcome</strong> — quick orientation; lists what you'll need (camera,
+                Wi-Fi, optional email + ZIP code).</li>
+            <li><strong>Camera</strong> — RTSP URL, or for the server edition you can pick
+                a wired Pi camera instead.</li>
+            <li><strong>Location</strong> — ZIP code (used for outdoor temperature and
+                regional rarity).</li>
+            <li><strong>Notifications</strong> — optional email + push.</li>
+            <li><strong>License</strong> — optional; a free trial starts automatically if you
+                skip.</li>
+        </ol>
+
+        <h2 id="camera-step">Camera step</h2>
+
+        <p>This is the only step that really matters on first run — without a working camera
+            the app has nothing to watch.</p>
+
+        <h3>On the desktop wizard</h3>
+        <p>Pick your camera type from the dropdown (Tapo, Wyze, Amcrest, Reolink, Hikvision,
+            or Other). Tabbed instructions adapt to your choice. Then fill in:</p>
+        <ul>
+            <li><span class="ui">Camera IP Address</span> — use the <span class="ui">How to
+                Find IP</span> button if unsure.</li>
+            <li><span class="ui">RTSP Port</span> — default <code>554</code>.</li>
+            <li><span class="ui">RTSP Username</span> / <span class="ui">RTSP Password</span>
+                — the <em>camera account</em> credentials (for Tapo, this is separate from
+                your TP-Link login — see <a href="part-4-camera-hardware.html#tapo">Part 4 →
+                    TP-Link Tapo</a>).</li>
+        </ul>
+        <p>Click <span class="ui">Build URL</span> to assemble the RTSP address, then
+            <span class="ui">🔗 Test Connection</span> to verify. A successful test shows the
+            camera resolution. There's also a <span class="ui">📖 Full TAPO Guide</span>
+            button.</p>
+
+        <h3>On the server wizard</h3>
+        <p>Paste the camera's RTSP URL straight in. For TP-Link Tapo cameras, the form is:</p>
+        <pre><code>rtsp://&lt;username&gt;:&lt;password&gt;@&lt;camera-ip&gt;/stream2</code></pre>
+        <p>For example: <code>rtsp://birduser:secret123@192.168.1.105/stream2</code>.</p>
+
+        <div class="box warn">
+            <span class="lbl">stream1 vs. stream2 on Tapo</span>
+            Stream resolution varies by Tapo model. The <strong>C113 sub-stream</strong>
+            (<code>stream2</code>) is 720p and is the right default — reliable and easy on
+            Wi-Fi. The <strong>C120</strong> and most lower-cost models cap
+            <code>stream2</code> at 640×360, in which case use <code>stream1</code> set to
+            <em>1080p</em> in the Tapo app — but <strong>avoid stream1 at 2K</strong>: it
+            saturates the camera's Wi-Fi uplink and causes H.264 corruption and instability.
+        </div>
+
+        <p>Click <span class="ui">Test camera</span>. A frame should come back in a few
+            seconds. If not, see <a href="part-7-troubleshooting.html#camera">Part 7 → Camera
+                won't connect</a> — the usual culprits are a typo in the URL, the wrong
+            credentials (camera account vs. cloud account), or the wrong stream path.</p>
+
+        <h3>If your camera is a wired Pi camera (server only)</h3>
+        <p>Set the <strong>Camera type</strong> to <strong>Pi camera</strong> instead of RTSP.
+            Leave the device path at <code>0</code> (the libcamera index — the field also
+            accepts <code>/dev/video0</code>). One-time host configuration is required first:
+            see <a href="part-4-camera-hardware.html#pi-camera">Part 4 → Raspberry Pi
+                camera</a>.</p>
+
+        <h2 id="location">Location &amp; weather</h2>
+
+        <p>Your location powers three things:</p>
+        <ul>
+            <li><strong>Temperature</strong> — fetched from
+                <a href="https://open-meteo.com">Open-Meteo</a> (no API key required) and
+                stamped on every detection's overlay.</li>
+            <li><strong>Rarity ratings</strong> — each species is rated against regional /
+                seasonal eBird data so a Wood Thrush in suburban Boston gets flagged
+                differently from one in rural Vermont.</li>
+            <li><strong>Daylight hours</strong> — used to pause monitoring overnight
+                (configurable).</li>
+        </ul>
+
+        <p>On the desktop: enter your <span class="ui">ZIP Code</span> and click
+            <span class="ui">Look Up</span>. The wizard resolves it to latitude / longitude.
+            There's also an optional <span class="ui">Pick on Map</span> button (needs the
+            WebView2 runtime; if you don't have it you can still enter coordinates by hand).</p>
+
+        <p>On the server: type your ZIP code into the wizard's location step.</p>
+
+        <div class="box note">
+            <span class="lbl">Outside the US?</span>
+            ZIP-code lookup is US-only, but you can enter latitude / longitude directly on
+            both editions and everything else (weather, rarity) still works.
+        </div>
+
+        <h2 id="notifications">Notifications</h2>
+
+        <p>Both editions can send a notification with the snapshot when a detection happens.
+            All channels are <strong>off by default</strong> — enable the ones you want, and
+            use the <span class="ui">Test</span> button on each to confirm it works before
+            you rely on it.</p>
+
+        <table>
+            <tr><th>Channel</th><th>Desktop</th><th>Server</th><th>Notes</th></tr>
+            <tr>
+                <td><strong>Email</strong> (SMTP)</td>
+                <td>✅</td>
+                <td>✅</td>
+                <td>Gmail needs an <a href="https://myaccount.google.com/apppasswords">App
+                    Password</a>, not your regular password.</td>
+            </tr>
+            <tr>
+                <td><strong>ntfy</strong> push</td>
+                <td>✅</td>
+                <td>✅</td>
+                <td>Free, account-less. Pick a hard-to-guess topic name.</td>
+            </tr>
+            <tr>
+                <td><strong>Pushover</strong></td>
+                <td>✅</td>
+                <td>—</td>
+                <td>Mobile push with the photo; small one-time fee per platform.</td>
+            </tr>
+            <tr>
+                <td><strong>Windows toast</strong></td>
+                <td>✅</td>
+                <td>—</td>
+                <td>Native Windows 10/11 notifications; instant and local.</td>
+            </tr>
+            <tr>
+                <td><strong>Photo frame</strong> (FTP or email-to-frame)</td>
+                <td>✅</td>
+                <td>—</td>
+                <td>Push snapshots straight to a digital photo frame.</td>
+            </tr>
+        </table>
+
+        <p>You can skip this entire step in the wizard and add channels later under
+            <span class="ui">Settings → Notifications</span>. The full reference is in
+            <a href="part-5-configuration.html#notifications">Part 5 → Notification channels</a>.</p>
+
+        <h2 id="community">Community sharing</h2>
+
+        <p>The BirdWatchAI community is a free, worldwide live feed of sightings at
+            <a href="https://www.birdwatchai.com">www.birdwatchai.com</a>. Sharing is
+            <strong>off by default</strong> — turn it on if you'd like your feeder to show up
+            on the community map, in the gallery, and on the leaderboards.</p>
+
+        <p>When you enable it, you pick a <strong>Share Level</strong> (0–4) that precisely
+            governs what leaves your home:</p>
+
+        <table>
+            <tr><th>Level</th><th>What is shared</th></tr>
+            <tr><td><strong>0 — Off</strong></td><td>Nothing</td></tr>
+            <tr><td><strong>1</strong></td><td>Species + timestamp (plus confidence, rarity,
+                temperature when available)</td></tr>
+            <tr><td><strong>2</strong></td><td>The above <strong>+ ZIP code</strong> (or GPS
+                coordinates if you've enabled GPS instead of ZIP)</td></tr>
+            <tr><td><strong>3</strong></td><td>The above <strong>+ the snapshot image</strong></td></tr>
+            <tr><td><strong>4</strong></td><td>The above <strong>+ the video clip</strong></td></tr>
+        </table>
+
+        <div class="box tip">
+            <span class="lbl">You stay anonymous</span>
+            Your feeder is identified only by a random <strong>Device Key</strong> (a UUID)
+            — never linked to your name or email. Your public identity is just the
+            <strong>Feeder Display Name</strong> (which mirrors your Camera Name). Location is
+            shared <em>only</em> at Level 2 and above.
+        </div>
+
+        <p>The wizard offers a sensible default (off, or Level 3) and you can change it any
+            time later. The full settings reference is in
+            <a href="part-5-configuration.html#community">Part 5 → Community sharing</a>.</p>
+
+        <h2 id="first-detection">Your first detection</h2>
+
+        <p>When you finish the wizard, you land on the main window / dashboard. The Engine
+            status card (server) or the top status bar (desktop) should show monitoring
+            <em>Running</em>, camera <em>Connected</em>, and within a few minutes — assuming
+            there are birds at the feeder and it's daylight — your first detection.</p>
+
+        <p>If it's been a while and nothing has shown up:</p>
+        <ul>
+            <li>Confirm the camera frame in the dashboard / main window actually shows the
+                feeder.</li>
+            <li>Check that monitoring is <strong>running</strong>, not paused.</li>
+            <li>Check that it's within daylight hours (the engine pauses overnight by default,
+                7 AM – 8 PM).</li>
+            <li>Try the <span class="ui">Test Image</span> button (desktop) with a known bird
+                photo to confirm the AI side of the pipeline is working.</li>
+        </ul>
+
+        <p>For deeper diagnosis see <a href="part-7-troubleshooting.html#detection">Part 7 →
+            No / wrong detections</a>.</p>
+
+        <nav class="pager" aria-label="Manual navigation">
+            <a class="prev" href="part-2-installation.html">
+                <span class="nav-label">Part 2</span>
+                <span class="nav-title">Installation</span>
+            </a>
+            <a class="next" href="part-4-camera-hardware.html">
+                <span class="nav-label">Part 4</span>
+                <span class="nav-title">Camera Hardware</span>
+            </a>
+        </nav>
+    </main>
+</div>
+
+<script src="manual.js"></script>
+</body>
+</html>

@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Part 7 — Troubleshooting · BirdWatchAI Manual</title>
+<link rel="stylesheet" href="manual.css">
+<link rel="icon" type="image/png" href="../../images/favicon.png">
+<script>
+    (function () {
+        try {
+            var t = localStorage.getItem('bwai-theme');
+            if (t) document.documentElement.setAttribute('data-theme', t);
+        } catch (e) {}
+    })();
+</script>
+</head>
+<body data-part="7">
+
+<header class="topbar">
+    <button class="menu-toggle" aria-label="Toggle table of contents">☰ Menu</button>
+    <a href="../../index.html" class="brand">🐦 BirdWatchAI</a>
+    <span class="crumb"><a href="index.html" style="color:inherit;">Manual</a></span>
+    <span class="crumb">Part 7 · Troubleshooting</span>
+    <span class="spacer"></span>
+    <button id="manual-theme-toggle" class="site-link" type="button" title="Toggle theme">🌙 Theme</button>
+    <a href="../community.html" class="site-link">Community Feed</a>
+</header>
+
+<div class="layout">
+
+    <nav class="toc" aria-label="Manual table of contents">
+        <h2>Contents</h2>
+        <ol>
+            <li data-part="1"><a href="part-1-introduction.html">Introduction</a></li>
+            <li data-part="2"><a href="part-2-installation.html">Installation</a></li>
+            <li data-part="3"><a href="part-3-first-time-setup.html">First-Time Setup</a></li>
+            <li data-part="4"><a href="part-4-camera-hardware.html">Camera Hardware</a></li>
+            <li data-part="5"><a href="part-5-configuration.html">Configuration Reference</a></li>
+            <li data-part="6"><a href="part-6-daily-use.html">Daily Use</a></li>
+            <li data-part="7"><a href="part-7-troubleshooting.html">Troubleshooting</a>
+                <ul>
+                    <li><a href="#camera">Camera won't connect</a></li>
+                    <li><a href="#detection">No / wrong detections</a></li>
+                    <li><a href="#notifications">Notifications</a></li>
+                    <li><a href="#server">Server / Docker</a></li>
+                    <li><a href="#raspberry-pi-issues">Raspberry Pi issues</a></li>
+                    <li><a href="#windows-issues">Windows-specific</a></li>
+                    <li><a href="#timezone">Wrong timestamps</a></li>
+                    <li><a href="#diagnostics">Collecting diagnostics</a></li>
+                </ul>
+            </li>
+            <li data-part="8"><a href="part-8-advanced.html">Advanced Topics</a></li>
+        </ol>
+    </nav>
+
+    <main class="content">
+        <span class="part-tag">Part 7</span>
+        <h1>Troubleshooting</h1>
+
+        <p class="lead">If something's wrong, this is where to start. Each section is a
+            symptom-first table — find the row that matches what you're seeing and try the
+            fixes in order. Most problems fall into a handful of buckets: wrong RTSP
+            credentials, time-zone misconfiguration, or Docker not yet started.</p>
+
+        <h2 id="camera">Camera won't connect</h2>
+
+        <table>
+            <tr><th>Symptom</th><th>Things to try</th></tr>
+            <tr>
+                <td>Camera shows "Disconnected" in the dashboard or main window</td>
+                <td>
+                    Verify the RTSP URL is exactly right (including the port and stream path);
+                    the camera is powered on; camera and PC are on the same network;
+                    you're using the <em>camera account</em> credentials (not the TP-Link
+                    cloud login). Test the URL in <strong>VLC</strong>
+                    (<span class="ui">Media → Open Network Stream</span>) to isolate whether
+                    the problem is the camera or the app. Try <code>/stream2</code> if HD
+                    won't load.
+                </td>
+            </tr>
+            <tr>
+                <td>Connection keeps dropping every few minutes</td>
+                <td>
+                    Improve Wi-Fi at the camera; reserve a static IP
+                    (<a href="part-4-camera-hardware.html#dhcp-reservation">Part 4</a>);
+                    reduce simultaneous streams (cloud recording / SD recording / NVR);
+                    enable periodic reconnect; set Tapo cloud credentials so the app can
+                    auto-reboot the camera (desktop only).
+                </td>
+            </tr>
+            <tr>
+                <td>"Authentication failed" or 401-like error</td>
+                <td>
+                    You're almost certainly using the wrong credentials. On Tapo, the
+                    <em>Camera Account</em> (set in the Tapo app under Advanced Settings) is
+                    a separate username/password from your TP-Link cloud login.
+                </td>
+            </tr>
+            <tr>
+                <td>Camera works in VLC but not in BirdWatchAI</td>
+                <td>
+                    Confirm the URL is byte-for-byte identical. Some camera firmwares require
+                    a trailing slash; some refuse a connection from more than one client at a
+                    time — close VLC and try again. If you have ONVIF motion enabled, try
+                    turning it off — a few firmware combinations refuse the ONVIF subscription
+                    and refuse to stream RTSP until you reboot the camera.
+                </td>
+            </tr>
+            <tr>
+                <td>H.264 corruption / green flicker / picture freezes mid-stream</td>
+                <td>
+                    Wi-Fi saturation. On Tapo, drop the main stream from 2K to 1080p in the
+                    Tapo app (avoid 2K — it saturates the camera's uplink). On other brands,
+                    drop the bitrate or switch to the sub-stream. Wired Ethernet to the
+                    camera eliminates this almost everywhere.
+                </td>
+            </tr>
+            <tr>
+                <td>ONVIF motion not firing on a Tapo camera</td>
+                <td>
+                    Tapo ONVIF subscriptions have a 1-hour lease (renewed every ~45 min).
+                    Stale subscriptions after a camera reboot or network blip can cause
+                    BadRequest until the old lease expires (~1 h) or you reboot the camera.
+                    Toggling ONVIF off and on in settings forces a fresh subscription too.
+                </td>
+            </tr>
+        </table>
+
+        <h2 id="detection">No / wrong detections</h2>
+
+        <table>
+            <tr><th>Symptom</th><th>Things to try</th></tr>
+            <tr>
+                <td>No detections at all, but the camera shows live video</td>
+                <td>
+                    Make sure you clicked <span class="ui">Start Monitoring</span>; check
+                    that it's within daylight hours (or disable that limit in Settings →
+                    Monitoring); lower the Motion Threshold; confirm Test Mode is off.
+                </td>
+            </tr>
+            <tr>
+                <td>Too many false detections (squirrels, wind, shadows)</td>
+                <td>
+                    Raise the Motion Threshold; increase the Cooldown; keep the object
+                    detector on; frame out swaying branches. Use the Telemetry viewer (desktop)
+                    to find a good threshold.
+                </td>
+            </tr>
+            <tr>
+                <td>Wrong species, or low confidence on obvious birds</td>
+                <td>
+                    Get the camera closer to the feeder (3–10 feet); use the HD stream; keep
+                    best-frame extraction on; raise the confidence threshold; use
+                    <span class="ui">Correct Identification…</span> to fix mistakes (the
+                    correction is saved and helps future training).
+                </td>
+            </tr>
+            <tr>
+                <td>Squirrels / other animals are ignored</td>
+                <td>
+                    Expected — the object detector filters non-bird motion to keep your
+                    history clean. There's no setting to "save squirrels" by design.
+                </td>
+            </tr>
+            <tr>
+                <td>"Bird" gets detected on shadows / sun flares</td>
+                <td>
+                    Move the camera so direct sun isn't in the frame; clean the lens; raise
+                    the confidence threshold. The object detector occasionally false-fires on
+                    high-contrast moving shapes.
+                </td>
+            </tr>
+        </table>
+
+        <h2 id="notifications">Notifications</h2>
+
+        <table>
+            <tr><th>Symptom</th><th>Things to try</th></tr>
+            <tr>
+                <td>Email won't send (Gmail)</td>
+                <td>
+                    Gmail rejects regular passwords for SMTP. Enable 2-Step Verification, then
+                    create a 16-character <strong>App Password</strong> (Google Account →
+                    Security → App passwords → Mail) and use that. Keep SSL on. Click
+                    <span class="ui">Send Test Email</span> to verify.
+                </td>
+            </tr>
+            <tr>
+                <td>Email won't send (other providers)</td>
+                <td>
+                    Check the SMTP server name and port. Many providers require a specific
+                    "from" address that matches the authenticated user. Some providers block
+                    SMTP for new accounts for 24 h.
+                </td>
+            </tr>
+            <tr>
+                <td>ntfy phone app doesn't get notifications</td>
+                <td>
+                    Confirm the topic in the phone app is byte-for-byte identical to the one
+                    in BirdWatchAI settings (case-sensitive). Confirm the phone has internet
+                    + battery-optimization isn't killing ntfy in the background. Send a test
+                    from the settings page.
+                </td>
+            </tr>
+            <tr>
+                <td>Pushover delivers but the photo is missing</td>
+                <td>
+                    Your image is probably above Pushover's 5 MB attachment limit. Either
+                    drop the snapshot resolution at the camera or accept text-only push.
+                </td>
+            </tr>
+            <tr>
+                <td>Photo frame doesn't update (FTP)</td>
+                <td>
+                    Verify the host, port, username, password, and remote path; many frames
+                    require FTPS rather than plain FTP. The <span class="ui">🖼 Test Photo
+                    Frame</span> button surfaces the underlying error.
+                </td>
+            </tr>
+        </table>
+
+        <h2 id="server">Server / Docker</h2>
+
+        <table>
+            <tr><th>Symptom</th><th>Things to try</th></tr>
+            <tr>
+                <td>Dashboard returns "site can't be reached"</td>
+                <td>
+                    Run <code>docker ps</code> — is <code>birdwatch</code> listed with status
+                    <code>Up</code>? If <code>Restarting</code> or missing,
+                    <code>docker logs birdwatch</code> shows why.
+                </td>
+            </tr>
+            <tr>
+                <td><code>docker compose up</code> fails with "Cannot connect to the Docker
+                    daemon"</td>
+                <td>
+                    Docker isn't running. On Windows, open Docker Desktop from the Start menu
+                    and wait for the whale icon to settle. On Linux, <code>sudo systemctl
+                    start docker</code>.
+                </td>
+            </tr>
+            <tr>
+                <td><code>denied: requires authentication</code> on
+                    <code>docker compose up</code></td>
+                <td>
+                    The GHCR package isn't public yet (early-access install). Open an issue
+                    on the release repo so the owner can flip the visibility.
+                </td>
+            </tr>
+            <tr>
+                <td>"⬆ Update available" button is greyed out</td>
+                <td>
+                    Your install predates the Watchtower sidecar. Update the manual way once
+                    (<code>cd ~/birdwatch &amp;&amp; docker compose pull &amp;&amp; docker
+                    compose up -d</code>), then re-pull the release repo so the new
+                    <code>docker-compose.yml</code> wires the sidecar in.
+                </td>
+            </tr>
+            <tr>
+                <td>Container running but dashboard shows old version</td>
+                <td>
+                    <code>docker compose pull &amp;&amp; docker compose up -d</code> — the
+                    pull is a no-op if the local image is already current, but recreates the
+                    container if a newer image got pulled. Hard-refresh the browser
+                    (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd>) after the recreate.
+                </td>
+            </tr>
+            <tr>
+                <td>Watchtower container in a restart loop</td>
+                <td>
+                    Almost always a Docker API version mismatch. The supplied
+                    <code>docker-compose.yml</code> pins <code>DOCKER_API_VERSION=1.44</code>
+                    which works on current Docker daemons. If you changed it, restore the
+                    pin.
+                </td>
+            </tr>
+            <tr>
+                <td>Out of disk on the host</td>
+                <td>
+                    Snapshots and clips grow without bound by default. In Settings → Storage,
+                    set a retention policy (e.g. delete snapshots older than 30 days). Then
+                    <code>docker system prune -af</code> to reclaim old image layers.
+                </td>
+            </tr>
+        </table>
+
+        <h2 id="raspberry-pi-issues">Raspberry Pi specific issues</h2>
+
+        <table>
+            <tr><th>Symptom</th><th>Things to try</th></tr>
+            <tr>
+                <td><code>ssh: Could not resolve hostname birdwatch.local</code></td>
+                <td>Use the Pi's IP instead of <code>.local</code>. Find it in your router's
+                    admin page.</td>
+            </tr>
+            <tr>
+                <td><code>Permission denied (publickey,password)</code></td>
+                <td>Username typo, or you didn't enable password SSH in the Imager's Services
+                    tab. Re-image the SD card.</td>
+            </tr>
+            <tr>
+                <td><code>docker: command not found</code> after the install step</td>
+                <td>The Docker install script failed silently. Re-run
+                    <code>curl -fsSL https://get.docker.com | sh</code> and watch for
+                    errors.</td>
+            </tr>
+            <tr>
+                <td>Pi camera: "No cameras available!" inside the container</td>
+                <td>
+                    You probably missed step 4 (uncommenting <code>privileged: true</code> in
+                    <code>docker-compose.yml</code>). Confirm with
+                    <code>docker inspect birdwatch --format '{{.HostConfig.Privileged}}'</code>
+                    — it should print <code>true</code>. See
+                    <a href="part-4-camera-hardware.html#pi-camera">Part 4 → Raspberry Pi
+                        camera</a>.
+                </td>
+            </tr>
+            <tr>
+                <td>Pi locks up randomly under load</td>
+                <td>Almost always an underpowered USB-C supply. Use the official Pi 4 / 5
+                    power supply.</td>
+            </tr>
+            <tr>
+                <td>Wi-Fi works briefly then disappears (Pi 5)</td>
+                <td>Wi-Fi country code isn't set. Run
+                    <code>sudo raspi-config nonint do_wifi_country US</code> (substitute your
+                    country code).</td>
+            </tr>
+        </table>
+
+        <h2 id="windows-issues">Windows-specific</h2>
+
+        <table>
+            <tr><th>Symptom</th><th>Things to try</th></tr>
+            <tr>
+                <td>App seems gone but tray icon still showing</td>
+                <td>
+                    It minimized to the tray. Double-click the tray bird icon to restore.
+                    Use tray → Exit to fully quit.
+                </td>
+            </tr>
+            <tr>
+                <td>"Pick on Map" shows no map</td>
+                <td>
+                    Install the Microsoft <strong>WebView2 Runtime</strong>. Manual
+                    latitude / longitude entry still works without it.
+                </td>
+            </tr>
+            <tr>
+                <td>Installer says "WSL 2 installation incomplete" (server Docker)</td>
+                <td>
+                    Open PowerShell as Admin → <code>wsl --install</code> → reboot → re-run
+                    the Docker Desktop installer.
+                </td>
+            </tr>
+            <tr>
+                <td>App won't start: ".NET 8 Desktop Runtime missing"</td>
+                <td>
+                    Download and install the
+                    <strong>.NET 8 Desktop Runtime (x64)</strong> from microsoft.com, then
+                    re-launch BirdWatchAI.
+                </td>
+            </tr>
+        </table>
+
+        <h2 id="timezone">Detection timestamps off by several hours</h2>
+
+        <p>This one bites every install at some point.</p>
+
+        <h3>On a Raspberry Pi</h3>
+        <p>Pi OS defaults to <code>Etc/UTC</code> if you skipped the time zone in the Imager
+            customisation step. Fix:</p>
+        <pre><code>sudo timedatectl set-timezone America/New_York
+# (substitute your zone — list them with `timedatectl list-timezones | grep America`)
+cd ~/birdwatch && docker compose restart birdwatch</code></pre>
+        <p>Verify with <code>docker exec birdwatch date</code> — it should now match your wall
+            clock.</p>
+
+        <h3>On Windows with Docker Desktop</h3>
+        <p>Docker Desktop on Windows runs containers in a Linux VM that uses its own
+            timezone. The compose file's <code>TZ</code> env var picks up <code>${TZ}</code>
+            from your environment — set it explicitly: edit <code>docker-compose.yml</code>
+            and replace <code>${TZ:-UTC}</code> with e.g. <code>America/New_York</code>,
+            then <code>docker compose up -d</code>.</p>
+
+        <h3>On the desktop app</h3>
+        <p>The desktop app uses your Windows system clock and time zone directly, so this
+            problem is rare. If you see it, check that Windows shows the right time and the
+            right zone (Settings → Time &amp; Language → Date &amp; time).</p>
+
+        <h2 id="diagnostics">Collecting diagnostics for a support request</h2>
+
+        <p>If you've tried the above and need help, gather:</p>
+
+        <h3>Desktop</h3>
+        <ol>
+            <li>In <span class="ui">Settings → Debug Logging</span>, raise component levels
+                (or "Set All to High"). Reproduce the problem.</li>
+            <li>Open the Debug Log panel or open the <code>Data\Logs</code> folder and grab
+                the most recent file.</li>
+            <li>Include the app version (Help → About) and a brief description of what you
+                did and what you expected.</li>
+        </ol>
+
+        <h3>Server</h3>
+        <pre><code>docker logs --tail 200 birdwatch</code></pre>
+        <p>Plus the contents of <code>data/config.json</code> <strong>with passwords and
+            API keys redacted</strong>. Open an issue on the
+            <a href="https://github.com/JoeBarraco/birdwatchai-server-releases/issues">release
+            repo</a> with both.</p>
+
+        <nav class="pager" aria-label="Manual navigation">
+            <a class="prev" href="part-6-daily-use.html">
+                <span class="nav-label">Part 6</span>
+                <span class="nav-title">Daily Use</span>
+            </a>
+            <a class="next" href="part-8-advanced.html">
+                <span class="nav-label">Part 8</span>
+                <span class="nav-title">Advanced Topics</span>
+            </a>
+        </nav>
+    </main>
+</div>
+
+<script src="manual.js"></script>
+</body>
+</html>

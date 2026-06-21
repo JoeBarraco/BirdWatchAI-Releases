@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Part 2 — Installation · BirdWatchAI Manual</title>
+<link rel="stylesheet" href="manual.css">
+<link rel="icon" type="image/png" href="../../images/favicon.png">
+<script>
+    (function () {
+        try {
+            var t = localStorage.getItem('bwai-theme');
+            if (t) document.documentElement.setAttribute('data-theme', t);
+        } catch (e) {}
+    })();
+</script>
+</head>
+<body data-part="2">
+
+<header class="topbar">
+    <button class="menu-toggle" aria-label="Toggle table of contents">☰ Menu</button>
+    <a href="../../index.html" class="brand">🐦 BirdWatchAI</a>
+    <span class="crumb"><a href="index.html" style="color:inherit;">Manual</a></span>
+    <span class="crumb">Part 2 · Installation</span>
+    <span class="spacer"></span>
+    <button id="manual-theme-toggle" class="site-link" type="button" title="Toggle theme">🌙 Theme</button>
+    <a href="../community.html" class="site-link">Community Feed</a>
+</header>
+
+<div class="layout">
+
+    <nav class="toc" aria-label="Manual table of contents">
+        <h2>Contents</h2>
+        <ol>
+            <li data-part="1"><a href="part-1-introduction.html">Introduction</a></li>
+            <li data-part="2"><a href="part-2-installation.html">Installation</a>
+                <ul>
+                    <li><a href="#windows-desktop">Windows desktop app</a></li>
+                    <li><a href="#raspberry-pi">Raspberry Pi server</a></li>
+                    <li><a href="#windows-docker">Windows + Docker server</a></li>
+                    <li><a href="#linux-x86">Other Linux (x86_64)</a></li>
+                    <li><a href="#licensing">Licensing &amp; the free trial</a></li>
+                </ul>
+            </li>
+            <li data-part="3"><a href="part-3-first-time-setup.html">First-Time Setup</a></li>
+            <li data-part="4"><a href="part-4-camera-hardware.html">Camera Hardware</a></li>
+            <li data-part="5"><a href="part-5-configuration.html">Configuration Reference</a></li>
+            <li data-part="6"><a href="part-6-daily-use.html">Daily Use</a></li>
+            <li data-part="7"><a href="part-7-troubleshooting.html">Troubleshooting</a></li>
+            <li data-part="8"><a href="part-8-advanced.html">Advanced Topics</a></li>
+        </ol>
+    </nav>
+
+    <main class="content">
+        <span class="part-tag">Part 2</span>
+        <h1>Installation</h1>
+
+        <p class="lead">Pick the section that matches your platform. The Windows desktop app
+            is a regular Windows installer; the server is a Docker container that runs on a
+            Raspberry Pi, Windows, or any x86_64 Linux box.</p>
+
+        <div class="box tip">
+            <span class="lbl">Not sure which edition to install?</span>
+            See <a href="part-1-introduction.html#editions">Part 1 → Desktop vs. Server</a>.
+            Short version: if you already have a Windows PC that's on all day, get the desktop
+            app; if you want low-power always-on or remote access, get the server.
+        </div>
+
+        <!-- ============================================================= -->
+        <h2 id="windows-desktop">Windows desktop app</h2>
+
+        <p>The desktop app is a one-click installer for Windows 10 or 11 (64-bit).</p>
+
+        <h3>Option A — The installer (recommended)</h3>
+        <ol class="steps">
+            <li>Download <code>BirdWatchAI_Setup_2.1.2.0.exe</code> from
+                <a href="https://www.birdwatchai.com/#download">www.birdwatchai.com</a>.</li>
+            <li>Run it. If .NET 8 Desktop Runtime is missing, the installer offers to open the
+                download page — install .NET, then re-run the setup.</li>
+            <li>Accept the license agreement.</li>
+            <li>Choose a destination. The default is
+                <code>C:\Users\&lt;you&gt;\AppData\Local\BirdWatch AI</code>.</li>
+            <li>Optionally tick <span class="ui">Create a desktop icon</span> and / or
+                <span class="ui">Start BirdWatch AI when Windows starts</span> (both off by
+                default).</li>
+            <li>Finish, and optionally launch the app immediately.</li>
+        </ol>
+
+        <p>The installer adds Start-menu shortcuts for the app and its help, and creates the
+            data folders (<code>Data\Snapshots</code>, <code>Data\Videos</code>,
+            <code>Data\Logs</code>, etc.). On first launch you'll go through the
+            <a href="part-3-first-time-setup.html">setup wizard</a>.</p>
+
+        <h3>Option B — Portable ZIP</h3>
+        <p>If you'd rather not run an installer, download the ZIP, extract it anywhere, and
+            run <code>BirdWatchAI.exe</code> directly. All settings, snapshots, and history
+            live in a <code>Data</code> subfolder beside the program — the app is effectively
+            portable.</p>
+
+        <div class="box tip">
+            <span class="lbl">Running more than one camera?</span>
+            BirdWatchAI allows <strong>one running copy per install folder</strong>. To monitor
+            several feeders at once, install (or copy the portable build) into separate folders
+            — e.g. <code>BirdWatchAI-Backyard\</code> and
+            <code>BirdWatchAI-FrontPorch\</code> — and run each. Each folder keeps its own
+            settings, history, and snapshots.
+        </div>
+
+        <h3>Uninstalling</h3>
+        <p>Use Windows <span class="ui">Add or remove programs</span>. The uninstaller asks
+            whether to also delete your user data (snapshots, videos, logs, settings). Choose
+            <strong>No</strong> to keep your bird photos and history for next time.</p>
+
+        <!-- ============================================================= -->
+        <h2 id="raspberry-pi">Raspberry Pi server (from a blank SD card)</h2>
+
+        <p>A linear walkthrough that takes a brand-new Raspberry Pi from "still in the box"
+            to "running BirdWatchAI and watching your feeder." Total time: about 45 minutes,
+            mostly waiting for things to flash, boot, or download. ~15 minutes of which is
+            actually hands-on.</p>
+
+        <h3>What you need</h3>
+
+        <p><strong>Hardware</strong></p>
+        <ul>
+            <li><strong>Raspberry Pi 4 (4 GB or 8 GB)</strong> or <strong>Pi 5</strong>. The
+                2 GB variants technically work but make ONNX classification slow.</li>
+            <li><strong>microSD card, 32 GB+, class A2</strong> (e.g. SanDisk Extreme,
+                Samsung Pro Endurance). Cheap cards die fast under database write load — get
+                a decent one.</li>
+            <li><strong>Official USB-C power supply</strong> for the Pi 4 / 5. Underpowered
+                supplies cause random lockups under camera + AI load.</li>
+            <li><strong>Network</strong>: Ethernet to your router, or Wi-Fi credentials. Wired
+                is more reliable for an always-on camera.</li>
+            <li><strong>A camera</strong>: any RTSP-capable IP camera (Tapo, Reolink, Amcrest,
+                etc.). The wizard asks for the URL later.</li>
+        </ul>
+
+        <p><strong>Tools on your Windows PC</strong></p>
+        <ul>
+            <li>A USB SD-card reader.</li>
+            <li><a href="https://www.raspberrypi.com/software/">Raspberry Pi Imager</a> —
+                free, ~50 MB download from raspberrypi.com.</li>
+        </ul>
+
+        <h3>1. Image the SD card from Windows</h3>
+        <ol class="steps">
+            <li>Plug the SD card into your PC.</li>
+            <li>Open <strong>Raspberry Pi Imager</strong>.</li>
+            <li>Click <span class="ui">Choose Device</span> → pick the model you have (Pi 4 or
+                Pi 5).</li>
+            <li>Click <span class="ui">Choose OS</span> → <strong>Raspberry Pi OS (other)</strong>
+                → <strong>Raspberry Pi OS Lite (64-bit)</strong>. "Lite" matters — the full
+                desktop OS wastes RAM the server could use.</li>
+            <li>Click <span class="ui">Choose Storage</span> → pick the SD card.
+                <strong>Double-check this is the SD card, not your laptop's main drive —
+                    Imager will erase it.</strong></li>
+            <li>Click <span class="ui">Next</span>. When it asks <em>"Would you like to apply
+                    OS customisation settings?"</em> → click <span class="ui">Edit Settings</span>.
+
+                <p><strong>General tab:</strong></p>
+                <ul>
+                    <li><strong>Set hostname</strong>: <code>birdwatch</code> (or anything —
+                        this becomes how you reach the Pi: <code>birdwatch.local</code>).</li>
+                    <li><strong>Set username and password</strong>: pick something memorable;
+                        you'll SSH in with these. Don't leave the default username —
+                        <code>pi</code> is well-known.</li>
+                    <li><strong>Configure wireless LAN</strong>: tick this if you're using
+                        Wi-Fi. Enter your SSID + password. Pick your Wi-Fi country.</li>
+                    <li><strong>Set locale settings</strong>: time zone + keyboard layout.
+                        <strong>Don't skip the time zone</strong> — Pi OS defaults to
+                        <code>Etc/UTC</code> if you leave it blank, which makes every
+                        dashboard timestamp read several hours off from your wall clock.</li>
+                </ul>
+
+                <p><strong>Services tab:</strong></p>
+                <ul>
+                    <li><strong>Enable SSH</strong> → <strong>Use password authentication</strong>.</li>
+                </ul>
+
+                Click <span class="ui">Save</span>.
+            </li>
+            <li>Back at the prompt, click <span class="ui">Yes</span> to apply customisations,
+                <span class="ui">Yes</span> to confirm erase. Wait ~5 minutes for write +
+                verify. Eject the SD card when it finishes.</li>
+        </ol>
+
+        <h3>2. Boot the Pi</h3>
+        <ol class="steps">
+            <li>Insert the SD card into the Pi.</li>
+            <li>Plug in the Ethernet cable, <em>or</em> trust the Wi-Fi you configured above.
+                (You can switch later.)</li>
+            <li>Plug in power.</li>
+            <li>Wait ~2 minutes. First boot expands the filesystem and applies your
+                customisations. The activity LED blinks rapidly during this and settles when
+                ready.</li>
+        </ol>
+
+        <h3>3. SSH in from Windows</h3>
+        <p>From PowerShell or Windows Terminal:</p>
+        <pre><code>ssh birdwatch@birdwatch.local</code></pre>
+        <p>(Replace <code>birdwatch</code> on both sides with your chosen username + hostname.)
+            Accept the fingerprint, enter your password.</p>
+
+        <div class="box note">
+            <span class="lbl">If <code>.local</code> doesn't resolve</span>
+            Some Windows configs disable mDNS. Find the Pi's IP in your router's admin page
+            (look for the hostname you set), then <code>ssh birdwatch@&lt;that IP&gt;</code>.
+        </div>
+
+        <div class="box warn">
+            <span class="lbl">Wi-Fi didn't come up on first boot?</span>
+            <p>Pi Imager's Wi-Fi pre-config doesn't always survive Bookworm's switch to
+                NetworkManager. The reliable recovery: plug in Ethernet temporarily, SSH in
+                over the wire, then run <code>sudo nmtui</code>. In the menu: <em>Activate a
+                    connection</em> → pick your SSID → enter the password → OK → Back → Quit.
+                Verify with <code>nmcli device status</code> — <code>wlan0</code> should show
+                <em>connected</em>.</p>
+            <p>If <code>nmcli device wifi list</code> returns nothing (no networks visible),
+                the Wi-Fi country code isn't set:</p>
+            <pre><code>sudo raspi-config nonint do_wifi_country US   # or your country code
+sudo nmcli device wifi list                   # should now list networks</code></pre>
+            Pi 5 radios refuse to scan until a country code is registered.
+        </div>
+
+        <h3>4. Update the OS and install git</h3>
+        <pre><code>sudo apt update && sudo apt upgrade -y && sudo apt install -y git</code></pre>
+        <p>Takes 2–5 minutes depending on how stale the image was. Raspberry Pi OS Lite doesn't
+            ship with <code>git</code> — we install it now so the next step works.</p>
+
+        <h3>5. Install Docker</h3>
+        <pre><code>curl -fsSL https://get.docker.com | sh
+sudo usermod -aG docker $USER
+sudo reboot</code></pre>
+        <p>The reboot is what lets you run <code>docker</code> without <code>sudo</code>.
+            Faster than logging out and back in.</p>
+        <p>The SSH session will drop. Wait ~30 s and reconnect:</p>
+        <pre><code>ssh birdwatch@birdwatch.local</code></pre>
+
+        <h3>6. Install BirdWatchAI Server</h3>
+        <pre><code>git clone https://github.com/JoeBarraco/birdwatchai-server-releases.git ~/birdwatch
+cd ~/birdwatch
+docker compose up -d</code></pre>
+        <p>The first <code>docker compose up -d</code> pulls the ~600 MB image from GitHub
+            Container Registry. On Wi-Fi that's typically 1–5 minutes; on fast Ethernet, well
+            under a minute. When it's done:</p>
+        <pre><code>docker ps</code></pre>
+        <p>Should list a container named <code>birdwatch</code> with status
+            <code>Up X seconds</code>.</p>
+
+        <h3>7. Open the dashboard</h3>
+        <p>In your browser, on the same network:</p>
+        <pre><code>http://birdwatch.local:8080</code></pre>
+        <p>(Or <code>http://&lt;pi-ip&gt;:8080</code> if <code>.local</code> doesn't resolve.)
+            You'll land on the first-time setup wizard — see
+            <a href="part-3-first-time-setup.html">Part 3</a>.</p>
+
+        <div class="box tip">
+            <span class="lbl">What just happened</span>
+            <ul>
+                <li>Your detection history + config live at <code>~/birdwatch/data/</code> on
+                    the Pi. <strong>Back this folder up</strong> if you care about the data —
+                    losing it means losing every detection and your settings.</li>
+                <li>The container has <code>restart: unless-stopped</code>, so it auto-starts
+                    on boot and recovers from crashes. No need to start it manually after a
+                    reboot.</li>
+                <li>The dashboard polls
+                    <a href="https://github.com/JoeBarraco/birdwatchai-server-releases/releases">this
+                        repo's releases</a> every 30 minutes. When a newer release publishes,
+                    the <span class="ui">⬆ Update available</span> button appears on the
+                    Engine status card.</li>
+            </ul>
+        </div>
+
+        <!-- ============================================================= -->
+        <h2 id="windows-docker">Windows + Docker server</h2>
+
+        <p>The server edition also runs on Windows under Docker Desktop. Pick this if you'd
+            rather drive BirdWatchAI from a web dashboard than the WinForms app, or if you want
+            to access it remotely from your phone over Tailscale / a VPN. Total time:
+            ~30–45 minutes, mostly waiting for Docker Desktop to download.</p>
+
+        <h3>What you need</h3>
+        <ul>
+            <li>Windows 10 64-bit (build 1903+) or Windows 11</li>
+            <li>8 GB RAM minimum, 16 GB recommended (Docker Desktop is RAM-hungry)</li>
+            <li>20 GB free disk space (Docker image + WSL2 storage)</li>
+            <li>Wired Ethernet recommended for reliability</li>
+            <li>An RTSP-capable IP camera. (The wired Pi camera path doesn't apply on
+                Windows.)</li>
+        </ul>
+
+        <h3>1. Install Docker Desktop</h3>
+        <ol class="steps">
+            <li>Download from
+                <a href="https://www.docker.com/products/docker-desktop/">docker.com/products/docker-desktop</a>.</li>
+            <li>Run the installer. Accept defaults — <strong>Use WSL 2 based engine</strong>
+                must be checked (default on Windows 10 2004+ and Windows 11).</li>
+            <li>Restart Windows when prompted.</li>
+            <li>After login, Docker Desktop auto-launches (whale icon in the system tray).
+                First launch takes 1–2 minutes.</li>
+            <li>Open <span class="ui">Docker Desktop → Settings → General</span> and verify
+                <strong>Start Docker Desktop when you sign in</strong> is ticked. This is what
+                makes the BirdWatch stack come back automatically after a reboot.</li>
+        </ol>
+
+        <h3>2. Install Git for Windows (recommended)</h3>
+        <p>Download from
+            <a href="https://git-scm.com/download/win">git-scm.com/download/win</a> and accept
+            all defaults.</p>
+        <p>If you'd rather not install Git, download the BirdWatchAI release repo as a
+            <a href="https://github.com/JoeBarraco/birdwatchai-server-releases/archive/refs/heads/main.zip">ZIP</a>
+            and extract it to <code>C:\Users\&lt;you&gt;\BirdWatch\</code>. Trade-off: you'll
+            have to re-download the zip when <code>docker-compose.yml</code> changes (every
+            few months).</p>
+
+        <h3>3. Clone the release repo</h3>
+        <p>Open <strong>PowerShell</strong> or <strong>Command Prompt</strong>:</p>
+        <pre><code>cd %USERPROFILE%
+git clone https://github.com/JoeBarraco/birdwatchai-server-releases.git BirdWatch
+cd BirdWatch</code></pre>
+
+        <h3>4. Start the stack</h3>
+        <pre><code>docker compose up -d</code></pre>
+        <p>First run downloads the ~600 MB BirdWatchAI image plus the small Watchtower image.
+            Expect 1–5 minutes on typical home internet. Then:</p>
+        <pre><code>docker ps</code></pre>
+        <p>You should see <strong>two</strong> containers: <code>birdwatch</code> and
+            <code>birdwatch-watchtower</code>.</p>
+
+        <h3>5. Open the dashboard</h3>
+        <pre><code>http://localhost:8080</code></pre>
+
+        <h3>6. Verify auto-start on boot</h3>
+        <p>The default setup brings everything back without you doing anything:
+            <strong>Docker Desktop</strong> auto-starts from step 1.5;
+            <strong>the containers</strong> have <code>restart: unless-stopped</code>. Test
+            with a reboot.</p>
+
+        <h3>Daily-ops helper scripts</h3>
+        <p>The repo ships a few <code>.cmd</code> files at the root that wrap common
+            <code>docker compose</code> operations. Double-click any of them, or run from a
+            shell:</p>
+        <table>
+            <tr><th>Script</th><th>What it does</th></tr>
+            <tr><td><code>birdwatch-start.cmd</code></td><td><code>docker compose up -d</code></td></tr>
+            <tr><td><code>birdwatch-stop.cmd</code></td><td><code>docker compose stop</code></td></tr>
+            <tr><td><code>birdwatch-update.cmd</code></td><td><code>docker compose pull &amp;&amp; docker compose up -d</code> — the dashboard's <span class="ui">⬆ Update available</span> button does the same thing one-click.</td></tr>
+            <tr><td><code>birdwatch-logs.cmd</code></td><td>Live log tail. <kbd>Ctrl</kbd>+<kbd>C</kbd> to stop tailing (container keeps running).</td></tr>
+        </table>
+
+        <h3>Optional: Scheduled Task for extra-reliable startup</h3>
+        <p>The default flow above is enough for most installs. Add a Scheduled Task if you
+            want belt-and-suspenders — something that polls for Docker to become ready and
+            re-runs <code>docker compose up -d</code> if for any reason the auto-restart
+            didn't fire.</p>
+        <p>Open PowerShell <strong>as Administrator</strong>, from
+            <code>%USERPROFILE%\BirdWatch</code>:</p>
+        <pre><code>.\setup-scheduled-task.ps1</code></pre>
+        <p>That script registers a task named <strong>BirdWatchAI Server Autostart</strong>
+            that runs <code>birdwatch-start.cmd</code> at user login, after waiting up to 5
+            minutes for Docker Desktop to come up. Idempotent. Remove with:</p>
+        <pre><code>Unregister-ScheduledTask -TaskName "BirdWatchAI Server Autostart" -Confirm:$false</code></pre>
+
+        <h3>Hands-off mode (no Windows login required)</h3>
+        <p>Docker Desktop requires a logged-in Windows session — the engine doesn't run as a
+            system service. If you want truly headless operation:</p>
+        <ol>
+            <li><strong>Auto-login</strong>: configure Windows to auto-log into a dedicated
+                account at boot (<code>netplwiz</code> → uncheck "Users must enter a username
+                and password…"). Docker Desktop's "Start when I sign in" then handles the
+                rest. Trade-off: anyone with physical access has that account's permissions.
+                Acceptable for a dedicated homelab box, not a shared PC.</li>
+            <li><strong>Docker without Docker Desktop</strong>: install the Docker engine
+                directly on WSL2. Much more involved and out of scope here — search "Docker
+                on WSL2 without Docker Desktop".</li>
+        </ol>
+        <p>For a dedicated Pi or x86 Linux host, headless is the default — that's why the
+            Pi instructions don't bother with this.</p>
+
+        <!-- ============================================================= -->
+        <h2 id="linux-x86">Other Linux (x86_64)</h2>
+
+        <p>Any x86_64 Linux box with Docker works. The instructions are the same as on a Pi
+            from step 5 onward:</p>
+
+        <pre><code>curl -fsSL https://get.docker.com | sh
+sudo usermod -aG docker $USER
+# Log out and back in so the docker permission applies.
+
+git clone https://github.com/JoeBarraco/birdwatchai-server-releases.git ~/birdwatch
+cd ~/birdwatch
+docker compose up -d</code></pre>
+
+        <p>Then open <code>http://&lt;your-host-ip&gt;:8080</code>.</p>
+
+        <p>The same things apply: data lives in <code>~/birdwatch/data/</code>, the container
+            restarts automatically, the dashboard polls for updates every 30 min.</p>
+
+        <!-- ============================================================= -->
+        <h2 id="licensing">Licensing &amp; the free trial</h2>
+
+        <p>BirdWatchAI includes a <strong>14-day free trial</strong> (desktop) /
+            <strong>30-day free trial</strong> (server) with full functionality. After the
+            trial you'll need a license key — a one-time purchase, no subscription.</p>
+
+        <h3>What you'll see on first run (desktop)</h3>
+        <ul>
+            <li><strong>If you've never started a trial:</strong> a welcome dialog asks
+                whether to begin your 14-day free trial. Choose <strong>Yes</strong>, or
+                enter a license key instead.</li>
+            <li><strong>While trialing:</strong> the title bar shows <em>Trial (N days
+                remaining)</em>, and a small watermark appears on saved video overlays.</li>
+            <li><strong>When the trial expires:</strong> you'll be prompted to enter a license
+                key; without a valid key the app will close.</li>
+        </ul>
+
+        <h3>Activating a license</h3>
+        <ol class="steps">
+            <li>Open the <span class="ui">License Activation</span> dialog (desktop: appears
+                automatically; server: <span class="ui">Settings → License</span>).</li>
+            <li>Paste your license key.</li>
+            <li>Click <span class="ui">Activate</span>. On success you'll see
+                <em>"Licensed to: &lt;your name&gt;"</em> and the green ✓ Licensed status.</li>
+        </ol>
+
+        <p>A license may be <strong>perpetual</strong> (no expiry) or time-limited (shows
+            days remaining). You can <span class="ui">Deactivate</span> a license on one
+            machine to move it to another. The license is saved as <code>license.key</code>
+            in the program / data folder.</p>
+
+        <div class="box note">
+            <span class="lbl">About the trial clock</span>
+            The trial start date is stored in two protected locations so the trial can't be
+            reset by deleting a single file. The license key itself is cryptographically
+            signed, so keys cannot be forged or edited.
+        </div>
+
+        <p>The full pricing and license details — including bundled camera kits ("The Full
+            Nest") — live on the
+            <a href="https://www.birdwatchai.com/#pricing">pricing section of the home page</a>.</p>
+
+        <nav class="pager" aria-label="Manual navigation">
+            <a class="prev" href="part-1-introduction.html">
+                <span class="nav-label">Part 1</span>
+                <span class="nav-title">Introduction</span>
+            </a>
+            <a class="next" href="part-3-first-time-setup.html">
+                <span class="nav-label">Part 3</span>
+                <span class="nav-title">First-Time Setup</span>
+            </a>
+        </nav>
+    </main>
+</div>
+
+<script src="manual.js"></script>
+</body>
+</html>

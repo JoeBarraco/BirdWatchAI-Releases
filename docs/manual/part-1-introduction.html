@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Part 1 — Introduction · BirdWatchAI Manual</title>
+<link rel="stylesheet" href="manual.css">
+<link rel="icon" type="image/png" href="../../images/favicon.png">
+<script>
+    (function () {
+        try {
+            var t = localStorage.getItem('bwai-theme');
+            if (t) document.documentElement.setAttribute('data-theme', t);
+        } catch (e) {}
+    })();
+</script>
+</head>
+<body data-part="1">
+
+<header class="topbar">
+    <button class="menu-toggle" aria-label="Toggle table of contents">☰ Menu</button>
+    <a href="../../index.html" class="brand">🐦 BirdWatchAI</a>
+    <span class="crumb"><a href="index.html" style="color:inherit;">Manual</a></span>
+    <span class="crumb">Part 1 · Introduction</span>
+    <span class="spacer"></span>
+    <button id="manual-theme-toggle" class="site-link" type="button" title="Toggle theme">🌙 Theme</button>
+    <a href="../community.html" class="site-link">Community Feed</a>
+</header>
+
+<div class="layout">
+
+    <nav class="toc" aria-label="Manual table of contents">
+        <h2>Contents</h2>
+        <ol>
+            <li data-part="1"><a href="part-1-introduction.html">Introduction</a>
+                <ul>
+                    <li><a href="#what">What BirdWatchAI is</a></li>
+                    <li><a href="#editions">Desktop vs. Server</a></li>
+                    <li><a href="#features">Feature matrix</a></li>
+                    <li><a href="#requirements">System requirements</a></li>
+                    <li><a href="#how-it-works">How a detection happens</a></li>
+                </ul>
+            </li>
+            <li data-part="2"><a href="part-2-installation.html">Installation</a></li>
+            <li data-part="3"><a href="part-3-first-time-setup.html">First-Time Setup</a></li>
+            <li data-part="4"><a href="part-4-camera-hardware.html">Camera Hardware</a></li>
+            <li data-part="5"><a href="part-5-configuration.html">Configuration Reference</a></li>
+            <li data-part="6"><a href="part-6-daily-use.html">Daily Use</a></li>
+            <li data-part="7"><a href="part-7-troubleshooting.html">Troubleshooting</a></li>
+            <li data-part="8"><a href="part-8-advanced.html">Advanced Topics</a></li>
+        </ol>
+    </nav>
+
+    <main class="content">
+        <span class="part-tag">Part 1</span>
+        <h1>Introduction</h1>
+
+        <p class="lead">
+            BirdWatchAI turns any camera pointed at your bird feeder into an automatic
+            bird-watching station — identifying species on-device, saving photos and short
+            video clips, and (optionally) sending you a notification when something rare shows
+            up. This Part introduces the project, the two editions you can choose between, and
+            the high-level picture of how a single detection happens.
+        </p>
+
+        <h2 id="what">What BirdWatchAI is</h2>
+
+        <p>BirdWatchAI sits between an ordinary network camera and you. It watches the camera's
+            video feed continuously, notices when something moves, decides whether the moving
+            thing is actually a bird (filtering out squirrels, swaying branches, and shadows),
+            identifies the <strong>species</strong> using a local AI model, and then saves a
+            labeled snapshot plus a short clip — all without anything leaving your home network
+            unless you opt in to community sharing.</p>
+
+        <p>Key things it does:</p>
+        <ul>
+            <li><strong>Identifies species automatically</strong> — recognizes up to 965
+                North American birds with the default model, or 2,498 species worldwide with
+                the optional larger model.</li>
+            <li><strong>Captures the moment</strong> — high-resolution snapshot and a short
+                video clip with the species, confidence, timestamp, temperature, and location
+                burned in as an overlay.</li>
+            <li><strong>Tells you what's rare</strong> — compares each species against
+                regional / seasonal data so a Wood Thrush stands out from a House Sparrow.</li>
+            <li><strong>Notifies you</strong> — email, mobile push (Pushover or ntfy), Windows
+                toast, or even a digital photo frame.</li>
+            <li><strong>Builds a journal</strong> — a searchable detection history, statistics
+                dashboards, a life list, and (in the desktop app) gamified achievement
+                badges.</li>
+            <li><strong>Connects you to others</strong> — optionally publish sightings to the
+                worldwide community feed at
+                <a href="https://www.birdwatchai.com">www.birdwatchai.com</a>.</li>
+        </ul>
+
+        <div class="box tip">
+            <span class="lbl">Private by default</span>
+            Identification runs <em>locally</em> — no images are sent to any cloud service for
+            recognition. Sharing to the community is entirely opt-in and you control exactly
+            how much is published (see Part 5 → Community sharing).
+        </div>
+
+        <h2 id="editions">Desktop vs. Server — which one should I run?</h2>
+
+        <p>BirdWatchAI ships in two flavors. They share the same AI models and the same
+            community backend; they differ mainly in where and how they run.</p>
+
+        <table>
+            <tr>
+                <th></th>
+                <th>Windows Desktop App</th>
+                <th>Server (Docker)</th>
+            </tr>
+            <tr>
+                <td><strong>Where it runs</strong></td>
+                <td>Windows 10 / 11 PC</td>
+                <td>Raspberry Pi 4 / 5, Linux x86_64, or Windows + Docker Desktop</td>
+            </tr>
+            <tr>
+                <td><strong>Interface</strong></td>
+                <td>Native Windows Forms window</td>
+                <td>Web dashboard on port 8080 — open from any device on your network</td>
+            </tr>
+            <tr>
+                <td><strong>Best for</strong></td>
+                <td>A PC that's already on most of the day; people who want the full feature
+                    set with no command line</td>
+                <td>Always-on operation, low power draw, headless / remote access; people
+                    comfortable copy-pasting one or two commands</td>
+            </tr>
+            <tr>
+                <td><strong>Camera types</strong></td>
+                <td>RTSP (any IP camera)</td>
+                <td>RTSP <em>or</em> wired Raspberry Pi Camera Module (CSI ribbon)</td>
+            </tr>
+            <tr>
+                <td><strong>Updates</strong></td>
+                <td>In-app update check; installer re-runs</td>
+                <td>One-click "Apply update" from the dashboard (via Watchtower sidecar)</td>
+            </tr>
+            <tr>
+                <td><strong>Status</strong></td>
+                <td>Mature (v2.1)</td>
+                <td>Newer port; tracks the desktop app feature set</td>
+            </tr>
+        </table>
+
+        <p>You can run <strong>either</strong> — never both pointing at the same camera at the
+            same time, since most cameras only allow a small handful of simultaneous RTSP
+            streams. Pick the one that fits your situation; the rest of this manual flags
+            instructions that apply to only one edition.</p>
+
+        <h2 id="features">Feature matrix</h2>
+
+        <p>What's available where:</p>
+
+        <table>
+            <tr>
+                <th>Feature</th>
+                <th>Desktop</th>
+                <th>Server</th>
+            </tr>
+            <tr><td>Local AI identification (965 species)</td><td>✅</td><td>✅</td></tr>
+            <tr><td>SpeciesNet model (2,498 species)</td><td>✅</td><td>✅</td></tr>
+            <tr><td>RTSP cameras</td><td>✅</td><td>✅</td></tr>
+            <tr><td>Wired Pi camera (CSI)</td><td>—</td><td>✅</td></tr>
+            <tr><td>Snapshot + video clip per detection</td><td>✅</td><td>✅</td></tr>
+            <tr><td>Burn-in overlay on snapshots / clips</td><td>✅</td><td>✅</td></tr>
+            <tr><td>Email notifications</td><td>✅</td><td>✅</td></tr>
+            <tr><td>Pushover notifications</td><td>✅</td><td>—</td></tr>
+            <tr><td>ntfy push</td><td>✅</td><td>✅</td></tr>
+            <tr><td>Windows toast notifications</td><td>✅</td><td>—</td></tr>
+            <tr><td>Photo frame (FTP / email-to-frame)</td><td>✅</td><td>—</td></tr>
+            <tr><td>Detection history (searchable)</td><td>✅</td><td>✅</td></tr>
+            <tr><td>Statistics dashboards</td><td>✅</td><td>✅</td></tr>
+            <tr><td>Species-grouped gallery + slideshow</td><td>✅</td><td>✅</td></tr>
+            <tr><td>Achievements / badges</td><td>✅</td><td>—</td></tr>
+            <tr><td>Community sharing</td><td>✅</td><td>✅</td></tr>
+            <tr><td>Weekly / monthly summary reports</td><td>✅</td><td>✅</td></tr>
+            <tr><td>Video summaries (highlight reels)</td><td>✅</td><td>—</td></tr>
+            <tr><td>Remote access (without VPN)</td><td>—</td><td>✅ (web dashboard)</td></tr>
+            <tr><td>One-click in-app update</td><td>—</td><td>✅ (Watchtower)</td></tr>
+        </table>
+
+        <div class="box note">
+            <span class="lbl">Catching up</span>
+            The server edition is the newer port. Parity with the desktop app is ongoing — a
+            handful of features (Pushover, photo frame, achievements, video summaries) haven't
+            been ported yet. See the project roadmap or release notes for current status.
+        </div>
+
+        <h2 id="requirements">System requirements</h2>
+
+        <h3>Windows desktop app</h3>
+        <table>
+            <tr><th>Component</th><th>Requirement</th></tr>
+            <tr><td>Operating system</td><td>Windows 10 or 11, <strong>64-bit only</strong></td></tr>
+            <tr><td>Runtime</td><td><strong>.NET 8 Desktop Runtime (x64)</strong> — the
+                installer offers to fetch this if missing</td></tr>
+            <tr><td>WebView2 Runtime</td><td>Needed for the "Pick on Map" location feature
+                (pre-installed on Win 10/11)</td></tr>
+            <tr><td>Camera</td><td>Any RTSP-capable IP camera on your local network</td></tr>
+            <tr><td>Memory</td><td>~200–300 MB RAM in use</td></tr>
+            <tr><td>CPU</td><td>Under 5% idle; brief 10–20% spike during a detection</td></tr>
+            <tr><td>Disk</td><td>A few GB for snapshots and clips, depending on how much you
+                keep</td></tr>
+        </table>
+
+        <h3>Server (Raspberry Pi or Docker)</h3>
+        <table>
+            <tr><th>Component</th><th>Requirement</th></tr>
+            <tr><td>Hardware</td><td>Raspberry Pi 4 (4 GB+) or Pi 5; or any x86_64 Linux box;
+                or Windows 10/11 with Docker Desktop (8 GB RAM minimum, 16 GB
+                recommended)</td></tr>
+            <tr><td>Storage</td><td>32 GB+ SD card (class A2) on a Pi; 20 GB free disk on
+                Windows / Linux for the image + data folder</td></tr>
+            <tr><td>OS</td><td>Raspberry Pi OS Lite 64-bit, any modern x86_64 Linux, or
+                Windows 10 1903+ / Windows 11</td></tr>
+            <tr><td>Software</td><td>Docker (Engine on Linux, Docker Desktop on Windows)</td></tr>
+            <tr><td>Camera</td><td>RTSP camera, or — on a Pi — a wired Camera Module over
+                CSI</td></tr>
+            <tr><td>Network</td><td>Wired Ethernet recommended; Wi-Fi works but is the most
+                common source of "weird intermittent issues"</td></tr>
+        </table>
+
+        <div class="box note">
+            <span class="lbl">Everything else is bundled</span>
+            The AI models, the video engine (FFmpeg), and the streaming libraries all ship
+            inside the app / Docker image. You do not install FFmpeg, VLC, or any AI tools
+            separately.
+        </div>
+
+        <h2 id="how-it-works">How a detection happens</h2>
+
+        <p>Both editions run the same pipeline. When monitoring is active:</p>
+
+        <ol class="steps">
+            <li><strong>Motion is detected</strong> — either by the camera's own hardware
+                (via ONVIF, recommended for Tapo) or by the app comparing low-resolution
+                frames.</li>
+            <li><strong>A high-resolution snapshot</strong> is captured immediately, and a
+                short video clip starts recording (using a rolling pre-buffer so the clip
+                includes the seconds <em>before</em> the trigger).</li>
+            <li><strong>Best-frame extraction</strong> picks the sharpest frame from the clip
+                — important when the bird arrives a moment after the motion trigger.</li>
+            <li><strong>An object detector</strong> finds the bird, crops to it, and silently
+                drops non-bird motion like squirrels or branches.</li>
+            <li><strong>The classifier</strong> runs the local AI model on the cropped bird
+                and returns the most likely species plus a confidence percentage.</li>
+            <li><strong>Enrichment</strong> looks up the current outdoor temperature and the
+                regional rarity of the species (when your location is set).</li>
+            <li><strong>If confidence is above the threshold</strong>, the snapshot is saved
+                with an on-image overlay, the clip is labeled, the detection is added to
+                history, and any enabled notifications fire. Below-threshold detections are
+                discarded by default (or kept in a "for review" folder if you opt in).</li>
+        </ol>
+
+        <p>That whole pipeline runs in a couple of seconds per detection. The rest of this
+            manual is about getting the camera connected, tuning the thresholds, and reading
+            the results.</p>
+
+        <!-- pager -->
+        <nav class="pager" aria-label="Manual navigation">
+            <a class="prev" href="index.html">
+                <span class="nav-label">Manual home</span>
+                <span class="nav-title">Table of Contents</span>
+            </a>
+            <a class="next" href="part-2-installation.html">
+                <span class="nav-label">Part 2</span>
+                <span class="nav-title">Installation</span>
+            </a>
+        </nav>
+    </main>
+</div>
+
+<script src="manual.js"></script>
+</body>
+</html>

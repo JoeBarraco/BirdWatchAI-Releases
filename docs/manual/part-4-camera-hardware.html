@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Part 4 — Camera Hardware · BirdWatchAI Manual</title>
+<link rel="stylesheet" href="manual.css">
+<link rel="icon" type="image/png" href="../../images/favicon.png">
+<script>
+    (function () {
+        try {
+            var t = localStorage.getItem('bwai-theme');
+            if (t) document.documentElement.setAttribute('data-theme', t);
+        } catch (e) {}
+    })();
+</script>
+</head>
+<body data-part="4">
+
+<header class="topbar">
+    <button class="menu-toggle" aria-label="Toggle table of contents">☰ Menu</button>
+    <a href="../../index.html" class="brand">🐦 BirdWatchAI</a>
+    <span class="crumb"><a href="index.html" style="color:inherit;">Manual</a></span>
+    <span class="crumb">Part 4 · Camera Hardware</span>
+    <span class="spacer"></span>
+    <button id="manual-theme-toggle" class="site-link" type="button" title="Toggle theme">🌙 Theme</button>
+    <a href="../community.html" class="site-link">Community Feed</a>
+</header>
+
+<div class="layout">
+
+    <nav class="toc" aria-label="Manual table of contents">
+        <h2>Contents</h2>
+        <ol>
+            <li data-part="1"><a href="part-1-introduction.html">Introduction</a></li>
+            <li data-part="2"><a href="part-2-installation.html">Installation</a></li>
+            <li data-part="3"><a href="part-3-first-time-setup.html">First-Time Setup</a></li>
+            <li data-part="4"><a href="part-4-camera-hardware.html">Camera Hardware</a>
+                <ul>
+                    <li><a href="#rtsp">RTSP cameras</a></li>
+                    <li><a href="#tapo">TP-Link Tapo</a></li>
+                    <li><a href="#dhcp-reservation">Reserving the camera's IP</a></li>
+                    <li><a href="#other-brands">Other brands</a></li>
+                    <li><a href="#pi-camera">Raspberry Pi camera</a></li>
+                    <li><a href="#placement">Placement &amp; lighting</a></li>
+                </ul>
+            </li>
+            <li data-part="5"><a href="part-5-configuration.html">Configuration Reference</a></li>
+            <li data-part="6"><a href="part-6-daily-use.html">Daily Use</a></li>
+            <li data-part="7"><a href="part-7-troubleshooting.html">Troubleshooting</a></li>
+            <li data-part="8"><a href="part-8-advanced.html">Advanced Topics</a></li>
+        </ol>
+    </nav>
+
+    <main class="content">
+        <span class="part-tag">Part 4</span>
+        <h1>Camera Hardware</h1>
+
+        <p class="lead">Everything about the camera end of the system — what works, how to
+            wire it up, and where to point it. Most installs use an off-the-shelf RTSP camera
+            (TP-Link Tapo is the most popular). The server edition also supports a wired
+            Raspberry Pi Camera Module on the CSI ribbon cable.</p>
+
+        <h2 id="rtsp">RTSP cameras</h2>
+
+        <p><strong>RTSP</strong> (Real-Time Streaming Protocol) is a standard way for cameras
+            to send live video over a network. BirdWatchAI connects to your camera with an
+            RTSP address that looks like this:</p>
+
+        <p style="text-align:center;"><code>rtsp://username:password@camera_ip:port/stream_path</code></p>
+
+        <p>For example: <code>rtsp://birduser:secret123@192.168.1.105/stream1</code>. The
+            pieces are:</p>
+        <ul>
+            <li><strong>username:password</strong> — the camera's RTSP / "camera account"
+                credentials.</li>
+            <li><strong>camera_ip</strong> — the camera's address on your network
+                (e.g. <code>192.168.1.105</code>).</li>
+            <li><strong>port</strong> — almost always <code>554</code> (can be omitted when
+                it's 554).</li>
+            <li><strong>stream_path</strong> — brand-specific (e.g. <code>/stream1</code> for
+                Tapo).</li>
+        </ul>
+
+        <p>Common stream paths by brand:</p>
+
+        <table>
+            <tr><th>Brand</th><th>Stream path</th><th>Notes</th></tr>
+            <tr><td>TP-Link Tapo</td><td><code>/stream1</code> (HD) ·
+                <code>/stream2</code> (SD)</td><td>See <a href="#tapo">Tapo section below</a>
+                for which to use on which model</td></tr>
+            <tr><td>Wyze (RTSP firmware)</td><td><code>/live</code></td><td>Requires custom
+                RTSP firmware flashed</td></tr>
+            <tr><td>Amcrest / Dahua</td><td><code>/cam/realmonitor?channel=1&amp;subtype=0</code></td><td></td></tr>
+            <tr><td>Reolink</td><td><code>/h264Preview_01_main</code></td><td></td></tr>
+            <tr><td>Hikvision</td><td><code>/Streaming/Channels/101</code></td><td></td></tr>
+        </table>
+
+        <div class="box tip">
+            <span class="lbl">Test in VLC first</span>
+            If you have VLC Media Player, you can verify an RTSP URL works before using it
+            here: <span class="ui">Media → Open Network Stream</span>
+            (<kbd>Ctrl</kbd>+<kbd>N</kbd>), paste the URL, and click Play. If VLC shows live
+            video, BirdWatchAI will connect too.
+        </div>
+
+        <h2 id="tapo">TP-Link Tapo step-by-step</h2>
+
+        <p>Tapo cameras (C100/C110/C113/C120/C200/C210/C310/C320WS/C500/C510W/C520WS, etc.) are
+            popular, affordable, and well supported. The most important thing to understand is
+            the <strong>Camera Account</strong>.</p>
+
+        <div class="box warn">
+            <span class="lbl">The Camera Account is separate from your Tapo login</span>
+            RTSP requires a dedicated <em>Camera Account</em> that you create inside the Tapo
+            app. This is <strong>not</strong> the same as your TP-Link / Tapo cloud login.
+            Use a different username and password for it.
+        </div>
+
+        <h3>Create the Camera Account (for RTSP)</h3>
+        <ol class="steps">
+            <li>Open the <strong>Tapo app</strong> and tap your camera to open Live View.</li>
+            <li>Tap the <strong>⚙ gear</strong> (top right) → <span class="ui">Advanced
+                Settings</span> → <span class="ui">Camera Account</span>.</li>
+            <li>Tap <span class="ui">Understand and Agree to Use</span>.</li>
+            <li>Set a <strong>username</strong> (6–32 characters) and <strong>password</strong>
+                (6–32 characters), then Save. Use these in BirdWatchAI's RTSP fields.</li>
+        </ol>
+
+        <h3>Find the camera's IP address</h3>
+        <p>Tapo app → ⚙ gear → <span class="ui">Device Info</span> → <strong>IP Address</strong>
+            (e.g. <code>192.168.1.105</code>). Alternatively, check your router's
+            connected-devices list for a name like <code>TAPO_C120_XXXX</code>.</p>
+
+        <h3>Streams &amp; quality — which stream path to use</h3>
+
+        <p>Tapo cameras expose two RTSP streams:</p>
+        <ul>
+            <li><code>/stream1</code> — the <em>main</em> stream. Up to 2K on higher-end
+                models.</li>
+            <li><code>/stream2</code> — the <em>sub-</em>stream. Lower resolution, lighter on
+                Wi-Fi.</li>
+        </ul>
+
+        <p>Which one to use depends on the model:</p>
+
+        <table>
+            <tr><th>Model</th><th>Recommended</th><th>Why</th></tr>
+            <tr>
+                <td><strong>C113</strong> (and similar mid-range)</td>
+                <td><code>/stream2</code></td>
+                <td>720p; reliable, easy on Wi-Fi, plenty of detail for identification.</td>
+            </tr>
+            <tr>
+                <td><strong>C120</strong> and most lower-cost models</td>
+                <td><code>/stream1</code> at <em>1080p</em></td>
+                <td>Their <code>/stream2</code> caps at 640×360, which loses too much detail
+                    for the AI to identify reliably.</td>
+            </tr>
+            <tr>
+                <td>Any Tapo at 2K main stream</td>
+                <td><strong>Avoid</strong></td>
+                <td>2K saturates the camera's Wi-Fi uplink and causes H.264 corruption and
+                    instability. Drop to 1080p in the Tapo app first.</td>
+            </tr>
+        </table>
+
+        <p>For the C120 and friends, set <span class="ui">Tapo app → Camera Settings → Video
+            Quality → 1080p</span>, then use <code>/stream1</code>.</p>
+
+        <h3>Quick reference</h3>
+        <table>
+            <tr><th>Setting</th><th>Value</th></tr>
+            <tr><td>RTSP Port</td><td><code>554</code></td></tr>
+            <tr><td>ONVIF Port (motion events)</td><td><code>2020</code></td></tr>
+            <tr><td>Camera account username / password</td><td>6–32 characters each</td></tr>
+        </table>
+
+        <div class="box warn">
+            <span class="lbl">Stream limits</span>
+            Tapo cameras allow only a limited number of simultaneous RTSP streams. If you also
+            run TAPO Care cloud recording, microSD recording, and an NVR at the same time,
+            RTSP may stop working — disable one of them if you have connection trouble.
+        </div>
+
+        <h3>Optional: remote camera reboot (desktop only)</h3>
+        <p>The desktop app can power-cycle a frozen Tapo camera automatically (or on demand
+            via the tray menu's <span class="ui">🔄 Restart Camera</span>). This feature needs
+            your <strong>TP-Link cloud account</strong> email and password, entered in
+            <span class="ui">Settings → Camera (RTSP) → TAPO Camera Reboot</span>. These are
+            your cloud-login credentials, distinct from the RTSP camera account.</p>
+
+        <h2 id="dhcp-reservation">Reserving the camera's IP in your router</h2>
+
+        <div class="box warn">
+            <span class="lbl">Strongly recommended for every camera</span>
+            By default, your router hands out IP addresses dynamically (via DHCP), which means
+            your camera's address <strong>can change</strong> after a power outage, a reboot,
+            or simply over time. If the camera's IP changes, BirdWatchAI will no longer find
+            it at the old address and the connection will fail until you update the IP by
+            hand. A <strong>DHCP reservation</strong> tells the router to <em>always</em>
+            give this particular camera the same IP address.
+        </div>
+
+        <p>Every router brand has a slightly different menu, but the concept is identical
+            everywhere:</p>
+
+        <ol class="steps">
+            <li>Open your router's admin page in a web browser (commonly
+                <code>192.168.1.1</code> or <code>192.168.0.1</code> — check the label on
+                your router) and sign in.</li>
+            <li>Find the <strong>DHCP</strong> settings. Depending on the brand this lives
+                under a menu such as <em>LAN</em>, <em>Network</em>, <em>DHCP Server</em>,
+                <em>Address Reservation</em>, or <em>Connected Devices / Client List</em>.</li>
+            <li>Locate your camera in the list of connected devices (look for a name like
+                <code>TAPO_C120_XXXX</code>, or match it by its <strong>MAC address</strong>
+                — a unique hardware ID printed on the camera and shown in the camera app
+                under Device Info).</li>
+            <li>Choose <strong>Reserve</strong> / <strong>Bind</strong> / <strong>Add Static
+                    Lease</strong> for that device, and either keep its current IP or assign
+                one you'll remember.</li>
+            <li>Save / apply. Then reboot the camera (or wait for its lease to renew) so it
+                picks up the reserved address.</li>
+            <li>Use that same reserved IP in BirdWatchAI's <span class="ui">Camera IP
+                Address</span> field.</li>
+        </ol>
+
+        <div class="box tip">
+            <span class="lbl">Where to find the exact steps for your router</span>
+            Search the web for "<em>[your router brand/model]</em> DHCP reservation" (for
+            example, "Netgear Nighthawk address reservation" or "TP-Link bind IP to MAC").
+            The terminology differs by brand, but you're always doing the same thing: tying
+            the camera's MAC address to a fixed IP. If you can't reserve in the router, an
+            alternative is to set a static IP directly in the camera's own settings — just
+            make sure it's outside the router's automatic DHCP range to avoid conflicts.
+        </div>
+
+        <h2 id="other-brands">Other camera brands</h2>
+
+        <p>Any RTSP camera works. General tips:</p>
+        <ul>
+            <li><strong>Enable RTSP</strong> in the camera's app or web interface if it's off
+                by default.</li>
+            <li><strong>Wyze</strong> cameras need custom RTSP firmware (e.g. Dafang Hacks /
+                wz_mini_hacks); the stream path is then <code>/live</code>.</li>
+            <li>Use port <code>554</code> unless your camera documents otherwise.</li>
+            <li>Find the IP via the camera app, your router, or a network scanner such as
+                <strong>Fing</strong> or <strong>Advanced IP Scanner</strong>.</li>
+            <li>Use the correct stream path for your brand (table in
+                <a href="#rtsp">RTSP cameras</a> above).</li>
+        </ul>
+
+        <h2 id="pi-camera">Raspberry Pi camera (CSI ribbon, server only)</h2>
+
+        <p>The server edition supports a wired Arducam / Raspberry Pi Camera Module attached
+            over the CSI ribbon cable, as an alternative to RTSP. Capture goes through
+            <strong>libcamera</strong> (the modern Pi camera stack), not legacy v4l2 — so the
+            container needs broader access to the Pi's hardware than a USB webcam would.</p>
+
+        <h3>One-time setup</h3>
+        <ol class="steps">
+            <li><strong>Plug the ribbon cable in with the Pi powered off.</strong> Lift the
+                CSI port's clip, slide the ribbon in (contacts toward the HDMI port on Pi 4 /
+                5), press the clip back down.</li>
+            <li><strong>Enable the camera interface on the Pi.</strong> On Pi OS Bookworm,
+                <code>sudo raspi-config</code> → Interface Options → Camera → Yes → Finish →
+                reboot. (No-op on most fresh installs: libcamera + v4l2 compat are enabled by
+                default.)</li>
+            <li><strong>Verify the OS sees it.</strong> SSH in and run
+                <code>libcamera-hello --list-cameras</code> — you should see at least one
+                camera listed (e.g. <code>imx519</code> for an Arducam motorized-lens module,
+                <code>imx708</code> for the Camera Module 3, <code>ov5647</code> for the
+                original v1 module). If "No cameras available!", go back to the ribbon-cable
+                seat — that's the most common cause.</li>
+            <li><strong>Edit <code>~/birdwatch/docker-compose.yml</code></strong> to grant
+                camera access. The file ships with a single commented-out line under the
+                "Pi camera support" block: <code># privileged: true</code>. Uncomment it
+                (delete the leading <code># </code>, keep the indentation matching the lines
+                above it like <code>restart:</code> and <code>ports:</code>). That's the
+                entire compose change.</li>
+            <li><strong>Recreate the container</strong> so the new mode takes effect:
+                <pre><code>cd ~/birdwatch
+docker compose up -d --force-recreate birdwatch</code></pre></li>
+            <li><strong>Switch the camera type in the dashboard.</strong> Open
+                <code>http://&lt;your-host&gt;:8080</code> → Settings → Camera → set
+                <strong>Camera type</strong> to <strong>Pi camera</strong> → leave the device
+                path at <code>0</code> (libcamera's camera index; the field also accepts
+                <code>/dev/video0</code> for compatibility) → click <span class="ui">Test
+                camera</span>. A frame should come back within a few seconds.
+                <span class="ui">Save</span>.</li>
+        </ol>
+
+        <div class="box note">
+            <span class="lbl">Why privileged mode and not selective device passthrough?</span>
+            libcamera reads the host's device tree at <code>/proc/device-tree/model</code> to
+            confirm "this is a Raspberry Pi" before it'll initialize the camera stack. Docker
+            mounts its own procfs over <code>/proc</code> after applying bind mounts, so a
+            <code>- /proc/device-tree:/proc/device-tree:ro</code> mount gets shadowed and the
+            platform check fails ("No cameras available!" inside the container even though
+            all the video / media nodes are wired through). Granular device passthrough was
+            the original approach and works on Bullseye but not Bookworm. Privileged mode
+            grants the container the host's full device + sysfs view in one line — the
+            standard pattern for libcamera in Docker.
+        </div>
+
+        <h3>If <span class="ui">Test camera</span> errors out</h3>
+        <p>The most useful diagnostic is, from the host shell:</p>
+        <pre><code>docker exec birdwatch rpicam-hello --list-cameras</code></pre>
+        <p>Run inside the container — if it lists your sensor, the access path works and the
+            issue is on the app side. If it says "No cameras available!" inside the container
+            but works on the host, you likely missed step 4 (the <code>privileged: true</code>
+            uncomment). Confirm with:</p>
+        <pre><code>docker inspect birdwatch --format '{{.HostConfig.Privileged}}'</code></pre>
+        <p>It should print <code>true</code>.</p>
+
+        <p>The existing motion + identify pipeline runs on the Pi camera feed the same as on
+            RTSP — frame-diff motion detection is the default trigger (Settings → Detection →
+            Motion detection threshold). ONVIF doesn't apply to wired cameras.</p>
+
+        <h2 id="placement">Placement &amp; lighting</h2>
+
+        <p>The single biggest accuracy improvement you can make isn't a setting — it's a
+            better view of the bird.</p>
+
+        <ul>
+            <li>Aim the camera <strong>at the feeder</strong> from <strong>3–10 feet</strong>
+                for a clear, bird-filling frame — distant birds are harder to identify.</li>
+            <li>Avoid pointing into direct sun; backlighting silhouettes the birds.</li>
+            <li>Minimize swaying branches and busy backgrounds in the frame to reduce false
+                motion.</li>
+            <li>Strong Wi-Fi at the camera = fewer dropouts and choppy video.</li>
+            <li>Position so the bird is well-lit and roughly centered where it lands or
+                feeds.</li>
+            <li>Keep the camera glass / lens clean — dust and water spots both blur the
+                photo and confuse the motion detector.</li>
+        </ul>
+
+        <div class="box tip">
+            <span class="lbl">The recommended camera</span>
+            For most installs the
+            <a href="https://www.amazon.com/dp/B0CH45HPZT">TP-Link Tapo C113</a> is the best
+            bang for the buck (~$30 at the time of writing) — 720p, great color, weather-
+            resistant variants available, and the default <code>/stream2</code> just works.
+        </div>
+
+        <nav class="pager" aria-label="Manual navigation">
+            <a class="prev" href="part-3-first-time-setup.html">
+                <span class="nav-label">Part 3</span>
+                <span class="nav-title">First-Time Setup</span>
+            </a>
+            <a class="next" href="part-5-configuration.html">
+                <span class="nav-label">Part 5</span>
+                <span class="nav-title">Configuration Reference</span>
+            </a>
+        </nav>
+    </main>
+</div>
+
+<script src="manual.js"></script>
+</body>
+</html>

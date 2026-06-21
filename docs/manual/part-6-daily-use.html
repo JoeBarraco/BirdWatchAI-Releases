@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Part 6 — Daily Use · BirdWatchAI Manual</title>
+<link rel="stylesheet" href="manual.css">
+<link rel="icon" type="image/png" href="../../images/favicon.png">
+<script>
+    (function () {
+        try {
+            var t = localStorage.getItem('bwai-theme');
+            if (t) document.documentElement.setAttribute('data-theme', t);
+        } catch (e) {}
+    })();
+</script>
+</head>
+<body data-part="6">
+
+<header class="topbar">
+    <button class="menu-toggle" aria-label="Toggle table of contents">☰ Menu</button>
+    <a href="../../index.html" class="brand">🐦 BirdWatchAI</a>
+    <span class="crumb"><a href="index.html" style="color:inherit;">Manual</a></span>
+    <span class="crumb">Part 6 · Daily Use</span>
+    <span class="spacer"></span>
+    <button id="manual-theme-toggle" class="site-link" type="button" title="Toggle theme">🌙 Theme</button>
+    <a href="../community.html" class="site-link">Community Feed</a>
+</header>
+
+<div class="layout">
+
+    <nav class="toc" aria-label="Manual table of contents">
+        <h2>Contents</h2>
+        <ol>
+            <li data-part="1"><a href="part-1-introduction.html">Introduction</a></li>
+            <li data-part="2"><a href="part-2-installation.html">Installation</a></li>
+            <li data-part="3"><a href="part-3-first-time-setup.html">First-Time Setup</a></li>
+            <li data-part="4"><a href="part-4-camera-hardware.html">Camera Hardware</a></li>
+            <li data-part="5"><a href="part-5-configuration.html">Configuration Reference</a></li>
+            <li data-part="6"><a href="part-6-daily-use.html">Daily Use</a>
+                <ul>
+                    <li><a href="#dashboard">The dashboard / main window</a></li>
+                    <li><a href="#monitoring">Starting &amp; stopping monitoring</a></li>
+                    <li><a href="#history">Detection history</a></li>
+                    <li><a href="#gallery">Gallery &amp; slideshow</a></li>
+                    <li><a href="#stats">Statistics</a></li>
+                    <li><a href="#community-site">The community site</a></li>
+                </ul>
+            </li>
+            <li data-part="7"><a href="part-7-troubleshooting.html">Troubleshooting</a></li>
+            <li data-part="8"><a href="part-8-advanced.html">Advanced Topics</a></li>
+        </ol>
+    </nav>
+
+    <main class="content">
+        <span class="part-tag">Part 6</span>
+        <h1>Daily Use</h1>
+
+        <p class="lead">Once the camera is connected and the wizard is done, BirdWatchAI
+            mostly minds itself. This Part is a tour of the things you'll click most often:
+            the dashboard, the detection history, the gallery and slideshow, the statistics
+            page, and the community feed.</p>
+
+        <h2 id="dashboard">The dashboard / main window</h2>
+
+        <h3>Desktop main window</h3>
+
+        <p>The desktop window opens at 1400×800 by default. From top to bottom:</p>
+
+        <h4>Top status bar</h4>
+        <p>A single bold status line, e.g. <em>Status: 🔍 Monitoring (Detections: 12)</em>.
+            It changes to reflect the current state — Connecting, Night Mode (outside daylight
+            hours), Paused, Reconnecting — and always appends the current motion percentage.</p>
+
+        <h4>The button bar</h4>
+        <p>A row of action buttons (it wraps to fit the window):</p>
+        <table>
+            <tr><th>Button</th><th>What it does</th></tr>
+            <tr><td><span class="ui">Connect to Camera</span></td><td>Connects / disconnects
+                the live stream</td></tr>
+            <tr><td><span class="ui">Start Monitoring</span></td><td>Begins / stops automatic
+                detection</td></tr>
+            <tr><td><span class="ui">🖼 Test Image</span></td><td>Identify birds in a saved
+                image file, no camera needed</td></tr>
+            <tr><td><span class="ui">🎥 Test Recording</span></td><td>Record a short clip and
+                analyze stream health</td></tr>
+            <tr><td><span class="ui">📊 Statistics</span></td><td>Open the full statistics
+                dashboard</td></tr>
+            <tr><td><span class="ui">📈 Telemetry</span></td><td>Open the
+                motion / temperature / threshold charts</td></tr>
+            <tr><td><span class="ui">🏆 Badges</span></td><td>Open Achievements</td></tr>
+            <tr><td><span class="ui">📧 Report</span></td><td>Generate a daily / weekly /
+                monthly summary on demand</td></tr>
+            <tr><td><span class="ui">🎬 Video Summary</span></td><td>Build a highlight reel
+                from your clips</td></tr>
+            <tr><td><span class="ui">🔧 Video Maint.</span></td><td>Trim dead footage from
+                saved videos</td></tr>
+            <tr><td><span class="ui">🌐 Community</span></td><td>Open the community website
+                in your browser</td></tr>
+            <tr><td><span class="ui">⚙ Settings</span></td><td>Open the full settings
+                dialog</td></tr>
+        </table>
+
+        <h4>System tray</h4>
+        <div class="box warn">
+            <span class="lbl">Closing the window does NOT quit the app</span>
+            Clicking the window's <strong>✕</strong> minimizes BirdWatchAI to the tray so it
+            keeps monitoring in the background. To fully quit, right-click the tray icon and
+            choose <span class="ui">Exit</span>.
+        </div>
+        <ul>
+            <li><strong>Double-click</strong> the tray icon to restore the window.</li>
+            <li><strong>Hover</strong> to see a tooltip: camera name, monitoring status,
+                camera status, and detections today.</li>
+            <li><strong>Right-click</strong> for a menu: Show/Hide Window, Start/Stop
+                Monitoring, Settings, 🔄 Restart Camera, Exit.</li>
+            <li>When the window is minimized, a detection shows a tray balloon: "🐦
+                &lt;Bird&gt; Detected!" with confidence and time.</li>
+        </ul>
+
+        <h3>Server web dashboard</h3>
+
+        <p>The server dashboard at <code>http://&lt;host&gt;:8080</code> is a single-page
+            Blazor app. The top of the home page shows:</p>
+        <ul>
+            <li><strong>Engine status card</strong> — Monitoring (Running / Stopped), Camera
+                (Connected / Disconnected), Detections today, App version, and the
+                <span class="ui">⬆ Update available</span> button when a newer release has
+                been published.</li>
+            <li><strong>Live snapshot</strong> — a thumbnail of the most recent camera frame
+                (refreshes every few seconds).</li>
+            <li><strong>Recent detections</strong> — the last 10 sightings with thumbnail,
+                species, time, and rarity.</li>
+        </ul>
+
+        <p>The left-hand nav links to the other pages: <strong>History</strong>,
+            <strong>Gallery</strong>, <strong>Stats</strong>, <strong>Logs</strong>,
+            <strong>Settings</strong>.</p>
+
+        <h2 id="monitoring">Starting &amp; stopping monitoring</h2>
+
+        <p>After connecting, click <span class="ui">Start Monitoring</span> (desktop) or
+            toggle the engine on the Engine status card (server). The state changes to 🔍
+            Monitoring and the app watches for motion every couple of seconds.</p>
+
+        <p>Several automatic guardrails govern monitoring:</p>
+        <ul>
+            <li><strong>Daylight only</strong> (default on, 7:00–20:00): outside these hours
+                the status shows 🌙 Night Mode and detections pause. Adjust or disable in
+                Settings → Monitoring.</li>
+            <li><strong>Cooldown</strong> (default 3 s): minimum gap between detections, to
+                avoid bursts.</li>
+            <li><strong>Daily limit</strong> (default 500): caps snapshots per day.</li>
+            <li><strong>Auto-connect on startup</strong> (optional): the app can connect and
+                begin monitoring by itself when launched.</li>
+        </ul>
+
+        <h2 id="history">Detection history</h2>
+
+        <p>The detection history is your searchable journal of every bird that's visited.</p>
+
+        <h3>Desktop</h3>
+        <p>The right-hand <span class="ui">Bird Detections</span> table. The header shows how
+            many rows match your filters out of the total in the database. Columns: Date/Time,
+            Bird Species, Confidence, Temp, Rarity (🟢 Common · 🟡 Uncommon · 🟠 Rare · 🔴
+            Very Rare), ⭐ favorite, 🎬 video, ⚠️ uncertain.</p>
+
+        <p>Click any column header to sort. Click a row to load its captured image (left) and
+            a matching Wikipedia species photo (right). Double-click a row to open it in the
+            slideshow viewer.</p>
+
+        <h4>Filtering</h4>
+        <p>The filter row above the grid lets you narrow by species (partial text), a
+            From / To date range, a confidence range, rarity, and toggles for ⭐ favorites only
+            and ⚠️ uncertain only. <span class="ui">Clear</span> resets;
+            <span class="ui">🔄</span> refreshes from the database;
+            <span class="ui">▶️</span> launches a slideshow of the filtered results.</p>
+
+        <h4>Right-click actions</h4>
+        <p>Right-click one or more rows for a rich context menu: Open Image, 🎬 Play Video,
+            folder shortcuts, Google Image Search, Reverse Image Search, ⭐ Toggle Favorite,
+            ✅ Confirm Detection (for uncertain), Correct Identification…, 🌐 Push to
+            Community…, 🖼 Send to Photo Frame, Delete Selected Row(s), 📤 Export Detections
+            (CSV / JSON).</p>
+
+        <h3>Server</h3>
+        <p>The <strong>History</strong> page is a paginated table with the same columns and
+            the same filter set: species, date range, confidence range, rarity, favorites,
+            uncertain. Click a row to expand the snapshot inline; click the species name to
+            jump to the Gallery filtered to that species. The same right-click actions are
+            available via a row-end <span class="ui">⋯</span> menu.</p>
+
+        <h2 id="gallery">Gallery &amp; slideshow</h2>
+
+        <p>The Gallery groups detections by species — one tile per bird, sized by recency —
+            and clicking a tile launches a fullscreen slideshow of just that species. The
+            slideshow has fade / slide / Ken Burns / blur transitions, a configurable timer,
+            keyboard navigation (arrows, Space to pause, F for fullscreen, Esc to close), and
+            a shuffle / loop toggle.</p>
+
+        <p>On the desktop, the same slideshow is available as a standalone window — open via
+            double-click, the filter <span class="ui">▶️</span> button, or the right-click
+            menu. It's a full media viewer for your bird photos and videos with previous /
+            play-pause / next, fullscreen, shuffle, loop, frame-step, speed control, a
+            media-type filter (All / Photos / Videos), Ken Burns on photos, info overlay
+            (species / time), and keyboard control.</p>
+
+        <h2 id="stats">Statistics</h2>
+
+        <p>The Statistics page analyzes your <em>entire</em> detection history (not just
+            what's visible in the grid).</p>
+
+        <p>The summary panel shows total detections, unique species, most common species,
+            date range, rare species count, and your current daily streak. Below that, an
+            interactive chart suite:</p>
+
+        <ul>
+            <li><strong>Trend</strong> — detections per day, stacked by species. Hovering a
+                point shows the per-species breakdown for that day.</li>
+            <li><strong>Diurnal pattern</strong> — hour-of-day activity, tintable by a
+                selected species.</li>
+            <li><strong>Day of week / hour heatmap</strong> — when birds visit, across the
+                week.</li>
+            <li><strong>Rarity mix</strong> — one bar per rarity, with the species breakdown
+                inside each bar.</li>
+            <li><strong>Top species</strong>, <strong>Life list</strong>, <strong>Pairs</strong>
+                (species that show up together), <strong>Records</strong> (highest confidence
+                of each species), <strong>Arrivals &amp; dormant</strong>.</li>
+            <li><strong>Weather correlation</strong> — temperature bars colored by species.</li>
+        </ul>
+
+        <p>Each species has a stable color picked once per page load, and that swatch follows
+            the species across every chart and list — so a bird's color reads as its identity
+            on the page.</p>
+
+        <h2 id="community-site">The community site</h2>
+
+        <p>The home page at <a href="https://www.birdwatchai.com">www.birdwatchai.com</a> is
+            both a showcase and a live community window. Notable sections:</p>
+        <ul>
+            <li><strong>Live Detection Ticker</strong> — a scrolling banner of the most
+                recent sightings.</li>
+            <li><strong>Detection Hotspots</strong> — a map of recent detections, with
+                rare-bird hotspots highlighted.</li>
+            <li><strong>Live From the Community</strong> — a gallery of the latest sighting
+                photos.</li>
+            <li><strong>On This Day Last Year</strong> and <strong>This Week's Highlights</strong>
+                — fun retrospectives and KPIs.</li>
+            <li><strong>Migration Pulse</strong> — the month's most-detected species.</li>
+        </ul>
+
+        <p>The big <span class="ui">🔴 Live Community Feed</span> link opens the full
+            interactive community app (<a href="../community.html">community.html</a>) with
+            Feed, Map, Gallery, Stats, and Feeders views.</p>
+
+        <h3>Signing in</h3>
+        <p>Creating a community account is <strong>free and passwordless</strong>:</p>
+        <ol class="steps">
+            <li>On the community feed page, click <span class="ui">Sign In</span>.</li>
+            <li>Enter your email and click <span class="ui">Send Magic Link</span>.</li>
+            <li>Open the email and click the link; you'll be returned to the feed, signed in.
+                Your session persists across visits.</li>
+            <li>Open <span class="ui">Profile</span> to set a <strong>Display Name</strong>
+                and a short <strong>Bio</strong>.</li>
+        </ol>
+
+        <p>Signing in unlocks <strong>❤️ likes</strong>, <strong>💬 comments</strong> (with
+            one level of replies), <strong>☆ following feeders</strong> (with optional
+            rare-bird notifications), and your <strong>Life List</strong> (your personal list
+            of species seen, shareable as a read-only link).</p>
+
+        <h3>The embeddable widget</h3>
+        <p>You can embed a tiny live bird feed on your own website using an iframe snippet
+            (copy it from the site's "Embed Live Birds on Your Site" section). It supports
+            parameters to filter to a specific feeder, limit how many detections show
+            (max 20), and set a custom title; it refreshes itself periodically.</p>
+
+        <h3>The community screensaver</h3>
+        <p>A free companion <strong>Windows screensaver</strong> (downloadable from the home
+            page) turns your idle screens into a live community bird gallery — one independent
+            slideshow per monitor, pulling fresh sightings every few minutes. Install with the
+            included <code>install.bat</code> (no admin needed); configure the transition
+            effect, photo duration, photo order, and whether to show species names.</p>
+
+        <h3>Installing the site as an app (PWA)</h3>
+        <p>The community site is a Progressive Web App, so you can install it like a native
+            app:</p>
+        <ul>
+            <li><strong>Desktop (Chrome/Edge):</strong> click the install icon in the address
+                bar.</li>
+            <li><strong>iPhone/iPad (Safari):</strong> Share →
+                <span class="ui">Add to Home Screen</span>.</li>
+            <li><strong>Android (Chrome):</strong> menu →
+                <span class="ui">Install app</span>.</li>
+        </ul>
+
+        <nav class="pager" aria-label="Manual navigation">
+            <a class="prev" href="part-5-configuration.html">
+                <span class="nav-label">Part 5</span>
+                <span class="nav-title">Configuration Reference</span>
+            </a>
+            <a class="next" href="part-7-troubleshooting.html">
+                <span class="nav-label">Part 7</span>
+                <span class="nav-title">Troubleshooting</span>
+            </a>
+        </nav>
+    </main>
+</div>
+
+<script src="manual.js"></script>
+</body>
+</html>
