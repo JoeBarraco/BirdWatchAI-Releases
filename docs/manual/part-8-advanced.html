@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Part 8 — Advanced Topics · BirdWatchAI Manual</title>
+<link rel="stylesheet" href="manual.css">
+<link rel="icon" type="image/png" href="../../images/favicon.png">
+<script>
+    (function () {
+        try {
+            var t = localStorage.getItem('bwai-theme');
+            if (t) document.documentElement.setAttribute('data-theme', t);
+        } catch (e) {}
+    })();
+</script>
+</head>
+<body data-part="8">
+
+<header class="topbar">
+    <button class="menu-toggle" aria-label="Toggle table of contents">☰ Menu</button>
+    <a href="../../index.html" class="brand">🐦 BirdWatchAI</a>
+    <span class="crumb"><a href="index.html" style="color:inherit;">Manual</a></span>
+    <span class="crumb">Part 8 · Advanced</span>
+    <span class="spacer"></span>
+    <button id="manual-theme-toggle" class="site-link" type="button" title="Toggle theme">🌙 Theme</button>
+    <a href="../community.html" class="site-link">Community Feed</a>
+</header>
+
+<div class="layout">
+
+    <nav class="toc" aria-label="Manual table of contents">
+        <h2>Contents</h2>
+        <ol>
+            <li data-part="1"><a href="part-1-introduction.html">Introduction</a></li>
+            <li data-part="2"><a href="part-2-installation.html">Installation</a></li>
+            <li data-part="3"><a href="part-3-first-time-setup.html">First-Time Setup</a></li>
+            <li data-part="4"><a href="part-4-camera-hardware.html">Camera Hardware</a></li>
+            <li data-part="5"><a href="part-5-configuration.html">Configuration Reference</a></li>
+            <li data-part="6"><a href="part-6-daily-use.html">Daily Use</a></li>
+            <li data-part="7"><a href="part-7-troubleshooting.html">Troubleshooting</a></li>
+            <li data-part="8"><a href="part-8-advanced.html">Advanced Topics</a>
+                <ul>
+                    <li><a href="#docker">Docker commands cheat-sheet</a></li>
+                    <li><a href="#data-dir">Custom data directory</a></li>
+                    <li><a href="#headless">Headless / autostart</a></li>
+                    <li><a href="#onvif">ONVIF &amp; motion tuning</a></li>
+                    <li><a href="#backups">Backups &amp; migration</a></li>
+                    <li><a href="#file-locations">File &amp; folder reference</a></li>
+                    <li><a href="#remote-access">Remote access</a></li>
+                    <li><a href="#multiple-feeders">Running multiple feeders</a></li>
+                    <li><a href="#coming-soon">Coming soon</a></li>
+                </ul>
+            </li>
+        </ol>
+    </nav>
+
+    <main class="content">
+        <span class="part-tag">Part 8</span>
+        <h1>Advanced Topics</h1>
+
+        <p class="lead">For people who want to go past the defaults: managing the Docker
+            stack from the command line, moving the data folder, running headless, tuning
+            ONVIF motion, backups, and migrating an install between machines.</p>
+
+        <h2 id="docker">Docker commands cheat-sheet</h2>
+
+        <p>The server edition is one container (plus the Watchtower sidecar for one-click
+            updates). These are the operations you'll do most.</p>
+
+        <h3>Day-to-day</h3>
+        <pre><code>docker logs -f birdwatch           # live log tail; Ctrl+C to stop tailing
+docker restart birdwatch           # bounce the container without recreating
+docker stop birdwatch              # stop
+docker start birdwatch             # start
+docker compose down                # stop both containers
+docker compose up -d               # start both
+docker stats                       # live CPU / RAM / network per container
+docker ps                          # what's running</code></pre>
+
+        <h3>Updating</h3>
+
+        <p>The dashboard's <span class="ui">⬆ Update available</span> button is the easy
+            path — it pulls the new image via the Watchtower sidecar and recreates the
+            container in ~90 seconds. The shell equivalent:</p>
+
+        <pre><code>cd ~/birdwatch
+docker compose pull
+docker compose up -d</code></pre>
+
+        <p>(On Windows the path is <code>%USERPROFILE%\BirdWatch</code> and a
+            <code>birdwatch-update.cmd</code> wrapper is included.)</p>
+
+        <h3>Cleaning up</h3>
+
+        <pre><code>docker system prune -af           # remove all unused images, containers, networks
+docker image prune -af            # just dangling images</code></pre>
+
+        <div class="box warn">
+            <span class="lbl">Don't <code>docker rm</code> the birdwatch container blindly</span>
+            <code>docker compose down</code> followed by <code>docker compose up -d</code>
+            is the right pattern — it recreates the container with the mounts and
+            environment from your <code>docker-compose.yml</code>. A raw <code>docker rm</code>
+            would lose those.
+        </div>
+
+        <h2 id="data-dir">Custom data directory (server)</h2>
+
+        <p>By default the data folder is <code>./data</code> next to the
+            <code>docker-compose.yml</code> file. To put it somewhere else (e.g. on an
+            external SSD), edit the <code>volumes:</code> line under the <code>birdwatch</code>
+            service:</p>
+
+        <pre><code>volumes:
+  - /mnt/ssd/birdwatch-data:/data
+  - /etc/localtime:/etc/localtime:ro
+  - /etc/timezone:/etc/timezone:ro</code></pre>
+
+        <p>Then <strong>copy your existing data over first</strong>:</p>
+
+        <pre><code>docker compose stop birdwatch
+sudo mkdir -p /mnt/ssd/birdwatch-data
+sudo rsync -aHv ~/birdwatch/data/ /mnt/ssd/birdwatch-data/
+sudo chown -R 1000:1000 /mnt/ssd/birdwatch-data   # match the container's user
+docker compose up -d</code></pre>
+
+        <p>The container won't recreate the database — it'll keep using whatever's in the
+            mounted directory.</p>
+
+        <h2 id="headless">Headless / autostart</h2>
+
+        <h3>Server (Linux)</h3>
+        <p>The container has <code>restart: unless-stopped</code> and Docker itself
+            auto-starts on boot via the systemd service it installs. There's nothing more to
+            configure — power-cycle the box, log in, run <code>docker ps</code>, and the
+            container should be back. If it isn't:</p>
+        <pre><code>sudo systemctl status docker
+sudo systemctl enable docker</code></pre>
+
+        <h3>Server (Windows + Docker Desktop)</h3>
+        <p>Two layers need to come up: Docker Desktop, then the containers. Both are wired
+            in <a href="part-2-installation.html#windows-docker">Part 2 → Windows + Docker</a>.
+            If you want belt-and-suspenders, the included
+            <code>setup-scheduled-task.ps1</code> registers a Scheduled Task that re-runs
+            <code>birdwatch-start.cmd</code> at user login.</p>
+
+        <p>Docker Desktop on Windows requires a logged-in session — for truly hands-off
+            operation you'll need auto-login on a dedicated account (<code>netplwiz</code> →
+            uncheck "Users must enter…"). Trade-off: anyone with physical access has that
+            account's permissions. Acceptable for a homelab box, not a shared PC.</p>
+
+        <h3>Desktop app</h3>
+        <p>In <span class="ui">Settings → Advanced</span>:</p>
+        <ul>
+            <li><strong>Auto-connect &amp; start on startup</strong> — connect to the camera
+                and begin monitoring as soon as the app launches.</li>
+            <li>Add BirdWatchAI to Windows startup: the installer's
+                <span class="ui">Start BirdWatch AI when Windows starts</span> option, or
+                drop a shortcut into the Startup folder
+                (<kbd>Win</kbd>+<kbd>R</kbd> → <code>shell:startup</code>).</li>
+        </ul>
+
+        <h2 id="onvif">ONVIF &amp; motion tuning</h2>
+
+        <p>Cameras that support ONVIF (most Tapo models, plus many Reolink / Amcrest) can
+            push motion events to the app over the network rather than the app polling for
+            them. Two big wins: less CPU on the host, and zero false triggers from things
+            the camera knows are noise.</p>
+
+        <p>To enable: <span class="ui">Settings → Camera → Use ONVIF motion detection</span>
+            on. The camera also needs ONVIF turned on in its own app
+            (Tapo: <span class="ui">Advanced Settings → Camera Account</span> covers ONVIF
+            too).</p>
+
+        <h3>ONVIF subscription leases</h3>
+
+        <p>BirdWatchAI subscribes to PullPoint motion events with a 1-hour lease that's
+            renewed every ~45 minutes. After camera reboots, network churn, or container
+            recreates, stale subscriptions on the camera side can refuse new ones with
+            BadRequest until they expire. Two ways out:</p>
+        <ul>
+            <li>Wait ~1 hour for the stale lease to time out.</li>
+            <li>Reboot the camera (Tapo app → Settings → Restart). Forces a clean subscription
+                state.</li>
+        </ul>
+
+        <h3>Software motion (when ONVIF isn't available)</h3>
+
+        <p>The app compares recent low-resolution frames and counts changed pixels. The
+            knob is the <strong>Motion Threshold</strong> (% of pixels that must change).
+            5% is the default. The desktop's <span class="ui">📈 Telemetry</span> viewer
+            graphs motion % over time so you can see how high real bird visits spike vs.
+            background sway and pick a threshold just below the visits.</p>
+
+        <h2 id="backups">Backups &amp; migration</h2>
+
+        <h3>What to back up</h3>
+
+        <table>
+            <tr><th>Item</th><th>Where (desktop)</th><th>Where (server)</th></tr>
+            <tr>
+                <td>Settings</td>
+                <td><code>Data\config.json</code></td>
+                <td><code>data/config.json</code></td>
+            </tr>
+            <tr>
+                <td>Detection database</td>
+                <td><code>Data\detections.db</code> + JSON sidecar</td>
+                <td><code>data/birdwatch.db</code></td>
+            </tr>
+            <tr>
+                <td>Snapshots</td>
+                <td><code>Data\Snapshots\</code></td>
+                <td><code>data/snapshots/</code></td>
+            </tr>
+            <tr>
+                <td>Video clips</td>
+                <td><code>Data\Videos\</code></td>
+                <td><code>data/clips/</code></td>
+            </tr>
+            <tr>
+                <td>License</td>
+                <td><code>license.key</code> in program folder</td>
+                <td><code>data/license.key</code></td>
+            </tr>
+            <tr>
+                <td>ID corrections log</td>
+                <td><code>Data\corrections.jsonl</code></td>
+                <td><code>data/corrections.jsonl</code></td>
+            </tr>
+        </table>
+
+        <p>The bare minimum for "I want my settings + history back" is the database file plus
+            <code>config.json</code>. The snapshots and videos are larger and optional.</p>
+
+        <h3>Snapshot-style backup (server)</h3>
+
+        <p>From the host, with the container stopped (briefly) so the SQLite file is in a
+            consistent state:</p>
+
+        <pre><code>cd ~/birdwatch
+docker compose stop birdwatch
+tar -czf ~/birdwatch-backup-$(date +%F).tar.gz data/
+docker compose start birdwatch</code></pre>
+
+        <p>Restore is the inverse: stop the container, untar over the existing
+            <code>data/</code>, start it.</p>
+
+        <h3>In-app backup (both editions)</h3>
+
+        <p>The server's <span class="ui">Settings → Backups</span> page can take a snapshot
+            of <code>config.json</code> on demand and show a diff against any previous
+            backup. The desktop app has an equivalent "Save settings to file" / "Load
+            settings from file" pair under the Advanced tab. Neither bundles the database —
+            use the file-system approach above for full backups.</p>
+
+        <h3>Migrating to a new machine</h3>
+
+        <ol class="steps">
+            <li>Set up BirdWatchAI on the new machine following the right install path in
+                <a href="part-2-installation.html">Part 2</a>.</li>
+            <li>Stop monitoring on both machines.</li>
+            <li>Copy the data folder over (rsync / WinSCP / USB stick).</li>
+            <li>Start the new machine; verify the dashboard shows the right history, settings,
+                license.</li>
+            <li><strong>Deactivate the license on the old machine</strong> if you're moving
+                rather than cloning — most licenses cap at one active install per key.</li>
+        </ol>
+
+        <div class="box warn">
+            <span class="lbl">Don't run both at once</span>
+            Most cameras allow only a handful of simultaneous RTSP streams, and the
+            community backend keys feeders by Device Key — running two installs with the
+            same Device Key creates confusing duplicate data on the community side. Pick one
+            machine and stop the other.
+        </div>
+
+        <h2 id="file-locations">File &amp; folder reference</h2>
+
+        <h3>Desktop (Windows)</h3>
+        <p>All data lives in a <code>Data</code> folder beside the program (e.g.
+            <code>C:\Users\&lt;you&gt;\AppData\Local\BirdWatch AI\Data\</code>):</p>
+        <table>
+            <tr><th>Item</th><th>Location</th></tr>
+            <tr><td>Settings</td><td><code>Data\config.json</code> (passwords encrypted)</td></tr>
+            <tr><td>Detection database</td><td><code>Data\detections.db</code> (with a JSON
+                backup)</td></tr>
+            <tr><td>Snapshots</td><td><code>Data\Snapshots\</code> (configurable)</td></tr>
+            <tr><td>Videos</td><td><code>Data\Videos\</code></td></tr>
+            <tr><td>Uncertain detections</td><td><code>…\ForReview\</code> subfolder</td></tr>
+            <tr><td>Video summaries</td><td><code>Data\VideoSummaries\</code></td></tr>
+            <tr><td>Music for summaries</td><td><code>Data\Music\</code></td></tr>
+            <tr><td>ID corrections log</td><td><code>Data\corrections.jsonl</code></td></tr>
+            <tr><td>Logs</td><td><code>Data\Logs\</code></td></tr>
+            <tr><td>License</td><td><code>license.key</code> (program folder)</td></tr>
+        </table>
+
+        <h3>Server (Docker)</h3>
+        <p>All data lives in the <code>data/</code> folder you mounted into the container
+            (default <code>~/birdwatch/data/</code> on Linux,
+            <code>%USERPROFILE%\BirdWatch\data\</code> on Windows):</p>
+        <table>
+            <tr><th>Item</th><th>Location (inside <code>data/</code>)</th></tr>
+            <tr><td>Settings</td><td><code>config.json</code> (passwords encrypted)</td></tr>
+            <tr><td>Detection database</td><td><code>birdwatch.db</code> (SQLite, WAL)</td></tr>
+            <tr><td>Snapshots</td><td><code>snapshots/</code></td></tr>
+            <tr><td>Video clips</td><td><code>clips/</code></td></tr>
+            <tr><td>Logs</td><td><code>logs/</code> (also viewable on the Logs page)</td></tr>
+            <tr><td>Config backups</td><td><code>config.bak/</code></td></tr>
+            <tr><td>Data-protection keys</td><td><code>dataprotection-keys/</code></td></tr>
+        </table>
+
+        <h2 id="remote-access">Remote access</h2>
+
+        <p>The server dashboard is just HTTP on port 8080. To reach it from outside your home
+            network, the recommended path is a private mesh VPN — <strong>Tailscale</strong>
+            is the easiest, free for personal use, and works over CGNAT.</p>
+
+        <ol class="steps">
+            <li>Install Tailscale on the Pi / Windows box / Linux host:
+                <code>curl -fsSL https://tailscale.com/install.sh | sh</code> (Linux) or the
+                Windows installer.</li>
+            <li>Run <code>sudo tailscale up</code> (Linux) or sign in via the system tray
+                (Windows).</li>
+            <li>Install Tailscale on your phone / laptop and sign into the same account.</li>
+            <li>Note the Tailscale IP or MagicDNS name of the host (e.g.
+                <code>birdwatch.tail-abcd.ts.net</code>).</li>
+            <li>Open <code>http://&lt;tailscale-ip&gt;:8080</code> or
+                <code>http://birdwatch.tail-abcd.ts.net:8080</code> from anywhere.</li>
+        </ol>
+
+        <div class="box danger">
+            <span class="lbl">Don't port-forward the dashboard to the public internet</span>
+            The dashboard has no authentication on the local network and the host is running
+            Docker with broad permissions. Tailscale / WireGuard / a reverse-proxy with auth
+            is the right pattern; raw port-forwarding is not.
+        </div>
+
+        <h2 id="multiple-feeders">Running multiple feeders</h2>
+
+        <h3>Desktop</h3>
+        <p>Install (or copy the portable build) into separate folders — e.g.
+            <code>BirdWatchAI-Backyard\</code> and <code>BirdWatchAI-FrontPorch\</code> — and
+            run each. Each folder keeps its own settings, history, and snapshots. Each gets a
+            different Device Key on the community side, so they show up as separate feeders.</p>
+
+        <h3>Server</h3>
+        <p>Either run the same compose stack on multiple hosts (one per camera), or — on a
+            single host — duplicate the <code>birdwatch</code> service in
+            <code>docker-compose.yml</code> with a different container name, host port, and
+            data volume:</p>
+
+        <pre><code>services:
+  birdwatch-backyard:
+    image: ghcr.io/joebarraco/birdwatchai-server:latest
+    container_name: birdwatch-backyard
+    restart: unless-stopped
+    ports: ["8080:8080"]
+    volumes: ["./data-backyard:/data", "/etc/localtime:/etc/localtime:ro"]
+
+  birdwatch-frontporch:
+    image: ghcr.io/joebarraco/birdwatchai-server:latest
+    container_name: birdwatch-frontporch
+    restart: unless-stopped
+    ports: ["8081:8080"]
+    volumes: ["./data-frontporch:/data", "/etc/localtime:/etc/localtime:ro"]</code></pre>
+
+        <p>Each instance points at a different camera in its own settings, has its own
+            history, and registers as its own feeder on the community side.</p>
+
+        <h2 id="coming-soon">Coming soon</h2>
+
+        <p>A few features have been designed but aren't shipping yet. They're listed here so
+            you know they're on the way — none of them are in the current build.</p>
+
+        <ul>
+            <li><strong>Remote config portal</strong> — manage settings on multiple feeders
+                from a single web UI without exposing the dashboards individually. Useful for
+                "I have three feeders, two at home and one at my parents'."</li>
+            <li><strong>Self-serve software licensing</strong> — buy a license and get the
+                key without going through email.</li>
+            <li><strong>Tiered community storage subscriptions</strong> — for keeping more
+                of your community-shared media for longer.</li>
+        </ul>
+
+        <p>Track progress on the
+            <a href="https://github.com/JoeBarraco/birdwatchai-server-releases/releases">release
+            notes</a> or the project roadmap.</p>
+
+        <hr>
+
+        <h2 id="credits">Credits &amp; support</h2>
+
+        <p>BirdWatchAI is created by <strong>Joe Barraco / Bird Brain Solutions LLC</strong>.
+            It builds on open technologies including ONNX Runtime (local AI), FFmpeg (video),
+            LibVLC (streaming), OpenStreetMap &amp; Leaflet (maps), Open-Meteo (weather),
+            eBird-derived data (rarity), Wikipedia (species photos), and Supabase (community
+            backend). Thank you for watching the birds with us.</p>
+
+        <ul>
+            <li>Product site &amp; downloads:
+                <a href="https://www.birdwatchai.com">www.birdwatchai.com</a></li>
+            <li>Live community feed:
+                <a href="../community.html">community.html</a></li>
+            <li>Server release repo:
+                <a href="https://github.com/JoeBarraco/birdwatchai-server-releases">github.com/JoeBarraco/birdwatchai-server-releases</a></li>
+            <li>Contact: <a href="mailto:support@birdwatchai.com">support@birdwatchai.com</a></li>
+        </ul>
+
+        <nav class="pager" aria-label="Manual navigation">
+            <a class="prev" href="part-7-troubleshooting.html">
+                <span class="nav-label">Part 7</span>
+                <span class="nav-title">Troubleshooting</span>
+            </a>
+            <a class="next" href="index.html">
+                <span class="nav-label">Back to top</span>
+                <span class="nav-title">Manual home</span>
+            </a>
+        </nav>
+    </main>
+</div>
+
+<script src="manual.js"></script>
+</body>
+</html>
