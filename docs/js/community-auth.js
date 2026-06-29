@@ -365,6 +365,9 @@ function updateModUI() {
     document.getElementById('navbar-admin-btn').style.display = (loggedIn && admin) ? '' : 'none';
     document.getElementById('navbar-flags-btn').style.display = loggedIn ? '' : 'none';
     document.getElementById('navbar-comments-history-btn').style.display = loggedIn ? '' : 'none';
+    // Feeders-tab admin-only buttons (e.g., manual media-purge).
+    const purgeBtn = document.getElementById('feeders-admin-purge');
+    if (purgeBtn) purgeBtn.style.display = (loggedIn && admin) ? '' : 'none';
     // Show logged-in user
     const userEl = document.getElementById('navbar-user');
     if (loggedIn) {
@@ -1167,6 +1170,130 @@ async function doModMergeFeeder() {
     } catch (err) {
         errorEl.textContent = 'Error: ' + err.message;
         errorEl.style.display = 'block';
+    }
+}
+
+// ────────────────────────────────────────────────────────────
+// Admin: grant / change a feeder's community-storage tier.
+// "Free" (default) = 7-day media retention, "Plus" = 90, "Pro" = 365.
+// Detection rows always live forever for stats / life-list integrity;
+// only the media (image_url / video_url) gets purged past the window.
+// The set_feeder_tier action on the moderator-delete-media edge function
+// re-uses the existing auth path; the underlying admin_set_feeder_tier
+// RPC enforces role=admin so a regular moderator can't grant tiers.
+// ────────────────────────────────────────────────────────────
+let _tierModalContext = null; // { feederId, displayName }
+
+function openTierModal(btn) {
+    const feederId   = btn?.dataset?.feederId   ?? '';
+    const displayName = btn?.dataset?.feederName ?? 'Unnamed feeder';
+    const currentTier = (btn?.dataset?.feederTier ?? 'free').toLowerCase();
+    if (!feederId) return;
+    _tierModalContext = { feederId, displayName };
+
+    document.getElementById('tier-modal-title').textContent = `Set tier for "${displayName}"`;
+    const sel = document.getElementById('tier-modal-select');
+    sel.value = ['free', 'plus', 'pro'].includes(currentTier) ? currentTier : 'free';
+    document.getElementById('tier-modal-renews').value = '';
+    const err = document.getElementById('tier-modal-error');
+    if (err) { err.textContent = ''; err.style.display = 'none'; }
+    document.getElementById('tier-modal').classList.add('open');
+    document.getElementById('tier-modal-select').focus();
+}
+
+function closeTierModal() {
+    _tierModalContext = null;
+    document.getElementById('tier-modal').classList.remove('open');
+}
+
+async function submitTierChange() {
+    if (!_tierModalContext) return;
+    const { feederId, displayName } = _tierModalContext;
+    const tier   = (document.getElementById('tier-modal-select').value || 'free').toLowerCase();
+    const renews = document.getElementById('tier-modal-renews').value;
+    // renews can be "YYYY-MM-DD" from the <input type=date>; convert to an ISO timestamp.
+    // Empty means indefinite (the typical "comped account" case).
+    const renewsIso = renews ? new Date(renews + 'T00:00:00Z').toISOString() : null;
+
+    const { email, password } = getModCreds();
+    try {
+        const functionsUrl = SUPABASE_URL.replace('.supabase.co', '.supabase.co/functions/v1');
+        const res = await fetch(`${functionsUrl}/moderator-delete-media`, {
+            method: 'POST',
+            headers: {
+                apikey: ANON_KEY,
+                Authorization: `Bearer ${ANON_KEY}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                action:    'set_feeder_tier',
+                email,
+                password,
+                feeder_id: feederId,
+                tier,
+                renews_at: renewsIso,
+            }),
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.error || err.message || `HTTP ${res.status}`);
+        }
+        // Reflect locally so the card refreshes without a full reload.
+        if (typeof allFeeders !== 'undefined') {
+            const f = allFeeders.find(x => String(x.id || x.feeder_id) === String(feederId));
+            if (f) {
+                f.subscription_tier        = tier;
+                f.subscription_renews_at   = renewsIso;
+                f.subscription_granted_by  = email;
+                f.subscription_granted_at  = new Date().toISOString();
+            }
+        }
+        // Reload detections so any restored media reappears in the Feed view
+        // immediately. Best-effort — falls back to the local update only.
+        const body = await res.json().catch(() => ({}));
+        if (typeof loadFeed === 'function') {
+            try { await loadFeed(); } catch { /* ignore */ }
+        }
+
+        closeTierModal();
+        if (typeof renderFeeders === 'function') renderFeeders();
+        const restoredNote = body && typeof body.media_restored === 'number' && body.media_restored > 0
+            ? ` Restored ${body.media_restored} previously-expired photo${body.media_restored === 1 ? '' : 's'}.`
+            : '';
+        showToast(`Feeder "${displayName}" → ${tier} tier.${restoredNote}`);
+    } catch (e) {
+        const errEl = document.getElementById('tier-modal-error');
+        if (errEl) { errEl.textContent = e.message; errEl.style.display = 'block'; }
+        else showToast('Error: ' + e.message);
+    }
+}
+
+// Admin-triggered manual purge of expired community media. Schedule the
+// purge-expired-media edge function via pg_cron for the recurring path;
+// this button is the "do it now" override an admin can click any time.
+async function runMediaPurge() {
+    if (!isAdmin()) {
+        showToast('Admin access required.');
+        return;
+    }
+    if (!confirm('Run a community-media purge now? Detections past their tier\'s retention window will have their photos/videos removed from Supabase Storage. Detection rows + stats are kept.')) return;
+    const { email, password } = getModCreds();
+    try {
+        const functionsUrl = SUPABASE_URL.replace('.supabase.co', '.supabase.co/functions/v1');
+        const res = await fetch(`${functionsUrl}/purge-expired-media`, {
+            method: 'POST',
+            headers: {
+                apikey: ANON_KEY,
+                Authorization: `Bearer ${ANON_KEY}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email, password }),
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body.error || body.message || `HTTP ${res.status}`);
+        showToast(`Purge complete — ${body.rows_purged ?? 0} row(s), ${body.images_removed ?? 0} image(s), ${body.videos_removed ?? 0} video(s) removed.`);
+    } catch (e) {
+        showToast('Purge error: ' + e.message);
     }
 }
 

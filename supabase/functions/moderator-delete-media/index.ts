@@ -65,19 +65,21 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { action, email, password, detection_id, feeder_id,
+    const { action, email, password, detection_id, feeder_id, tier, renews_at,
             source_feeder_id, target_feeder_id } = body;
 
-    // Per-action required-field validation — feeder-level actions use
-    // feeder_id (delete) or source/target ids (merge), detection actions
-    // use detection_id, but all need an action + creds.
+    // Per-action required-field validation:
+    //   * delete_feeder / set_feeder_tier  → feeder_id
+    //   * merge_feeder                      → source_feeder_id + target_feeder_id
+    //   * update / delete                   → detection_id
+    //   * (all)                             → action + email + password
     if (!action || !email || !password) {
       return new Response(
         JSON.stringify({ error: 'Missing required fields' }),
         { status: 400, headers: corsHeaders }
       );
     }
-    if (action === 'delete_feeder') {
+    if (action === 'delete_feeder' || action === 'set_feeder_tier') {
       if (!feeder_id) {
         return new Response(
           JSON.stringify({ error: 'Missing required fields' }),
@@ -189,6 +191,63 @@ Deno.serve(async (req) => {
       );
     }
 
+    // ── ACTION: set_feeder_tier ──────────────────────────────────────────────
+    // Admin-only path to grant a subscription tier to a feeder. Wraps the
+    // admin_set_feeder_tier RPC, which already enforces role=admin and
+    // validates the tier value. The "renews_at" body field is optional —
+    // null means the grant is indefinite (the common case for comped
+    // accounts); a timestamp means it auto-downgrades on that date.
+    if (action === 'set_feeder_tier') {
+      const cleanTier = (tier || '').toString().trim().toLowerCase();
+      if (cleanTier !== 'free' && cleanTier !== 'plus' && cleanTier !== 'pro') {
+        return new Response(
+          JSON.stringify({ error: `Invalid tier "${tier}". Use free|plus|pro.` }),
+          { status: 400, headers: corsHeaders }
+        );
+      }
+      const { data: result, error: rpcErr } = await supabase.rpc('admin_set_feeder_tier', {
+        p_email:     email,
+        p_password:  password,
+        p_feeder_id: feeder_id,
+        p_tier:      cleanTier,
+        p_renews_at: renews_at ?? null,
+      });
+      if (rpcErr) {
+        // The RPC throws "Admin access required" for a non-admin moderator —
+        // surface that as 403 so the UI can show a useful message.
+        const isPerm = /admin access required/i.test(rpcErr.message ?? '');
+        return new Response(
+          JSON.stringify({ error: rpcErr.message }),
+          { status: isPerm ? 403 : 400, headers: corsHeaders }
+        );
+      }
+
+      // Auto-restore any soft-expired media that fits inside the new tier's
+      // window. Best-effort — a restore failure shouldn't block the tier
+      // change itself, just surface in the response so the UI can mention it.
+      let mediaRestored: number | null = null;
+      let restoreError: string | null = null;
+      try {
+        const { data: r, error: restoreErr } = await supabase.rpc('restore_recoverable_feeder_media', {
+          p_feeder_id: feeder_id,
+        });
+        if (restoreErr) restoreError = restoreErr.message;
+        else mediaRestored = typeof r === 'number' ? r : (r ?? 0);
+      } catch (e) {
+        restoreError = String(e);
+      }
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          ...(result ?? {}),
+          media_restored: mediaRestored,
+          restore_error:  restoreError,
+        }),
+        { status: 200, headers: corsHeaders }
+      );
+    }
+
     // Fetch the detection's current media URLs so we know what to remove
     const { data: detection, error: fetchErr } = await supabase
       .from('community_detections')
@@ -264,7 +323,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ error: 'Invalid action. Use "update", "delete", "delete_feeder", or "merge_feeder".' }),
+      JSON.stringify({ error: 'Invalid action. Use "update", "delete", "delete_feeder", "merge_feeder", or "set_feeder_tier".' }),
       { status: 400, headers: corsHeaders }
     );
 
