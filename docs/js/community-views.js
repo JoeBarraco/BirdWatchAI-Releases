@@ -873,6 +873,29 @@ function fmtHour(h) {
     return (h - 12) + 'pm';
 }
 
+// detected_at is stored as a UTC ISO string. For viewer-facing day/hour buckets
+// (Records, Trend, Pairs, Leaderboard streaks, Bird of the Day) we want the
+// viewer's local day, not the UTC day — otherwise evening sightings get
+// attributed to "tomorrow" and the busiest-hour label is off by the viewer's
+// UTC offset. The Calendar tab deliberately stays in UTC (see comment there).
+function localDayKey(iso) {
+    const d = new Date(iso);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+}
+function localHourKey(iso) {
+    const d = new Date(iso);
+    return localDayKey(iso) + ' ' + String(d.getHours()).padStart(2, '0');
+}
+function localDayKeyFromDate(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+}
+
 async function loadAllDetections() {
     if (feedExhausted) return;
     const { period } = getFilters();
@@ -1388,14 +1411,14 @@ function renderStats() {
         feederStats[name].count++;
         if (d.species) feederStats[name].species.add(d.species);
         if (d.rarity === 'Rare' || d.rarity === 'Very Rare') feederStats[name].rareCount++;
-        feederStats[name].days.add(d.detected_at.slice(0, 10));
+        feederStats[name].days.add(localDayKey(d.detected_at));
     });
 
     function calcStreak(daysSet) {
         const sorted = [...daysSet].sort().reverse();
         if (!sorted.length) return 0;
-        const today     = new Date().toISOString().slice(0, 10);
-        const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+        const today     = localDayKeyFromDate(new Date());
+        const yesterday = localDayKeyFromDate(new Date(Date.now() - 86400000));
         if (sorted[0] !== today && sorted[0] !== yesterday) return 0;
         let streak = 1;
         for (let i = 1; i < sorted.length; i++) {
@@ -1528,10 +1551,10 @@ function renderTrendChart() {
     const filtered   = window._trendFiltered   || [];
     const shownSpecies = allSpecies.filter(sp => !trendHiddenSp.has(sp));
 
-    // Day buckets
+    // Day buckets (local day, so evening detections don't roll into "tomorrow")
     const dayMap = {};
     filtered.forEach(d => {
-        const day = d.detected_at.slice(0, 10);
+        const day = localDayKey(d.detected_at);
         if (!dayMap[day]) dayMap[day] = {};
         const sp = d.species || 'Unknown';
         dayMap[day][sp] = (dayMap[day][sp] || 0) + 1;
@@ -1622,7 +1645,7 @@ function renderTrendChart() {
     const rareByDay = {};  // day -> {rare:[species], veryRare:[species]}
     filtered.forEach(d => {
         if (!d.rarity || (d.rarity !== 'Rare' && d.rarity !== 'Very Rare')) return;
-        const day = d.detected_at.slice(0, 10);
+        const day = localDayKey(d.detected_at);
         if (!(day in dayIdx)) return;
         if (!rareByDay[day]) rareByDay[day] = { rare: [], veryRare: [] };
         const bucket = d.rarity === 'Very Rare' ? rareByDay[day].veryRare : rareByDay[day].rare;
@@ -1858,8 +1881,8 @@ function renderRecords() {
     const firstSeen = {};  // species -> earliest ISO
     const lastSeen  = {};  // species -> latest ISO
     visible.forEach(d => {
-        const day = d.detected_at.slice(0, 10);
-        const hk  = d.detected_at.slice(0, 13);
+        const day = localDayKey(d.detected_at);
+        const hk  = localHourKey(d.detected_at);
         if (!byDay[day]) byDay[day] = { count: 0, species: new Set() };
         byDay[day].count++;
         if (d.species) byDay[day].species.add(d.species);
@@ -1894,13 +1917,14 @@ function renderRecords() {
         if (runLen > longestStreak) longestStreak = runLen;
         prevDate = day;
     });
-    // Current streak (must include today or yesterday)
-    const todayKey     = new Date().toISOString().slice(0, 10);
-    const yesterdayKey = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    // Current streak (must include today or yesterday — local time)
+    const todayKey     = localDayKeyFromDate(new Date());
+    const yesterdayKey = localDayKeyFromDate(new Date(Date.now() - 86400000));
     let currentStreak = 0;
     if (daySet.has(todayKey) || daySet.has(yesterdayKey)) {
-        let cursor = daySet.has(todayKey) ? new Date(todayKey) : new Date(yesterdayKey);
-        while (daySet.has(cursor.toISOString().slice(0, 10))) {
+        let cursor = new Date();
+        if (!daySet.has(todayKey)) cursor.setDate(cursor.getDate() - 1);
+        while (daySet.has(localDayKeyFromDate(cursor))) {
             currentStreak++;
             cursor.setDate(cursor.getDate() - 1);
         }
@@ -2014,7 +2038,7 @@ function renderPairs() {
     const daySpecies = {};  // day -> Set(species)
     visible.forEach(d => {
         if (!d.species) return;
-        const day = d.detected_at.slice(0, 10);
+        const day = localDayKey(d.detected_at);
         if (!daySpecies[day]) daySpecies[day] = new Set();
         daySpecies[day].add(d.species);
     });

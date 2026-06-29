@@ -1159,7 +1159,7 @@ function updateCompare() {
     if (!a || !b) return;
     const statsFor = sp => {
         const rows = allDetections.filter(d => d.species === sp);
-        const days = new Set(rows.map(d => d.detected_at?.slice(0, 10))).size;
+        const days = new Set(rows.map(d => d.detected_at ? localDayKey(d.detected_at) : null).filter(Boolean)).size;
         const feeders = new Set(rows.map(d => d.feeders?.display_name).filter(Boolean)).size;
         const temps = rows.map(d => d.temperature).filter(t => t != null);
         const avgTemp = temps.length ? (temps.reduce((s, t) => s + t, 0) / temps.length).toFixed(1) : '—';

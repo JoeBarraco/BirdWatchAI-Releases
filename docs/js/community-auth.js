@@ -96,10 +96,12 @@ function openBotdDetail() {
 }
 
 function renderBirdOfTheDay(detections) {
-    // Pick today's rarest detection (Very Rare > Rare > most-detected species)
-    const today  = new Date().toISOString().slice(0, 10);
-
-    const todays = detections.filter(d => d.detected_at.slice(0, 10) === today);
+    // Pick today's rarest detection (Very Rare > Rare > most-detected species).
+    // Match on the viewer's local day (helper from community-views.js) — comparing
+    // UTC-sliced timestamps would miss morning detections in western timezones and
+    // roll late-evening ones forward into "tomorrow" in eastern ones.
+    const today = localDayKeyFromDate(new Date());
+    const todays = detections.filter(d => localDayKey(d.detected_at) === today);
     if (!todays.length) return;
 
     const byRarity = r => r === 'Very Rare' ? 3 : r === 'Rare' ? 2 : r === 'Uncommon' ? 1 : 0;
