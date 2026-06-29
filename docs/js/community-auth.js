@@ -1189,16 +1189,33 @@ function openTierModal(btn) {
     const displayName = btn?.dataset?.feederName ?? 'Unnamed feeder';
     const currentTier = (btn?.dataset?.feederTier ?? 'free').toLowerCase();
     if (!feederId) return;
+    // Look up current privacy + renews_at from the cached feeder row so the
+    // modal reflects current state on open.
+    const all = (typeof allFeeders !== 'undefined') ? allFeeders : [];
+    const f = all.find(x => String(x.id || x.feeder_id) === String(feederId));
+    const currentPrivacy = !!(f && f.subscription_privacy);
+    const currentRenews  = f && f.subscription_renews_at ? f.subscription_renews_at : null;
     _tierModalContext = { feederId, displayName };
 
     document.getElementById('tier-modal-title').textContent = `Set tier for "${displayName}"`;
     const sel = document.getElementById('tier-modal-select');
     sel.value = ['free', 'plus', 'pro'].includes(currentTier) ? currentTier : 'free';
-    document.getElementById('tier-modal-renews').value = '';
+    document.getElementById('tier-modal-privacy').checked = currentPrivacy;
+    // <input type=date> wants YYYY-MM-DD; renews_at on the row is ISO. Take
+    // the date portion and let the user re-pick or clear.
+    const renewsInput = document.getElementById('tier-modal-renews');
+    renewsInput.value = currentRenews ? currentRenews.slice(0, 10) : '';
     const err = document.getElementById('tier-modal-error');
     if (err) { err.textContent = ''; err.style.display = 'none'; }
     document.getElementById('tier-modal').classList.add('open');
     document.getElementById('tier-modal-select').focus();
+}
+
+// Clear the renews_at date so the grant becomes perpetual (renews_at=null
+// in the RPC). The button's label is descriptive enough — no toast needed.
+function setTierModalPerpetual() {
+    const renews = document.getElementById('tier-modal-renews');
+    if (renews) renews.value = '';
 }
 
 function closeTierModal() {
@@ -1209,8 +1226,9 @@ function closeTierModal() {
 async function submitTierChange() {
     if (!_tierModalContext) return;
     const { feederId, displayName } = _tierModalContext;
-    const tier   = (document.getElementById('tier-modal-select').value || 'free').toLowerCase();
-    const renews = document.getElementById('tier-modal-renews').value;
+    const tier    = (document.getElementById('tier-modal-select').value || 'free').toLowerCase();
+    const renews  = document.getElementById('tier-modal-renews').value;
+    const privacy = document.getElementById('tier-modal-privacy').checked;
     // renews can be "YYYY-MM-DD" from the <input type=date>; convert to an ISO timestamp.
     // Empty means indefinite (the typical "comped account" case).
     const renewsIso = renews ? new Date(renews + 'T00:00:00Z').toISOString() : null;
@@ -1232,6 +1250,7 @@ async function submitTierChange() {
                 feeder_id: feederId,
                 tier,
                 renews_at: renewsIso,
+                privacy,
             }),
         });
         if (!res.ok) {
@@ -1244,6 +1263,7 @@ async function submitTierChange() {
             if (f) {
                 f.subscription_tier        = tier;
                 f.subscription_renews_at   = renewsIso;
+                f.subscription_privacy     = privacy;
                 f.subscription_granted_by  = email;
                 f.subscription_granted_at  = new Date().toISOString();
             }
@@ -1260,7 +1280,11 @@ async function submitTierChange() {
         const restoredNote = body && typeof body.media_restored === 'number' && body.media_restored > 0
             ? ` Restored ${body.media_restored} previously-expired photo${body.media_restored === 1 ? '' : 's'}.`
             : '';
-        showToast(`Feeder "${displayName}" → ${tier} tier.${restoredNote}`);
+        const privacyNote = privacy ? ' 🔒 Private.' : '';
+        const flippedNote = body && typeof body.visibility_flipped === 'number' && body.visibility_flipped > 0
+            ? ` Flipped visibility on ${body.visibility_flipped} existing detection${body.visibility_flipped === 1 ? '' : 's'}.`
+            : '';
+        showToast(`Feeder "${displayName}" → ${tier} tier.${privacyNote}${flippedNote}${restoredNote}`);
     } catch (e) {
         const errEl = document.getElementById('tier-modal-error');
         if (errEl) { errEl.textContent = e.message; errEl.style.display = 'block'; }

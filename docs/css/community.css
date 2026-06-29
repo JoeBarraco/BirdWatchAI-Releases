@@ -2782,6 +2782,29 @@
         [data-theme="dark"] .feeder-tier-badge--plus { background: #3d2e16; color: #ffc580; border-color: #5a4422; }
         [data-theme="dark"] .feeder-tier-badge--pro  { background: #1d3a2a; color: #8ad8a4; border-color: #2d5a3d; }
 
+        /* Privacy add-on pill — sits next to the tier badge when the feeder
+           has the privacy SKU. Slate tone keeps it distinct from the tier
+           palette (which uses warm/green) so the two badges read as
+           orthogonal axes, not "another tier." */
+        .feeder-privacy-badge {
+            display: inline-block;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: #e7ecf2;
+            color: #3a4a5e;
+            border: 1px solid #c3d0de;
+            margin-left: 4px;
+        }
+        [data-theme="dark"] .feeder-privacy-badge {
+            background: #283341;
+            color: #b8c6da;
+            border-color: #3a4a5e;
+        }
+
         /* "📷 photo expired" placeholder used in the feed when a community_detection's
            image_url has been nulled by the retention purge. The row stays for stats;
            only the image is gone. Keeps the card legible without leaving a broken-link

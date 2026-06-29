@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { action, email, password, detection_id, feeder_id, tier, renews_at,
+    const { action, email, password, detection_id, feeder_id, tier, renews_at, privacy,
             source_feeder_id, target_feeder_id } = body;
 
     // Per-action required-field validation:
@@ -211,6 +211,7 @@ Deno.serve(async (req) => {
         p_feeder_id: feeder_id,
         p_tier:      cleanTier,
         p_renews_at: renews_at ?? null,
+        p_privacy:   typeof privacy === 'boolean' ? privacy : null,
       });
       if (rpcErr) {
         // The RPC throws "Admin access required" for a non-admin moderator —

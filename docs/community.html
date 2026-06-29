@@ -519,7 +519,9 @@
             <strong>Free</strong> = 7 days, <strong>Plus</strong> = 90 days,
             <strong>Pro</strong> = 1 year. Detection rows live forever for stats
             and life-list integrity — only the photos / videos are removed past
-            the window.
+            the window. The <strong>Privacy add-on</strong> is orthogonal: when
+            on, the feeder's detections don't appear in the public community
+            feed at all.
         </p>
         <label for="tier-modal-select">Tier</label>
         <select id="tier-modal-select">
@@ -527,12 +529,31 @@
             <option value="plus">Plus (90-day media retention)</option>
             <option value="pro">Pro (1-year media retention)</option>
         </select>
+
+        <label style="display:flex;align-items:center;gap:0.5rem;margin-top:0.75rem;font-weight:500;">
+            <input type="checkbox" id="tier-modal-privacy" style="width:auto;margin:0;">
+            Privacy add-on (hide detections from public feed)
+        </label>
+        <p style="font-size:0.75rem;color:var(--color-gray-500);margin-top:0.25rem;margin-bottom:0.75rem;">
+            Stackable on any tier. Detection rows are visible only to this
+            feeder's owner; nobody else sees them in the community feed,
+            gallery, or stats. Flipping this rewrites visibility on every
+            existing detection for the feeder immediately.
+        </p>
+
         <label for="tier-modal-renews">Auto-downgrade on (optional)</label>
-        <input type="date" id="tier-modal-renews">
-        <p style="font-size:0.75rem;color:var(--color-gray-500);margin-top:-0.5rem;margin-bottom:0.75rem;">
-            Leave blank for an indefinite grant — the typical "I'm comping this
-            account" case. A date sets the tier to auto-downgrade to Free on
-            that day (e.g., when a paid subscription would expire).
+        <div style="display:flex;gap:0.5rem;align-items:center;">
+            <input type="date" id="tier-modal-renews" style="flex:1;">
+            <button type="button" id="tier-modal-perpetual-btn" onclick="setTierModalPerpetual()"
+                style="font-size:0.75rem;padding:0.4rem 0.6rem;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);cursor:pointer;">
+                Make perpetual
+            </button>
+        </div>
+        <p style="font-size:0.75rem;color:var(--color-gray-500);margin-top:-0.25rem;margin-bottom:0.75rem;">
+            Leave blank (or click <em>Make perpetual</em>) for an indefinite
+            grant — the typical friends-and-family / comp case. A date sets
+            the tier to auto-downgrade to Free on that day (e.g., when a paid
+            subscription would expire).
         </p>
         <div id="tier-modal-error" style="color:#e74c3c;font-size:0.8rem;margin-bottom:0.5rem;display:none;"></div>
         <div class="mod-btn-row">

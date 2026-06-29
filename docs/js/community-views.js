@@ -730,6 +730,10 @@ function renderFeeders() {
         const tierRetention = tier === 'pro' ? '1-year' : tier === 'plus' ? '90-day' : '7-day';
         const tierTitle = `${tierLabel} tier — ${tierRetention} community media retention` +
             (f.subscription_granted_by ? ` · granted by ${f.subscription_granted_by}` : '');
+        const privacyOn = !!f.subscription_privacy;
+        const privacyBadge = privacyOn
+            ? ` <span class="feeder-privacy-badge" title="Privacy add-on — detections are hidden from the public feed">🔒 Private</span>`
+            : '';
         return `
         <div class="feeder-card ${stateClass}">
             <div class="feeder-card-header">
@@ -741,7 +745,7 @@ function renderFeeders() {
                 <div><dt>Status</dt><dd>${statusText}</dd></div>
                 <div><dt>Version</dt><dd>${f.app_version ? esc(f.app_version) : '—'}</dd></div>
                 <div><dt>Location</dt><dd>${locationCell}</dd></div>
-                <div><dt>Tier</dt><dd><span class="feeder-tier-badge feeder-tier-badge--${tier}" title="${esc(tierTitle)}">${tierLabel}</span></dd></div>
+                <div><dt>Tier</dt><dd><span class="feeder-tier-badge feeder-tier-badge--${tier}" title="${esc(tierTitle)}">${tierLabel}</span>${privacyBadge}</dd></div>
                 <div><dt>Last heartbeat</dt><dd title="${hb ? esc(new Date(hb).toLocaleString()) : ''}">${esc(fmtFeederHeartbeat(f))}</dd></div>
             </dl>
             <div class="feeder-actions">
