@@ -65,7 +65,13 @@
 alter table feeders
     add column if not exists subscription_privacy        boolean not null default false,
     add column if not exists privacy_lapse_grace_until   timestamptz,
-    add column if not exists contact_email               text;
+    add column if not exists contact_email               text,
+    -- Tracks the renews_at value the renewal cron last emailed about, so
+    -- subsequent reminders for the SAME upcoming renewal aren't sent again
+    -- in the same checkpoint window. Resets to null whenever renews_at
+    -- changes (handled by trigger below), so a tier upgrade/downgrade
+    -- re-arms the reminder series.
+    add column if not exists last_reminded_for           timestamptz;
 
 alter table community_detections
     add column if not exists visibility text not null default 'public';
@@ -89,6 +95,31 @@ create index if not exists idx_community_detections_visibility
 create index if not exists idx_feeders_privacy_lapse
     on feeders (privacy_lapse_grace_until)
     where privacy_lapse_grace_until is not null;
+
+-- For the renewal-reminder cron: cheap lookup of "feeders with a finite
+-- renewal in the next month."
+create index if not exists idx_feeders_renews_at
+    on feeders (subscription_renews_at)
+    where subscription_renews_at is not null;
+
+-- Reset last_reminded_for whenever renews_at changes, so a tier upgrade /
+-- downgrade re-arms the reminder series for the new date.
+create or replace function feeders_reset_reminder_on_renew_change()
+returns trigger
+language plpgsql
+as $$
+begin
+    if new.subscription_renews_at is distinct from old.subscription_renews_at then
+        new.last_reminded_for := null;
+    end if;
+    return new;
+end;
+$$;
+
+drop trigger if exists feeders_reset_reminder_trg on feeders;
+create trigger feeders_reset_reminder_trg
+    before update on feeders
+    for each row execute function feeders_reset_reminder_on_renew_change();
 
 -- ── 2. visibility BEFORE INSERT trigger ─────────────────────────────────────
 -- Stamps community_detections.visibility from the parent feeder's
@@ -426,6 +457,11 @@ begin
     if (n -> 'contact_email') is distinct from (o -> 'contact_email') then
         raise exception 'feeders.contact_email must be changed via update_feeder_contact_email';
     end if;
+    -- last_reminded_for is stamped by the renewal-reminder cron running as
+    -- service_role; anon clients have no reason to touch it.
+    if (n -> 'last_reminded_for') is distinct from (o -> 'last_reminded_for') then
+        raise exception 'feeders.last_reminded_for is read-only via anon';
+    end if;
 
     return new;
 end;
@@ -467,3 +503,34 @@ create trigger feeders_anon_update_guard_trg
 -- "Allow public read" policy is still attached, drop it via the Supabase
 -- dashboard.
 -- ────────────────────────────────────────────────────────────────────────────
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- pg_cron schedules (run separately — pg_cron lives in postgres extension
+-- and is invoked by-hand or via the Supabase dashboard's cron UI). Keep
+-- these snippets here as documentation of the intended schedule.
+-- ────────────────────────────────────────────────────────────────────────────
+--
+-- -- Renewal reminder emails, daily at 09:00 UTC (~5am ET).
+-- select cron.schedule(
+--     'renewal-reminders-daily',
+--     '0 9 * * *',
+--     $$
+--     select net.http_post(
+--         url := 'https://<project-ref>.supabase.co/functions/v1/renewal-reminders',
+--         headers := jsonb_build_object(
+--             'Authorization', 'Bearer ' || current_setting('app.service_role_key', true),
+--             'Content-Type',  'application/json'
+--         ),
+--         body := '{}'::jsonb
+--     );
+--     $$
+-- );
+--
+-- -- Privacy-lapse cron, daily at 09:05 UTC (offset from above so they don't
+-- -- contend on db connections).
+-- select cron.schedule(
+--     'privacy-lapse-daily',
+--     '5 9 * * *',
+--     $$ select apply_privacy_lapse_after_grace(); $$
+-- );
+
