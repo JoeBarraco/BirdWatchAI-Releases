@@ -199,13 +199,24 @@ function periodToISO(period) {
 
 function applyClientFilters(data) {
     const { feeder, zip, coords, radiusMiles, species, rarity, search, favoritesOnly } = getFilters();
+    // Pre-build the feederId → GPS index once per call so "Near me" can fall
+    // back to feeder GPS for detections that lack their own lat/lng.
+    // Helpers live in community-views.js; guard in case that file hasn't loaded.
+    const feederGps = (coords && typeof buildFeederGpsIndex === 'function'
+        && typeof allFeeders !== 'undefined')
+        ? buildFeederGpsIndex(allFeeders)
+        : null;
     return data.filter(d => {
         if (species       && d.species               !== species) return false;
         if (rarity        && d.rarity                !== rarity)  return false;
         if (feeder        && d.feeders?.display_name !== feeder)  return false;
         if (coords) {
-            if (d.latitude == null || d.longitude == null) return false;
-            const dist = haversineMiles(coords.lat, coords.lng, +d.latitude, +d.longitude);
+            const pt = (typeof detectionMapPoint === 'function')
+                ? detectionMapPoint(d, feederGps)
+                : (d.latitude != null && d.longitude != null
+                    ? { lat: +d.latitude, lng: +d.longitude } : null);
+            if (!pt) return false;
+            const dist = haversineMiles(coords.lat, coords.lng, pt.lat, pt.lng);
             if (dist > radiusMiles) return false;
         } else if (zip && d.zip_code !== zip) {
             return false;
