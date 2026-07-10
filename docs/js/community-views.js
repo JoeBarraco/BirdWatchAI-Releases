@@ -1,6 +1,6 @@
 // BirdWatchAI Community Feed - Views (feed, map, stats rendering)
 
-// ── Location helpers (GPS preferred, zip fallback) ───────
+// ── Location helpers (GPS preferred, feeder GPS fallback, zip last) ──
 function hasGps(o) {
     return o && o.latitude != null && o.longitude != null
         && Number.isFinite(+o.latitude) && Number.isFinite(+o.longitude);
@@ -8,6 +8,39 @@ function hasGps(o) {
 
 function fmtLatLng(lat, lng, digits = 4) {
     return `${(+lat).toFixed(digits)}, ${(+lng).toFixed(digits)}`;
+}
+
+// A detection may reference its feeder either as a flat `feeder_id` column
+// (from the raw table) or as the joined `feeders.id` object shape.
+function feederIdOf(o) {
+    if (!o) return null;
+    return o.feeder_id ?? o.feeders?.id ?? null;
+}
+
+// Build feederId → {lat,lng} index from allFeeders, skipping feeders
+// without GPS. Returns an empty Map if allFeeders is not loaded yet.
+function buildFeederGpsIndex(feeders) {
+    const idx = new Map();
+    if (!Array.isArray(feeders)) return idx;
+    for (const f of feeders) {
+        if (!hasGps(f)) continue;
+        const id = f.id ?? f.feeder_id;
+        if (id == null) continue;
+        idx.set(String(id), { lat: +f.latitude, lng: +f.longitude });
+    }
+    return idx;
+}
+
+// Effective map location for a detection: direct GPS wins, else the
+// linked feeder's GPS if we have it. Returns null when neither is known.
+function detectionMapPoint(d, feederGps) {
+    if (hasGps(d)) return { lat: +d.latitude, lng: +d.longitude, source: 'detection' };
+    const fid = feederIdOf(d);
+    if (fid != null && feederGps) {
+        const p = feederGps.get(String(fid));
+        if (p) return { lat: p.lat, lng: p.lng, source: 'feeder' };
+    }
+    return null;
 }
 
 function formatLocationChip(o) {
@@ -292,6 +325,11 @@ async function renderMap() {
     if (feederMarkerGroup) { map.removeLayer(feederMarkerGroup); feederMarkerGroup = null; }
     renderLegend([]);
 
+    // Ensure feeders are loaded so detections without direct lat/lng can
+    // still be plotted at their linked feeder's location.
+    await ensureFeedersLoaded();
+    const feederGps = buildFeederGpsIndex(allFeeders);
+
     const speciesFilter = document.getElementById('map-species-filter').value;
     const visible = applyClientFilters(allDetections).filter(d =>
         !speciesFilter || d.species === speciesFilter
@@ -301,15 +339,15 @@ async function renderMap() {
         // Group detections by (location key, species)
         let locSpecies = {};
 
-        // ① Detections with direct GPS — preferred
-        const withCoords = visible.filter(hasGps);
-        for (const d of withCoords) {
+        // ① Detections with a known point — direct GPS OR feeder-GPS fallback
+        for (const d of visible) {
+            const pt = detectionMapPoint(d, feederGps);
+            if (!pt) continue;                 // no point yet; may still qualify via zip in ②
             const sp      = d.species || 'Unknown';
-            const lat     = +d.latitude, lng = +d.longitude;
-            const locKey  = `${lat.toFixed(3)},${lng.toFixed(3)}`;
+            const locKey  = `${pt.lat.toFixed(3)},${pt.lng.toFixed(3)}`;
             const fullKey = `${locKey}|${sp}`;
             if (!locSpecies[fullKey]) {
-                locSpecies[fullKey] = { lat, lng, species: sp, count: 0, images: [] };
+                locSpecies[fullKey] = { lat: pt.lat, lng: pt.lng, species: sp, count: 0, images: [] };
             }
             locSpecies[fullKey].count++;
             if (d.image_url) locSpecies[fullKey].images.push(d.image_url);
@@ -318,7 +356,7 @@ async function renderMap() {
         // ② Zip-only detections — fall back to geocoding
         const zipDetections = {};
         for (const d of visible) {
-            if (hasGps(d)) continue;       // already plotted via lat/lng
+            if (detectionMapPoint(d, feederGps)) continue;  // already plotted via lat/lng or feeder
             if (!d.zip_code) continue;
             (zipDetections[d.zip_code] ||= []).push(d);
         }
@@ -347,7 +385,7 @@ async function renderMap() {
         const feederPins = showFeedersOnMap ? collectFeederPins() : [];
 
         if (entries.length === 0 && feederPins.length === 0) {
-            noData.textContent = 'No location data for the current filters. Detections and feeders need GPS coordinates (or a US zip code) to appear on the map.';
+            noData.textContent = 'No location data for the current filters. Detections need GPS, a linked feeder with GPS, or a US zip code to appear on the map.';
             noData.style.display = '';
             return;
         }
@@ -389,11 +427,13 @@ async function renderMap() {
 
             // Determine the newest detection's location key for pulse
             const newestD   = visible.slice().sort((a,b) => new Date(b.detected_at) - new Date(a.detected_at))[0];
-            const newestKey = newestD
-                ? (newestD.latitude != null
-                    ? `${(+newestD.latitude).toFixed(3)},${(+newestD.longitude).toFixed(3)}`
-                    : newestD.zip_code || '')
-                : '';
+            let   newestKey = '';
+            if (newestD) {
+                const pt = detectionMapPoint(newestD, feederGps);
+                newestKey = pt
+                    ? `${pt.lat.toFixed(3)},${pt.lng.toFixed(3)}`
+                    : (newestD.zip_code || '');
+            }
 
             // Slight offset when multiple species share the same lat/lng
             const locOffset = {};
