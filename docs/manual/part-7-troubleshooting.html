@@ -31,28 +31,84 @@
 
     <nav class="toc" aria-label="Manual table of contents">
         <h2>Contents</h2>
+        <a class="toc-quickstart" href="quick-start.html">⚡ Quick Start</a>
         <ol>
-            <li data-part="1"><a href="part-1-introduction.html">Introduction</a></li>
-            <li data-part="2"><a href="part-2-installation.html">Installation</a></li>
-            <li data-part="3"><a href="part-3-first-time-setup.html">First-Time Setup</a></li>
-            <li data-part="4"><a href="part-4-camera-hardware.html">Camera Hardware</a></li>
-            <li data-part="5"><a href="part-5-configuration.html">Configuration Reference</a></li>
-            <li data-part="6"><a href="part-6-daily-use.html">Daily Use</a></li>
-            <li data-part="7"><a href="part-7-troubleshooting.html">Troubleshooting</a>
+            <li data-part="1"><a href="part-1-introduction.html">Introduction</a>
                 <ul>
-                    <li><a href="#camera">Camera won't connect</a></li>
-                    <li><a href="#detection">No / wrong detections</a></li>
-                    <li><a href="#notifications">Notifications</a></li>
-                    <li><a href="#server">Server / Docker</a></li>
-                    <li><a href="#raspberry-pi-issues">Raspberry Pi issues</a></li>
-                    <li><a href="#windows-issues">Windows-specific</a></li>
-                    <li><a href="#timezone">Wrong timestamps</a></li>
-                    <li><a href="#diagnostics">Collecting diagnostics</a></li>
+                    <li><a href="part-1-introduction.html#what">What BirdWatchAI is</a></li>
+                    <li><a href="part-1-introduction.html#editions">Desktop vs. Server</a></li>
+                    <li><a href="part-1-introduction.html#features">Feature matrix</a></li>
+                    <li><a href="part-1-introduction.html#requirements">System requirements</a></li>
+                    <li><a href="part-1-introduction.html#how-it-works">How a detection happens</a></li>
                 </ul>
             </li>
-            <li data-part="8"><a href="part-8-advanced.html">Advanced Topics</a></li>
+            <li data-part="2"><a href="part-2-camera-hardware.html">Camera Hardware</a>
+                <ul>
+                    <li><a href="part-2-camera-hardware.html#rtsp">RTSP cameras</a></li>
+                    <li><a href="part-2-camera-hardware.html#tapo">TP-Link Tapo</a></li>
+                    <li><a href="part-2-camera-hardware.html#other-brands">Other brands</a></li>
+                    <li><a href="part-2-camera-hardware.html#pi-camera">Raspberry Pi camera</a></li>
+                    <li><a href="part-2-camera-hardware.html#placement">Placement &amp; lighting</a></li>
+                </ul>
+            </li>
+            <li data-part="3"><a href="part-3-installation.html">Installation</a>
+                <ul>
+                    <li><a href="part-3-installation.html#windows-desktop">Windows desktop app</a></li>
+                    <li><a href="part-3-installation.html#raspberry-pi">Raspberry Pi server</a></li>
+                    <li><a href="part-3-installation.html#windows-docker">Windows + Docker server</a></li>
+                    <li><a href="part-3-installation.html#linux-x86">Other Linux (x86_64)</a></li>
+                    <li><a href="part-3-installation.html#licensing">Licensing &amp; the free trial</a></li>
+                </ul>
+            </li>
+            <li data-part="4"><a href="part-4-first-time-setup.html">First-Time Setup</a>
+                <ul>
+                    <li><a href="part-4-first-time-setup.html#preloaded-pi">Preloaded Raspberry Pi</a></li>
+                    <li><a href="part-4-first-time-setup.html#wizard">The setup wizard</a></li>
+                    <li><a href="part-4-first-time-setup.html#camera-step">Camera step</a></li>
+                    <li><a href="part-4-first-time-setup.html#location">Location &amp; weather</a></li>
+                    <li><a href="part-4-first-time-setup.html#notifications">Notifications</a></li>
+                    <li><a href="part-4-first-time-setup.html#community">Community sharing</a></li>
+                </ul>
+            </li>
+            <li data-part="5"><a href="part-5-configuration.html">Configuration Reference</a>
+                <ul>
+                    <li><a href="part-5-configuration.html#desktop-settings">Desktop app settings</a></li>
+                    <li><a href="part-5-configuration.html#server-settings">Server settings</a></li>
+                    <li><a href="part-5-configuration.html#notifications">Notification channels</a></li>
+                    <li><a href="part-5-configuration.html#community">Community sharing</a></li>
+                </ul>
+            </li>
+            <li data-part="6"><a href="part-6-daily-use.html">Daily Use</a>
+                <ul>
+                    <li><a href="part-6-daily-use.html#dashboard">The dashboard</a></li>
+                    <li><a href="part-6-daily-use.html#history">Detection history</a></li>
+                    <li><a href="part-6-daily-use.html#gallery">Gallery &amp; slideshow</a></li>
+                    <li><a href="part-6-daily-use.html#stats">Statistics</a></li>
+                    <li><a href="part-6-daily-use.html#community-site">The community site</a></li>
+                </ul>
+            </li>
+            <li data-part="7"><a href="part-7-troubleshooting.html">Troubleshooting</a>
+                <ul>
+                    <li><a href="part-7-troubleshooting.html#camera">Camera won't connect</a></li>
+                    <li><a href="part-7-troubleshooting.html#detection">No / wrong detections</a></li>
+                    <li><a href="part-7-troubleshooting.html#notifications">Notifications</a></li>
+                    <li><a href="part-7-troubleshooting.html#server">Server / Docker</a></li>
+                    <li><a href="part-7-troubleshooting.html#timezone">Wrong timestamps</a></li>
+                </ul>
+            </li>
+            <li data-part="8"><a href="part-8-advanced.html">Advanced Topics</a>
+                <ul>
+                    <li><a href="part-8-advanced.html#docker">Docker commands</a></li>
+                    <li><a href="part-8-advanced.html#data-dir">Custom data directory</a></li>
+                    <li><a href="part-8-advanced.html#headless">Headless / autostart</a></li>
+                    <li><a href="part-8-advanced.html#onvif">ONVIF &amp; motion tuning</a></li>
+                    <li><a href="part-8-advanced.html#tailscale">Remote access with Tailscale</a></li>
+                    <li><a href="part-8-advanced.html#backups">Backups &amp; migration</a></li>
+                </ul>
+            </li>
         </ol>
     </nav>
+
 
     <main class="content">
         <span class="part-tag">Part 7</span>
@@ -83,7 +139,7 @@
                 <td>Connection keeps dropping every few minutes</td>
                 <td>
                     Improve Wi-Fi at the camera; reserve a static IP
-                    (<a href="part-4-camera-hardware.html#dhcp-reservation">Part 4</a>);
+                    (<a href="part-2-camera-hardware.html#dhcp-reservation">Part 2</a>);
                     reduce simultaneous streams (cloud recording / SD recording / NVR);
                     enable periodic reconnect; set Tapo cloud credentials so the app can
                     auto-reboot the camera (desktop only).
@@ -157,6 +213,18 @@
                 </td>
             </tr>
             <tr>
+                <td>Wrong species mostly at dawn, dusk, or in dim / overcast light</td>
+                <td>
+                    Low light is a common cause of misidentification — grainy, low-contrast, or
+                    motion-blurred frames give the AI less to work with. Improve the light on
+                    the feeder (even natural daylight, sun behind the camera not in front),
+                    clean the lens, consider a camera with better low-light / color-night
+                    performance, and raise the confidence threshold so marginal dim frames are
+                    held back. See <a href="part-2-camera-hardware.html#placement">Part 2 →
+                    Placement &amp; lighting</a>.
+                </td>
+            </tr>
+            <tr>
                 <td>Squirrels / other animals are ignored</td>
                 <td>
                     Expected — the object detector filters non-bird motion to keep your
@@ -172,6 +240,16 @@
                 </td>
             </tr>
         </table>
+
+        <div class="box note">
+            <span class="lbl">FAQ</span>
+            <p><strong>Q: Why does it misidentify birds at dawn, dusk, or on overcast days?</strong><br>
+            Low light is a leading cause of wrong species — dim, grainy, or motion-blurred
+            frames give the AI less to work with. Improve the light on the feeder (sun behind
+            the camera, not in front), consider a camera with better low-light performance, and
+            raise the confidence threshold so marginal frames are held back. See
+            <a href="part-2-camera-hardware.html#placement">Part 2 → Placement &amp; lighting</a>.</p>
+        </div>
 
         <h2 id="notifications">Notifications</h2>
 
@@ -313,7 +391,7 @@
                     <code>docker-compose.yml</code>). Confirm with
                     <code>docker inspect birdwatch --format '{{.HostConfig.Privileged}}'</code>
                     — it should print <code>true</code>. See
-                    <a href="part-4-camera-hardware.html#pi-camera">Part 4 → Raspberry Pi
+                    <a href="part-2-camera-hardware.html#pi-camera">Part 2 → Raspberry Pi
                         camera</a>.
                 </td>
             </tr>

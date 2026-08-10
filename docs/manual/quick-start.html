@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quick Start · BirdWatchAI Manual</title>
+<meta name="description" content="The fast, hardware-first path: set up your camera, install or power on BirdWatchAI, run the wizard, and get your first bird detection.">
+<link rel="stylesheet" href="manual.css">
+<link rel="icon" type="image/png" href="../../images/favicon.png">
+<script>
+    (function () {
+        try {
+            var t = localStorage.getItem('bwai-theme');
+            if (t) document.documentElement.setAttribute('data-theme', t);
+        } catch (e) {}
+    })();
+</script>
+</head>
+<body data-part="quick-start">
+
+<header class="topbar">
+    <button class="menu-toggle" aria-label="Toggle table of contents">☰ Menu</button>
+    <a href="../../index.html" class="brand">🐦 BirdWatchAI</a>
+    <span class="crumb"><a href="index.html" style="color:inherit;">Manual</a></span>
+    <span class="crumb">Quick Start</span>
+    <span class="spacer"></span>
+    <button id="manual-theme-toggle" class="site-link" type="button" title="Toggle theme">🌙 Theme</button>
+    <a href="../community.html" class="site-link">Community Feed</a>
+</header>
+
+<div class="layout">
+
+    <nav class="toc" aria-label="Manual table of contents">
+        <h2>Contents</h2>
+        <a class="toc-quickstart" href="quick-start.html">⚡ Quick Start</a>
+        <ol>
+            <li data-part="1"><a href="part-1-introduction.html">Introduction</a>
+                <ul>
+                    <li><a href="part-1-introduction.html#what">What BirdWatchAI is</a></li>
+                    <li><a href="part-1-introduction.html#editions">Desktop vs. Server</a></li>
+                    <li><a href="part-1-introduction.html#features">Feature matrix</a></li>
+                    <li><a href="part-1-introduction.html#requirements">System requirements</a></li>
+                    <li><a href="part-1-introduction.html#how-it-works">How a detection happens</a></li>
+                </ul>
+            </li>
+            <li data-part="2"><a href="part-2-camera-hardware.html">Camera Hardware</a>
+                <ul>
+                    <li><a href="part-2-camera-hardware.html#rtsp">RTSP cameras</a></li>
+                    <li><a href="part-2-camera-hardware.html#tapo">TP-Link Tapo</a></li>
+                    <li><a href="part-2-camera-hardware.html#other-brands">Other brands</a></li>
+                    <li><a href="part-2-camera-hardware.html#pi-camera">Raspberry Pi camera</a></li>
+                    <li><a href="part-2-camera-hardware.html#placement">Placement &amp; lighting</a></li>
+                </ul>
+            </li>
+            <li data-part="3"><a href="part-3-installation.html">Installation</a>
+                <ul>
+                    <li><a href="part-3-installation.html#windows-desktop">Windows desktop app</a></li>
+                    <li><a href="part-3-installation.html#raspberry-pi">Raspberry Pi server</a></li>
+                    <li><a href="part-3-installation.html#windows-docker">Windows + Docker server</a></li>
+                    <li><a href="part-3-installation.html#linux-x86">Other Linux (x86_64)</a></li>
+                    <li><a href="part-3-installation.html#licensing">Licensing &amp; the free trial</a></li>
+                </ul>
+            </li>
+            <li data-part="4"><a href="part-4-first-time-setup.html">First-Time Setup</a>
+                <ul>
+                    <li><a href="part-4-first-time-setup.html#preloaded-pi">Preloaded Raspberry Pi</a></li>
+                    <li><a href="part-4-first-time-setup.html#wizard">The setup wizard</a></li>
+                    <li><a href="part-4-first-time-setup.html#camera-step">Camera step</a></li>
+                    <li><a href="part-4-first-time-setup.html#location">Location &amp; weather</a></li>
+                    <li><a href="part-4-first-time-setup.html#notifications">Notifications</a></li>
+                    <li><a href="part-4-first-time-setup.html#community">Community sharing</a></li>
+                </ul>
+            </li>
+            <li data-part="5"><a href="part-5-configuration.html">Configuration Reference</a>
+                <ul>
+                    <li><a href="part-5-configuration.html#desktop-settings">Desktop app settings</a></li>
+                    <li><a href="part-5-configuration.html#server-settings">Server settings</a></li>
+                    <li><a href="part-5-configuration.html#notifications">Notification channels</a></li>
+                    <li><a href="part-5-configuration.html#community">Community sharing</a></li>
+                </ul>
+            </li>
+            <li data-part="6"><a href="part-6-daily-use.html">Daily Use</a>
+                <ul>
+                    <li><a href="part-6-daily-use.html#dashboard">The dashboard</a></li>
+                    <li><a href="part-6-daily-use.html#history">Detection history</a></li>
+                    <li><a href="part-6-daily-use.html#gallery">Gallery &amp; slideshow</a></li>
+                    <li><a href="part-6-daily-use.html#stats">Statistics</a></li>
+                    <li><a href="part-6-daily-use.html#community-site">The community site</a></li>
+                </ul>
+            </li>
+            <li data-part="7"><a href="part-7-troubleshooting.html">Troubleshooting</a>
+                <ul>
+                    <li><a href="part-7-troubleshooting.html#camera">Camera won't connect</a></li>
+                    <li><a href="part-7-troubleshooting.html#detection">No / wrong detections</a></li>
+                    <li><a href="part-7-troubleshooting.html#notifications">Notifications</a></li>
+                    <li><a href="part-7-troubleshooting.html#server">Server / Docker</a></li>
+                    <li><a href="part-7-troubleshooting.html#timezone">Wrong timestamps</a></li>
+                </ul>
+            </li>
+            <li data-part="8"><a href="part-8-advanced.html">Advanced Topics</a>
+                <ul>
+                    <li><a href="part-8-advanced.html#docker">Docker commands</a></li>
+                    <li><a href="part-8-advanced.html#data-dir">Custom data directory</a></li>
+                    <li><a href="part-8-advanced.html#headless">Headless / autostart</a></li>
+                    <li><a href="part-8-advanced.html#onvif">ONVIF &amp; motion tuning</a></li>
+                    <li><a href="part-8-advanced.html#tailscale">Remote access with Tailscale</a></li>
+                    <li><a href="part-8-advanced.html#backups">Backups &amp; migration</a></li>
+                </ul>
+            </li>
+        </ol>
+    </nav>
+
+    <main class="content">
+        <span class="part-tag">Start here</span>
+        <h1>Quick Start</h1>
+
+        <p class="lead">The fast, hardware-first path from box to first bird — about 15 minutes
+            of hands-on work. Do the steps in this order: it mirrors what actually has to be
+            true before the software can watch your feeder. Each step links to the full detail
+            if you want it.</p>
+
+        <div class="box tip">
+            <span class="lbl">Already have a preloaded Raspberry Pi?</span>
+            If your Pi came with BirdWatchAI already installed, skip Steps 2–3 and jump to
+            <a href="part-4-first-time-setup.html#preloaded-pi">Part 4 → Preloaded Raspberry
+            Pi</a> — you only need to set up the camera (Step 1), power the Pi on, and run the
+            wizard.
+        </div>
+
+        <h2 id="step-1">Step 1 — Set up the camera</h2>
+        <p>BirdWatchAI watches a network (RTSP) camera, so the camera has to be running and
+            reachable first.</p>
+        <ol class="steps">
+            <li>Mount the camera <strong>3–10 feet</strong> from the feeder with a clear,
+                bird-filling view, the sun <em>behind</em> it, and strong Wi-Fi.</li>
+            <li>Power it up and join it to the <strong>same network</strong> as the machine
+                that will run BirdWatchAI.</li>
+            <li>For TP-Link Tapo, open the Tapo app and create a
+                <span class="ui">Camera Account</span> under
+                <span class="ui">Advanced Settings → Camera Account</span> — the camera won't
+                accept an RTSP connection without one.</li>
+            <li>Note the camera's <strong>IP address</strong> — you'll need it for the RTSP URL
+                (<a href="part-2-camera-hardware.html#find-ip">how to find it</a>).</li>
+        </ol>
+        <p>Full details, per-brand notes, and stream guidance:
+            <a href="part-2-camera-hardware.html">Part 2 — Camera Hardware</a>. On Tapo, use
+            <code>/stream2</code>.</p>
+
+        <h2 id="step-2">Step 2 — Install or power on BirdWatchAI</h2>
+        <p>Pick the edition that fits (unsure?
+            <a href="part-1-introduction.html#editions">Desktop vs. Server</a>):</p>
+        <ul>
+            <li><strong>Windows desktop app</strong> — run the installer.
+                <a href="part-3-installation.html#windows-desktop">Part 3 → Windows desktop</a>.</li>
+            <li><strong>Raspberry Pi / Linux / Docker server</strong> — bring up the container.
+                <a href="part-3-installation.html#raspberry-pi">Part 3 → Raspberry Pi
+                server</a> or <a href="part-3-installation.html#windows-docker">Windows +
+                Docker</a>.</li>
+        </ul>
+
+        <h2 id="step-3">Step 3 — Open it</h2>
+        <ul>
+            <li><strong>Desktop:</strong> launch BirdWatchAI from the Start menu.</li>
+            <li><strong>Server:</strong> browse to <code>http://&lt;your-host&gt;:8080</code>
+                (e.g. <code>http://birdwatch.local:8080</code>) from any device on the network.
+                Can't find it? See <a href="part-4-first-time-setup.html#preloaded-pi">Part 4 →
+                Preloaded Raspberry Pi</a> for the BirdWatchFinder tool.</li>
+        </ul>
+
+        <h2 id="step-4">Step 4 — Run the setup wizard</h2>
+        <p>The first launch opens a setup wizard. The camera step is the one that matters:
+            paste the RTSP URL (Tapo:
+            <code>rtsp://user:pass@camera-ip/stream2</code>) and test it. Then set your ZIP
+            code for weather and rarity, and optionally turn on notifications. Walk-through:
+            <a href="part-4-first-time-setup.html">Part 4 — First-Time Setup</a>.</p>
+
+        <h2 id="step-5">Step 5 — Confirm your first detection</h2>
+        <p>You'll land on the main window / dashboard showing monitoring <em>Running</em> and
+            the camera <em>Connected</em>. Within a few minutes — assuming daylight and birds
+            at the feeder — your first detection appears. Nothing yet? See
+            <a href="part-7-troubleshooting.html#detection">Part 7 → No / wrong detections</a>.</p>
+
+        <div class="box tip">
+            <span class="lbl">Want to reach it from anywhere?</span>
+            Once it's running, you can view the server dashboard securely from outside your home
+            network with <a href="part-8-advanced.html#tailscale">Tailscale</a>.
+        </div>
+
+        <nav class="pager" aria-label="Manual navigation">
+            <a class="prev" href="index.html">
+                <span class="nav-label">Manual home</span>
+                <span class="nav-title">Table of Contents</span>
+            </a>
+            <a class="next" href="part-1-introduction.html">
+                <span class="nav-label">Part 1</span>
+                <span class="nav-title">Introduction</span>
+            </a>
+        </nav>
+    </main>
+</div>
+
+<script src="manual.js"></script>
+</body>
+</html>

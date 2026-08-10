@@ -16,7 +16,7 @@
     })();
 </script>
 </head>
-<body data-part="0">
+<body data-part="0" class="toc-expand-all">
 
 <header class="topbar">
     <button class="menu-toggle" aria-label="Toggle table of contents">☰ Menu</button>
@@ -32,6 +32,7 @@
     <!-- ============================ SIDEBAR TOC ============================ -->
     <nav class="toc" aria-label="Manual table of contents">
         <h2>Contents</h2>
+        <a class="toc-quickstart" href="quick-start.html">⚡ Quick Start</a>
         <ol>
             <li data-part="1"><a href="part-1-introduction.html">Introduction</a>
                 <ul>
@@ -42,31 +43,32 @@
                     <li><a href="part-1-introduction.html#how-it-works">How a detection happens</a></li>
                 </ul>
             </li>
-            <li data-part="2"><a href="part-2-installation.html">Installation</a>
+            <li data-part="2"><a href="part-2-camera-hardware.html">Camera Hardware</a>
                 <ul>
-                    <li><a href="part-2-installation.html#windows-desktop">Windows desktop app</a></li>
-                    <li><a href="part-2-installation.html#raspberry-pi">Raspberry Pi server</a></li>
-                    <li><a href="part-2-installation.html#windows-docker">Windows + Docker server</a></li>
-                    <li><a href="part-2-installation.html#linux-x86">Other Linux (x86_64)</a></li>
-                    <li><a href="part-2-installation.html#licensing">Licensing &amp; the free trial</a></li>
+                    <li><a href="part-2-camera-hardware.html#rtsp">RTSP cameras</a></li>
+                    <li><a href="part-2-camera-hardware.html#tapo">TP-Link Tapo</a></li>
+                    <li><a href="part-2-camera-hardware.html#other-brands">Other brands</a></li>
+                    <li><a href="part-2-camera-hardware.html#pi-camera">Raspberry Pi camera</a></li>
+                    <li><a href="part-2-camera-hardware.html#placement">Placement &amp; lighting</a></li>
                 </ul>
             </li>
-            <li data-part="3"><a href="part-3-first-time-setup.html">First-Time Setup</a>
+            <li data-part="3"><a href="part-3-installation.html">Installation</a>
                 <ul>
-                    <li><a href="part-3-first-time-setup.html#wizard">The setup wizard</a></li>
-                    <li><a href="part-3-first-time-setup.html#camera-step">Camera step</a></li>
-                    <li><a href="part-3-first-time-setup.html#location">Location &amp; weather</a></li>
-                    <li><a href="part-3-first-time-setup.html#notifications">Notifications</a></li>
-                    <li><a href="part-3-first-time-setup.html#community">Community sharing</a></li>
+                    <li><a href="part-3-installation.html#windows-desktop">Windows desktop app</a></li>
+                    <li><a href="part-3-installation.html#raspberry-pi">Raspberry Pi server</a></li>
+                    <li><a href="part-3-installation.html#windows-docker">Windows + Docker server</a></li>
+                    <li><a href="part-3-installation.html#linux-x86">Other Linux (x86_64)</a></li>
+                    <li><a href="part-3-installation.html#licensing">Licensing &amp; the free trial</a></li>
                 </ul>
             </li>
-            <li data-part="4"><a href="part-4-camera-hardware.html">Camera Hardware</a>
+            <li data-part="4"><a href="part-4-first-time-setup.html">First-Time Setup</a>
                 <ul>
-                    <li><a href="part-4-camera-hardware.html#rtsp">RTSP cameras</a></li>
-                    <li><a href="part-4-camera-hardware.html#tapo">TP-Link Tapo</a></li>
-                    <li><a href="part-4-camera-hardware.html#other-brands">Other brands</a></li>
-                    <li><a href="part-4-camera-hardware.html#pi-camera">Raspberry Pi camera</a></li>
-                    <li><a href="part-4-camera-hardware.html#placement">Placement &amp; lighting</a></li>
+                    <li><a href="part-4-first-time-setup.html#preloaded-pi">Preloaded Raspberry Pi</a></li>
+                    <li><a href="part-4-first-time-setup.html#wizard">The setup wizard</a></li>
+                    <li><a href="part-4-first-time-setup.html#camera-step">Camera step</a></li>
+                    <li><a href="part-4-first-time-setup.html#location">Location &amp; weather</a></li>
+                    <li><a href="part-4-first-time-setup.html#notifications">Notifications</a></li>
+                    <li><a href="part-4-first-time-setup.html#community">Community sharing</a></li>
                 </ul>
             </li>
             <li data-part="5"><a href="part-5-configuration.html">Configuration Reference</a>
@@ -101,11 +103,13 @@
                     <li><a href="part-8-advanced.html#data-dir">Custom data directory</a></li>
                     <li><a href="part-8-advanced.html#headless">Headless / autostart</a></li>
                     <li><a href="part-8-advanced.html#onvif">ONVIF &amp; motion tuning</a></li>
+                    <li><a href="part-8-advanced.html#tailscale">Remote access with Tailscale</a></li>
                     <li><a href="part-8-advanced.html#backups">Backups &amp; migration</a></li>
                 </ul>
             </li>
         </ol>
     </nav>
+
 
     <!-- ============================ CONTENT ============================ -->
     <main class="content">
@@ -131,12 +135,19 @@
         </p>
 
         <div class="box tip">
+            <span class="lbl">In a hurry?</span>
+            <p>Follow the <a href="quick-start.html"><strong>⚡ Quick Start</strong></a> — the
+                fast, hardware-first path from box to first bird in about 15 minutes. Come back
+                for the parts below when you want the full detail.</p>
+        </div>
+
+        <div class="box tip">
             <span class="lbl">New here? Start with these three.</span>
             <p><strong>1.</strong> Read <a href="part-1-introduction.html">Part 1 — Introduction</a>
                 to understand what BirdWatchAI does and which edition fits your setup.</p>
-            <p><strong>2.</strong> Follow <a href="part-2-installation.html">Part 2 — Installation</a>
+            <p><strong>2.</strong> Follow <a href="part-3-installation.html">Part 3 — Installation</a>
                 for your platform (Windows, Pi, or Docker).</p>
-            <p><strong>3.</strong> Walk through <a href="part-3-first-time-setup.html">Part 3 —
+            <p><strong>3.</strong> Walk through <a href="part-4-first-time-setup.html">Part 4 —
                 First-Time Setup</a> to point the app at your camera.</p>
         </div>
 
@@ -149,23 +160,23 @@
                 <p>What BirdWatchAI is, how it works, which edition to choose, and what you need
                     to run it.</p>
             </a>
-            <a class="part-card" href="part-2-installation.html">
+            <a class="part-card" href="part-2-camera-hardware.html">
                 <span class="badge">Part 2</span>
+                <h3>Camera Hardware</h3>
+                <p>RTSP cameras (TP-Link Tapo, Reolink, Amcrest…), the wired Raspberry Pi
+                    camera, placement and lighting tips.</p>
+            </a>
+            <a class="part-card" href="part-3-installation.html">
+                <span class="badge">Part 3</span>
                 <h3>Installation</h3>
                 <p>Step-by-step setup for the Windows desktop app, Raspberry Pi server, and the
                     Docker stack on Windows or Linux.</p>
             </a>
-            <a class="part-card" href="part-3-first-time-setup.html">
-                <span class="badge">Part 3</span>
+            <a class="part-card" href="part-4-first-time-setup.html">
+                <span class="badge">Part 4</span>
                 <h3>First-Time Setup</h3>
                 <p>Walk through the setup wizard: camera, location, notifications, and community
                     sharing.</p>
-            </a>
-            <a class="part-card" href="part-4-camera-hardware.html">
-                <span class="badge">Part 4</span>
-                <h3>Camera Hardware</h3>
-                <p>RTSP cameras (TP-Link Tapo, Reolink, Amcrest…), the wired Raspberry Pi
-                    camera, placement and lighting tips.</p>
             </a>
             <a class="part-card" href="part-5-configuration.html">
                 <span class="badge">Part 5</span>
@@ -199,22 +210,22 @@
             <tr>
                 <td>A Windows PC that's already on most of the time</td>
                 <td><strong>Windows desktop app</strong></td>
-                <td><a href="part-2-installation.html#windows-desktop">Part 2 → Windows desktop</a></td>
+                <td><a href="part-3-installation.html#windows-desktop">Part 3 → Windows desktop</a></td>
             </tr>
             <tr>
                 <td>A Raspberry Pi 4 / 5 (or any always-on Linux box)</td>
                 <td><strong>Server (Docker)</strong></td>
-                <td><a href="part-2-installation.html#raspberry-pi">Part 2 → Raspberry Pi</a></td>
+                <td><a href="part-3-installation.html#raspberry-pi">Part 3 → Raspberry Pi</a></td>
             </tr>
             <tr>
                 <td>A dedicated Windows machine you'd rather run headless</td>
                 <td><strong>Server on Docker Desktop</strong></td>
-                <td><a href="part-2-installation.html#windows-docker">Part 2 → Windows + Docker</a></td>
+                <td><a href="part-3-installation.html#windows-docker">Part 3 → Windows + Docker</a></td>
             </tr>
             <tr>
                 <td>A wired Pi Camera Module (CSI ribbon)</td>
                 <td><strong>Server on a Raspberry Pi</strong></td>
-                <td><a href="part-4-camera-hardware.html#pi-camera">Part 4 → Pi camera</a></td>
+                <td><a href="part-2-camera-hardware.html#pi-camera">Part 2 → Pi camera</a></td>
             </tr>
         </table>
 

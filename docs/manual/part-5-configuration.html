@@ -31,25 +31,84 @@
 
     <nav class="toc" aria-label="Manual table of contents">
         <h2>Contents</h2>
+        <a class="toc-quickstart" href="quick-start.html">⚡ Quick Start</a>
         <ol>
-            <li data-part="1"><a href="part-1-introduction.html">Introduction</a></li>
-            <li data-part="2"><a href="part-2-installation.html">Installation</a></li>
-            <li data-part="3"><a href="part-3-first-time-setup.html">First-Time Setup</a></li>
-            <li data-part="4"><a href="part-4-camera-hardware.html">Camera Hardware</a></li>
-            <li data-part="5"><a href="part-5-configuration.html">Configuration Reference</a>
+            <li data-part="1"><a href="part-1-introduction.html">Introduction</a>
                 <ul>
-                    <li><a href="#desktop-settings">Desktop app settings</a></li>
-                    <li><a href="#server-settings">Server settings</a></li>
-                    <li><a href="#notifications">Notification channels</a></li>
-                    <li><a href="#community">Community sharing</a></li>
-                    <li><a href="#advanced-tuning">Detection tuning</a></li>
+                    <li><a href="part-1-introduction.html#what">What BirdWatchAI is</a></li>
+                    <li><a href="part-1-introduction.html#editions">Desktop vs. Server</a></li>
+                    <li><a href="part-1-introduction.html#features">Feature matrix</a></li>
+                    <li><a href="part-1-introduction.html#requirements">System requirements</a></li>
+                    <li><a href="part-1-introduction.html#how-it-works">How a detection happens</a></li>
                 </ul>
             </li>
-            <li data-part="6"><a href="part-6-daily-use.html">Daily Use</a></li>
-            <li data-part="7"><a href="part-7-troubleshooting.html">Troubleshooting</a></li>
-            <li data-part="8"><a href="part-8-advanced.html">Advanced Topics</a></li>
+            <li data-part="2"><a href="part-2-camera-hardware.html">Camera Hardware</a>
+                <ul>
+                    <li><a href="part-2-camera-hardware.html#rtsp">RTSP cameras</a></li>
+                    <li><a href="part-2-camera-hardware.html#tapo">TP-Link Tapo</a></li>
+                    <li><a href="part-2-camera-hardware.html#other-brands">Other brands</a></li>
+                    <li><a href="part-2-camera-hardware.html#pi-camera">Raspberry Pi camera</a></li>
+                    <li><a href="part-2-camera-hardware.html#placement">Placement &amp; lighting</a></li>
+                </ul>
+            </li>
+            <li data-part="3"><a href="part-3-installation.html">Installation</a>
+                <ul>
+                    <li><a href="part-3-installation.html#windows-desktop">Windows desktop app</a></li>
+                    <li><a href="part-3-installation.html#raspberry-pi">Raspberry Pi server</a></li>
+                    <li><a href="part-3-installation.html#windows-docker">Windows + Docker server</a></li>
+                    <li><a href="part-3-installation.html#linux-x86">Other Linux (x86_64)</a></li>
+                    <li><a href="part-3-installation.html#licensing">Licensing &amp; the free trial</a></li>
+                </ul>
+            </li>
+            <li data-part="4"><a href="part-4-first-time-setup.html">First-Time Setup</a>
+                <ul>
+                    <li><a href="part-4-first-time-setup.html#preloaded-pi">Preloaded Raspberry Pi</a></li>
+                    <li><a href="part-4-first-time-setup.html#wizard">The setup wizard</a></li>
+                    <li><a href="part-4-first-time-setup.html#camera-step">Camera step</a></li>
+                    <li><a href="part-4-first-time-setup.html#location">Location &amp; weather</a></li>
+                    <li><a href="part-4-first-time-setup.html#notifications">Notifications</a></li>
+                    <li><a href="part-4-first-time-setup.html#community">Community sharing</a></li>
+                </ul>
+            </li>
+            <li data-part="5"><a href="part-5-configuration.html">Configuration Reference</a>
+                <ul>
+                    <li><a href="part-5-configuration.html#desktop-settings">Desktop app settings</a></li>
+                    <li><a href="part-5-configuration.html#server-settings">Server settings</a></li>
+                    <li><a href="part-5-configuration.html#notifications">Notification channels</a></li>
+                    <li><a href="part-5-configuration.html#community">Community sharing</a></li>
+                </ul>
+            </li>
+            <li data-part="6"><a href="part-6-daily-use.html">Daily Use</a>
+                <ul>
+                    <li><a href="part-6-daily-use.html#dashboard">The dashboard</a></li>
+                    <li><a href="part-6-daily-use.html#history">Detection history</a></li>
+                    <li><a href="part-6-daily-use.html#gallery">Gallery &amp; slideshow</a></li>
+                    <li><a href="part-6-daily-use.html#stats">Statistics</a></li>
+                    <li><a href="part-6-daily-use.html#community-site">The community site</a></li>
+                </ul>
+            </li>
+            <li data-part="7"><a href="part-7-troubleshooting.html">Troubleshooting</a>
+                <ul>
+                    <li><a href="part-7-troubleshooting.html#camera">Camera won't connect</a></li>
+                    <li><a href="part-7-troubleshooting.html#detection">No / wrong detections</a></li>
+                    <li><a href="part-7-troubleshooting.html#notifications">Notifications</a></li>
+                    <li><a href="part-7-troubleshooting.html#server">Server / Docker</a></li>
+                    <li><a href="part-7-troubleshooting.html#timezone">Wrong timestamps</a></li>
+                </ul>
+            </li>
+            <li data-part="8"><a href="part-8-advanced.html">Advanced Topics</a>
+                <ul>
+                    <li><a href="part-8-advanced.html#docker">Docker commands</a></li>
+                    <li><a href="part-8-advanced.html#data-dir">Custom data directory</a></li>
+                    <li><a href="part-8-advanced.html#headless">Headless / autostart</a></li>
+                    <li><a href="part-8-advanced.html#onvif">ONVIF &amp; motion tuning</a></li>
+                    <li><a href="part-8-advanced.html#tailscale">Remote access with Tailscale</a></li>
+                    <li><a href="part-8-advanced.html#backups">Backups &amp; migration</a></li>
+                </ul>
+            </li>
         </ol>
     </nav>
+
 
     <main class="content">
         <span class="part-tag">Part 5</span>
@@ -196,6 +255,14 @@
 
         <h2 id="notifications">Notification channels</h2>
 
+        <div class="box note">
+            <span class="lbl">FAQ</span>
+            <p><strong>Q: Does the server support Pushover notifications?</strong><br>
+            Yes. The server sends <strong>email</strong>, <strong>ntfy</strong>, and
+            <strong>Pushover</strong>. (Windows toast and photo-frame delivery remain
+            desktop-only.)</p>
+        </div>
+
         <h3>Email (SMTP) — both editions</h3>
         <ol class="steps">
             <li>Enable email notifications.</li>
@@ -224,7 +291,7 @@
             <li>Click <span class="ui">Send Test Notification</span>.</li>
         </ol>
 
-        <h3>Pushover — desktop only</h3>
+        <h3>Pushover — both editions</h3>
         <p>Pushover delivers instant push notifications (with the photo) to your phone,
             tablet, or desktop. Low-cost one-time purchase per platform after a free
             trial.</p>
@@ -265,8 +332,8 @@
         <h3>Summary reports — both editions</h3>
         <p>Reports roll up your activity into a tidy digest with statistics, charts, and
             snapshots. Enable any of Daily / Weekly / Monthly with a chosen schedule, the
-            recipient email(s), and the delivery method (Email / Pushover / Both on desktop;
-            Email / ntfy on server). Reports are skipped automatically when there were no
+            recipient email(s), and the delivery method (Email, Pushover, or Both — on both
+            editions). Reports are skipped automatically when there were no
             detections in the period.</p>
 
         <h2 id="community">Community sharing</h2>
@@ -349,9 +416,9 @@
             sway.</p>
 
         <nav class="pager" aria-label="Manual navigation">
-            <a class="prev" href="part-4-camera-hardware.html">
+            <a class="prev" href="part-4-first-time-setup.html">
                 <span class="nav-label">Part 4</span>
-                <span class="nav-title">Camera Hardware</span>
+                <span class="nav-title">First-Time Setup</span>
             </a>
             <a class="next" href="part-6-daily-use.html">
                 <span class="nav-label">Part 6</span>

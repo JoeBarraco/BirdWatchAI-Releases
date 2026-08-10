@@ -31,29 +31,84 @@
 
     <nav class="toc" aria-label="Manual table of contents">
         <h2>Contents</h2>
+        <a class="toc-quickstart" href="quick-start.html">⚡ Quick Start</a>
         <ol>
-            <li data-part="1"><a href="part-1-introduction.html">Introduction</a></li>
-            <li data-part="2"><a href="part-2-installation.html">Installation</a></li>
-            <li data-part="3"><a href="part-3-first-time-setup.html">First-Time Setup</a></li>
-            <li data-part="4"><a href="part-4-camera-hardware.html">Camera Hardware</a></li>
-            <li data-part="5"><a href="part-5-configuration.html">Configuration Reference</a></li>
-            <li data-part="6"><a href="part-6-daily-use.html">Daily Use</a></li>
-            <li data-part="7"><a href="part-7-troubleshooting.html">Troubleshooting</a></li>
+            <li data-part="1"><a href="part-1-introduction.html">Introduction</a>
+                <ul>
+                    <li><a href="part-1-introduction.html#what">What BirdWatchAI is</a></li>
+                    <li><a href="part-1-introduction.html#editions">Desktop vs. Server</a></li>
+                    <li><a href="part-1-introduction.html#features">Feature matrix</a></li>
+                    <li><a href="part-1-introduction.html#requirements">System requirements</a></li>
+                    <li><a href="part-1-introduction.html#how-it-works">How a detection happens</a></li>
+                </ul>
+            </li>
+            <li data-part="2"><a href="part-2-camera-hardware.html">Camera Hardware</a>
+                <ul>
+                    <li><a href="part-2-camera-hardware.html#rtsp">RTSP cameras</a></li>
+                    <li><a href="part-2-camera-hardware.html#tapo">TP-Link Tapo</a></li>
+                    <li><a href="part-2-camera-hardware.html#other-brands">Other brands</a></li>
+                    <li><a href="part-2-camera-hardware.html#pi-camera">Raspberry Pi camera</a></li>
+                    <li><a href="part-2-camera-hardware.html#placement">Placement &amp; lighting</a></li>
+                </ul>
+            </li>
+            <li data-part="3"><a href="part-3-installation.html">Installation</a>
+                <ul>
+                    <li><a href="part-3-installation.html#windows-desktop">Windows desktop app</a></li>
+                    <li><a href="part-3-installation.html#raspberry-pi">Raspberry Pi server</a></li>
+                    <li><a href="part-3-installation.html#windows-docker">Windows + Docker server</a></li>
+                    <li><a href="part-3-installation.html#linux-x86">Other Linux (x86_64)</a></li>
+                    <li><a href="part-3-installation.html#licensing">Licensing &amp; the free trial</a></li>
+                </ul>
+            </li>
+            <li data-part="4"><a href="part-4-first-time-setup.html">First-Time Setup</a>
+                <ul>
+                    <li><a href="part-4-first-time-setup.html#preloaded-pi">Preloaded Raspberry Pi</a></li>
+                    <li><a href="part-4-first-time-setup.html#wizard">The setup wizard</a></li>
+                    <li><a href="part-4-first-time-setup.html#camera-step">Camera step</a></li>
+                    <li><a href="part-4-first-time-setup.html#location">Location &amp; weather</a></li>
+                    <li><a href="part-4-first-time-setup.html#notifications">Notifications</a></li>
+                    <li><a href="part-4-first-time-setup.html#community">Community sharing</a></li>
+                </ul>
+            </li>
+            <li data-part="5"><a href="part-5-configuration.html">Configuration Reference</a>
+                <ul>
+                    <li><a href="part-5-configuration.html#desktop-settings">Desktop app settings</a></li>
+                    <li><a href="part-5-configuration.html#server-settings">Server settings</a></li>
+                    <li><a href="part-5-configuration.html#notifications">Notification channels</a></li>
+                    <li><a href="part-5-configuration.html#community">Community sharing</a></li>
+                </ul>
+            </li>
+            <li data-part="6"><a href="part-6-daily-use.html">Daily Use</a>
+                <ul>
+                    <li><a href="part-6-daily-use.html#dashboard">The dashboard</a></li>
+                    <li><a href="part-6-daily-use.html#history">Detection history</a></li>
+                    <li><a href="part-6-daily-use.html#gallery">Gallery &amp; slideshow</a></li>
+                    <li><a href="part-6-daily-use.html#stats">Statistics</a></li>
+                    <li><a href="part-6-daily-use.html#community-site">The community site</a></li>
+                </ul>
+            </li>
+            <li data-part="7"><a href="part-7-troubleshooting.html">Troubleshooting</a>
+                <ul>
+                    <li><a href="part-7-troubleshooting.html#camera">Camera won't connect</a></li>
+                    <li><a href="part-7-troubleshooting.html#detection">No / wrong detections</a></li>
+                    <li><a href="part-7-troubleshooting.html#notifications">Notifications</a></li>
+                    <li><a href="part-7-troubleshooting.html#server">Server / Docker</a></li>
+                    <li><a href="part-7-troubleshooting.html#timezone">Wrong timestamps</a></li>
+                </ul>
+            </li>
             <li data-part="8"><a href="part-8-advanced.html">Advanced Topics</a>
                 <ul>
-                    <li><a href="#docker">Docker commands cheat-sheet</a></li>
-                    <li><a href="#data-dir">Custom data directory</a></li>
-                    <li><a href="#headless">Headless / autostart</a></li>
-                    <li><a href="#onvif">ONVIF &amp; motion tuning</a></li>
-                    <li><a href="#backups">Backups &amp; migration</a></li>
-                    <li><a href="#file-locations">File &amp; folder reference</a></li>
-                    <li><a href="#remote-access">Remote access</a></li>
-                    <li><a href="#multiple-feeders">Running multiple feeders</a></li>
-                    <li><a href="#coming-soon">Coming soon</a></li>
+                    <li><a href="part-8-advanced.html#docker">Docker commands</a></li>
+                    <li><a href="part-8-advanced.html#data-dir">Custom data directory</a></li>
+                    <li><a href="part-8-advanced.html#headless">Headless / autostart</a></li>
+                    <li><a href="part-8-advanced.html#onvif">ONVIF &amp; motion tuning</a></li>
+                    <li><a href="part-8-advanced.html#tailscale">Remote access with Tailscale</a></li>
+                    <li><a href="part-8-advanced.html#backups">Backups &amp; migration</a></li>
                 </ul>
             </li>
         </ol>
     </nav>
+
 
     <main class="content">
         <span class="part-tag">Part 8</span>
@@ -139,7 +194,7 @@ sudo systemctl enable docker</code></pre>
 
         <h3>Server (Windows + Docker Desktop)</h3>
         <p>Two layers need to come up: Docker Desktop, then the containers. Both are wired
-            in <a href="part-2-installation.html#windows-docker">Part 2 → Windows + Docker</a>.
+            in <a href="part-3-installation.html#windows-docker">Part 3 → Windows + Docker</a>.
             If you want belt-and-suspenders, the included
             <code>setup-scheduled-task.ps1</code> registers a Scheduled Task that re-runs
             <code>birdwatch-start.cmd</code> at user login.</p>
@@ -258,7 +313,7 @@ docker compose start birdwatch</code></pre>
 
         <ol class="steps">
             <li>Set up BirdWatchAI on the new machine following the right install path in
-                <a href="part-2-installation.html">Part 2</a>.</li>
+                <a href="part-3-installation.html">Part 3</a>.</li>
             <li>Stop monitoring on both machines.</li>
             <li>Copy the data folder over (rsync / WinSCP / USB stick).</li>
             <li>Start the new machine; verify the dashboard shows the right history, settings,
@@ -310,30 +365,65 @@ docker compose start birdwatch</code></pre>
             <tr><td>Data-protection keys</td><td><code>dataprotection-keys/</code></td></tr>
         </table>
 
-        <h2 id="remote-access">Remote access</h2>
+        <h2 id="tailscale">Remote access with Tailscale</h2>
 
-        <p>The server dashboard is just HTTP on port 8080. To reach it from outside your home
-            network, the recommended path is a private mesh VPN — <strong>Tailscale</strong>
-            is the easiest, free for personal use, and works over CGNAT.</p>
-
-        <ol class="steps">
-            <li>Install Tailscale on the Pi / Windows box / Linux host:
-                <code>curl -fsSL https://tailscale.com/install.sh | sh</code> (Linux) or the
-                Windows installer.</li>
-            <li>Run <code>sudo tailscale up</code> (Linux) or sign in via the system tray
-                (Windows).</li>
-            <li>Install Tailscale on your phone / laptop and sign into the same account.</li>
-            <li>Note the Tailscale IP or MagicDNS name of the host (e.g.
-                <code>birdwatch.tail-abcd.ts.net</code>).</li>
-            <li>Open <code>http://&lt;tailscale-ip&gt;:8080</code> or
-                <code>http://birdwatch.tail-abcd.ts.net:8080</code> from anywhere.</li>
-        </ol>
+        <p>The server dashboard is plain HTTP on port <code>8080</code>, reachable by any
+            device on your home network. To reach it securely from <em>anywhere</em> — your
+            phone on cellular, a laptop at the office — the recommended path is a private mesh
+            VPN. <strong>Tailscale</strong> is the easiest: it's free for personal use, needs
+            no port-forwarding, and works even when your ISP puts you behind CGNAT. It builds
+            an encrypted WireGuard network between your own devices, so the dashboard is
+            exposed only to <em>you</em> — never the public internet. This works the same
+            whether your server is a Raspberry Pi, a Linux box, or Windows + Docker.</p>
 
         <div class="box danger">
             <span class="lbl">Don't port-forward the dashboard to the public internet</span>
-            The dashboard has no authentication on the local network and the host is running
-            Docker with broad permissions. Tailscale / WireGuard / a reverse-proxy with auth
-            is the right pattern; raw port-forwarding is not.
+            The dashboard has no login, and the host runs Docker with broad permissions.
+            Tailscale (or WireGuard, or a reverse proxy with authentication) is the right
+            pattern; raw port-forwarding exposes your camera feed and controls to the world.
+        </div>
+
+        <h3>1. Install Tailscale on the server</h3>
+        <p><strong>Raspberry Pi / Linux:</strong></p>
+        <pre><code>curl -fsSL https://tailscale.com/install.sh | sh
+sudo tailscale up</code></pre>
+        <p>Follow the printed URL to authenticate the machine to your Tailscale account.</p>
+        <p><strong>Windows (Docker Desktop host):</strong> download the installer from
+            <a href="https://tailscale.com/download">tailscale.com/download</a>, run it, and
+            sign in from the system-tray icon. Tailscale runs on the Windows <em>host</em>, not
+            inside the container — since the dashboard is published on the host's port
+            <code>8080</code>, that's all it needs.</p>
+
+        <h3>2. Install Tailscale on the devices you'll watch from</h3>
+        <p>Add the Tailscale app to your phone, tablet, or laptop and sign into the
+            <em>same</em> account. Every device you sign in joins one private network and can
+            see the others.</p>
+
+        <h3>3. Find the server's Tailscale address</h3>
+        <p>On the server, run <code>tailscale ip -4</code> to print its Tailscale IP (a
+            <code>100.x.y.z</code> address). If you turn on <strong>MagicDNS</strong> in the
+            Tailscale admin console, you can use the machine's name instead of the number.</p>
+
+        <h3>4. Open the dashboard from anywhere</h3>
+        <pre><code>http://&lt;tailscale-ip&gt;:8080
+http://birdwatch.tail-abcd.ts.net:8080   (MagicDNS name)</code></pre>
+        <p>The dashboard behaves exactly as it does at home — from any network, on any device
+            signed into your tailnet.</p>
+
+        <div class="box tip">
+            <span class="lbl">Nice extras</span>
+            Enable <strong>MagicDNS</strong> for friendly names instead of numeric IPs, and
+            Tailscale's HTTPS / <code>tailscale serve</code> if you'd like a
+            <code>https://</code> URL. Neither is required — a plain Tailscale IP on port
+            <code>8080</code> already gives you private, encrypted access.
+        </div>
+
+        <div class="box note">
+            <span class="lbl">FAQ</span>
+            <p><strong>Q: Can I watch my feeder from away from home without port-forwarding?</strong><br>
+            Yes — install <strong>Tailscale</strong> (above) on the server and on your phone or
+            laptop, then open the dashboard over the private, encrypted mesh. Don't port-forward
+            the dashboard to the public internet.</p>
         </div>
 
         <h2 id="multiple-feeders">Running multiple feeders</h2>
