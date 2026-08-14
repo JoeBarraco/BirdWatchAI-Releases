@@ -81,6 +81,17 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Server/Camera finder download button - GitHub Releases (server-releases repo)
+    const finderBtn = document.getElementById('finder-download-btn');
+    if (finderBtn) {
+        finderBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const finderUrl = 'https://github.com/JoeBarraco/birdwatchai-server-releases/releases/latest/download/BirdWatchFinder.exe';
+            console.log('Finder download initiated');
+            window.location.href = finderUrl;
+        });
+    }
+
     // Buy button - Gumroad product link
     const buyBtn = document.getElementById('buy-btn');
     if (buyBtn) {
