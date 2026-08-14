@@ -331,6 +331,18 @@ docker compose up -d</code></pre>
             </ul>
         </div>
 
+        <div class="box tip">
+            <span class="lbl">Optional — reach your Pi from anywhere (Tailscale)</span>
+            The dashboard is only on your home network by default. To open it securely from
+            outside — your phone on cellular, a laptop at work — install
+            <strong>Tailscale</strong> on the Pi
+            (<code>curl -fsSL https://tailscale.com/install.sh | sh</code>, then
+            <code>sudo tailscale up</code>) and on the devices you'll watch from, then browse to
+            <code>http://&lt;tailscale-ip&gt;:8080</code>. No port-forwarding, and it works even
+            behind CGNAT. Full steps:
+            <a href="part-8-advanced.html#tailscale">Part 8 → Remote access with Tailscale</a>.
+        </div>
+
         <!-- ============================================================= -->
         <h2 id="windows-docker">Windows + Docker server</h2>
 
@@ -436,6 +448,17 @@ cd BirdWatch</code></pre>
         </ol>
         <p>For a dedicated Pi or x86 Linux host, headless is the default — that's why the
             Pi instructions don't bother with this.</p>
+
+        <div class="box tip">
+            <span class="lbl">Optional — reach your server from anywhere (Tailscale)</span>
+            To open the dashboard securely from outside your home network, install
+            <strong>Tailscale</strong> on the Windows host (installer from
+            <a href="https://tailscale.com/download">tailscale.com/download</a>, then sign in
+            from the system tray) and on the devices you'll watch from, then browse to
+            <code>http://&lt;tailscale-ip&gt;:8080</code>. No port-forwarding required. Full
+            steps: <a href="part-8-advanced.html#tailscale">Part 8 → Remote access with
+            Tailscale</a>.
+        </div>
 
         <!-- ============================================================= -->
         <h2 id="linux-x86">Other Linux (x86_64)</h2>
