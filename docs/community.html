@@ -548,7 +548,12 @@
         <select id="community-panel-select" onchange="refreshCommunityPanel()"
                 style="width:100%;margin-bottom:0.75rem;"></select>
 
-        <h4 style="font-size:0.9rem;margin-bottom:0.5rem;color:var(--color-gray-900);">Feeders awaiting approval</h4>
+        <h4 style="font-size:0.9rem;margin-bottom:0.5rem;color:var(--color-gray-900);">Feeders in this community</h4>
+        <p style="font-size:0.8rem;color:var(--color-gray-500);margin-bottom:0.5rem;">
+            Pending requests appear first. "🌐 also public" means that feeder still
+            publishes to the open feed — being in this community does not make it private;
+            its owner has to leave the Public Feed for that.
+        </p>
         <ul id="community-pending-list" class="mod-user-list">
             <li style="color:var(--color-gray-500)">Loading…</li>
         </ul>

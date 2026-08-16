@@ -270,28 +270,67 @@ async function refreshCommunityPanel() {
     }
 
     list.innerHTML = '<li>Loading…</li>';
-    const { data, error } = await sbRpc('community_pending_feeders', { p_community_id: cid }, true);
+    // The full roster, not just the approval queue — pending first. One list
+    // rather than two, so a pending feeder doesn't appear twice.
+    const { data, error } = await sbRpc('community_feeders_list', { p_community_id: cid }, true);
     if (error) {
         list.innerHTML = `<li style="color:#e74c3c">${esc(error.message || 'Failed to load')}</li>`;
         return;
     }
     if (!Array.isArray(data) || !data.length) {
-        list.innerHTML = '<li style="color:var(--color-gray-500)">No feeders waiting for approval.</li>';
+        list.innerHTML = '<li style="color:var(--color-gray-500)">No feeders have joined this community yet.</li>';
         return;
     }
-    list.innerHTML = data.map(f => `
-        <li>
-            <div class="mod-user-info">
-                <strong>${esc(f.display_name || 'Unnamed feeder')}</strong>
-                <span style="font-size:0.75rem;color:var(--color-gray-500);">
-                    requested ${esc(fmtDetectedAt(f.requested_at))}${f.app_version ? ' · v' + esc(f.app_version) : ''}
-                </span>
-            </div>
-            <span>
-                <button onclick="decideFeeder('${esc(cid)}','${esc(f.feeder_id)}','approved')">Approve</button>
-                <button class="mod-remove-btn" onclick="decideFeeder('${esc(cid)}','${esc(f.feeder_id)}','rejected')">Reject</button>
-            </span>
-        </li>`).join('');
+
+    list.innerHTML = data.map(f => {
+        const name = esc(f.display_name || 'Unnamed feeder');
+        const meta = [
+            f.status === 'pending'
+                ? 'requested ' + fmtDetectedAt(f.requested_at)
+                : f.status === 'approved' ? 'publishing' : 'declined',
+            // Whether the feeder is ALSO on the public feed is the thing an
+            // owner most needs to know and can't otherwise see: being in this
+            // private community does not make it private.
+            f.is_public ? '🌐 also public' : '🔒 private only',
+            f.app_version ? 'v' + f.app_version : '',
+        ].filter(Boolean).join(' · ');
+
+        const actions = f.status === 'pending'
+            ? `<button onclick="decideFeeder('${esc(cid)}','${esc(f.feeder_id)}','approved')">Approve</button>
+               <button class="mod-remove-btn" onclick="decideFeeder('${esc(cid)}','${esc(f.feeder_id)}','rejected')">Reject</button>`
+            : f.status === 'approved'
+                ? `<button class="mod-remove-btn" onclick="removeFeederFromCommunity('${esc(cid)}','${esc(f.feeder_id)}','${esc(f.display_name || 'this feeder')}')">Remove</button>`
+                : `<button onclick="decideFeeder('${esc(cid)}','${esc(f.feeder_id)}','approved')">Approve</button>`;
+
+        return `
+            <li>
+                <div class="mod-user-info">
+                    <strong>${name}</strong>
+                    <span style="font-size:0.75rem;color:var(--color-gray-500);">${esc(meta)}</span>
+                </div>
+                <span>${actions}</span>
+            </li>`;
+    }).join('');
+}
+
+async function removeFeederFromCommunity(communityId, feederId, displayName) {
+    if (!confirm(
+        `Remove "${displayName}" from this community?\n\n` +
+        'It stops publishing here and its sightings disappear for members. ' +
+        'If this was its only community it becomes invisible on the site entirely — ' +
+        'nothing is deleted, and it can request to join again.\n\nContinue?'
+    )) return;
+
+    const { error } = await sbRpc('community_remove_feeder', {
+        p_community_id: communityId,
+        p_feeder_id:    feederId,
+    }, true);
+    if (error) { showToast('Error: ' + (error.message || 'remove failed')); return; }
+
+    showToast(`Removed "${displayName}".`);
+    await loadCommunityFeederIndex(true);
+    await refreshCommunityPanel();
+    if (typeof loadFeed === 'function') loadFeed();
 }
 
 async function decideFeeder(communityId, feederId, decision) {

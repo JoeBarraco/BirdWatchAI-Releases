@@ -1044,6 +1044,64 @@ begin
 end;
 $$;
 
+-- Every feeder in the community, whatever its status — the owner's roster
+-- view. community_pending_feeders only ever returned the approval queue, which
+-- left no way to see or remove a feeder once it had been approved.
+--
+-- Pending first, then approved, then rejected: the ones needing a decision
+-- belong at the top.
+create or replace function community_feeders_list(p_community_id uuid)
+returns json
+language plpgsql security definer
+set search_path = public
+as $$
+declare
+  result json;
+begin
+  perform community_require_role(p_community_id, auth.uid(),
+                                 array['owner', 'moderator']);
+
+  select json_agg(row_to_json(t) order by t.sort_rank, t.display_name) into result
+  from (
+    select cf.feeder_id, cf.status, cf.requested_at, cf.decided_at,
+           f.display_name, f.app_version, f.last_heartbeat_at, f.is_public,
+           case cf.status when 'pending' then 0
+                          when 'approved' then 1
+                          else 2 end as sort_rank
+    from community_feeders cf
+    join feeders f on f.id = cf.feeder_id
+    where cf.community_id = p_community_id
+  ) t;
+
+  return coalesce(result, '[]'::json);
+end;
+$$;
+
+-- Remove a feeder from the community outright, rather than marking it
+-- rejected. Deleting the row lets the feeder request again later; 'rejected'
+-- is the right state for "asked and was turned down", not for "was a member
+-- and is not any more".
+create or replace function community_remove_feeder(
+  p_community_id uuid,
+  p_feeder_id    uuid
+)
+returns boolean
+language plpgsql security definer
+set search_path = public
+as $$
+begin
+  perform community_require_role(p_community_id, auth.uid(),
+                                 array['owner', 'moderator']);
+
+  delete from community_feeders
+   where community_id = p_community_id and feeder_id = p_feeder_id;
+
+  -- The community_feeders trigger recomputes feeders.is_public, so a feeder
+  -- removed from its only public community goes private on the spot.
+  return found;
+end;
+$$;
+
 create or replace function community_decide_feeder(
   p_community_id uuid,
   p_feeder_id    uuid,
@@ -1207,6 +1265,8 @@ $$;
 
 grant execute on function community_my_communities()                       to authenticated;
 grant execute on function community_pending_feeders(uuid)                  to authenticated;
+grant execute on function community_feeders_list(uuid)                     to authenticated;
+grant execute on function community_remove_feeder(uuid, uuid)              to authenticated;
 grant execute on function community_decide_feeder(uuid, uuid, text)        to authenticated;
 grant execute on function community_invite(uuid, text, text)               to authenticated;
 grant execute on function community_revoke_invite(uuid, text)              to authenticated;
