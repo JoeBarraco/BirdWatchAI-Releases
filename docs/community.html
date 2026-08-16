@@ -546,7 +546,11 @@
     <div class="mod-admin-box">
         <h3>Manage Community</h3>
         <select id="community-panel-select" onchange="refreshCommunityPanel()"
-                style="width:100%;margin-bottom:0.75rem;"></select>
+                style="width:100%;margin-bottom:0.5rem;"></select>
+
+        <!-- The join code. It is only shown once at creation otherwise, and a
+             private community cannot be joined without it. -->
+        <div id="community-code-line" style="margin-bottom:0.75rem;font-size:0.85rem;"></div>
 
         <h4 style="font-size:0.9rem;margin-bottom:0.5rem;color:var(--color-gray-900);">Feeders in this community</h4>
         <p style="font-size:0.8rem;color:var(--color-gray-500);margin-bottom:0.5rem;">

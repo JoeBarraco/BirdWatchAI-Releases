@@ -291,6 +291,7 @@ async function refreshCommunityPanel() {
         if (!isOwner) roleSel.value = 'viewer';
     }
 
+    renderCommunityCode(cid);
     refreshCommunityMembers();   // independent list; let it load in parallel
 
     list.innerHTML = '<li>Loading…</li>';
@@ -335,6 +336,40 @@ async function refreshCommunityPanel() {
                 <span>${actions}</span>
             </li>`;
     }).join('');
+}
+
+// Show the join code for the selected community.
+//
+// The code is the community's slug, and it was previously visible only in the
+// one-line confirmation shown at creation — dismiss that and the only way back
+// to it was a SQL query. A private community cannot be joined without it, so
+// it belongs where the owner already is.
+function renderCommunityCode(communityId) {
+    const el = document.getElementById('community-code-line');
+    if (!el) return;
+
+    const c = myCommunities.find(x => x.id === communityId);
+    if (!c) { el.innerHTML = ''; return; }
+
+    el.innerHTML = `
+        <span style="color:var(--color-gray-500);">Join code:</span>
+        <code style="background:var(--bg-page);padding:2px 6px;border-radius:4px;">${esc(c.slug)}</code>
+        <button onclick="copyCommunityCode('${esc(c.slug)}')"
+                style="margin-left:0.4rem;font-size:0.75rem;">Copy</button>
+        <span style="color:var(--color-gray-500);">
+            — feeder owners enter this in Settings → Community
+        </span>`;
+}
+
+async function copyCommunityCode(slug) {
+    try {
+        await navigator.clipboard.writeText(slug);
+        showToast(`Copied "${slug}"`);
+    } catch {
+        // Clipboard access needs a secure context and can be refused; the code
+        // is on screen either way, so say so rather than failing silently.
+        showToast(`Copy failed — the code is ${slug}`);
+    }
 }
 
 async function refreshCommunityMembers() {
