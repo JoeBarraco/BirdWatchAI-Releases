@@ -40,7 +40,9 @@ Landing Page Conversion
 - ~~Promote the feeder hotspot map higher on the page (above the fold) to hook visitors.~~ DONE
 - ~~Make the "Sign up for weekly digest" more prominent inline — the weekly-digest edge function already exists.~~ DONE
 - ~~Add an interactive demo — embed a sandbox community feed on the landing page so visitors can try it without downloading.~~ DONE
-- Replace the WinForms screenshots with captures of the server dashboard. Three images on index.html still show the old Windows app: images/screenshot-app-full.jpg (the hero), images/screenshot-test-image.jpg (Test Image dialog) and images/Screenshot-statistics.png (Statistics dialog). Good replacements would be the server's Home, Stats and Gallery pages in a browser. The burned-overlay bird photos (screenshot-titmouse.jpg, thumb-wren.jpg, thumb-action.jpg) are engine output and stay valid as-is. images/screenshot-debug-log.png is orphaned and can be deleted.
+- ~~Replace the WinForms screenshots with captures of the server dashboard.~~ DONE — hero is now the Gallery page (screenshot-server-gallery.jpg), and the two wide "See It in Action" tiles are Detection history and Statistics (screenshot-server-history.jpg, screenshot-server-stats.jpg), all captured from the live server at 1440x900. The burned-overlay bird photos (screenshot-titmouse.jpg, thumb-wren.jpg, thumb-action.jpg) are engine output and stay valid as-is.
+     - Four images are now unreferenced and can be deleted: screenshot-app-full.jpg, screenshot-test-image.jpg, Screenshot-statistics.png, screenshot-debug-log.png. Left in place for now in case you want to compare.
+     - The Identify page was the obvious stand-in for the old Test Image dialog, but it renders as an empty file-picker until a photo is uploaded, so History was used instead. Worth revisiting once Identify has a result state worth showing.
 
 Mobile & Accessibility
 - ~~Complete PWA support (sw.js and manifest.json already exist in docs/) so users can install to their phone home screen.~~ DONE
