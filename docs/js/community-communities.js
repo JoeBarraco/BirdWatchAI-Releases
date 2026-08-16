@@ -107,7 +107,45 @@ function renderCommunityFilter() {
 async function onCommunityFilterChange(value) {
     selectedCommunity = value || '';
     await loadCommunityFeederIndex();
+    scopeDropdownsToCommunity(true);
     if (typeof refilter === 'function') await refilter();
+}
+
+// A community is a SCOPE, not merely another filter: once you are looking at
+// one, the other pickers should describe that community rather than the whole
+// feed. Without this the Feeder dropdown still lists every feeder on the
+// platform, including ones that cannot possibly appear in the current results.
+//
+// resetInvalidSelections is false when called from loadFeed — a periodic
+// refresh must not silently drop the operator's filters — and true on an actual
+// community change, where a feeder or species that no longer exists in scope
+// would otherwise leave the feed stubbornly empty with no visible cause.
+function scopeDropdownsToCommunity(resetInvalidSelections) {
+    if (typeof allDetections === 'undefined') return;
+    if (!selectedCommunity) return;   // nothing to narrow to
+
+    const inScope = allDetections.filter(d => !communityFilterExcludes(d));
+
+    const feederSel = document.getElementById('feeder-filter');
+    const prevFeeder = feederSel ? feederSel.value : '';
+    if (typeof populateFeederDropdown === 'function') populateFeederDropdown(inScope);
+    if (typeof populateFeedSpeciesDropdown === 'function') populateFeedSpeciesDropdown(inScope);
+    if (typeof populateMapSpeciesDropdown === 'function') populateMapSpeciesDropdown(inScope);
+
+    if (!resetInvalidSelections) return;
+
+    if (feederSel && prevFeeder &&
+        ![...feederSel.options].some(o => o.value === prevFeeder)) {
+        feederSel.value = '';
+    }
+    // populateFeedSpeciesDropdown deliberately leaves selectedSpecies alone, so
+    // clear it here rather than there — otherwise a species absent from this
+    // community stays applied and filters everything out.
+    if (selectedSpecies && !inScope.some(d => d.species === selectedSpecies)) {
+        selectedSpecies = '';
+        const speciesSel = document.getElementById('species-filter');
+        if (speciesSel) speciesSel.value = '';
+    }
 }
 
 // ── Navbar ───────────────────────────────────────────────

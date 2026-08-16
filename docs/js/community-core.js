@@ -346,6 +346,10 @@ async function loadFeed(append = false) {
         populateFeederDropdown(allDetections);
         populateFeedSpeciesDropdown(allDetections);
         populateMapSpeciesDropdown(allDetections);
+        // Re-narrow them to the selected community, if any — the calls above
+        // repopulate from the full set (community-communities.js). No-ops when
+        // no community is selected.
+        if (typeof scopeDropdownsToCommunity === 'function') scopeDropdownsToCommunity(false);
 
         // If active filters or sorting by most liked, load all detections so results are complete.
         // The stats and gallery views also need the full dataset — otherwise switching the period
