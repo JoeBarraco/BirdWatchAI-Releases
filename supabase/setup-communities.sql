@@ -253,6 +253,104 @@ create trigger feeders_autojoin_public
 
 
 -- ────────────────────────────────────────────────────────────────────
+-- 3b. Visibility helpers — MUST be defined before any policy uses them.
+--
+-- ⚠ Every one of these is SECURITY DEFINER, and that is the entire
+-- point. A policy on community_members that itself SELECTs from
+-- community_members re-triggers the same policy and Postgres aborts
+-- with:
+--     42P17: infinite recursion detected in policy for relation ...
+-- A SECURITY DEFINER function runs as its owner, which bypasses RLS on
+-- the tables it touches, breaking the cycle.
+--
+-- It is also much faster. Written inline, the community_detections
+-- policy would evaluate the community_feeders policy, which evaluates
+-- the communities policy, which evaluates the community_members policy
+-- — a four-table policy cascade per detection row. These functions
+-- collapse that to one uncached lookup, and being STABLE they can be
+-- folded per statement.
+--
+-- search_path is pinned: an unqualified name inside a SECURITY DEFINER
+-- function is otherwise resolvable against a caller-controlled schema.
+-- ────────────────────────────────────────────────────────────────────
+
+-- Is this user a member of this community (any role)?
+create or replace function community_is_member(p_community_id uuid, p_user_id uuid)
+returns boolean
+language sql stable security definer
+set search_path = public
+as $$
+  select p_user_id is not null and exists (
+    select 1 from community_members
+    where community_id = p_community_id and user_id = p_user_id
+  );
+$$;
+
+-- This user's role in a community, or null.
+create or replace function community_role(p_community_id uuid, p_user_id uuid)
+returns text
+language sql stable security definer
+set search_path = public
+as $$
+  select role from community_members
+  where community_id = p_community_id and user_id = p_user_id;
+$$;
+
+-- Is this community visible to this user at all?
+create or replace function community_visible_to(p_community_id uuid, p_user_id uuid)
+returns boolean
+language sql stable security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from communities c
+    where c.id = p_community_id
+      and (c.visibility = 'public' or community_is_member(c.id, p_user_id))
+  );
+$$;
+
+-- Is this feeder in at least one public community? Reads the
+-- denormalized flag; SECURITY DEFINER so the feeders policy can call it
+-- without recursing into itself.
+create or replace function community_feeder_is_public(p_feeder_id uuid)
+returns boolean
+language sql stable security definer
+set search_path = public
+as $$
+  select coalesce((select is_public from feeders where id = p_feeder_id), false);
+$$;
+
+-- Does this user reach this feeder through a community they belong to?
+-- Deliberately touches only community_feeders + community_members, never
+-- feeders — so it is safe to call from the feeders policy.
+create or replace function community_user_sees_feeder(p_feeder_id uuid, p_user_id uuid)
+returns boolean
+language sql stable security definer
+set search_path = public
+as $$
+  select p_user_id is not null and exists (
+    select 1
+    from community_feeders cf
+    join community_members cm on cm.community_id = cf.community_id
+    where cf.feeder_id = p_feeder_id
+      and cf.status = 'approved'
+      and cm.user_id = p_user_id
+  );
+$$;
+
+
+-- A role that cannot EXECUTE a function used in a policy gets
+-- "permission denied" when the policy is evaluated, which reads exactly
+-- like a broken feed. Grant explicitly rather than relying on the
+-- default PUBLIC execute grant.
+grant execute on function community_is_member(uuid, uuid)         to anon, authenticated;
+grant execute on function community_role(uuid, uuid)              to anon, authenticated;
+grant execute on function community_visible_to(uuid, uuid)        to anon, authenticated;
+grant execute on function community_feeder_is_public(uuid)        to anon, authenticated;
+grant execute on function community_user_sees_feeder(uuid, uuid)  to anon, authenticated;
+
+
+-- ────────────────────────────────────────────────────────────────────
 -- 4. RLS on the new tables
 -- ────────────────────────────────────────────────────────────────────
 
@@ -267,10 +365,7 @@ drop policy if exists "Public communities are visible" on communities;
 create policy "Public communities are visible" on communities
   for select using (
     visibility = 'public'
-    or exists (
-      select 1 from community_members m
-      where m.community_id = communities.id and m.user_id = auth.uid()
-    )
+    or community_is_member(id, auth.uid())
   );
 
 drop policy if exists "Service role full access communities" on communities;
@@ -279,16 +374,14 @@ create policy "Service role full access communities" on communities
 
 -- Memberships: you can see your own, and owners/mods see their
 -- community's roster. Everything else flows through the RPCs below.
+-- ⚠ This is the policy that caused 42P17 when it was written inline:
+-- selecting from community_members inside community_members' own policy
+-- recurses. community_role is SECURITY DEFINER and so bypasses RLS.
 drop policy if exists "Members see own membership" on community_members;
 create policy "Members see own membership" on community_members
   for select using (
     user_id = auth.uid()
-    or exists (
-      select 1 from community_members m2
-      where m2.community_id = community_members.community_id
-        and m2.user_id = auth.uid()
-        and m2.role in ('owner', 'moderator')
-    )
+    or community_role(community_id, auth.uid()) in ('owner', 'moderator')
   );
 
 drop policy if exists "Service role full access members" on community_members;
@@ -299,19 +392,7 @@ create policy "Service role full access members" on community_members
 -- needs it to group the feed), and by members of private ones.
 drop policy if exists "Community feeders are visible" on community_feeders;
 create policy "Community feeders are visible" on community_feeders
-  for select using (
-    exists (
-      select 1 from communities c
-      where c.id = community_feeders.community_id
-        and (
-          c.visibility = 'public'
-          or exists (
-            select 1 from community_members m
-            where m.community_id = c.id and m.user_id = auth.uid()
-          )
-        )
-    )
-  );
+  for select using (community_visible_to(community_id, auth.uid()));
 
 drop policy if exists "Service role full access community feeders" on community_feeders;
 create policy "Service role full access community feeders" on community_feeders
@@ -326,16 +407,11 @@ create policy "Service role full access invites" on community_invites
 
 
 -- ────────────────────────────────────────────────────────────────────
--- 5. Role helpers
+-- 5. Role enforcement
+--
+-- community_role and the other visibility helpers are defined in
+-- section 3b, because the policies in section 4 depend on them.
 -- ────────────────────────────────────────────────────────────────────
-
-create or replace function community_role(p_community_id uuid, p_user_id uuid)
-returns text
-language sql stable security definer
-as $$
-  select role from community_members
-  where community_id = p_community_id and user_id = p_user_id;
-$$;
 
 create or replace function community_require_role(
   p_community_id uuid,
@@ -405,34 +481,20 @@ end $$;
 drop policy if exists "Community detections are visible" on community_detections;
 create policy "Community detections are visible" on community_detections
   for select using (
-    exists (
-      select 1 from feeders f
-      where f.id = community_detections.feeder_id and f.is_public
-    )
-    or exists (
-      select 1
-      from community_feeders cf
-      join community_members cm on cm.community_id = cf.community_id
-      where cf.feeder_id = community_detections.feeder_id
-        and cf.status = 'approved'
-        and cm.user_id = auth.uid()
-    )
+    community_feeder_is_public(feeder_id)
+    or community_user_sees_feeder(feeder_id, auth.uid())
   );
 
 -- Feeders: same rule, so private feeders don't show up in the Feeders
 -- tab, the map, or the feed's feeder dropdown.
+-- Reads the is_public column directly rather than via
+-- community_feeder_is_public — calling that from the feeders policy
+-- would recurse into feeders.
 drop policy if exists "Feeders are visible" on feeders;
 create policy "Feeders are visible" on feeders
   for select using (
     is_public
-    or exists (
-      select 1
-      from community_feeders cf
-      join community_members cm on cm.community_id = cf.community_id
-      where cf.feeder_id = feeders.id
-        and cf.status = 'approved'
-        and cm.user_id = auth.uid()
-    )
+    or community_user_sees_feeder(id, auth.uid())
   );
 
 -- Preserve today's write access (see the note above).
