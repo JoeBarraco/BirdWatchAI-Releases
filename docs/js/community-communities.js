@@ -178,13 +178,26 @@ function populateFeederDropdownFromRoster(inScope) {
 // feed. Without this the Feeder dropdown still lists every feeder on the
 // platform, including ones that cannot possibly appear in the current results.
 //
-// resetInvalidSelections is false when called from loadFeed — a periodic
-// refresh must not silently drop the operator's filters — and true on an actual
-// community change, where a feeder or species that no longer exists in scope
-// would otherwise leave the feed stubbornly empty with no visible cause.
-async function scopeDropdownsToCommunity(resetInvalidSelections) {
+// fromCommunityChange separates the two callers, which differ in two ways:
+// loadFeed has already populated the dropdowns from the full set and must not
+// silently drop the operator's filters on a periodic refresh, while an actual
+// community change has populated nothing and owns both restoring the lists
+// when the scope is cleared and dropping selections that no longer exist.
+async function scopeDropdownsToCommunity(fromCommunityChange) {
     if (typeof allDetections === 'undefined') return;
-    if (!selectedCommunity) return;   // nothing to narrow to
+
+    if (!selectedCommunity) {
+        // Back to "All I can see". Returning early here is what left the
+        // narrowed roster in place when switching away from a community:
+        // loadFeed repopulates from the full set on its own, but the dropdown
+        // change has nothing else that would.
+        if (fromCommunityChange) {
+            if (typeof populateFeederDropdown === 'function') populateFeederDropdown(allDetections);
+            if (typeof populateFeedSpeciesDropdown === 'function') populateFeedSpeciesDropdown(allDetections);
+            if (typeof populateMapSpeciesDropdown === 'function') populateMapSpeciesDropdown(allDetections);
+        }
+        return;
+    }
 
     const inScope = allDetections.filter(d => !communityFilterExcludes(d));
 
@@ -202,7 +215,7 @@ async function scopeDropdownsToCommunity(resetInvalidSelections) {
     if (typeof populateFeedSpeciesDropdown === 'function') populateFeedSpeciesDropdown(inScope);
     if (typeof populateMapSpeciesDropdown === 'function') populateMapSpeciesDropdown(inScope);
 
-    if (!resetInvalidSelections) return;
+    if (!fromCommunityChange) return;
 
     if (feederSel && prevFeeder &&
         ![...feederSel.options].some(o => o.value === prevFeeder)) {
