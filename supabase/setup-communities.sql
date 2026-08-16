@@ -786,6 +786,100 @@ begin
 end;
 $$;
 
+-- Rows in a time window, for the (detected_at, species) fallback in
+-- GetSharedLocalIdsAsync — the pass that catches WinForms-imported rows
+-- whose community local_id is the original WinForms id rather than the
+-- server's, so a local_id match never fires.
+create or replace function community_feeder_rows_between(
+  p_device_key text,
+  p_from       timestamptz,
+  p_to         timestamptz
+)
+returns json
+language plpgsql security definer
+set search_path = public
+as $$
+declare
+  fid    uuid;
+  result json;
+begin
+  fid := community_feeder_id(p_device_key);
+  if fid is null then
+    raise exception 'Unknown device key';
+  end if;
+
+  select json_agg(row_to_json(t)) into result
+  from (
+    select detected_at, species
+    from community_detections
+    where feeder_id = fid
+      and detected_at >= p_from
+      and detected_at <= p_to
+  ) t;
+
+  return coalesce(result, '[]'::json);
+end;
+$$;
+
+-- Every feeder row sharing this one's display_name, with its device_key —
+-- for CleanupOrphanFeedersAsync, which decides which stale rows to delete by
+-- comparing device keys. A plain display_name SELECT can't see a private
+-- feeder's own row, so the sweep would report no orphans and quietly do
+-- nothing.
+create or replace function community_feeder_siblings(p_device_key text)
+returns json
+language plpgsql security definer
+set search_path = public
+as $$
+declare
+  result json;
+begin
+  if community_feeder_id(p_device_key) is null then
+    raise exception 'Unknown device key';
+  end if;
+
+  select json_agg(row_to_json(t)) into result
+  from (
+    select f2.id, f2.device_key
+    from feeders f1
+    join feeders f2 on f2.display_name = f1.display_name
+    where f1.device_key = p_device_key
+  ) t;
+
+  return coalesce(result, '[]'::json);
+end;
+$$;
+
+-- Delete a stale feeder row belonging to this install. Scoped to siblings of
+-- the caller's own display_name so a device key can only ever clean up its own
+-- duplicates, never another owner's feeder.
+create or replace function community_feeder_delete_sibling(
+  p_device_key text,
+  p_target_id  uuid
+)
+returns boolean
+language plpgsql security definer
+set search_path = public
+as $$
+declare
+  own_id uuid;
+begin
+  own_id := community_feeder_id(p_device_key);
+  if own_id is null then
+    raise exception 'Unknown device key';
+  end if;
+  if p_target_id = own_id then
+    raise exception 'Refusing to delete the calling feeder''s own row';
+  end if;
+
+  delete from feeders t
+  where t.id = p_target_id
+    and t.display_name = (select display_name from feeders where id = own_id);
+
+  return found;
+end;
+$$;
+
 -- Communities this feeder could join, plus its current status in each.
 create or replace function community_feeder_memberships(p_device_key text)
 returns json
@@ -890,6 +984,9 @@ grant execute on function community_feeder_scope(text, text)                    
 grant execute on function community_feeder_rows(text, int, int)                              to anon, authenticated;
 grant execute on function community_feeder_find_rows(text, text, timestamptz, timestamptz, text, text, text) to anon, authenticated;
 grant execute on function community_feeder_shared_local_ids(text, text[])                    to anon, authenticated;
+grant execute on function community_feeder_rows_between(text, timestamptz, timestamptz)      to anon, authenticated;
+grant execute on function community_feeder_siblings(text)                                    to anon, authenticated;
+grant execute on function community_feeder_delete_sibling(text, uuid)                        to anon, authenticated;
 grant execute on function community_feeder_memberships(text)                                 to anon, authenticated;
 grant execute on function community_request_join(text, text)                                 to anon, authenticated;
 grant execute on function community_leave(text, text)                                        to anon, authenticated;
