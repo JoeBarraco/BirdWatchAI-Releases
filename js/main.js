@@ -207,16 +207,21 @@ document.addEventListener('DOMContentLoaded', function () {
         name: document.getElementById('cfg-name'),
         lines: document.getElementById('cfg-lines'),
         hint: document.getElementById('cfg-hint'),
-        storageGroup: document.getElementById('cfg-storage-group'),
-        slotSoftware: form.querySelector('[data-slot="software"]'),
-        slotStandard: form.querySelector('[data-slot="computer-standard"]'),
-        slotHigh: form.querySelector('[data-slot="computer-high"]')
+        storageRow: document.getElementById('cfg-storage-row'),
+        selSoftware: document.getElementById('cfg-software'),
+        selComputer: document.getElementById('cfg-computer')
     };
 
     const money = n => '$' + n;
     const pick = name => {
-        const el = form.querySelector('input[name="' + name + '"]:checked');
+        const el = form.elements[name];
         return el ? el.value : 'none';
+    };
+
+    // Re-label an option in place, keeping its base text and appending a price.
+    const relabel = (select, value, price) => {
+        const opt = select && select.querySelector('option[value="' + value + '"]');
+        if (opt && opt.dataset.label) opt.textContent = opt.dataset.label + ' (' + money(price) + ')';
     };
 
     function render() {
@@ -225,32 +230,27 @@ document.addEventListener('DOMContentLoaded', function () {
         const camera = pick('camera');
         const computer = pick('computer');
         const storage = pick('storage');
-        const macro = form.querySelector('input[name="macro"]').checked;
+        const macro = pick('macro') === 'yes';
 
         const hasComputer = computer !== 'none';
         const storageCost = hasComputer ? PRICES.storage[storage] : 0;
         const computerCost = PRICES.computerBase[computer] + storageCost;
 
         // Storage only means anything alongside a computer.
-        els.storageGroup.classList.toggle('cfg-group-disabled', !hasComputer);
-        els.storageGroup.querySelectorAll('input').forEach(i => { i.disabled = !hasComputer; });
-
-        // Selected styling is done with :has() in CSS; mirror it onto a class so
-        // the choice still reads as chosen where :has() is unsupported.
-        form.querySelectorAll('.cfg-opt').forEach(label => {
-            const input = label.querySelector('input');
-            label.classList.toggle('cfg-opt-selected', !!input && input.checked);
-        });
+        els.storageRow.classList.toggle('cfg-row-disabled', !hasComputer);
+        form.elements.storage.disabled = !hasComputer;
 
         const hasHardware = feeder !== 'none' || camera !== 'none' || hasComputer || macro;
         const softwareCost = software === 'none'
             ? 0
             : (hasHardware ? PRICES.softwareBundled : PRICES.softwareAlone);
 
-        // Keep the prices shown against each choice honest as the build changes.
-        if (els.slotSoftware) els.slotSoftware.textContent = money(hasHardware ? PRICES.softwareBundled : PRICES.softwareAlone);
-        if (els.slotStandard) els.slotStandard.textContent = money(PRICES.computerBase.standard + PRICES.storage[storage]);
-        if (els.slotHigh) els.slotHigh.textContent = money(PRICES.computerBase.high + PRICES.storage[storage]);
+        // Keep the price on each choice honest as the rest of the build changes:
+        // the licence is cheaper alongside hardware, and each computer costs what
+        // it costs with the storage currently selected.
+        relabel(els.selSoftware, 'yes', hasHardware ? PRICES.softwareBundled : PRICES.softwareAlone);
+        relabel(els.selComputer, 'standard', PRICES.computerBase.standard + PRICES.storage[storage]);
+        relabel(els.selComputer, 'high', PRICES.computerBase.high + PRICES.storage[storage]);
 
         const lines = [];
         if (software !== 'none') lines.push(['BirdWatchAI license', softwareCost]);
@@ -268,7 +268,17 @@ document.addEventListener('DOMContentLoaded', function () {
         els.lines.innerHTML = lines.length
             ? lines.map(l => '<li><span>' + l[0] + '</span><span>' + money(l[1]) + '</span></li>').join('')
             : '<li class="cfg-line-empty"><span>Nothing selected yet</span><span></span></li>';
-        els.total.textContent = money(total);
+
+        // Flash the total when it moves. On a narrow screen the summary can sit
+        // below the fold of whatever you just changed, so a silent update reads
+        // as nothing having happened.
+        const next = money(total);
+        if (els.total.textContent !== next) {
+            els.total.textContent = next;
+            els.total.classList.remove('cfg-total-bumped');
+            void els.total.offsetWidth; // restart the animation
+            els.total.classList.add('cfg-total-bumped');
+        }
 
         // Name the build when it is one of the four complete tiers.
         const complete = software !== 'none' && feeder !== 'none' && camera !== 'none' && hasComputer;

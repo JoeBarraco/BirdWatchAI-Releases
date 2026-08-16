@@ -1182,111 +1182,72 @@ ul {
 
 .cfg-form {
     display: grid;
-    gap: var(--space-md);
-}
-
-.cfg-group {
-    padding: var(--space-md);
+    gap: var(--space-sm);
+    align-content: start;
+    padding: var(--space-lg);
     background: var(--color-white);
     border: 1px solid var(--color-gray-200);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-sm);
+}
+
+.cfg-row {
+    display: grid;
+    grid-template-columns: 130px minmax(0, 1fr);
+    align-items: center;
+    gap: var(--space-sm);
     transition: opacity var(--transition-base);
 }
 
-.cfg-group legend {
-    padding: 0 var(--space-xs);
-    font-family: var(--font-display);
-    font-size: 1.125rem;
-    font-weight: 700;
-    color: var(--color-gray-900);
+@media (max-width: 560px) {
+    .cfg-row {
+        grid-template-columns: 1fr;
+        gap: 4px;
+    }
 }
 
-.cfg-legend-note {
-    font-family: var(--font-body);
-    font-size: 0.8125rem;
-    font-weight: 400;
-    color: var(--color-gray-500);
-}
-
-.cfg-group-disabled {
-    opacity: 0.45;
-}
-
-.cfg-options {
-    display: grid;
-    gap: var(--space-xs);
-    margin-top: var(--space-xs);
-}
-
-@media (min-width: 640px) {
-    .cfg-options-2 { grid-template-columns: repeat(2, 1fr); }
-    .cfg-options-3 { grid-template-columns: repeat(3, 1fr); }
-}
-
-.cfg-opt {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    align-items: center;
-    gap: var(--space-xs);
-    padding: var(--space-sm);
-    cursor: pointer;
-    background: var(--color-cream);
-    border: 2px solid var(--color-gray-200);
-    border-radius: var(--radius-md);
-    transition: border-color var(--transition-fast), background var(--transition-fast);
-}
-
-.cfg-opt:hover {
-    border-color: color-mix(in srgb, var(--color-primary) 45%, transparent);
-}
-
-.cfg-opt input {
-    position: absolute;
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
-.cfg-opt:has(input:checked),
-.cfg-opt.cfg-opt-selected {
-    border-color: var(--color-primary);
-    background: color-mix(in srgb, var(--color-primary) 10%, var(--color-white));
-}
-
-.cfg-opt:has(input:focus-visible) {
-    outline: 3px solid color-mix(in srgb, var(--color-primary) 45%, transparent);
-    outline-offset: 2px;
-}
-
-.cfg-group-disabled .cfg-opt {
-    cursor: not-allowed;
-}
-
-.cfg-opt-body {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-.cfg-opt-body strong {
-    font-size: 0.9375rem;
-    line-height: 1.25;
-    color: var(--color-gray-900);
-}
-
-.cfg-opt-body span {
-    font-size: 0.75rem;
-    line-height: 1.35;
-    color: var(--color-gray-500);
-}
-
-.cfg-opt-price {
+.cfg-row label {
     font-family: var(--font-display);
     font-size: 1rem;
     font-weight: 700;
-    color: var(--color-primary);
-    white-space: nowrap;
+    color: var(--color-gray-900);
+}
+
+.cfg-row select {
+    width: 100%;
+    padding: 0.625rem 2rem 0.625rem 0.75rem;
+    font-family: var(--font-body);
+    font-size: 0.9375rem;
+    color: var(--color-gray-900);
+    background-color: var(--color-cream);
+    background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+                      linear-gradient(135deg, currentColor 50%, transparent 50%);
+    background-position: right 1.05rem center, right 0.8rem center;
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+    border: 2px solid var(--color-gray-200);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    appearance: none;
+    transition: border-color var(--transition-fast);
+}
+
+.cfg-row select:hover {
+    border-color: color-mix(in srgb, var(--color-primary) 45%, transparent);
+}
+
+.cfg-row select:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--color-primary) 45%, transparent);
+    outline-offset: 2px;
+    border-color: var(--color-primary);
+}
+
+.cfg-row-disabled {
+    opacity: 0.45;
+}
+
+.cfg-row-disabled select {
+    cursor: not-allowed;
 }
 
 /* Summary panel */
@@ -1303,8 +1264,26 @@ ul {
     box-shadow: var(--shadow-md);
 }
 
+/* Stacked, the summary goes above the form and stays pinned — otherwise you
+   change a dropdown and the total you are watching for is off the bottom. */
 @media (max-width: 900px) {
-    .cfg-summary { position: static; }
+    .configurator > .cfg-summary { grid-row: 1; }
+    .configurator > .cfg-form { grid-row: 2; }
+    .cfg-summary { top: 76px; }
+}
+
+@keyframes cfgBump {
+    0%   { transform: scale(1); }
+    35%  { transform: scale(1.09); color: var(--color-primary-light); }
+    100% { transform: scale(1); }
+}
+
+.cfg-total-bumped {
+    animation: cfgBump 420ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cfg-total-bumped { animation: none; }
 }
 
 .cfg-summary-eyebrow {
