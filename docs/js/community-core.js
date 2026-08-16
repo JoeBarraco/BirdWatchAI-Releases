@@ -144,6 +144,10 @@ async function refilter() {
         if (currentView === 'map')     renderMap();
         if (currentView === 'gallery') renderGallery();
         if (currentView === 'stats')   renderFullStats();
+        // The Feeders tab draws from allFeeders rather than from the
+        // detections, so it was never re-rendered here — changing community
+        // left it listing every feeder until you navigated away and back.
+        if (currentView === 'feeders' && typeof renderFeeders === 'function') renderFeeders();
     } finally {
         refiltering = false;
     }

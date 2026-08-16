@@ -664,18 +664,29 @@ function renderFeeders() {
     const statusFi = document.getElementById('feeders-status-filter')?.value || '';
     const sortBy   = document.getElementById('feeders-sort')?.value || 'status';
 
-    const monitoringCount = allFeeders.filter(feederIsMonitoring).length;
-    const onlineCount     = allFeeders.filter(feederIsOnline).length;
+    // Respect the community scope. Both the summary counts and the grid have to
+    // describe the selected community — scoping only the grid would leave "12
+    // registered feeders" sitting above three cards.
+    // Null when no community is selected (community-communities.js).
+    const scopeIds = (typeof communityScopeFeederIds === 'function')
+        ? communityScopeFeederIds()
+        : null;
+    const feeders = scopeIds
+        ? allFeeders.filter(f => scopeIds.has(String(f.id || f.feeder_id)))
+        : allFeeders;
+
+    const monitoringCount = feeders.filter(feederIsMonitoring).length;
+    const onlineCount     = feeders.filter(feederIsOnline).length;
     const idleCount       = onlineCount - monitoringCount;
-    const offlineCount    = allFeeders.length - onlineCount;
-    summary.innerHTML = allFeeders.length
-        ? `<strong>${allFeeders.length}</strong> registered feeder${allFeeders.length === 1 ? '' : 's'}
+    const offlineCount    = feeders.length - onlineCount;
+    summary.innerHTML = feeders.length
+        ? `<strong>${feeders.length}</strong> registered feeder${feeders.length === 1 ? '' : 's'}
            &nbsp;·&nbsp; <span class="feeder-status-dot monitoring"></span> ${monitoringCount} monitoring
            &nbsp;·&nbsp; <span class="feeder-status-dot idle"></span> ${idleCount} idle
            &nbsp;·&nbsp; <span class="feeder-status-dot offline"></span> ${offlineCount} offline`
         : '';
 
-    let visible = allFeeders.filter(f => {
+    let visible = feeders.filter(f => {
         const state = feederState(f);
         if (statusFi === 'monitoring' && state !== 'monitoring') return false;
         if (statusFi === 'idle'       && state !== 'idle')       return false;
@@ -704,9 +715,14 @@ function renderFeeders() {
     }
 
     if (!visible.length) {
-        grid.innerHTML = allFeeders.length
+        // Distinguish "this community has no feeders" from "your filters
+        // exclude them all" — checking allFeeders here would say "no feeders
+        // match your filters" for an empty community with no filters set.
+        grid.innerHTML = feeders.length
             ? '<div class="feeders-empty">No feeders match your filters.</div>'
-            : '<div class="feeders-empty">No feeders registered yet.</div>';
+            : scopeIds
+                ? '<div class="feeders-empty">No feeders have joined this community yet.</div>'
+                : '<div class="feeders-empty">No feeders registered yet.</div>';
         return;
     }
 
