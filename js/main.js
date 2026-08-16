@@ -174,7 +174,7 @@ console.log('%cInterested in how this works? Check out the GitHub: https://githu
      feeder   indoor $20, outdoor $40
      camera   $40
      computer standard $90 + storage, high performance $140 + storage
-     storage  30 GB $20, 250 GB $75
+     storage  32 GB $20, 256 GB $75
    So Nest Indoor = 50+20+40 = $110, and a full Wren Indoor build =
    50+20+40+(90+20) = $220. Change a number here and every total and
    every named build follows.
@@ -278,7 +278,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 : ['Camera', null],
             hasComputer
                 ? [(computer === 'standard' ? 'Standard' : 'High Performance') + ' computer, ' +
-                   (storage === 'standard' ? '30 GB' : '250 GB'), computerCost]
+                   (storage === 'standard' ? '32 GB' : '256 GB'), computerCost]
                 : ['Computer', null],
             macro
                 ? ['Macro lens', PRICES.macro]

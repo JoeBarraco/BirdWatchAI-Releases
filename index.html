@@ -21,7 +21,7 @@
          GitHub Pages serves these with a 10-minute max-age, so without it a
          browser can pair new HTML with the previous JS, and a mismatch there
          silently breaks anything scripted (the pricing configurator especially). -->
-    <link rel="stylesheet" href="css/style.css?v=20260816f">
+    <link rel="stylesheet" href="css/style.css?v=20260816g">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="icon" type="image/png" href="images/favicon.png">
     <link rel="manifest" href="manifest.json">
@@ -587,13 +587,13 @@
                 <figure class="storage-compare">
                     <svg viewBox="0 0 800 210" class="storage-compare-svg" role="img" aria-labelledby="sc-title sc-desc">
                         <title id="sc-title">The two storage options compared</title>
-                        <desc id="sc-desc">The standard 30 GB drive keeps snapshots and recent clips. The extended 250 GB drive holds roughly eight times as much — about a full season of video.</desc>
+                        <desc id="sc-desc">The standard 32 GB drive keeps snapshots and recent clips. The extended 256 GB drive holds eight times as much — about a full season of video.</desc>
 
                         <!-- Standard -->
                         <text class="sc-label" x="200" y="26" text-anchor="middle">Standard</text>
-                        <text class="sc-size" x="200" y="76" text-anchor="middle">30 GB</text>
+                        <text class="sc-size" x="200" y="76" text-anchor="middle">32 GB</text>
                         <rect class="sc-track" x="50" y="100" width="300" height="20" rx="10"></rect>
-                        <rect class="sc-fill" x="50" y="100" width="36" height="20" rx="10"></rect>
+                        <rect class="sc-fill" x="50" y="100" width="37.5" height="20" rx="10"></rect>
                         <text class="sc-caption" x="200" y="152" text-anchor="middle">Snapshots and recent clips</text>
                         <text class="sc-caption sc-muted" x="200" y="176" text-anchor="middle">A few weeks of activity</text>
 
@@ -601,11 +601,11 @@
 
                         <!-- Extended -->
                         <text class="sc-label" x="600" y="26" text-anchor="middle">Extended</text>
-                        <text class="sc-size" x="600" y="76" text-anchor="middle">250 GB</text>
+                        <text class="sc-size" x="600" y="76" text-anchor="middle">256 GB</text>
                         <rect class="sc-track" x="450" y="100" width="300" height="20" rx="10"></rect>
                         <rect class="sc-fill" x="450" y="100" width="300" height="20" rx="10"></rect>
                         <text class="sc-caption" x="600" y="152" text-anchor="middle">A full season of video</text>
-                        <text class="sc-caption sc-muted" x="600" y="176" text-anchor="middle">Roughly 8&#215; the space</text>
+                        <text class="sc-caption sc-muted" x="600" y="176" text-anchor="middle">Eight times the space</text>
                     </svg>
                     <figcaption>
                         Either computer takes either drive. Storage changes how much history you keep, not how fast the bird is identified — that's the computer. <a href="docs/manual/part-4-first-time-setup.html#preloaded-pi">See what setup looks like</a> before you buy.
@@ -660,8 +660,8 @@
                         <div class="cfg-row" id="cfg-storage-row">
                             <label for="cfg-storage"><span aria-hidden="true">💾</span> Storage</label>
                             <select id="cfg-storage" name="storage">
-                                <option value="standard" selected>30 GB SSD — snapshots &amp; recent clips</option>
-                                <option value="extended">250 GB SSD — a full season of video (+$55)</option>
+                                <option value="standard" selected>32 GB SSD — snapshots &amp; recent clips</option>
+                                <option value="extended">256 GB SSD — a full season of video (+$55)</option>
                             </select>
                         </div>
 
@@ -885,7 +885,7 @@
     </footer>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="js/main.js?v=20260816f"></script>
+    <script src="js/main.js?v=20260816g"></script>
     <script>
     function toggleMainTheme() {
         const current = document.documentElement.getAttribute('data-theme');
