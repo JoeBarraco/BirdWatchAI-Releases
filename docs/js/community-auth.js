@@ -1543,7 +1543,12 @@ async function doUserLogout() {
     userFollowedFeeders = [];
     isModAsCommunityUser = false;
     updateCommunityUI();
-    renderFeed();
+    // Drop cached community state and REFETCH rather than re-render: the rows
+    // already in allDetections include any private community this user could
+    // see, and renderFeed() alone would happily redraw them for whoever is at
+    // the machine next. See clearCommunityState in community-communities.js.
+    if (typeof clearCommunityState === 'function') clearCommunityState();
+    loadFeed();
     showToast('Signed out');
 }
 
@@ -2135,13 +2140,31 @@ if (isModLoggedIn()) {
 }
 
 // ── Init ─────────────────────────────────────────────────
-initCommunityAuth().then(() => {
-    // If Supabase Auth returned a real user, prefer that over the mod bridge
-    if (currentUser && !isModAsCommunityUser) updateCommunityUI();
-    handleLifeListLink();
-});
+//
+// ⚠ ORDER MATTERS. The first feed load must wait for the session to be
+// restored. RLS decides what a caller can see, so a feed fetched before
+// authAccessToken is set goes out with the bare anon key and comes back with
+// public rows only — a member of a private community would silently never
+// receive their own community's detections, and picking that community in the
+// scope filter would show "No detections match your filters" even though the
+// filter, the RLS policies and the membership are all correct.
+//
+// These used to run concurrently, which meant the race was nearly always lost.
+//
+// Auth failures are swallowed so an expired or broken session can never stop
+// the public feed from rendering.
+initCommunityAuth()
+    .catch(() => {})
+    .then(() => {
+        // If Supabase Auth returned a real user, prefer that over the mod bridge
+        if (currentUser && !isModAsCommunityUser) updateCommunityUI();
+        handleLifeListLink();
+    })
+    .then(() => loadFeed())
+    .then(handleSharedId)
+    .catch(() => {});
+
 loadSeasonEarliest();
-loadFeed().then(handleSharedId);
 
 // Eagerly initialize the map off-screen so it's ready when the tab is clicked.
 // We temporarily make it visible (but off-screen) so Leaflet can measure it.

@@ -239,6 +239,32 @@ async function revokeCommunityInvite() {
     document.getElementById('community-invite-email').value = '';
 }
 
+// ── Sign-out ─────────────────────────────────────────────
+//
+// Signing out clears the token, but everything already fetched stays in memory:
+// myCommunities keeps the scope filter populated with private communities,
+// communityFeederIndex keeps the feeder→community mapping, allDetections still
+// holds the private rows, and signedUrlCache still holds working media links.
+// The sign-out handler then calls renderFeed(), which redraws all of it.
+//
+// Nothing here was fetched without authorization, so this is not a server-side
+// hole — a visitor who never signed in sees none of it. But on a shared
+// classroom machine "the teacher signed out and the school's feed is still on
+// screen" is exactly the failure this feature exists to prevent.
+//
+// Callers must also refetch the feed, so allDetections is rebuilt as anon.
+function clearCommunityState() {
+    myCommunities = [];
+    communityFeederIndex = null;
+    selectedCommunity = '';
+    signedUrlCache.clear();
+    const sel = document.getElementById('community-filter');
+    if (sel) sel.value = '';
+    renderCommunityFilter();
+    updateCommunityNavUI();
+    closeCommunityPanel();
+}
+
 // ── Private media ────────────────────────────────────────
 //
 // Media for a private feeder lives in a non-public bucket, so there is no
