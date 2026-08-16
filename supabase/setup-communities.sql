@@ -17,7 +17,10 @@
 -- Running the policy section early would instantly blank the public
 -- feed. Sections are numbered; run the whole file top to bottom.
 --
--- SAFE TO RE-RUN. Every statement is idempotent.
+-- SAFE TO RE-RUN — but note what that means for section 3. Re-running must
+-- never change a feeder's memberships, because those encode a deliberate
+-- privacy decision. The enrollment there is guarded so it only touches feeders
+-- that have never been enrolled; see the comment on it before editing.
 -- ============================================================
 
 create extension if not exists pgcrypto;
@@ -207,12 +210,25 @@ values ('public', 'Public Feed',
         'public')
 on conflict (slug) do nothing;
 
--- Enroll every existing feeder as approved.
+-- Enroll every PREVIOUSLY UNENROLLED feeder as approved.
+--
+-- ⚠ The `not exists` clause is load-bearing, and this file is re-run often.
+-- Without it, every re-run enrolls every feeder into the public community —
+-- silently re-publishing any feeder whose owner had deliberately left it to go
+-- private. `on conflict do nothing` does NOT protect against this: the row was
+-- deleted when they left, so there is no conflict to skip.
+--
+-- A feeder that has any membership row at all has already been through this
+-- migration and its memberships are the owner's business. Brand-new feeders are
+-- handled by the feeders_autojoin_public trigger below, not by this statement.
 insert into community_feeders (community_id, feeder_id, status, decided_at)
 select c.id, f.id, 'approved', now()
 from communities c
 cross join feeders f
 where c.slug = 'public'
+  and not exists (
+    select 1 from community_feeders cf where cf.feeder_id = f.id
+  )
 on conflict (community_id, feeder_id) do nothing;
 
 -- Backfill the flag for every feeder (the trigger only fires on change).
@@ -588,6 +604,81 @@ as $$
   where f1.device_key = p_device_key;
 $$;
 
+-- Register / update this feeder's own row.
+--
+-- ⚠ REQUIRED. The server previously upserted directly:
+--     POST /rest/v1/feeders?on_conflict=device_key
+--   with Prefer: resolution=merge-duplicates, i.e. INSERT … ON CONFLICT DO
+--   UPDATE. Postgres applies the SELECT policy to the conflicting row on that
+--   path, and section 6's feeders policy hides a private feeder from the anon
+--   key — including from ITSELF. The upsert then fails with
+--     42501: new row violates row-level security policy (USING expression)
+--   and the feeder cannot register, heartbeat, or share at all.
+--
+-- Running as definer sidesteps the policy entirely, and the device key is the
+-- authorization: you can only write the row whose key you hold. This is also
+-- the migration setup-feeders-update-guard.sql anticipated — with writes behind
+-- an RPC, the blanket anon UPDATE policy on feeders can eventually be dropped.
+create or replace function community_feeder_upsert(
+  p_device_key   text,
+  p_display_name text,
+  p_share_level  int     default 1,
+  p_app_version  text    default null,
+  p_zip_code     text    default null,
+  p_latitude     double precision default null,
+  p_longitude    double precision default null
+)
+returns uuid
+language plpgsql security definer
+set search_path = public
+as $$
+declare
+  fid uuid;
+begin
+  if p_device_key is null or length(trim(p_device_key)) = 0 then
+    raise exception 'device_key is required';
+  end if;
+
+  insert into feeders (device_key, display_name, share_level, app_version,
+                       zip_code, latitude, longitude)
+  values (p_device_key, p_display_name, p_share_level, p_app_version,
+          p_zip_code, p_latitude, p_longitude)
+  on conflict (device_key) do update
+    set display_name = excluded.display_name,
+        share_level  = excluded.share_level,
+        app_version  = coalesce(excluded.app_version, feeders.app_version),
+        -- Only overwrite location when the caller actually supplied one, so a
+        -- feeder that hasn't set its ZIP doesn't blank an existing value.
+        zip_code     = coalesce(excluded.zip_code, feeders.zip_code),
+        latitude     = coalesce(excluded.latitude, feeders.latitude),
+        longitude    = coalesce(excluded.longitude, feeders.longitude)
+  returning id into fid;
+
+  return fid;
+end;
+$$;
+
+-- Heartbeat, same reasoning: a private feeder can't PATCH its own row through
+-- the anon key once the SELECT policy hides it.
+create or replace function community_feeder_heartbeat(
+  p_device_key   text,
+  p_is_monitoring boolean,
+  p_app_version  text default null
+)
+returns boolean
+language plpgsql security definer
+set search_path = public
+as $$
+begin
+  update feeders
+     set last_heartbeat_at = now(),
+         is_monitoring     = p_is_monitoring,
+         app_version       = coalesce(p_app_version, app_version)
+   where device_key = p_device_key;
+  return found;
+end;
+$$;
+
 -- Page a feeder's own community rows. Mirrors the SELECT in
 -- ReconcileWithLocalAsync.
 create or replace function community_feeder_rows(
@@ -793,6 +884,8 @@ end;
 $$;
 
 grant execute on function community_feeder_id(text)                                          to anon, authenticated;
+grant execute on function community_feeder_upsert(text, text, int, text, text, double precision, double precision) to anon, authenticated;
+grant execute on function community_feeder_heartbeat(text, boolean, text)                    to anon, authenticated;
 grant execute on function community_feeder_scope(text, text)                                 to anon, authenticated;
 grant execute on function community_feeder_rows(text, int, int)                              to anon, authenticated;
 grant execute on function community_feeder_find_rows(text, text, timestamptz, timestamptz, text, text, text) to anon, authenticated;
