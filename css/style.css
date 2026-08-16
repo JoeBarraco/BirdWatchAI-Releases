@@ -1781,6 +1781,18 @@ body.ticker-visible { padding-top: 32px; }
 }
 [data-theme="dark"] .community-map-section { background: var(--bg-page); }
 
+.map-fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: var(--space-lg);
+    text-align: center;
+    font-size: 0.9375rem;
+    color: var(--color-gray-500);
+    background: var(--color-gray-100);
+}
+
 /* ── Feeder Directory ────────────────────────────────────── */
 .feeder-directory-section {
     padding: 5rem 1.5rem;

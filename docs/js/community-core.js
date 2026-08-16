@@ -321,7 +321,11 @@ async function loadFeed(append = false) {
     const { period } = getFilters();
     const since = periodToISO(period);
 
-    let url = `${SUPABASE_URL}/rest/v1/community_detections?select=*,feeders(display_name)&limit=${PAGE_SIZE}&offset=${feedOffset}&order=detected_at.desc`;
+    // The zip lives on the feeder, not the detection. Detections carried their own
+    // zip_code until 2026-06-18; every row since has it null, so anything reading
+    // d.zip_code — the map, the zip filter, zip grouping, CSV export — needs the
+    // feeder's zip embedded here and folded onto the row below.
+    let url = `${SUPABASE_URL}/rest/v1/community_detections?select=*,feeders(display_name,zip_code)&limit=${PAGE_SIZE}&offset=${feedOffset}&order=detected_at.desc`;
     if (since) url += `&detected_at=gte.${encodeURIComponent(since)}`;
 
     try {
@@ -330,6 +334,12 @@ async function loadFeed(append = false) {
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const page = await res.json();
+
+        // Fold the feeder's zip onto the row so downstream code can keep reading
+        // d.zip_code. Legacy rows that still carry their own zip keep it.
+        page.forEach(d => {
+            if (!d.zip_code && d.feeders?.zip_code) d.zip_code = d.feeders.zip_code;
+        });
 
         if (append) {
             allDetections = [...allDetections, ...page];

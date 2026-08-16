@@ -1220,11 +1220,25 @@
 
     // ── Community Detection Map ───────────────────────────────
     (async () => {
+        const mapEl = document.getElementById('community-map');
+        const mapFail = (msg) => {
+            if (mapEl) mapEl.innerHTML = `<div class="map-fallback">${msg}</div>`;
+        };
         try {
+            // The zip lives on the feeder, not the detection. Detections carried
+            // their own zip_code until 2026-06-18 and every row since has it null,
+            // so read the feeder's zip and fall back to the row's own for the
+            // older records. Filtering on zip_code=not.is.null here is what
+            // silently emptied this map.
             const since = new Date(Date.now() - 30*86400000).toISOString();
-            const res   = await fetch(`${_SB_URL}/rest/v1/community_detections?select=species,rarity,detected_at,zip_code,image_url&detected_at=gte.${encodeURIComponent(since)}&zip_code=not.is.null&limit=500&order=detected_at.desc`, { headers: _headers });
+            const res   = await fetch(`${_SB_URL}/rest/v1/community_detections?select=species,rarity,detected_at,zip_code,image_url,feeders(zip_code)&detected_at=gte.${encodeURIComponent(since)}&limit=500&order=detected_at.desc`, { headers: _headers });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data  = await res.json();
-            if (!data.length) return;
+            data.forEach(d => { d.zip_code = d.zip_code || d.feeders?.zip_code || null; });
+            if (!data.some(d => d.zip_code)) {
+                mapFail('No location-tagged sightings in the last 30 days yet.');
+                return;
+            }
 
             // Geocode unique zip codes
             const zips = [...new Set(data.map(d=>d.zip_code).filter(Boolean))].slice(0,80);
@@ -1273,7 +1287,10 @@
                 const bounds = L.latLngBounds(allCoords);
                 map.fitBounds(bounds.pad(0.3), { maxZoom: 12 });
             }
-        } catch (_) {}
+        } catch (err) {
+            console.error('Detection Hotspots map failed:', err);
+            mapFail('The map could not be loaded right now.');
+        }
     })();
 
     // ── Feeder Directory ─────────────────────────────────────
