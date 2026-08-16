@@ -790,12 +790,14 @@ ul {
     grid-template-columns: repeat(3, 1fr);
 }
 
-/* Keep the calls to action on a shared baseline across the three cards */
+/* Keep the calls to action on a shared baseline across side-by-side cards */
+.pricing-cards-two > .pricing-card,
 .pricing-cards-three > .pricing-card {
     display: flex;
     flex-direction: column;
 }
 
+.pricing-cards-two > .pricing-card .pricing-features,
 .pricing-cards-three > .pricing-card .pricing-features {
     flex: 1 1 auto;
 }
@@ -1095,6 +1097,134 @@ ul {
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border: 0;
+}
+
+/* Tiered pricing blocks */
+.pricing-tier {
+    margin-top: var(--space-xl);
+    padding-top: var(--space-xl);
+    border-top: 1px solid var(--color-gray-200);
+}
+
+.pricing-tier-head {
+    max-width: 720px;
+    margin: 0 auto var(--space-xl);
+    text-align: center;
+}
+
+.pricing-tier-eyebrow {
+    display: inline-block;
+    margin-bottom: var(--space-xs);
+    padding: 0.25rem 0.875rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 12%, var(--color-white));
+    border: 1px solid color-mix(in srgb, var(--color-primary) 35%, transparent);
+    border-radius: var(--radius-full);
+}
+
+.pricing-tier-head h3 {
+    font-size: 1.75rem;
+    margin-bottom: var(--space-sm);
+}
+
+.pricing-tier-lead {
+    color: var(--color-gray-700);
+    line-height: 1.6;
+}
+
+.pricing-tier-head .pricing-includes {
+    max-width: 480px;
+    margin: var(--space-md) auto 0;
+}
+
+.pricing-requires-wide {
+    max-width: 560px;
+    margin: var(--space-md) auto 0;
+}
+
+.pricing-cards-one {
+    max-width: 400px;
+    grid-template-columns: 1fr;
+}
+
+.pricing-cards-two {
+    max-width: 800px;
+    grid-template-columns: repeat(2, 1fr);
+}
+
+@media (max-width: 968px) {
+    .pricing-cards-two {
+        grid-template-columns: 1fr;
+        max-width: 400px;
+    }
+}
+
+/* Parts & accessories */
+.parts-table-wrap {
+    max-width: 800px;
+    margin: 0 auto;
+    overflow-x: auto;
+    background: var(--color-white);
+    border: 1px solid var(--color-gray-200);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+}
+
+.parts-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.parts-table th,
+.parts-table td {
+    padding: var(--space-sm) var(--space-md);
+    border-bottom: 1px solid var(--color-gray-200);
+    vertical-align: top;
+}
+
+.parts-table tbody tr:last-child th,
+.parts-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.parts-table thead th {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-gray-500);
+    background: var(--color-gray-100);
+    white-space: nowrap;
+}
+
+.parts-table tbody th {
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: var(--color-gray-900);
+    white-space: nowrap;
+}
+
+.parts-table tbody td {
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: var(--color-gray-700);
+}
+
+.parts-table .parts-price-col {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.parts-table tbody td.parts-price-col {
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--color-primary);
 }
 
 /* Two calls to action on one card */

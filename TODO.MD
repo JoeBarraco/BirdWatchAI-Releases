@@ -14,7 +14,7 @@ TO DO LIST
 - ~~Need to provide some photos of the bird feeder (both types) so we can price "The full nest" option. I am thinking the Full Nest should be $150 and the software half that ($75).~~ DONE (Full Nest priced at $150, software license at $75)
      - ~~Need to update pricing on "Gumroad" first, as well as add Full nest to gumroad.~~ DONE
 - **Gumroad needs updating to match the site.** Two things are now out of sync, and both are live:
-     - **Price.** The Nest — Outdoor is $125 on the site (was $150). The Gumroad listing (`birdbrainllc.gumroad.com/l/irvwmy`) still charges $150, so anyone clicking Buy sees a higher price than advertised. Fix this one first.
+     - **Price.** Both kits moved when the full price list landed: The Nest — Indoor is now **$110** (listing `l/dzjxfn` still charges $100) and The Nest — Outdoor is now **$130** (listing `l/irvwmy` still charges $150). Outdoor is the urgent one — the site advertises $130 while checkout takes $150. Software stays $75 (`l/dajhd`), no change needed there.
      - **Names.** The kits were renamed from "The Full Nest — Indoor/Outdoor" to "The Nest — Indoor/Outdoor"; "The Full Nest" now means the kit plus a preloaded computer. The Gumroad listings still use the old names. Product URLs are unchanged, so this is a rename in Gumroad only — no link edits needed here.
      - Nothing to do yet for the eight Full Nest bundles or the two computers; they're all Coming Soon and have no listings.
 - The "Download Free Trial" button still ships the old WinForms app, and there is no click-to-download path to the server edition at all. Today index.html's #download-btn is hardcoded to
