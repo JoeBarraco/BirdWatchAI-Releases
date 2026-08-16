@@ -13,9 +13,10 @@ TO DO LIST
 - Favorited detection uploads should translate to "Liked" by the uploaded (requires backend: add is_favorite column to community_detections and auto-create reaction on upload)
 - ~~Need to provide some photos of the bird feeder (both types) so we can price "The full nest" option. I am thinking the Full Nest should be $150 and the software half that ($75).~~ DONE (Full Nest priced at $150, software license at $75)
      - ~~Need to update pricing on "Gumroad" first, as well as add Full nest to gumroad.~~ DONE
+- Weekly digest is not operational. The signup form on the landing page collects addresses and the weekly-digest edge function exists, but no digest actually goes out. Trace it end to end: is the function on a Supabase cron schedule, is the Resend API key present and the sender domain verified, and does the function read the right subscriber table? Then send a test digest to a real inbox before announcing it. The landing page currently promises "Sent every Sunday morning" — either make that true or soften the copy until it is.
 - Add the ability for bird feeders to provide GPS location in addition to zip code. This will allow for more precise detection location mapping.
 - Add the concept of linking bird feeders to users of the website. Email may be the common link.
-- Once bird feeders are linked to users, add the concept of time based cloud storage. The feeder site would always preserve detections, but photos and videos only for 30 days unless the user has paid for a subscription.
+- Once bird feeders are linked to users, add the concept of time based cloud storage. The feeder site would always preserve detections, but photos and videos only for 14 days unless the user has paid for a subscription. (The landing page now publishes 14 days as the free Basic tier — this line said 30, so the retention window needs to be settled and kept consistent in both places.)
 
 WEBSITE ENHANCEMENTS
 
@@ -39,6 +40,7 @@ Landing Page Conversion
 - ~~Promote the feeder hotspot map higher on the page (above the fold) to hook visitors.~~ DONE
 - ~~Make the "Sign up for weekly digest" more prominent inline — the weekly-digest edge function already exists.~~ DONE
 - ~~Add an interactive demo — embed a sandbox community feed on the landing page so visitors can try it without downloading.~~ DONE
+- Replace the WinForms screenshots with captures of the server dashboard. Three images on index.html still show the old Windows app: images/screenshot-app-full.jpg (the hero), images/screenshot-test-image.jpg (Test Image dialog) and images/Screenshot-statistics.png (Statistics dialog). Good replacements would be the server's Home, Stats and Gallery pages in a browser. The burned-overlay bird photos (screenshot-titmouse.jpg, thumb-wren.jpg, thumb-action.jpg) are engine output and stay valid as-is. images/screenshot-debug-log.png is orphaned and can be deleted.
 
 Mobile & Accessibility
 - ~~Complete PWA support (sw.js and manifest.json already exist in docs/) so users can install to their phone home screen.~~ DONE
@@ -50,7 +52,7 @@ Monetization & Product
 - ~~Add Gumroad embed for "Full Nest" kit with direct "Buy Nest Kit" CTA and pricing on the landing page.~~ DONE
 - Add a referral program — existing users get a discount for referring someone who buys.
 - ~~Add affiliate links to recommended cameras (TAPO C120, etc.).~~ DONE
-- Add a subscription tier for extended cloud storage of photos/videos beyond 30 days.
+- Add a subscription tier for extended cloud storage of photos/videos beyond the free Basic retention window (14 days as published on the landing page).
 
 Technical
 - ~~Document and promote the embeddable widget (widget.html exists but isn't documented). A copy-paste iframe for "Latest birds from my feeder."~~ DONE
