@@ -599,7 +599,7 @@
                 <div class="pricing-tier-head">
                     <p class="pricing-tier-eyebrow">Tier 3</p>
                     <h3>🪺 The Full Nest — Everything</h3>
-                    <p class="pricing-tier-lead">The Nest and a preloaded computer in one box. All four pieces, nothing else to buy, nothing to set up. Open it, put up the feeder, plug in the computer, and watch. Pick your feeder style, then the computer that matches how busy your feeder gets.</p>
+                    <p class="pricing-tier-lead">All four pieces in one box, assembled and configured — nothing else to buy, nothing to set up. Build yours below: the price updates as you choose, and you can drop anything you already own. <strong>Starting at $220.</strong></p>
                     <ul class="pricing-includes pricing-includes-lg">
                         <li class="pricing-include yes"><span aria-hidden="true">🧠</span> Software<span class="visually-hidden"> included</span></li>
                         <li class="pricing-include yes"><span aria-hidden="true">🪺</span> Feeder<span class="visually-hidden"> included</span></li>
@@ -608,150 +608,125 @@
                     </ul>
                 </div>
 
-                <h4 class="fullnest-group">Indoor <span>— camera mounts inside the window, feeder attaches outside</span></h4>
-                <div class="pricing-cards pricing-cards-four">
-                    <div class="pricing-card pricing-card-fullnest">
-                        <div class="pricing-badge pricing-badge-complete">Full Nest</div>
-                        <div class="pricing-header">
-                            <h3>The Wren</h3>
-                            <div class="pricing-price">
-                                <span class="price-amount">$220</span>
-                                <span class="price-period">indoor · everything included</span>
+                <div class="configurator" id="configurator">
+                    <form class="cfg-form" id="cfg-form" aria-describedby="cfg-total-live">
+                        <fieldset class="cfg-group">
+                            <legend><span aria-hidden="true">🧠</span> Software</legend>
+                            <div class="cfg-options cfg-options-2">
+                                <label class="cfg-opt">
+                                    <input type="radio" name="software" value="yes" checked>
+                                    <span class="cfg-opt-body"><strong>Include a license</strong><span>$50 with hardware, $75 on its own</span></span>
+                                    <span class="cfg-opt-price" data-slot="software">$50</span>
+                                </label>
+                                <label class="cfg-opt">
+                                    <input type="radio" name="software" value="none">
+                                    <span class="cfg-opt-body"><strong>No thanks</strong><span>I already have a license</span></span>
+                                    <span class="cfg-opt-price">—</span>
+                                </label>
                             </div>
-                        </div>
-                        <dl class="fullnest-spec">
-                            <div><dt>Computer</dt><dd>Standard</dd></div>
-                            <div><dt>Storage</dt><dd>30 GB SSD</dd></div>
-                            <div><dt>Suits</dt><dd>A quiet feeder, everyday watching</dd></div>
-                        </dl>
-                        <button type="button" class="btn btn-disabled btn-block" disabled>Coming Soon</button>
-                    </div>
+                        </fieldset>
 
-                    <div class="pricing-card pricing-card-fullnest">
-                        <div class="pricing-badge pricing-badge-complete">Full Nest</div>
-                        <div class="pricing-header">
-                            <h3>The Finch</h3>
-                            <div class="pricing-price">
-                                <span class="price-amount">$275</span>
-                                <span class="price-period">indoor · everything included</span>
+                        <fieldset class="cfg-group">
+                            <legend><span aria-hidden="true">🪺</span> Feeder</legend>
+                            <div class="cfg-options cfg-options-3">
+                                <label class="cfg-opt">
+                                    <input type="radio" name="feeder" value="indoor" checked>
+                                    <span class="cfg-opt-body"><strong>Indoor</strong><span>Window tray, camera mounts inside</span></span>
+                                    <span class="cfg-opt-price">$20</span>
+                                </label>
+                                <label class="cfg-opt">
+                                    <input type="radio" name="feeder" value="outdoor">
+                                    <span class="cfg-opt-body"><strong>Outdoor</strong><span>Post-mounted feeder house</span></span>
+                                    <span class="cfg-opt-price">$40</span>
+                                </label>
+                                <label class="cfg-opt">
+                                    <input type="radio" name="feeder" value="none">
+                                    <span class="cfg-opt-body"><strong>No feeder</strong><span>I have one already</span></span>
+                                    <span class="cfg-opt-price">—</span>
+                                </label>
                             </div>
-                        </div>
-                        <dl class="fullnest-spec">
-                            <div><dt>Computer</dt><dd>Standard</dd></div>
-                            <div><dt>Storage</dt><dd>250 GB SSD</dd></div>
-                            <div><dt>Suits</dt><dd>Keeping a full season of video</dd></div>
-                        </dl>
-                        <button type="button" class="btn btn-disabled btn-block" disabled>Coming Soon</button>
-                    </div>
+                        </fieldset>
 
-                    <div class="pricing-card pricing-card-fullnest">
-                        <div class="pricing-badge pricing-badge-complete">Full Nest</div>
-                        <div class="pricing-header">
-                            <h3>The Jay</h3>
-                            <div class="pricing-price">
-                                <span class="price-amount">$270</span>
-                                <span class="price-period">indoor · everything included</span>
+                        <fieldset class="cfg-group">
+                            <legend><span aria-hidden="true">📷</span> Camera</legend>
+                            <div class="cfg-options cfg-options-2">
+                                <label class="cfg-opt">
+                                    <input type="radio" name="camera" value="yes" checked>
+                                    <span class="cfg-opt-body"><strong>Include a camera</strong><span>RTSP camera, matched to the feeder</span></span>
+                                    <span class="cfg-opt-price">$40</span>
+                                </label>
+                                <label class="cfg-opt">
+                                    <input type="radio" name="camera" value="none">
+                                    <span class="cfg-opt-body"><strong>No camera</strong><span>I'll use my own RTSP camera</span></span>
+                                    <span class="cfg-opt-price">—</span>
+                                </label>
                             </div>
-                        </div>
-                        <dl class="fullnest-spec">
-                            <div><dt>Computer</dt><dd>High Performance</dd></div>
-                            <div><dt>Storage</dt><dd>30 GB SSD</dd></div>
-                            <div><dt>Suits</dt><dd>A busy feeder, faster identification</dd></div>
-                        </dl>
-                        <button type="button" class="btn btn-disabled btn-block" disabled>Coming Soon</button>
-                    </div>
+                        </fieldset>
 
-                    <div class="pricing-card pricing-card-fullnest pricing-card-fullnest-top">
-                        <div class="pricing-badge pricing-badge-complete">Full Nest</div>
-                        <div class="pricing-header">
-                            <h3>The Cardinal</h3>
-                            <div class="pricing-price">
-                                <span class="price-amount">$325</span>
-                                <span class="price-period">indoor · everything included</span>
+                        <fieldset class="cfg-group">
+                            <legend><span aria-hidden="true">💻</span> Computer</legend>
+                            <div class="cfg-options cfg-options-3">
+                                <label class="cfg-opt">
+                                    <input type="radio" name="computer" value="standard" checked>
+                                    <span class="cfg-opt-body"><strong>Standard</strong><span>Plenty for a single feeder camera</span></span>
+                                    <span class="cfg-opt-price" data-slot="computer-standard">$110</span>
+                                </label>
+                                <label class="cfg-opt">
+                                    <input type="radio" name="computer" value="high">
+                                    <span class="cfg-opt-body"><strong>High Performance</strong><span>Faster when the feeder gets busy</span></span>
+                                    <span class="cfg-opt-price" data-slot="computer-high">$160</span>
+                                </label>
+                                <label class="cfg-opt">
+                                    <input type="radio" name="computer" value="none">
+                                    <span class="cfg-opt-body"><strong>No computer</strong><span>I'll run it on a machine I own</span></span>
+                                    <span class="cfg-opt-price">—</span>
+                                </label>
                             </div>
-                        </div>
-                        <dl class="fullnest-spec">
-                            <div><dt>Computer</dt><dd>High Performance</dd></div>
-                            <div><dt>Storage</dt><dd>250 GB SSD</dd></div>
-                            <div><dt>Suits</dt><dd>Everything, with years of history</dd></div>
-                        </dl>
+                        </fieldset>
+
+                        <fieldset class="cfg-group" id="cfg-storage-group">
+                            <legend><span aria-hidden="true">💾</span> Storage <span class="cfg-legend-note">(with the computer)</span></legend>
+                            <div class="cfg-options cfg-options-2">
+                                <label class="cfg-opt">
+                                    <input type="radio" name="storage" value="standard" checked>
+                                    <span class="cfg-opt-body"><strong>Standard — 30 GB SSD</strong><span>Snapshots &amp; recent clips</span></span>
+                                    <span class="cfg-opt-price">$20</span>
+                                </label>
+                                <label class="cfg-opt">
+                                    <input type="radio" name="storage" value="extended">
+                                    <span class="cfg-opt-body"><strong>Extended — 250 GB SSD</strong><span>A full season of video</span></span>
+                                    <span class="cfg-opt-price">$75</span>
+                                </label>
+                            </div>
+                        </fieldset>
+
+                        <fieldset class="cfg-group">
+                            <legend><span aria-hidden="true">🔍</span> Accessories</legend>
+                            <div class="cfg-options cfg-options-1">
+                                <label class="cfg-opt">
+                                    <input type="checkbox" name="macro">
+                                    <span class="cfg-opt-body"><strong>Macro lens</strong><span>Tighter, sharper close-ups of small birds</span></span>
+                                    <span class="cfg-opt-price">$25</span>
+                                </label>
+                            </div>
+                        </fieldset>
+                    </form>
+
+                    <aside class="cfg-summary" aria-label="Your configuration">
+                        <p class="cfg-summary-eyebrow">Your build</p>
+                        <p class="cfg-name" id="cfg-name">The Wren — Indoor</p>
+                        <p class="cfg-total" id="cfg-total-live" role="status" aria-live="polite">
+                            <span class="cfg-total-amount" id="cfg-total">$220</span>
+                            <span class="cfg-total-note">one-time, everything included</span>
+                        </p>
+                        <ul class="cfg-lines" id="cfg-lines"></ul>
+                        <p class="cfg-hint" id="cfg-hint" hidden></p>
                         <button type="button" class="btn btn-disabled btn-block" disabled>Coming Soon</button>
-                    </div>
+                        <p class="cfg-footnote">Complete builds go on sale alongside the ready-to-run computers. In the meantime the software and both Nest kits can be bought today from the tiers above.</p>
+                    </aside>
                 </div>
-
-                <h4 class="fullnest-group">Outdoor <span>— feeder with a built-in camera, mounted on a post</span></h4>
-                <div class="pricing-cards pricing-cards-four">
-                    <div class="pricing-card pricing-card-fullnest">
-                        <div class="pricing-badge pricing-badge-complete">Full Nest</div>
-                        <div class="pricing-header">
-                            <h3>The Wren</h3>
-                            <div class="pricing-price">
-                                <span class="price-amount">$240</span>
-                                <span class="price-period">outdoor · everything included</span>
-                            </div>
-                        </div>
-                        <dl class="fullnest-spec">
-                            <div><dt>Computer</dt><dd>Standard</dd></div>
-                            <div><dt>Storage</dt><dd>30 GB SSD</dd></div>
-                            <div><dt>Suits</dt><dd>A quiet feeder, everyday watching</dd></div>
-                        </dl>
-                        <button type="button" class="btn btn-disabled btn-block" disabled>Coming Soon</button>
-                    </div>
-
-                    <div class="pricing-card pricing-card-fullnest">
-                        <div class="pricing-badge pricing-badge-complete">Full Nest</div>
-                        <div class="pricing-header">
-                            <h3>The Finch</h3>
-                            <div class="pricing-price">
-                                <span class="price-amount">$295</span>
-                                <span class="price-period">outdoor · everything included</span>
-                            </div>
-                        </div>
-                        <dl class="fullnest-spec">
-                            <div><dt>Computer</dt><dd>Standard</dd></div>
-                            <div><dt>Storage</dt><dd>250 GB SSD</dd></div>
-                            <div><dt>Suits</dt><dd>Keeping a full season of video</dd></div>
-                        </dl>
-                        <button type="button" class="btn btn-disabled btn-block" disabled>Coming Soon</button>
-                    </div>
-
-                    <div class="pricing-card pricing-card-fullnest">
-                        <div class="pricing-badge pricing-badge-complete">Full Nest</div>
-                        <div class="pricing-header">
-                            <h3>The Jay</h3>
-                            <div class="pricing-price">
-                                <span class="price-amount">$290</span>
-                                <span class="price-period">outdoor · everything included</span>
-                            </div>
-                        </div>
-                        <dl class="fullnest-spec">
-                            <div><dt>Computer</dt><dd>High Performance</dd></div>
-                            <div><dt>Storage</dt><dd>30 GB SSD</dd></div>
-                            <div><dt>Suits</dt><dd>A busy feeder, faster identification</dd></div>
-                        </dl>
-                        <button type="button" class="btn btn-disabled btn-block" disabled>Coming Soon</button>
-                    </div>
-
-                    <div class="pricing-card pricing-card-fullnest pricing-card-fullnest-top">
-                        <div class="pricing-badge pricing-badge-complete">Full Nest</div>
-                        <div class="pricing-header">
-                            <h3>The Cardinal</h3>
-                            <div class="pricing-price">
-                                <span class="price-amount">$345</span>
-                                <span class="price-period">outdoor · everything included</span>
-                            </div>
-                        </div>
-                        <dl class="fullnest-spec">
-                            <div><dt>Computer</dt><dd>High Performance</dd></div>
-                            <div><dt>Storage</dt><dd>250 GB SSD</dd></div>
-                            <div><dt>Suits</dt><dd>Everything, with years of history</dd></div>
-                        </dl>
-                        <button type="button" class="btn btn-disabled btn-block" disabled>Coming Soon</button>
-                    </div>
-                </div>
-
                 <p class="pricing-note">
-                    🪺 Every Full Nest arrives assembled and configured — the software is already installed on the computer and already pointed at the camera. They go on sale alongside the ready-to-run computers. Until then you can buy <a href="#tier-nest">The Nest</a> today and add a computer whenever you're ready; it costs the same either way.
+                    🪺 Every build arrives assembled and configured — the software is already installed on the computer and already pointed at the camera. Adding pieces later costs exactly the same as buying them together, so starting small never costs you anything.
                 </p>
             </div>
 

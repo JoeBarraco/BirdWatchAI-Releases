@@ -164,3 +164,141 @@ function formatCurrency(amount, currency = 'USD') {
 console.log('%c🐦 BirdWatchAI', 'font-size: 24px; font-weight: bold; color: #2d5a3d;');
 console.log('%cAutomatic bird detection for your backyard feeders.', 'color: #7a756d;');
 console.log('%cInterested in how this works? Check out the GitHub: https://github.com/JoeBarraco/BirdWatchAI', 'color: #3d7a52;');
+
+/* ──────────────────────────────────────────────────────────────
+   Build-your-own configurator (Tier 3)
+
+   Every price here is a component price, and the bundles the page
+   used to list as fixed cards fall out of adding them up:
+     software $50 with hardware / $75 alone
+     feeder   indoor $20, outdoor $40
+     camera   $40
+     computer standard $90 + storage, high performance $140 + storage
+     storage  30 GB $20, 250 GB $75
+   So Nest Indoor = 50+20+40 = $110, and a full Wren Indoor build =
+   50+20+40+(90+20) = $220. Change a number here and every total and
+   every named build follows.
+   ────────────────────────────────────────────────────────────── */
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('cfg-form');
+    if (!form) return;
+
+    const PRICES = {
+        softwareBundled: 50,
+        softwareAlone: 75,
+        feeder: { none: 0, indoor: 20, outdoor: 40 },
+        camera: { none: 0, yes: 40 },
+        computerBase: { none: 0, standard: 90, high: 140 },
+        storage: { standard: 20, extended: 75 },
+        macro: 25
+    };
+
+    // A complete build (software + feeder + camera + computer) is one of the
+    // four named tiers. Anything else is just a custom build.
+    const TIER_NAMES = {
+        'standard|standard': 'The Wren',
+        'standard|extended': 'The Finch',
+        'high|standard': 'The Jay',
+        'high|extended': 'The Cardinal'
+    };
+
+    const els = {
+        total: document.getElementById('cfg-total'),
+        name: document.getElementById('cfg-name'),
+        lines: document.getElementById('cfg-lines'),
+        hint: document.getElementById('cfg-hint'),
+        storageGroup: document.getElementById('cfg-storage-group'),
+        slotSoftware: form.querySelector('[data-slot="software"]'),
+        slotStandard: form.querySelector('[data-slot="computer-standard"]'),
+        slotHigh: form.querySelector('[data-slot="computer-high"]')
+    };
+
+    const money = n => '$' + n;
+    const pick = name => {
+        const el = form.querySelector('input[name="' + name + '"]:checked');
+        return el ? el.value : 'none';
+    };
+
+    function render() {
+        const software = pick('software');
+        const feeder = pick('feeder');
+        const camera = pick('camera');
+        const computer = pick('computer');
+        const storage = pick('storage');
+        const macro = form.querySelector('input[name="macro"]').checked;
+
+        const hasComputer = computer !== 'none';
+        const storageCost = hasComputer ? PRICES.storage[storage] : 0;
+        const computerCost = PRICES.computerBase[computer] + storageCost;
+
+        // Storage only means anything alongside a computer.
+        els.storageGroup.classList.toggle('cfg-group-disabled', !hasComputer);
+        els.storageGroup.querySelectorAll('input').forEach(i => { i.disabled = !hasComputer; });
+
+        // Selected styling is done with :has() in CSS; mirror it onto a class so
+        // the choice still reads as chosen where :has() is unsupported.
+        form.querySelectorAll('.cfg-opt').forEach(label => {
+            const input = label.querySelector('input');
+            label.classList.toggle('cfg-opt-selected', !!input && input.checked);
+        });
+
+        const hasHardware = feeder !== 'none' || camera !== 'none' || hasComputer || macro;
+        const softwareCost = software === 'none'
+            ? 0
+            : (hasHardware ? PRICES.softwareBundled : PRICES.softwareAlone);
+
+        // Keep the prices shown against each choice honest as the build changes.
+        if (els.slotSoftware) els.slotSoftware.textContent = money(hasHardware ? PRICES.softwareBundled : PRICES.softwareAlone);
+        if (els.slotStandard) els.slotStandard.textContent = money(PRICES.computerBase.standard + PRICES.storage[storage]);
+        if (els.slotHigh) els.slotHigh.textContent = money(PRICES.computerBase.high + PRICES.storage[storage]);
+
+        const lines = [];
+        if (software !== 'none') lines.push(['BirdWatchAI license', softwareCost]);
+        if (feeder !== 'none') lines.push([feeder === 'indoor' ? 'Indoor feeder' : 'Outdoor feeder', PRICES.feeder[feeder]]);
+        if (camera !== 'none') lines.push(['Camera', PRICES.camera.yes]);
+        if (hasComputer) {
+            const label = (computer === 'standard' ? 'Standard' : 'High Performance') +
+                ' computer, ' + (storage === 'standard' ? '30 GB' : '250 GB');
+            lines.push([label, computerCost]);
+        }
+        if (macro) lines.push(['Macro lens', PRICES.macro]);
+
+        const total = lines.reduce((sum, l) => sum + l[1], 0);
+
+        els.lines.innerHTML = lines.length
+            ? lines.map(l => '<li><span>' + l[0] + '</span><span>' + money(l[1]) + '</span></li>').join('')
+            : '<li class="cfg-line-empty"><span>Nothing selected yet</span><span></span></li>';
+        els.total.textContent = money(total);
+
+        // Name the build when it is one of the four complete tiers.
+        const complete = software !== 'none' && feeder !== 'none' && camera !== 'none' && hasComputer;
+        const style = feeder === 'indoor' ? 'Indoor' : 'Outdoor';
+        let name;
+        if (complete) {
+            name = TIER_NAMES[computer + '|' + storage] + ' — ' + style;
+        } else if (software !== 'none' && feeder !== 'none' && camera !== 'none') {
+            name = 'The Nest — ' + style;
+        } else if (software !== 'none' && !hasHardware) {
+            name = 'BirdWatchAI Software';
+        } else if (!lines.length) {
+            name = 'Nothing selected';
+        } else {
+            name = 'Custom build';
+        }
+        els.name.textContent = name;
+
+        // The computer ships with the app preinstalled but not licensed, so
+        // say so rather than letting someone buy a machine that runs as a trial.
+        let hint = '';
+        if (hasComputer && software === 'none') {
+            hint = 'The computer arrives with BirdWatchAI preinstalled, but it runs as a 14-day trial until a license is added.';
+        } else if (camera === 'none' && (feeder !== 'none' || hasComputer)) {
+            hint = 'You will need an RTSP camera pointed at the feeder for this to identify anything.';
+        }
+        els.hint.textContent = hint;
+        els.hint.hidden = !hint;
+    }
+
+    form.addEventListener('change', render);
+    render();
+});
