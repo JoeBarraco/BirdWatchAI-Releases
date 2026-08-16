@@ -38,6 +38,7 @@
         <button id="navbar-logout-btn" class="navbar-btn navbar-btn-danger" onclick="toggleModLogin()" title="Log out" style="display:none;">Mod Out</button>
         <button id="navbar-changepw-btn" class="navbar-btn" onclick="showChangePassword()" title="Change password" style="display:none;">🔑 Password</button>
         <button id="navbar-admin-btn" class="navbar-btn" onclick="openAdminPanel()" title="Manage moderators" style="display:none;">👥 Moderators</button>
+        <button id="navbar-communities-btn" class="navbar-btn" onclick="openCommunityPanel()" title="Manage your communities" style="display:none;">🏫 Communities</button>
         <button id="navbar-flags-btn" class="navbar-btn" onclick="openFlagQueue()" title="Review flagged detections" style="display:none;">🚩 Flags</button>
         <button id="navbar-comments-history-btn" class="navbar-btn" onclick="openCommentsHistory()" title="Review comments across all detections" style="display:none;">💬 Comments</button>
     </div>
@@ -97,6 +98,16 @@
             <label class="filter-label" for="feeder-filter">Feeder</label>
             <select id="feeder-filter" class="filter-select">
                 <option value="">All feeders</option>
+            </select>
+        </div>
+
+        <!-- Only rendered for signed-in members of at least one community; see
+             renderCommunityFilter() in community-communities.js. -->
+        <div class="filter-group" id="community-filter-group" style="display:none;">
+            <label class="filter-label" for="community-filter">Community</label>
+            <select id="community-filter" class="filter-select"
+                    onchange="onCommunityFilterChange(this.value)">
+                <option value="">All I can see</option>
             </select>
         </div>
 
@@ -497,8 +508,67 @@
             <button onclick="doAdminAddUser()">+ Invite</button>
         </div>
         <div id="mod-add-status" style="font-size:0.8rem;margin-top:0.5rem;display:none;"></div>
+
+        <h4 style="font-size:0.9rem;margin:1.5rem 0 0.5rem;color:var(--color-gray-900);">Create a Community</h4>
+        <p style="font-size:0.8rem;color:var(--color-gray-500);margin-bottom:0.5rem;">
+            Private communities are hidden from the public feed and are never listed —
+            feeder owners join with the code below. The owner must already have signed in
+            once with their email (Sign In, not Mod login), since community ownership is
+            enforced against a real account.
+        </p>
+        <div class="mod-add-form">
+            <input type="text" id="community-create-name" placeholder="Name, e.g. Lincoln Elementary"
+                   oninput="suggestCommunitySlug()">
+            <input type="text" id="community-create-slug" placeholder="code, e.g. lincoln-elementary"
+                   oninput="this.dataset.touched='1'">
+        </div>
+        <div class="mod-add-form" style="margin-top:0.4rem;">
+            <input type="email" id="community-create-owner" placeholder="Owner email address">
+            <select id="community-create-visibility">
+                <option value="private">Private</option>
+                <option value="public">Public</option>
+            </select>
+            <button onclick="createCommunityFromAdmin()">+ Create</button>
+        </div>
+        <div id="community-create-status" style="font-size:0.8rem;margin-top:0.5rem;display:none;"></div>
+
         <div class="mod-btn-row" style="margin-top:1.25rem;">
             <button class="mod-btn-cancel" onclick="closeAdminPanel()">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Community owner / moderator panel: approve feeder join requests, invite people -->
+<div id="community-panel-modal" role="dialog" aria-modal="true">
+    <div class="mod-admin-box">
+        <h3>Manage Community</h3>
+        <select id="community-panel-select" onchange="refreshCommunityPanel()"
+                style="width:100%;margin-bottom:0.75rem;"></select>
+
+        <h4 style="font-size:0.9rem;margin-bottom:0.5rem;color:var(--color-gray-900);">Feeders awaiting approval</h4>
+        <ul id="community-pending-list" class="mod-user-list">
+            <li style="color:var(--color-gray-500)">Loading…</li>
+        </ul>
+
+        <h4 style="font-size:0.9rem;margin:1.25rem 0 0.5rem;color:var(--color-gray-900);">Invite a person</h4>
+        <p style="font-size:0.8rem;color:var(--color-gray-500);margin-bottom:0.5rem;">
+            No email is sent. The invite is held against the address and applied automatically
+            the next time they sign in with it — so there is nothing to forward and no link to leak.
+            Paste one address at a time.
+        </p>
+        <div class="mod-add-form">
+            <input type="email" id="community-invite-email" placeholder="Email address">
+            <select id="community-invite-role">
+                <option value="viewer">Viewer</option>
+                <option value="moderator">Moderator</option>
+            </select>
+            <button onclick="inviteToCommunity()">+ Invite</button>
+            <button class="mod-remove-btn" onclick="revokeCommunityInvite()">Revoke</button>
+        </div>
+        <div id="community-invite-status" style="font-size:0.8rem;margin-top:0.5rem;display:none;"></div>
+
+        <div class="mod-btn-row" style="margin-top:1.25rem;">
+            <button class="mod-btn-cancel" onclick="closeCommunityPanel()">Close</button>
         </div>
     </div>
 </div>
@@ -631,6 +701,7 @@
 <script src="js/community-views.js"></script>
 <script src="js/community-social.js"></script>
 <script src="js/community-auth.js"></script>
+<script src="js/community-communities.js"></script>
 <!-- Interactive chart runtime: crosshair tooltips on the trend chart, per-species hover rows on
      the Activity / Calendar / Rarity Mix charts. No-op until a [data-bw-chart] element appears. -->
 <script src="js/community-charts.js"></script>

@@ -210,6 +210,10 @@ function applyClientFilters(data) {
         if (species       && d.species               !== species) return false;
         if (rarity        && d.rarity                !== rarity)  return false;
         if (feeder        && d.feeders?.display_name !== feeder)  return false;
+        // Community scope (community-communities.js). Guarded so the feed still
+        // renders if that file hasn't loaded, and the helper itself fails open.
+        if (typeof communityFilterExcludes === 'function'
+            && communityFilterExcludes(d)) return false;
         if (coords) {
             const pt = (typeof detectionMapPoint === 'function')
                 ? detectionMapPoint(d, feederGps)

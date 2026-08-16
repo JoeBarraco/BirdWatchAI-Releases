@@ -1465,6 +1465,14 @@ async function loadUserProfile() {
             }
         }
     } catch (_) {}
+
+    // Claim any community invites waiting on this address, then load the
+    // communities this user belongs to. Invites are keyed by email precisely
+    // because the invitee usually has no account when they're invited, so this
+    // is the moment the membership actually comes into being.
+    if (typeof redeemCommunityInvites === 'function') {
+        try { await redeemCommunityInvites(); } catch (_) {}
+    }
 }
 
 function openUserLogin() {

@@ -1058,6 +1058,81 @@ $$;
 revoke execute on function community_create(text, text, text, uuid) from anon;
 revoke execute on function community_create(text, text, text, uuid) from authenticated;
 
+-- Admin-facing wrapper, called from the "Create community" form in the
+-- dashboard's admin panel.
+--
+-- Authenticated with MODERATOR credentials rather than a JWT, matching
+-- moderator_add_user and the rest of that family: the platform-admin identity
+-- lives in the `moderators` table and has no Supabase Auth session.
+--
+-- The OWNER is different and must be a real auth.users row, because community
+-- ownership is enforced by RLS through auth.uid(). A moderators row cannot own
+-- a community — it would be invisible to every policy. So the owner is given by
+-- email and resolved here, which also lets an admin hand a school's community
+-- straight to the teacher who will run it.
+drop function if exists community_admin_create(text, text, text, text, text, text);
+
+create or replace function community_admin_create(
+  p_email       text,
+  p_password    text,
+  p_slug        text,
+  p_name        text,
+  p_visibility  text,
+  p_owner_email text
+)
+returns json
+language plpgsql security definer
+set search_path = public
+as $$
+declare
+  admin_role text;
+  owner_id   uuid;
+  new_id     uuid;
+begin
+  select role into admin_role
+  from moderators
+  where email = lower(trim(p_email))
+    and password_hash = crypt(p_password, password_hash);
+
+  if admin_role is null or admin_role <> 'admin' then
+    raise exception 'Admin access required';
+  end if;
+
+  if p_visibility not in ('public', 'private') then
+    raise exception 'Visibility must be public or private';
+  end if;
+
+  if lower(trim(p_slug)) !~ '^[a-z0-9-]+$' then
+    raise exception 'Code must be lowercase letters, numbers and hyphens only';
+  end if;
+
+  select id into owner_id
+  from auth.users
+  where lower(email) = lower(trim(p_owner_email));
+
+  if owner_id is null then
+    raise exception
+      'No account for % — they must sign in once with that email (Sign In, not Mod login) before they can own a community',
+      p_owner_email;
+  end if;
+
+  if exists (select 1 from communities where slug = lower(trim(p_slug))) then
+    raise exception 'The code "%" is already taken', lower(trim(p_slug));
+  end if;
+
+  new_id := community_create(p_slug, p_name, p_visibility, owner_id);
+
+  return json_build_object(
+    'id',    new_id,
+    'slug',  lower(trim(p_slug)),
+    'name',  trim(p_name),
+    'owner', lower(trim(p_owner_email))
+  );
+end;
+$$;
+
+grant execute on function community_admin_create(text, text, text, text, text, text) to anon;
+
 
 -- ============================================================
 -- 9. Post-migration verification — run these before walking away.

@@ -2051,12 +2051,14 @@
         .mod-actions .mod-delete-btn:hover { border-color: #e74c3c; color: #e74c3c; }
 
         /* Admin panel modal */
-        #mod-admin-modal {
+        #mod-admin-modal,
+        #community-panel-modal {
             display: none; position: fixed; inset: 0;
             background: rgba(0,0,0,0.5); z-index: 9550;
             justify-content: center; align-items: center;
         }
-        #mod-admin-modal.open { display: flex; }
+        #mod-admin-modal.open,
+        #community-panel-modal.open { display: flex; }
         .mod-admin-box {
             background: var(--bg-card); border-radius: 12px;
             padding: 2rem; width: 480px; max-width: 90vw;
