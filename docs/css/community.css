@@ -224,6 +224,30 @@
             color: white;
         }
 
+        /* Community scope picker.
+           Set apart from the filters that follow it because it is a different
+           kind of control: it decides WHICH SET everything after it describes,
+           rather than narrowing within one. The rule earns its keep by making
+           that readable at a glance instead of something to be learned. */
+        .filter-group-community {
+            padding-right: 1rem;
+            margin-right: 0.25rem;
+            border-right: 1px solid var(--border);
+        }
+        .filter-group-community .filter-label {
+            color: var(--color-primary);
+            font-weight: 600;
+        }
+        /* The divider implies "everything to the right belongs to this scope",
+           which is false once the bar wraps to one control per line. */
+        @media (max-width: 900px) {
+            .filter-group-community {
+                border-right: none;
+                padding-right: 0;
+                margin-right: 0;
+            }
+        }
+
         /* Search input */
         .filter-group-search { flex-basis: 100%; }
         .search-input { min-width: 240px; flex: 1; }

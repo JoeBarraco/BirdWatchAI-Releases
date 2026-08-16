@@ -61,6 +61,19 @@
 
     <!-- Filter bar -->
     <div class="filter-bar" role="search" aria-label="Filter detections">
+        <!-- Deliberately FIRST. A community is the scope, not another filter:
+             you choose which set you are looking at, then filter within it.
+             Everything after this describes the selected community. Only
+             rendered for signed-in members of at least one community — see
+             renderCommunityFilter() in community-communities.js. -->
+        <div class="filter-group filter-group-community" id="community-filter-group" style="display:none;">
+            <label class="filter-label" for="community-filter">Community</label>
+            <select id="community-filter" class="filter-select"
+                    onchange="onCommunityFilterChange(this.value)">
+                <option value="">All I can see</option>
+            </select>
+        </div>
+
         <div class="filter-group filter-group-search">
             <label class="filter-label" for="search-input">Search</label>
             <input id="search-input" class="filter-input search-input" type="search" placeholder="Search species, feeders, notes…" aria-label="Search detections">
@@ -98,16 +111,6 @@
             <label class="filter-label" for="feeder-filter">Feeder</label>
             <select id="feeder-filter" class="filter-select">
                 <option value="">All feeders</option>
-            </select>
-        </div>
-
-        <!-- Only rendered for signed-in members of at least one community; see
-             renderCommunityFilter() in community-communities.js. -->
-        <div class="filter-group" id="community-filter-group" style="display:none;">
-            <label class="filter-label" for="community-filter">Community</label>
-            <select id="community-filter" class="filter-select"
-                    onchange="onCommunityFilterChange(this.value)">
-                <option value="">All I can see</option>
             </select>
         </div>
 
