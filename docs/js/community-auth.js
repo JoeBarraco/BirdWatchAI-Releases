@@ -475,6 +475,8 @@ document.getElementById('mod-login-modal').addEventListener('click', e => {
 async function openAdminPanel() {
     if (!isAdmin()) return;
     document.getElementById('mod-admin-modal').classList.add('open');
+    // Community roster loads in parallel (community-communities.js).
+    if (typeof refreshCommunityAdminList === 'function') refreshCommunityAdminList();
     await refreshModUserList();
 }
 

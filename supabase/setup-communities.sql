@@ -1433,6 +1433,104 @@ $$;
 
 grant execute on function community_admin_create(text, text, text, text, text, text) to anon;
 
+-- Admin roster of every community, with counts, for the admin panel.
+-- Moderator-credential authenticated, like community_admin_create.
+drop function if exists community_admin_list(text, text);
+
+create or replace function community_admin_list(p_email text, p_password text)
+returns json
+language plpgsql security definer
+-- `extensions` for crypt(); see the note on community_admin_create.
+set search_path = public, extensions
+as $$
+declare
+  admin_role text;
+  result     json;
+begin
+  select role into admin_role
+  from moderators
+  where email = lower(trim(p_email))
+    and password_hash = crypt(p_password, password_hash);
+
+  if admin_role is null or admin_role <> 'admin' then
+    raise exception 'Admin access required';
+  end if;
+
+  select json_agg(row_to_json(t) order by t.name) into result
+  from (
+    select c.id, c.slug, c.name, c.visibility, c.created_at,
+           (select count(*) from community_feeders cf where cf.community_id = c.id) as feeder_count,
+           (select count(*) from community_members m  where m.community_id  = c.id) as member_count
+    from communities c
+  ) t;
+
+  return coalesce(result, '[]'::json);
+end;
+$$;
+
+grant execute on function community_admin_list(text, text) to anon;
+
+-- Delete a community — only when it has no feeders.
+--
+-- Visibility is derived from membership, so a feeder whose ONLY community is
+-- deleted ends up in no community at all: invisible to everyone including its
+-- own owner, still publishing into nothing. Refusing while feeders remain makes
+-- that impossible rather than merely warned about, and the admin removes them
+-- (or moves them) first.
+--
+-- The built-in `public` community is never deletable: new feeders auto-join it,
+-- and the migration's backfill assumes it exists.
+drop function if exists community_admin_delete(text, text, uuid);
+
+create or replace function community_admin_delete(
+  p_email        text,
+  p_password     text,
+  p_community_id uuid
+)
+returns json
+language plpgsql security definer
+set search_path = public, extensions
+as $$
+declare
+  admin_role text;
+  c_slug     text;
+  c_name     text;
+  n_feeders  int;
+begin
+  select role into admin_role
+  from moderators
+  where email = lower(trim(p_email))
+    and password_hash = crypt(p_password, password_hash);
+
+  if admin_role is null or admin_role <> 'admin' then
+    raise exception 'Admin access required';
+  end if;
+
+  select slug, name into c_slug, c_name from communities where id = p_community_id;
+  if c_slug is null then
+    raise exception 'No such community';
+  end if;
+
+  if c_slug = 'public' then
+    raise exception 'The Public Feed cannot be deleted — new feeders join it automatically';
+  end if;
+
+  select count(*) into n_feeders from community_feeders where community_id = p_community_id;
+  if n_feeders > 0 then
+    raise exception
+      'Remove its % feeder(s) first. Deleting a community with feeders still in it can leave a feeder in no community at all, which makes it invisible to everyone including its owner.',
+      n_feeders;
+  end if;
+
+  -- Cascades to community_members and community_invites.
+  delete from communities where id = p_community_id;
+
+  return json_build_object('deleted', true, 'name', c_name, 'slug', c_slug);
+end;
+$$;
+
+grant execute on function community_admin_delete(text, text, uuid) to anon;
+
 
 -- ============================================================
 -- 9. Post-migration verification — run these before walking away.

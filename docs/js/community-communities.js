@@ -724,7 +724,73 @@ async function createCommunityFromAdmin() {
     document.getElementById('community-create-name').value  = '';
     document.getElementById('community-create-slug').value  = '';
     document.getElementById('community-create-owner').value = '';
+    await refreshCommunityAdminList();
     await loadMyCommunities();
+}
+
+// ── Admin: the community roster ──────────────────────────
+
+async function refreshCommunityAdminList() {
+    const list = document.getElementById('community-admin-list');
+    if (!list) return;
+
+    const { email, password } = getModCreds();
+    if (!email) { list.innerHTML = ''; return; }
+
+    list.innerHTML = '<li style="color:var(--color-gray-500)">Loading…</li>';
+    const { data, error } = await sbRpc('community_admin_list',
+        { p_email: email, p_password: password }, false);
+
+    if (error) {
+        list.innerHTML = `<li style="color:#e74c3c">${esc(error.message || 'Failed to load')}</li>`;
+        return;
+    }
+    if (!Array.isArray(data) || !data.length) {
+        list.innerHTML = '<li style="color:var(--color-gray-500)">No communities yet.</li>';
+        return;
+    }
+
+    list.innerHTML = data.map(c => {
+        const counts = `${c.feeder_count} feeder${c.feeder_count === 1 ? '' : 's'} · ` +
+                       `${c.member_count} member${c.member_count === 1 ? '' : 's'}`;
+        const meta = `${c.visibility === 'private' ? '🔒 private' : '🌐 public'} · code ${c.slug} · ${counts}`;
+
+        // Delete is offered ONLY for an empty community, and never for the
+        // built-in public feed. The server enforces both; this keeps a button
+        // that is guaranteed to fail off the screen.
+        const action = (c.slug !== 'public' && c.feeder_count === 0)
+            ? `<button class="mod-remove-btn" onclick="deleteCommunityAsAdmin('${esc(c.id)}','${esc(c.name)}')">Delete</button>`
+            : `<span style="font-size:0.75rem;color:var(--color-gray-500);">${
+                   c.slug === 'public' ? 'built-in' : 'has feeders'}</span>`;
+
+        return `
+            <li>
+                <div class="mod-user-info">
+                    <strong>${esc(c.name)}</strong>
+                    <span style="font-size:0.75rem;color:var(--color-gray-500);">${esc(meta)}</span>
+                </div>
+                <span>${action}</span>
+            </li>`;
+    }).join('');
+}
+
+async function deleteCommunityAsAdmin(communityId, name) {
+    if (!confirm(
+        `Delete the community "${name}"?\n\n` +
+        'Its members and any outstanding invites are removed with it. No feeders, ' +
+        'detections, photos or user accounts are touched.\n\nThis cannot be undone.'
+    )) return;
+
+    const { email, password } = getModCreds();
+    const { error } = await sbRpc('community_admin_delete', {
+        p_email: email, p_password: password, p_community_id: communityId,
+    }, false);
+
+    if (error) { showToast('Error: ' + (error.message || 'delete failed')); return; }
+
+    showToast(`Deleted "${name}".`);
+    await refreshCommunityAdminList();
+    await loadMyCommunities();   // it may have been in the viewer's own list
 }
 
 // Suggest a slug from the typed name, but let the admin override it — the slug
