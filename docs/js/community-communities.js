@@ -73,6 +73,15 @@ async function loadCommunityFeederIndex(force) {
 // Called from applyClientFilters in community-core.js. Returns true to DROP the
 // detection. Fails open — if the index hasn't loaded, show everything rather
 // than blanking the feed.
+// The feeder ids in the selected community, or null when no community is
+// selected. Lets other views respect the scope without reaching into this
+// file's internals — the map uses it to avoid plotting every feeder on the
+// platform while you're looking at one community.
+function communityScopeFeederIds() {
+    if (!selectedCommunity || !communityFeederIndex) return null;
+    return communityFeederIndex.get(selectedCommunity) || null;
+}
+
 function communityFilterExcludes(d) {
     if (!selectedCommunity) return false;
     if (!communityFeederIndex) return false;
@@ -282,6 +291,8 @@ async function refreshCommunityPanel() {
         if (!isOwner) roleSel.value = 'viewer';
     }
 
+    refreshCommunityMembers();   // independent list; let it load in parallel
+
     list.innerHTML = '<li>Loading…</li>';
     // The full roster, not just the approval queue — pending first. One list
     // rather than two, so a pending feeder doesn't appear twice.
@@ -324,6 +335,81 @@ async function refreshCommunityPanel() {
                 <span>${actions}</span>
             </li>`;
     }).join('');
+}
+
+async function refreshCommunityMembers() {
+    const cid  = document.getElementById('community-panel-select').value;
+    const list = document.getElementById('community-member-list');
+    if (!cid || !list) return;
+
+    const isOwner = communityRoleIn(cid) === 'owner';
+    list.innerHTML = '<li>Loading…</li>';
+
+    const { data, error } = await sbRpc('community_members_list', { p_community_id: cid }, true);
+    if (error) {
+        list.innerHTML = `<li style="color:#e74c3c">${esc(error.message || 'Failed to load')}</li>`;
+        return;
+    }
+    if (!Array.isArray(data) || !data.length) {
+        list.innerHTML = '<li style="color:var(--color-gray-500)">Nobody has been invited yet.</li>';
+        return;
+    }
+
+    list.innerHTML = data.map(m => {
+        const invited = m.kind === 'invite';
+        const meta = invited
+            ? `invited as ${m.role} · hasn't signed in yet`
+            : `${m.role}${m.email && m.email !== m.label ? ' · ' + m.email : ''}`;
+
+        // The owner can't be removed, and only an owner may remove a moderator
+        // — the server enforces both; this just avoids offering a button that
+        // will fail.
+        let action = '';
+        if (invited) {
+            action = `<button class="mod-remove-btn" onclick="revokeInviteFor('${esc(cid)}','${esc(m.id)}')">Revoke</button>`;
+        } else if (m.role === 'owner') {
+            action = '<span style="font-size:0.75rem;color:var(--color-gray-500);">owner</span>';
+        } else if (m.role !== 'moderator' || isOwner) {
+            action = `<button class="mod-remove-btn" onclick="removeCommunityMember('${esc(cid)}','${esc(m.id)}','${esc(m.label)}')">Remove</button>`;
+        }
+
+        return `
+            <li>
+                <div class="mod-user-info">
+                    <strong>${esc(m.label)}</strong>
+                    <span style="font-size:0.75rem;color:var(--color-gray-500);">${esc(meta)}</span>
+                </div>
+                <span>${action}</span>
+            </li>`;
+    }).join('');
+}
+
+async function removeCommunityMember(communityId, userId, label) {
+    if (!confirm(
+        `Remove ${label} from this community?\n\n` +
+        'They immediately lose access to its feeders and sightings. Their account, ' +
+        'life list and comments are untouched, and you can invite them again.\n\nContinue?'
+    )) return;
+
+    const { error } = await sbRpc('community_remove_member', {
+        p_community_id: communityId,
+        p_user_id:      userId,
+    }, true);
+    if (error) { showToast('Error: ' + (error.message || 'remove failed')); return; }
+    showToast(`Removed ${label}.`);
+    await refreshCommunityMembers();
+}
+
+async function revokeInviteFor(communityId, email) {
+    if (!confirm(`Revoke the invite for ${email}?\n\nThey won't gain access when they next sign in.`)) return;
+
+    const { error } = await sbRpc('community_revoke_invite', {
+        p_community_id: communityId,
+        p_email:        email,
+    }, true);
+    if (error) { showToast('Error: ' + (error.message || 'revoke failed')); return; }
+    showToast(`Invite for ${email} revoked.`);
+    await refreshCommunityMembers();
 }
 
 async function removeFeederFromCommunity(communityId, feederId, displayName) {
@@ -376,6 +462,7 @@ async function inviteToCommunity() {
         return;
     }
     document.getElementById('community-invite-email').value = '';
+    await refreshCommunityMembers();
     status.style.color = '#2eaa4f';
     // No email is sent. Invites are keyed by address and redeemed by
     // community_redeem_invites() on the recipient's next sign-in, so all they

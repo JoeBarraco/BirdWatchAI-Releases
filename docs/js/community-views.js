@@ -193,9 +193,17 @@ function makeFeederIcon(online) {
 
 function collectFeederPins() {
     if (!Array.isArray(allFeeders) || !allFeeders.length) return [];
+    // Respect the community scope. Detection pins go through applyClientFilters
+    // and are already scoped; feeder pins are collected separately and were
+    // not, so selecting a community left every feeder on the platform on the
+    // map. Null when no community is selected (community-communities.js).
+    const scopeIds = (typeof communityScopeFeederIds === 'function')
+        ? communityScopeFeederIds()
+        : null;
     const seen = new Set();
     const pins = [];
     for (const f of allFeeders) {
+        if (scopeIds && !scopeIds.has(String(f.id || f.feeder_id))) continue;
         if (!hasGps(f)) continue;
         const lat = +f.latitude, lng = +f.longitude;
         const key = `${lat.toFixed(4)},${lng.toFixed(4)}|${f.display_name || ''}`;

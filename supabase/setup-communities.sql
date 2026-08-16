@@ -1126,6 +1126,50 @@ begin
 end;
 $$;
 
+-- Who is in this community, and who has been invited but hasn't shown up yet.
+--
+-- Members and outstanding invites in one list because they are the same
+-- question from the owner's side — "who can see this?" — and an invite is just
+-- a membership that hasn't been claimed. Keeping them apart would mean an owner
+-- revoking access has to remember to check two places.
+create or replace function community_members_list(p_community_id uuid)
+returns json
+language plpgsql security definer
+set search_path = public
+as $$
+declare
+  result json;
+begin
+  perform community_require_role(p_community_id, auth.uid(),
+                                 array['owner', 'moderator']);
+
+  select json_agg(row_to_json(t) order by t.sort_rank, t.label) into result
+  from (
+    select 'member'::text                          as kind,
+           m.user_id::text                         as id,
+           m.role,
+           coalesce(nullif(p.display_name, ''), u.email, 'Member') as label,
+           u.email                                 as email,
+           m.created_at                            as at,
+           case m.role when 'owner' then 0 when 'moderator' then 1 else 2 end as sort_rank
+    from community_members m
+    left join user_profiles p on p.id = m.user_id
+    left join auth.users    u on u.id = m.user_id
+    where m.community_id = p_community_id
+
+    union all
+
+    select 'invite'::text, i.email, i.role, i.email, i.email, i.created_at, 3
+    from community_invites i
+    where i.community_id = p_community_id
+      and i.redeemed_at is null
+      and i.expires_at > now()
+  ) t;
+
+  return coalesce(result, '[]'::json);
+end;
+$$;
+
 -- Invite a person by email. Moderators may only invite viewers; letting
 -- them mint moderators would make a compromised teacher account an
 -- escalation path.
@@ -1266,6 +1310,7 @@ $$;
 grant execute on function community_my_communities()                       to authenticated;
 grant execute on function community_pending_feeders(uuid)                  to authenticated;
 grant execute on function community_feeders_list(uuid)                     to authenticated;
+grant execute on function community_members_list(uuid)                     to authenticated;
 grant execute on function community_remove_feeder(uuid, uuid)              to authenticated;
 grant execute on function community_decide_feeder(uuid, uuid, text)        to authenticated;
 grant execute on function community_invite(uuid, text, text)               to authenticated;
