@@ -202,6 +202,14 @@ document.addEventListener('DOMContentLoaded', function () {
         'high|extended': 'The Cardinal'
     };
 
+    // Builds that can actually be bought today. Anything else is Coming Soon,
+    // because it contains a computer and those are not on sale yet.
+    const BUYABLE = {
+        'software': { url: 'https://birdbrainllc.gumroad.com/l/dajhd', label: 'Buy the software' },
+        'software+indoor+camera': { url: 'https://birdbrainllc.gumroad.com/l/dzjxfn', label: 'Buy The Nest Indoor' },
+        'software+outdoor+camera': { url: 'https://birdbrainllc.gumroad.com/l/irvwmy', label: 'Buy The Nest Outdoor' }
+    };
+
     const els = {
         total: document.getElementById('cfg-total'),
         name: document.getElementById('cfg-name'),
@@ -209,7 +217,10 @@ document.addEventListener('DOMContentLoaded', function () {
         hint: document.getElementById('cfg-hint'),
         storageRow: document.getElementById('cfg-storage-row'),
         selSoftware: document.getElementById('cfg-software'),
-        selComputer: document.getElementById('cfg-computer')
+        selComputer: document.getElementById('cfg-computer'),
+        buy: document.getElementById('cfg-buy'),
+        soon: document.getElementById('cfg-soon'),
+        footnote: document.getElementById('cfg-footnote')
     };
 
     const money = n => '$' + n;
@@ -252,22 +263,34 @@ document.addEventListener('DOMContentLoaded', function () {
         relabel(els.selComputer, 'standard', PRICES.computerBase.standard + PRICES.storage[storage]);
         relabel(els.selComputer, 'high', PRICES.computerBase.high + PRICES.storage[storage]);
 
-        const lines = [];
-        if (software !== 'none') lines.push(['BirdWatchAI license', softwareCost]);
-        if (feeder !== 'none') lines.push([feeder === 'indoor' ? 'Indoor feeder' : 'Outdoor feeder', PRICES.feeder[feeder]]);
-        if (camera !== 'none') lines.push(['Camera', PRICES.camera.yes]);
-        if (hasComputer) {
-            const label = (computer === 'standard' ? 'Standard' : 'High Performance') +
-                ' computer, ' + (storage === 'standard' ? '30 GB' : '250 GB');
-            lines.push([label, computerCost]);
-        }
-        if (macro) lines.push(['Macro lens', PRICES.macro]);
+        // Every piece gets a line, in or out. Leaving the skipped ones off the
+        // list hid what a build was missing — the whole point of the summary is
+        // that you can see you are not getting a feeder.
+        const lines = [
+            software !== 'none'
+                ? ['BirdWatchAI license', softwareCost]
+                : ['Software', null],
+            feeder !== 'none'
+                ? [feeder === 'indoor' ? 'Indoor feeder' : 'Outdoor feeder', PRICES.feeder[feeder]]
+                : ['Feeder', null],
+            camera !== 'none'
+                ? ['Camera', PRICES.camera.yes]
+                : ['Camera', null],
+            hasComputer
+                ? [(computer === 'standard' ? 'Standard' : 'High Performance') + ' computer, ' +
+                   (storage === 'standard' ? '30 GB' : '250 GB'), computerCost]
+                : ['Computer', null],
+            macro
+                ? ['Macro lens', PRICES.macro]
+                : ['Macro lens', null]
+        ];
 
-        const total = lines.reduce((sum, l) => sum + l[1], 0);
+        const total = lines.reduce((sum, l) => sum + (l[1] || 0), 0);
 
-        els.lines.innerHTML = lines.length
-            ? lines.map(l => '<li><span>' + l[0] + '</span><span>' + money(l[1]) + '</span></li>').join('')
-            : '<li class="cfg-line-empty"><span>Nothing selected yet</span><span></span></li>';
+        els.lines.innerHTML = lines.map(l => l[1] === null
+            ? '<li class="cfg-line-out"><span>' + l[0] + '</span><span>Not included</span></li>'
+            : '<li><span>' + l[0] + '</span><span>' + money(l[1]) + '</span></li>'
+        ).join('');
 
         // Flash the total when it moves. On a narrow screen the summary can sit
         // below the fold of whatever you just changed, so a silent update reads
@@ -290,7 +313,7 @@ document.addEventListener('DOMContentLoaded', function () {
             name = 'The Nest — ' + style;
         } else if (software !== 'none' && !hasHardware) {
             name = 'BirdWatchAI Software';
-        } else if (!lines.length) {
+        } else if (total === 0) {
             name = 'Nothing selected';
         } else {
             name = 'Custom build';
@@ -307,6 +330,37 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         els.hint.textContent = hint;
         els.hint.hidden = !hint;
+
+        // Offer the real Gumroad link when the build is one we can ship today,
+        // so the builder is the way to buy and not just the way to price.
+        const key = [
+            software !== 'none' ? 'software' : null,
+            feeder !== 'none' ? feeder : null,
+            camera !== 'none' ? 'camera' : null,
+            hasComputer ? computer : null,
+            macro ? 'macro' : null
+        ].filter(Boolean).join('+');
+        const sellable = BUYABLE[key];
+
+        if (els.buy && els.soon) {
+            if (sellable) {
+                els.buy.href = sellable.url;
+                els.buy.textContent = sellable.label + ' — ' + money(total);
+                els.buy.hidden = false;
+                els.soon.hidden = true;
+            } else {
+                els.buy.hidden = true;
+                els.soon.hidden = false;
+            }
+        }
+
+        if (els.footnote) {
+            els.footnote.textContent = sellable
+                ? 'Secure payment via Gumroad. Your license key is emailed within 24 hours.'
+                : (total === 0
+                    ? 'Choose at least one piece to see a price.'
+                    : 'Builds that include a computer go on sale alongside the ready-to-run machines. The software on its own and both feeder kits can be bought today.');
+        }
     }
 
     // A throw inside render() would leave the total frozen on whatever it last

@@ -21,7 +21,7 @@
          GitHub Pages serves these with a 10-minute max-age, so without it a
          browser can pair new HTML with the previous JS, and a mismatch there
          silently breaks anything scripted (the pricing configurator especially). -->
-    <link rel="stylesheet" href="css/style.css?v=20260816b">
+    <link rel="stylesheet" href="css/style.css?v=20260816c">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="icon" type="image/png" href="images/favicon.png">
     <link rel="manifest" href="manifest.json">
@@ -487,129 +487,108 @@
                         <p>Runs the software around the clock</p>
                     </div>
                 </div>
-                <p class="pricing-needs-note">Three tiers, by how many of those four you already own. Start where you are — every tier is a one-time purchase, and you can add the missing pieces later at the same price.</p>
+                <p class="pricing-needs-note">Bring the ones you already own and buy the rest. Below is what each piece is; <a href="#build">the builder</a> at the bottom is where you choose and see the price.</p>
             </div>
 
-            <!-- ── TIER 1 ─────────────────────────────────────────── -->
-            <div class="pricing-tier" id="tier-software">
+            <!-- ── WHAT'S AVAILABLE ───────────────────────────────── -->
+            <div class="pricing-tier" id="options">
                 <div class="pricing-tier-head">
-                    <p class="pricing-tier-eyebrow">Tier 1</p>
-                    <h3>Just the Software</h3>
-                    <p class="pricing-tier-lead">You already have a feeder, a camera and a computer. All you need is the part that watches and identifies.</p>
-                    <ul class="pricing-includes pricing-includes-lg">
-                        <li class="pricing-include yes"><span aria-hidden="true">🧠</span> Software<span class="visually-hidden"> included</span></li>
-                        <li class="pricing-include no"><span aria-hidden="true">🪺</span> Feeder<span class="visually-hidden"> not included</span></li>
-                        <li class="pricing-include no"><span aria-hidden="true">📷</span> Camera<span class="visually-hidden"> not included</span></li>
-                        <li class="pricing-include no"><span aria-hidden="true">💻</span> Computer<span class="visually-hidden"> not included</span></li>
-                    </ul>
+                    <p class="pricing-tier-eyebrow">The pieces</p>
+                    <h3>What's Available</h3>
+                    <p class="pricing-tier-lead">Four things to choose between, and a lens if you want one. No prices here on purpose — pick what you want in the builder below and it totals everything up in one place.</p>
                 </div>
 
-                <div class="pricing-cards pricing-cards-one">
-                    <div class="pricing-card pricing-card-featured">
-                        <div class="pricing-badge pricing-badge-soon">Software Only</div>
-                        <div class="pricing-header">
-                            <h3>BirdWatchAI Software</h3>
-                            <div class="pricing-price">
-                                <span class="price-amount">$75</span>
-                                <span class="price-period">one-time — free for the first 14 days</span>
-                            </div>
-                        </div>
-                        <p class="pricing-description">Download it and run it on the feeder, camera and computer you already have. The same build is the trial and the full version — a license key unlocks it.</p>
+                <h4 class="fullnest-group"><span aria-hidden="true">🧠</span> Software</h4>
+                <div class="opt-cards opt-cards-1">
+                    <div class="opt-card">
+                        <h5>BirdWatchAI</h5>
+                        <p>The part that watches the camera and tells you what landed. Runs on a computer in your home rather than in the cloud, so your footage never leaves the house unless you choose to share it.</p>
                         <ul class="pricing-features">
-                            <li><span class="check">✓</span> Full feature access from day one</li>
-                            <li><span class="check">✓</span> AI bird identification</li>
+                            <li><span class="check">✓</span> Identifies 965+ North American species</li>
                             <li><span class="check">✓</span> Email &amp; push notifications</li>
-                            <li><span class="check">✓</span> Snapshots &amp; video recording</li>
-                            <li><span class="check">✓</span> Summary reports</li>
-                            <li><span class="check">✓</span> Lifetime license, free updates</li>
-                            <li><span class="check">✓</span> Email support</li>
-                            <li><span class="check">✓</span> Support indie development</li>
+                            <li><span class="check">✓</span> Snapshots, video clips &amp; summary reports</li>
+                            <li><span class="check">✓</span> Statistics, life list and a species gallery</li>
+                            <li><span class="check">✓</span> Optional sharing to the community feed</li>
+                            <li><span class="check">✓</span> Lifetime license, free updates, email support</li>
                         </ul>
-                        <div class="pricing-actions">
-                            <a href="https://birdbrainllc.gumroad.com/l/dajhd" target="_blank" class="btn btn-primary btn-block" id="buy-btn">Buy a License — $75</a>
-                            <a href="#download" class="btn btn-secondary btn-block">Download Free Trial</a>
-                        </div>
-                        <p class="pricing-trial-note">Free for 14 days, no credit card. After that exports carry a watermark until you enter a license key — nothing is deleted and the app keeps running. Buy the software as part of any bundle below and it's $50 instead of $75.</p>
+                        <p class="opt-note">Free to try for 14 days — <a href="#download">download it</a> and see what turns up before you buy anything.</p>
                     </div>
                 </div>
-            </div>
 
-            <!-- ── TIER 2 ─────────────────────────────────────────── -->
-            <div class="pricing-tier" id="tier-nest">
-                <div class="pricing-tier-head">
-                    <p class="pricing-tier-eyebrow">Tier 2</p>
-                    <h3>🪺 The Nest — Software, Feeder &amp; Camera</h3>
-                    <p class="pricing-tier-lead">A feeder and a camera made to work together, with the software already licensed. You supply a computer to run it on.</p>
-                    <ul class="pricing-includes pricing-includes-lg">
-                        <li class="pricing-include yes"><span aria-hidden="true">🧠</span> Software<span class="visually-hidden"> included</span></li>
-                        <li class="pricing-include yes"><span aria-hidden="true">🪺</span> Feeder<span class="visually-hidden"> included</span></li>
-                        <li class="pricing-include yes"><span aria-hidden="true">📷</span> Camera<span class="visually-hidden"> included</span></li>
-                        <li class="pricing-include no"><span aria-hidden="true">💻</span> Computer<span class="visually-hidden"> not included</span></li>
-                    </ul>
-                    <p class="pricing-requires pricing-requires-wide"><span aria-hidden="true">💻</span> <span><strong>A computer is not included in Tier 2.</strong> Use one you already own, add a <a href="#addons">ready-to-run computer</a>, or jump to <a href="#full-nest">Tier 3</a> and get everything in one box.</span></p>
-                </div>
-
-                <div class="pricing-cards pricing-cards-two">
-                    <div class="pricing-card pricing-card-nest">
-                        <div class="pricing-badge pricing-badge-soon">Feeder Kit</div>
-                        <div class="pricing-header">
-                            <h3>The Nest — Indoor</h3>
-                            <div class="pricing-price">
-                                <span class="price-amount">$110</span>
-                                <span class="price-period">plus your own computer</span>
-                            </div>
-                        </div>
-                        <img src="images/full-nest-indoor.jpg" alt="The Nest - Indoor: BirdWatch AI camera mounted on the inside of a window pane facing outdoors, with a feeder tray on the exterior of the window and a chickadee perched on it." class="pricing-image" loading="lazy" width="768" height="768">
-                        <p class="pricing-description">Perfect for apartments &amp; condos. Camera mounts inside, feeder attaches to the outside of your window.</p>
+                <h4 class="fullnest-group"><span aria-hidden="true">🪺</span> Feeders <span>— two styles, pick one</span></h4>
+                <div class="opt-cards opt-cards-2">
+                    <div class="opt-card">
+                        <img src="images/full-nest-indoor.jpg" alt="The indoor feeder: a BirdWatchAI camera mounted on the inside of a window pane facing outdoors, with a feeder tray on the exterior of the window and a chickadee perched on it." class="pricing-image" loading="lazy" width="768" height="768">
+                        <h5>Indoor — window tray</h5>
+                        <p>The feeder sticks to the outside of a window and the camera mounts on the inside, looking out through the glass. Made for apartments and condos where there is nowhere to put a post.</p>
                         <ul class="pricing-features pricing-features-icons">
                             <li><span class="check">🏙️</span> Ideal for apartments &amp; condos</li>
                             <li><span class="check">🔌</span> No outdoor power needed</li>
                             <li><span class="check">📶</span> Uses your indoor WiFi signal</li>
                             <li><span class="check">🪟</span> Mounts to any window pane</li>
-                            <li><span class="check">📸</span> Up-close views of backyard birds</li>
                         </ul>
-                        <a href="https://birdbrainllc.gumroad.com/l/dzjxfn" target="_blank" class="btn btn-primary btn-block" id="buy-nest-indoor-btn">Buy The Nest Indoor</a>
                     </div>
 
-                    <div class="pricing-card pricing-card-nest">
-                        <div class="pricing-badge pricing-badge-soon">Feeder Kit</div>
-                        <div class="pricing-header">
-                            <h3>The Nest — Outdoor</h3>
-                            <div class="pricing-price">
-                                <span class="price-amount">$130</span>
-                                <span class="price-period">plus your own computer</span>
-                            </div>
-                        </div>
-                        <img src="images/full-nest-outdoor.jpg" alt="The Nest - Outdoor: BirdWatch AI bird feeder with integrated camera mounted on a wooden post, with a robin perched on the feeder tray and a blue jay nearby." class="pricing-image" loading="lazy" width="768" height="768">
-                        <p class="pricing-description">Bird feeder, camera, and smart software in one easy-to-use system. Perfect for families!</p>
+                    <div class="opt-card">
+                        <img src="images/full-nest-outdoor.jpg" alt="The outdoor feeder: a BirdWatchAI feeder house with an integrated camera mounted on a wooden post, with a robin perched on the tray and a blue jay nearby." class="pricing-image" loading="lazy" width="768" height="768">
+                        <h5>Outdoor — feeder house</h5>
+                        <p>A post-mounted feeder house with a bay built for the camera, so the lens sits at the right distance and stays out of the weather. The one to pick if you have a yard.</p>
                         <ul class="pricing-features pricing-features-icons">
-                            <li><span class="check">📦</span> Feeder, camera &amp; software in one box</li>
+                            <li><span class="check">📦</span> Feeder and camera bay in one unit</li>
                             <li><span class="check">👨‍👩‍👧‍👦</span> Designed for kids and grown-ups</li>
                             <li><span class="check">🐤</span> Encourages curiosity &amp; outdoor learning</li>
                             <li><span class="check">📸</span> Captures real birds in your backyard</li>
-                            <li><span class="check">🧠</span> Learn bird names, behaviors &amp; fun facts</li>
                         </ul>
-                        <a href="https://birdbrainllc.gumroad.com/l/irvwmy" target="_blank" class="btn btn-primary btn-block" id="buy-nest-btn">Buy The Nest Outdoor</a>
+                    </div>
+                </div>
+
+                <h4 class="fullnest-group"><span aria-hidden="true">📷</span> Camera &amp; lens</h4>
+                <div class="opt-cards opt-cards-2">
+                    <div class="opt-card">
+                        <h5>Camera</h5>
+                        <p>An RTSP camera matched to whichever feeder you choose, so the framing and focus distance are right out of the box. Already own an RTSP camera — Tapo, Reolink, Wyze, Amcrest? Leave this out and point the software at yours instead.</p>
+                    </div>
+
+                    <div class="opt-card">
+                        <h5>Macro lens</h5>
+                        <p>A snap-on lens that tightens the shot for smaller visitors. Chickadees, wrens and finches fill much more of the frame, which makes for better photos and gives the AI more to work with.</p>
+                    </div>
+                </div>
+
+                <h4 class="fullnest-group" id="computers"><span aria-hidden="true">💻</span> Ready-to-run computers <span>— or use a machine you own</span></h4>
+                <div class="opt-cards opt-cards-2">
+                    <div class="opt-card">
+                        <h5>Standard</h5>
+                        <p>Plenty for one feeder camera running around the clock. About the size of a deck of cards, silent and fanless, and it needs no monitor or keyboard — plug it into power and your network anywhere in the house.</p>
+                        <ul class="pricing-features pricing-features-icons">
+                            <li><span class="check">✅</span> BirdWatchAI preinstalled &amp; starts on power-up</li>
+                            <li><span class="check">🐦</span> Comfortable with a single feeder camera</li>
+                            <li><span class="check">🌐</span> Dashboard opens in any browser on your network</li>
+                        </ul>
+                    </div>
+
+                    <div class="opt-card">
+                        <h5>High Performance</h5>
+                        <p>The same job done faster. Worth it when the feeder gets busy and several birds land at once, or when you have built up years of history and want the dashboard to stay quick.</p>
+                        <ul class="pricing-features pricing-features-icons">
+                            <li><span class="check">⚡</span> Quicker identification on a busy feeder</li>
+                            <li><span class="check">📊</span> Stays responsive across years of history</li>
+                            <li><span class="check">📦</span> Case, power supply &amp; drive included</li>
+                        </ul>
                     </div>
                 </div>
 
                 <p class="pricing-note">
-                    💳 Secure payment via Gumroad. Your personalized license key will be emailed within 24 hours.
+                    💾 Either computer comes with a <strong>30 GB SSD</strong> for snapshots and recent clips, or a <strong>250 GB SSD</strong> if you want to keep a full season of video. Both watch a single feeder camera; the difference is speed and how much history they hold comfortably. <a href="docs/manual/part-4-first-time-setup.html#preloaded-pi">See what setup looks like</a> before you buy.
                 </p>
             </div>
 
-            <!-- ── TIER 3 ─────────────────────────────────────────── -->
-            <div class="pricing-tier" id="full-nest">
+            <!-- ── BUILD & PRICE ──────────────────────────────────── -->
+            <div class="pricing-tier" id="build">
                 <div class="pricing-tier-head">
-                    <p class="pricing-tier-eyebrow">Tier 3</p>
-                    <h3>🪺 The Full Nest — Everything</h3>
-                    <p class="pricing-tier-lead">All four pieces in one box, assembled and configured — nothing else to buy, nothing to set up. Build yours below: the price updates as you choose, and you can drop anything you already own. <strong>Starting at $220.</strong></p>
-                    <ul class="pricing-includes pricing-includes-lg">
-                        <li class="pricing-include yes"><span aria-hidden="true">🧠</span> Software<span class="visually-hidden"> included</span></li>
-                        <li class="pricing-include yes"><span aria-hidden="true">🪺</span> Feeder<span class="visually-hidden"> included</span></li>
-                        <li class="pricing-include yes"><span aria-hidden="true">📷</span> Camera<span class="visually-hidden"> included</span></li>
-                        <li class="pricing-include yes"><span aria-hidden="true">💻</span> Computer<span class="visually-hidden"> included</span></li>
-                    </ul>
+                    <p class="pricing-tier-eyebrow">Build &amp; price</p>
+                    <h3>🪺 Build Your Nest</h3>
+                    <p class="pricing-tier-lead">Choose a version of each piece, or leave out the ones you already own. The price updates as you go, and anything you skip is listed so you can see exactly what is and isn't in the box.</p>
                 </div>
 
                 <div class="configurator" id="configurator">
@@ -670,130 +649,19 @@
                         <p class="cfg-name" id="cfg-name">The Wren — Indoor</p>
                         <p class="cfg-total" role="status" aria-live="polite">
                             <span class="cfg-total-amount" id="cfg-total">$220</span>
-                            <span class="cfg-total-note">one-time, everything included</span>
+                            <span class="cfg-total-note">one-time, nothing recurring</span>
                         </p>
                         <ul class="cfg-lines" id="cfg-lines"></ul>
                         <p class="cfg-hint" id="cfg-hint" hidden></p>
-                        <button type="button" class="btn btn-disabled btn-block" disabled>Coming Soon</button>
-                        <p class="cfg-footnote">Complete builds go on sale alongside the ready-to-run computers. In the meantime the software and both Nest kits can be bought today from the tiers above.</p>
+                        <a class="btn btn-primary btn-block" id="cfg-buy" href="#" target="_blank" rel="noopener" hidden>Buy now</a>
+                        <button type="button" class="btn btn-disabled btn-block" id="cfg-soon" disabled>Coming Soon</button>
+                        <p class="cfg-footnote" id="cfg-footnote">Builds that include a computer go on sale alongside the ready-to-run machines. The software on its own and both feeder kits can be bought today.</p>
                     </aside>
                 </div>
-                <p class="pricing-note">
-                    🪺 Every build arrives assembled and configured — the software is already installed on the computer and already pointed at the camera. Adding pieces later costs exactly the same as buying them together, so starting small never costs you anything.
-                </p>
-            </div>
-
-            <!-- ── ADD-ONS ────────────────────────────────────────── -->
-            <div class="pricing-tier" id="addons">
-                <div class="pricing-tier-head">
-                    <p class="pricing-tier-eyebrow">À la carte</p>
-                    <h3>🔧 Add-ons &amp; Upgrades</h3>
-                    <p class="pricing-tier-lead">Already own part of a setup, or want to grow into one a piece at a time? Every component is sold on its own at the same price it carries inside a bundle.</p>
-                </div>
-
-                <h4 class="fullnest-group">Ready-to-run computers <span>— BirdWatchAI preinstalled, no monitor or keyboard needed</span></h4>
-                <div class="pricing-cards pricing-cards-two">
-                    <div class="pricing-card pricing-card-pi">
-                        <div class="pricing-badge pricing-badge-soon">Ready to Run</div>
-                        <div class="pricing-header">
-                            <h3>Standard</h3>
-                            <div class="pricing-price">
-                                <span class="price-amount">$110</span>
-                                <span class="price-period">and up</span>
-                            </div>
-                        </div>
-                        <p class="pricing-description">Everything one feeder needs, running around the clock.</p>
-                        <ul class="pricing-features pricing-features-icons">
-                            <li><span class="check">✅</span> BirdWatchAI preinstalled &amp; starts on power-up</li>
-                            <li><span class="check">🐦</span> Plenty of power for a single feeder camera</li>
-                            <li><span class="check">📦</span> Case, power supply &amp; drive included</li>
-                            <li><span class="check">🔇</span> Silent, fanless, sips power — leave it on all year</li>
-                            <li><span class="check">🌐</span> Dashboard opens in any browser on your network</li>
-                        </ul>
-                        <div class="pricing-options">
-                            <div class="pricing-option">
-                                <div class="pricing-option-label"><strong>Standard storage</strong><span>30 GB SSD — snapshots &amp; recent clips</span></div>
-                                <div class="pricing-option-price">$110</div>
-                            </div>
-                            <div class="pricing-option">
-                                <div class="pricing-option-label"><strong>Extended storage</strong><span>250 GB SSD — a full season of video</span></div>
-                                <div class="pricing-option-price">$165</div>
-                            </div>
-                        </div>
-                        <button type="button" class="btn btn-disabled btn-block" disabled>Coming Soon</button>
-                    </div>
-
-                    <div class="pricing-card pricing-card-pi pricing-card-pi-fast">
-                        <div class="pricing-badge pricing-badge-soon">Ready to Run</div>
-                        <div class="pricing-header">
-                            <h3>High Performance</h3>
-                            <div class="pricing-price">
-                                <span class="price-amount">$160</span>
-                                <span class="price-period">and up</span>
-                            </div>
-                        </div>
-                        <p class="pricing-description">The same job, done faster — for feeders that stay busy.</p>
-                        <ul class="pricing-features pricing-features-icons">
-                            <li><span class="check">✅</span> BirdWatchAI preinstalled &amp; starts on power-up</li>
-                            <li><span class="check">⚡</span> Quicker identification when several birds land at once</li>
-                            <li><span class="check">📊</span> Stays responsive across years of history</li>
-                            <li><span class="check">📦</span> Case, power supply &amp; drive included</li>
-                            <li><span class="check">🔇</span> Silent, fanless, sips power — leave it on all year</li>
-                        </ul>
-                        <div class="pricing-options">
-                            <div class="pricing-option">
-                                <div class="pricing-option-label"><strong>Standard storage</strong><span>30 GB SSD — snapshots &amp; recent clips</span></div>
-                                <div class="pricing-option-price">$160</div>
-                            </div>
-                            <div class="pricing-option">
-                                <div class="pricing-option-label"><strong>Extended storage</strong><span>250 GB SSD — a full season of video</span></div>
-                                <div class="pricing-option-price">$215</div>
-                            </div>
-                        </div>
-                        <button type="button" class="btn btn-disabled btn-block" disabled>Coming Soon</button>
-                    </div>
-                </div>
 
                 <p class="pricing-note">
-                    🍓 Both tiers watch one feeder camera — the difference is how quickly they identify and how much history they hold comfortably. Preloaded machines are built to order; <a href="docs/manual/part-4-first-time-setup.html#preloaded-pi">see what setup looks like</a> before you buy.
+                    🪺 Every build arrives assembled and configured — the software is already installed on the computer and already pointed at the camera. Adding pieces later costs exactly the same as buying them together, so starting small never costs you anything. 💳 Secure payment via Gumroad; your license key is emailed within 24 hours.
                 </p>
-
-                <h4 class="fullnest-group">Parts &amp; accessories <span>— buy any single piece</span></h4>
-                <div class="parts-table-wrap">
-                    <table class="parts-table">
-                        <caption class="visually-hidden">Individual components and accessories with prices</caption>
-                        <thead>
-                            <tr><th scope="col">Item</th><th scope="col">What it's for</th><th scope="col" class="parts-price-col">Price</th></tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <th scope="row">Software license</th>
-                                <td>The AI that spots and names the bird. $50 when bought with any bundle.</td>
-                                <td class="parts-price-col">$75</td>
-                            </tr>
-                            <tr>
-                                <th scope="row">Indoor feeder</th>
-                                <td>Window tray that mounts on the outside of the pane.</td>
-                                <td class="parts-price-col">$20</td>
-                            </tr>
-                            <tr>
-                                <th scope="row">Outdoor feeder</th>
-                                <td>Post-mounted feeder house with a camera bay.</td>
-                                <td class="parts-price-col">$40</td>
-                            </tr>
-                            <tr>
-                                <th scope="row">Camera</th>
-                                <td>The RTSP camera that watches the feeder.</td>
-                                <td class="parts-price-col">$40</td>
-                            </tr>
-                            <tr>
-                                <th scope="row">Macro lens</th>
-                                <td>Snaps on for tighter, sharper close-ups of small birds.</td>
-                                <td class="parts-price-col">$25</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
             </div>
 
             <!-- Community Storage -->
@@ -816,7 +684,7 @@
             <div class="requirements-grid">
                 <div class="requirement-card">
                     <h3>💻 Computer</h3>
-                    <p class="requirement-note">BirdWatchAI runs on a machine in your home, not in the cloud, so it needs somewhere to live. Any of these work — or <a href="#addons">let us send you one ready to go</a>.</p>
+                    <p class="requirement-note">BirdWatchAI runs on a machine in your home, not in the cloud, so it needs somewhere to live. Any of these work — or <a href="#computers">let us send you one ready to go</a>.</p>
                     <ul>
                         <li><strong>Windows app:</strong> Windows 10 or 11, 4 GB RAM (8 GB recommended), 500 MB free disk</li>
                         <li><strong>Server edition:</strong> a Raspberry Pi or any always-on Linux machine</li>
@@ -928,7 +796,7 @@
                 
                 <div class="faq-item">
                     <h3>Can I use this on Mac or Linux?</h3>
-                    <p>Yes. There are two editions. The desktop app is Windows-only (Windows 10 and 11), but the <strong>server edition runs on Windows, Linux, and macOS</strong> — you use it from a browser on any device in your house instead of a desktop window. If you'd rather not set one up, a <a href="#addons">preloaded Raspberry Pi</a> arrives with the server edition already running.</p>
+                    <p>Yes. There are two editions. The desktop app is Windows-only (Windows 10 and 11), but the <strong>server edition runs on Windows, Linux, and macOS</strong> — you use it from a browser on any device in your house instead of a desktop window. If you'd rather not set one up, a <a href="#computers">preloaded Raspberry Pi</a> arrives with the server edition already running.</p>
                 </div>
                 
                 <div class="faq-item">
@@ -987,7 +855,7 @@
     </footer>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="js/main.js?v=20260816b"></script>
+    <script src="js/main.js?v=20260816c"></script>
     <script>
     function toggleMainTheme() {
         const current = document.documentElement.getAttribute('data-theme');

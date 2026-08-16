@@ -228,6 +228,12 @@ ul {
     width: 100%;
 }
 
+/* .btn sets display, which outranks the browser's [hidden] rule — without this
+   a hidden button stays on screen. */
+.btn[hidden] {
+    display: none;
+}
+
 .btn-nav {
     padding: 0.5rem 1.25rem;
     font-size: 0.9375rem;
@@ -1347,6 +1353,71 @@ ul {
 .cfg-line-empty {
     color: var(--color-gray-500);
     font-style: italic;
+}
+
+/* Pieces the build leaves out — visible, but clearly not part of the total */
+.cfg-lines li.cfg-line-out {
+    color: var(--color-gray-500);
+}
+
+.cfg-lines li.cfg-line-out span:last-child {
+    font-weight: 400;
+    font-style: italic;
+}
+
+/* Descriptive option cards (no prices — those live in the builder) */
+.opt-cards {
+    display: grid;
+    gap: var(--space-lg);
+    max-width: 1100px;
+    margin: 0 auto var(--space-lg);
+}
+
+.opt-cards-1 { max-width: 800px; grid-template-columns: 1fr; }
+.opt-cards-2 { grid-template-columns: repeat(2, 1fr); }
+
+@media (max-width: 900px) {
+    .opt-cards-2 {
+        grid-template-columns: 1fr;
+        max-width: 480px;
+    }
+}
+
+.opt-card {
+    padding: var(--space-lg);
+    background: var(--color-white);
+    border: 1px solid var(--color-gray-200);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+}
+
+.opt-card h5 {
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: var(--space-xs);
+    color: var(--color-gray-900);
+}
+
+.opt-card p {
+    color: var(--color-gray-700);
+    line-height: 1.6;
+    margin-bottom: var(--space-md);
+}
+
+.opt-card .pricing-features {
+    margin-bottom: 0;
+}
+
+.opt-card .pricing-image {
+    margin-bottom: var(--space-md);
+}
+
+.opt-note {
+    margin-top: var(--space-md);
+    margin-bottom: 0 !important;
+    font-size: 0.875rem;
+    color: var(--color-gray-500) !important;
 }
 
 .cfg-hint {
