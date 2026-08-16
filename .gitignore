@@ -1,0 +1,9 @@
+# Dependencies and build output for the screensaver companion app.
+# package-lock.json is deliberately NOT ignored — it pins exact dependency
+# versions and belongs in the repo so builds are reproducible.
+screensaver/node_modules/
+screensaver/dist/
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
