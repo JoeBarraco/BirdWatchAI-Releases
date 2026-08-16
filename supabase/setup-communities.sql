@@ -1272,7 +1272,12 @@ create or replace function community_admin_create(
 )
 returns json
 language plpgsql security definer
-set search_path = public
+-- `extensions` is required, not decorative: Supabase installs pgcrypto there
+-- rather than in public, so pinning to public alone makes the crypt() call
+-- below fail with "function crypt(text, text) does not exist" — the moderator
+-- password check silently becomes unusable. The older moderator_* functions
+-- avoid this only by not pinning a search_path at all.
+set search_path = public, extensions
 as $$
 declare
   admin_role text;
