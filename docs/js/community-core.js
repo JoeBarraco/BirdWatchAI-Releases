@@ -18,6 +18,19 @@ function sbHeaders(authenticated) {
     return h;
 }
 
+// True when a real Supabase Auth session exists.
+//
+// Every data-loading fetch below must send the member's JWT, not the bare anon
+// key: RLS decides what a caller can see, so an anon-key request returns only
+// public rows even for a signed-in member of a private community — their own
+// community's detections would silently never appear.
+//
+// Defined here rather than in community-communities.js so these fetches don't
+// depend on that file having loaded.
+function sbAuthed() {
+    return !!authAccessToken;
+}
+
 async function sbRpc(fnName, params, authenticated) {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fnName}`, {
         method: 'POST',
@@ -256,7 +269,7 @@ async function loadSeasonEarliest() {
     try {
         const url = `${SUPABASE_URL}/rest/v1/community_detections?select=id,species,detected_at&detected_at=gte.${encodeURIComponent(yearStart)}&order=detected_at.asc&limit=10000`;
         const res = await fetch(url, {
-            headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` }
+            headers: sbHeaders(sbAuthed())
         });
         if (!res.ok) return;
         const rows = await res.json();
@@ -309,7 +322,7 @@ async function loadFeed(append = false) {
 
     try {
         const res = await fetch(url, {
-            headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` }
+            headers: sbHeaders(sbAuthed())
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const page = await res.json();
@@ -322,6 +335,12 @@ async function loadFeed(append = false) {
         }
         if (page.length < PAGE_SIZE) feedExhausted = true;
         feedOffset += page.length;
+
+        // Private feeders' media arrives as private:// markers rather than a
+        // readable URL. Resolve them to signed URLs here, before anything
+        // renders, so every downstream view stays unaware of the distinction
+        // (community-communities.js).
+        if (typeof signPrivateMedia === 'function') await signPrivateMedia(allDetections);
 
         if (!append) loadSeasonEarliest(); // refresh first-of-season cache
         populateFeederDropdown(allDetections);
@@ -436,7 +455,7 @@ async function loadAllDropdownOptions() {
     if (since) url += `&detected_at=gte.${encodeURIComponent(since)}`;
     try {
         const res = await fetch(url, {
-            headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` }
+            headers: sbHeaders(sbAuthed())
         });
         if (!res.ok) return;
         const rows = await res.json();

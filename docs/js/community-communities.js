@@ -239,6 +239,113 @@ async function revokeCommunityInvite() {
     document.getElementById('community-invite-email').value = '';
 }
 
+// ── Private media ────────────────────────────────────────
+//
+// Media for a private feeder lives in a non-public bucket, so there is no
+// readable URL. The server writes a marker — private://bucket/path — and the
+// browser exchanges it for a short-lived signed URL. Supabase evaluates storage
+// RLS when signing, so only a member of a community that feeder publishes into
+// can produce a working link; that check is the entire enforcement.
+//
+// Resolution happens in ONE pass right after each load, rewriting image_url and
+// video_url in place. Every render site downstream — feed cards, detail modal,
+// gallery, slideshow, lightbox, map popups, CSV — then works unchanged, which
+// is the difference between touching one function and touching a dozen.
+
+const PRIVATE_URL_PREFIX  = 'private://';
+const SIGNED_URL_TTL_SECS = 7200;   // 2h: long enough for a slideshow left open
+
+// path -> { url, expiresAt }. Keyed by the full marker so the 30s auto-refresh
+// doesn't re-sign the same objects every tick.
+const signedUrlCache = new Map();
+
+function isPrivateMedia(u) {
+    return typeof u === 'string' && u.startsWith(PRIVATE_URL_PREFIX);
+}
+
+async function signPrivateMedia(detections) {
+    if (!Array.isArray(detections) || !detections.length) return;
+
+    const now = Date.now();
+    const wanted = new Set();
+    for (const d of detections) {
+        if (isPrivateMedia(d.image_url)) wanted.add(d.image_url);
+        if (isPrivateMedia(d.video_url)) wanted.add(d.video_url);
+    }
+    if (!wanted.size) return;
+
+    // Signed-out visitors never receive private rows (RLS filters them), so
+    // reaching here without a session means something upstream changed. Blank
+    // the markers rather than letting a "private://…" land in an <img src>.
+    if (!hasAuthSession()) {
+        for (const d of detections) {
+            if (isPrivateMedia(d.image_url)) d.image_url = null;
+            if (isPrivateMedia(d.video_url)) d.video_url = null;
+        }
+        return;
+    }
+
+    // Group the not-yet-cached markers by bucket — Supabase signs in batches of
+    // paths per bucket.
+    const byBucket = new Map();
+    for (const marker of wanted) {
+        const hit = signedUrlCache.get(marker);
+        if (hit && hit.expiresAt > now) continue;
+        const rest   = marker.slice(PRIVATE_URL_PREFIX.length);
+        const slash  = rest.indexOf('/');
+        if (slash < 1) continue;
+        const bucket = rest.slice(0, slash);
+        const path   = rest.slice(slash + 1);
+        if (!byBucket.has(bucket)) byBucket.set(bucket, []);
+        byBucket.get(bucket).push({ marker, path });
+    }
+
+    for (const [bucket, items] of byBucket) {
+        try {
+            const res = await fetch(
+                `${SUPABASE_URL}/storage/v1/object/sign/${encodeURIComponent(bucket)}`,
+                {
+                    method: 'POST',
+                    headers: sbHeaders(true),
+                    body: JSON.stringify({
+                        expiresIn: SIGNED_URL_TTL_SECS,
+                        paths: items.map(i => i.path),
+                    }),
+                }
+            );
+            if (!res.ok) continue;
+            const rows = await res.json();
+            if (!Array.isArray(rows)) continue;
+
+            rows.forEach((r, i) => {
+                // signedURL comes back relative, e.g. /object/sign/bucket/x?token=…
+                if (!r || !r.signedURL) return;
+                const item = items[i];
+                if (!item) return;
+                signedUrlCache.set(item.marker, {
+                    url: `${SUPABASE_URL}/storage/v1${r.signedURL}`,
+                    // Expire the cache entry early so a link is never handed to
+                    // an <img> in the last minutes of its life.
+                    expiresAt: now + (SIGNED_URL_TTL_SECS - 300) * 1000,
+                });
+            });
+        } catch {
+            // Leave these markers unresolved; the loop below blanks them.
+        }
+    }
+
+    for (const d of detections) {
+        if (isPrivateMedia(d.image_url)) {
+            const hit = signedUrlCache.get(d.image_url);
+            d.image_url = hit && hit.expiresAt > now ? hit.url : null;
+        }
+        if (isPrivateMedia(d.video_url)) {
+            const hit = signedUrlCache.get(d.video_url);
+            d.video_url = hit && hit.expiresAt > now ? hit.url : null;
+        }
+    }
+}
+
 // ── Redeem on sign-in ────────────────────────────────────
 //
 // The other half of the email-keyed invite design: an invited person usually

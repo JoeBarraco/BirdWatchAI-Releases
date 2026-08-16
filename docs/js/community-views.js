@@ -590,7 +590,7 @@ async function loadFeeders() {
     try {
         const url = `${SUPABASE_URL}/rest/v1/feeder_status?select=*&order=display_name.asc&limit=1000`;
         const res = await fetch(url, {
-            headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` }
+            headers: sbHeaders(sbAuthed())
         });
         if (!res.ok) {
             const body = await res.text().catch(() => '');
@@ -947,7 +947,7 @@ async function loadAllDetections() {
         if (since) url += `&detected_at=gte.${encodeURIComponent(since)}`;
         try {
             const res = await fetch(url, {
-                headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` }
+                headers: sbHeaders(sbAuthed())
             });
             if (!res.ok) break;
             const page = await res.json();
@@ -958,6 +958,9 @@ async function loadAllDetections() {
             if (page.length < PAGE_SIZE) { feedExhausted = true; done = true; }
         } catch (e) { done = true; }
     }
+    // Private feeders' media arrives as private:// markers; exchange them for
+    // signed URLs before any view renders (community-communities.js).
+    if (typeof signPrivateMedia === 'function') await signPrivateMedia(allDetections);
 }
 
 async function loadAllThenRenderStats() {
