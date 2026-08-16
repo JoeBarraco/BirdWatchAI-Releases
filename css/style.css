@@ -790,6 +790,16 @@ ul {
     grid-template-columns: repeat(3, 1fr);
 }
 
+/* Keep the calls to action on a shared baseline across the three cards */
+.pricing-cards-three > .pricing-card {
+    display: flex;
+    flex-direction: column;
+}
+
+.pricing-cards-three > .pricing-card .pricing-features {
+    flex: 1 1 auto;
+}
+
 .pricing-cards-four {
     max-width: 1400px;
     grid-template-columns: repeat(4, 1fr);
@@ -1085,6 +1095,20 @@ ul {
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border: 0;
+}
+
+/* Two calls to action on one card */
+.pricing-actions {
+    display: grid;
+    gap: var(--space-xs);
+}
+
+.pricing-trial-note {
+    margin-top: var(--space-sm);
+    font-size: 0.75rem;
+    line-height: 1.5;
+    text-align: center;
+    color: var(--color-gray-500);
 }
 
 /* "You still need X" bar */
