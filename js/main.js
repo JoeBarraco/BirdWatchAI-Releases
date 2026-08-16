@@ -223,24 +223,42 @@ document.addEventListener('DOMContentLoaded', function () {
        wiring cannot send someone to a checkout that is missing pieces. */
     const GUMROAD_CART = 'https://gumroad.com/checkout?product=';
 
-    const BUNDLES = {
-        'software': { permalink: 'dajhd', label: 'Buy the software' },
-        'software+indoor+camera': { permalink: 'dzjxfn', label: 'Buy The Nest Indoor' },
-        'software+outdoor+camera': { permalink: 'irvwmy', label: 'Buy The Nest Outdoor' }
+    const COMPONENTS = {
+        software:        { permalink: 'dajhd',  price: 75,  label: 'BirdWatchAI license' },
+        feederIndoor:    { permalink: 'ittcdq', price: 20,  label: 'Indoor feeder' },
+        feederOutdoor:   { permalink: 'pqwifk', price: 40,  label: 'Outdoor feeder' },
+        camera:          { permalink: 'mnrvz',  price: 40,  label: 'Camera' },
+        macro:           { permalink: 'ujgfpc', price: 25,  label: 'Macro lens' },
+        computerStdStd:  { permalink: 'icpxmz', price: 110, label: 'Standard computer, 32 GB' },
+        computerStdExt:  { permalink: 'mkvszs', price: 165, label: 'Standard computer, 256 GB' },
+        computerHighStd: { permalink: 'unfzhr', price: 160, label: 'High Performance computer, 32 GB' },
+        computerHighExt: { permalink: 'cnnotb', price: 215, label: 'High Performance computer, 256 GB' }
     };
 
-    const COMPONENTS = {
-        softwareAlone:      { permalink: 'dajhd', price: 75,  label: 'BirdWatchAI license' },
-        softwareBundled:    { permalink: null,    price: 50,  label: 'BirdWatchAI license (with hardware)' },
-        feederIndoor:       { permalink: null,    price: 20,  label: 'Indoor feeder' },
-        feederOutdoor:      { permalink: null,    price: 40,  label: 'Outdoor feeder' },
-        camera:             { permalink: null,    price: 40,  label: 'Camera' },
-        macro:              { permalink: null,    price: 25,  label: 'Macro lens' },
-        computerStdStd:     { permalink: null,    price: 110, label: 'Standard computer, 32 GB' },
-        computerStdExt:     { permalink: null,    price: 165, label: 'Standard computer, 256 GB' },
-        computerHighStd:    { permalink: null,    price: 160, label: 'High Performance computer, 32 GB' },
-        computerHighExt:    { permalink: null,    price: 215, label: 'High Performance computer, 256 GB' }
-    };
+    /* Bundles are single Gumroad products covering several components at a
+       lower price — the $25 saving is the software discount, expressed here
+       rather than as a discounted licence product, so no cheap licence is
+       ever purchasable on its own.
+
+       `contains` lets a bundle be matched even when the build has extras: the
+       best-value bundle whose contents are a subset of the build is used, and
+       whatever is left over is added as components. So a Full Nest plus a
+       macro lens is two cart adds, not five.
+
+       Add the remaining six as they are created in Gumroad — nothing else
+       needs changing. */
+    const BUNDLES = [
+        { permalink: 'dzjxfn', price: 110, label: 'The Nest — Indoor',
+          contains: ['software', 'feederIndoor', 'camera'] },
+        { permalink: 'irvwmy', price: 130, label: 'The Nest — Outdoor',
+          contains: ['software', 'feederOutdoor', 'camera'] },
+        { permalink: 'nbnqg',  price: 220, label: 'Full Nest Indoor — The Wren',
+          contains: ['software', 'feederIndoor', 'camera', 'computerStdStd'] },
+        { permalink: 'tlvqwi', price: 270, label: 'Full Nest Indoor — The Jay',
+          contains: ['software', 'feederIndoor', 'camera', 'computerHighStd'] }
+        // Still to create: Indoor Finch $275 / Cardinal $325,
+        // Outdoor Wren $240 / Jay $290 / Finch $295 / Cardinal $345.
+    ];
 
     const els = {
         total: document.getElementById('cfg-total'),
@@ -285,14 +303,10 @@ document.addEventListener('DOMContentLoaded', function () {
         if (form.elements.storage) form.elements.storage.disabled = !hasComputer;
 
         const hasHardware = feeder !== 'none' || camera !== 'none' || hasComputer || macro;
-        const softwareCost = software === 'none'
-            ? 0
-            : (hasHardware ? PRICES.softwareBundled : PRICES.softwareAlone);
+        const softwareCost = software === 'none' ? 0 : PRICES.softwareAlone;
 
-        // Keep the price on each choice honest as the rest of the build changes:
-        // the licence is cheaper alongside hardware, and each computer costs what
-        // it costs with the storage currently selected.
-        relabel(els.selSoftware, 'yes', hasHardware ? PRICES.softwareBundled : PRICES.softwareAlone);
+        // Each computer costs what it costs with the storage currently selected.
+        relabel(els.selSoftware, 'yes', PRICES.softwareAlone);
         relabel(els.selComputer, 'standard', PRICES.computerBase.standard + PRICES.storage[storage]);
         relabel(els.selComputer, 'high', PRICES.computerBase.high + PRICES.storage[storage]);
 
@@ -318,12 +332,44 @@ document.addEventListener('DOMContentLoaded', function () {
                 : ['Macro lens', null]
         ];
 
-        const total = lines.reduce((sum, l) => sum + (l[1] || 0), 0);
+        const listTotal = lines.reduce((sum, l) => sum + (l[1] || 0), 0);
+
+        // Which components this build needs, in the order they are listed.
+        const parts = [];
+        if (software !== 'none') parts.push('software');
+        if (feeder === 'indoor') parts.push('feederIndoor');
+        if (feeder === 'outdoor') parts.push('feederOutdoor');
+        if (camera !== 'none') parts.push('camera');
+        if (hasComputer) {
+            parts.push(computer === 'standard'
+                ? (storage === 'standard' ? 'computerStdStd' : 'computerStdExt')
+                : (storage === 'standard' ? 'computerHighStd' : 'computerHighExt'));
+        }
+        if (macro) parts.push('macro');
+
+        // Best bundle whose contents this build fully covers. Ties go to the one
+        // covering more pieces, so a Full Nest wins over the Nest kit inside it.
+        let bundle = null, bundleSaving = 0;
+        BUNDLES.forEach(b => {
+            if (!b.contains.every(p => parts.includes(p))) return;
+            const value = b.contains.reduce((s, p) => s + COMPONENTS[p].price, 0);
+            const saving = value - b.price;
+            if (!bundle || saving > bundleSaving ||
+                (saving === bundleSaving && b.contains.length > bundle.contains.length)) {
+                bundle = b;
+                bundleSaving = saving;
+            }
+        });
+
+        const leftovers = bundle ? parts.filter(p => !bundle.contains.includes(p)) : parts;
+        const total = listTotal - bundleSaving;
 
         els.lines.innerHTML = lines.map(l => l[1] === null
             ? '<li class="cfg-line-out"><span>' + l[0] + '</span><span>Not included</span></li>'
             : '<li><span>' + l[0] + '</span><span>' + money(l[1]) + '</span></li>'
-        ).join('');
+        ).join('') + (bundleSaving > 0
+            ? '<li class="cfg-line-saving"><span>' + bundle.label + ' saving</span><span>&minus;' + money(bundleSaving) + '</span></li>'
+            : '');
 
         // Flash the total when it moves. On a narrow screen the summary can sit
         // below the fold of whatever you just changed, so a silent update reads
@@ -364,52 +410,34 @@ document.addEventListener('DOMContentLoaded', function () {
         els.hint.textContent = hint;
         els.hint.hidden = !hint;
 
-        // Which Gumroad products this build needs, in the order they are listed.
-        const parts = [];
-        if (software !== 'none') parts.push(hasHardware ? 'softwareBundled' : 'softwareAlone');
-        if (feeder === 'indoor') parts.push('feederIndoor');
-        if (feeder === 'outdoor') parts.push('feederOutdoor');
-        if (camera !== 'none') parts.push('camera');
-        if (hasComputer) {
-            parts.push(computer === 'standard'
-                ? (storage === 'standard' ? 'computerStdStd' : 'computerStdExt')
-                : (storage === 'standard' ? 'computerHighStd' : 'computerHighExt'));
-        }
-        if (macro) parts.push('macro');
-
-        // A single product covering the whole build beats several cart adds.
-        const bundleKey = [
-            software !== 'none' ? 'software' : null,
-            feeder !== 'none' ? feeder : null,
-            camera !== 'none' ? 'camera' : null,
-            hasComputer ? computer : null,
-            macro ? 'macro' : null
-        ].filter(Boolean).join('+');
-        const bundle = BUNDLES[bundleKey];
-
-        const missing = parts.filter(p => !COMPONENTS[p].permalink);
-        const canCart = parts.length > 0 && missing.length === 0;
+        // What actually goes in the cart: the bundle, if one matched, then
+        // whatever it did not cover.
+        const cartItems = (bundle ? [{ permalink: bundle.permalink, label: bundle.label, price: bundle.price }] : [])
+            .concat(leftovers.map(p => COMPONENTS[p]));
+        const buyable = cartItems.length > 0 && cartItems.every(c => c.permalink);
 
         els.buy.hidden = true;
         els.soon.hidden = true;
         els.cart.hidden = true;
 
-        if (bundle) {
-            els.buy.href = 'https://birdbrainllc.gumroad.com/l/' + bundle.permalink;
-            els.buy.textContent = bundle.label + ' — ' + money(total);
+        if (buyable && cartItems.length === 1) {
+            const only = cartItems[0];
+            els.buy.href = bundle
+                ? 'https://birdbrainllc.gumroad.com/l/' + only.permalink
+                : GUMROAD_CART + encodeURIComponent(only.permalink);
+            els.buy.textContent = 'Buy ' + only.label + ' — ' + money(total);
             els.buy.hidden = false;
-        } else if (canCart) {
-            // One link per piece: Gumroad has no multi-add URL, but the cart
+        } else if (buyable) {
+            // One link per item: Gumroad has no multi-add URL, but the cart
             // keeps what each one adds, so these end in a single checkout.
             els.cart.innerHTML =
-                '<p class="cfg-cart-lead">Add each piece to your Gumroad cart, then check out once:</p>' +
+                '<p class="cfg-cart-lead">Add each item to your Gumroad cart, then check out once:</p>' +
                 '<ol class="cfg-cart-list">' +
-                parts.map(p => {
-                    const c = COMPONENTS[p];
-                    return '<li><a href="' + GUMROAD_CART + encodeURIComponent(c.permalink) +
-                        '" target="_blank" rel="noopener">' + c.label +
-                        ' <span>' + money(c.price) + '</span></a></li>';
-                }).join('') +
+                cartItems.map(c =>
+                    '<li><a href="' + GUMROAD_CART + encodeURIComponent(c.permalink) +
+                    '" target="_blank" rel="noopener">' + c.label +
+                    ' <span>' + money(c.price) + '</span></a></li>'
+                ).join('') +
                 '</ol>' +
                 '<a class="btn btn-primary btn-block" href="https://gumroad.com/checkout" target="_blank" rel="noopener">Go to checkout — ' + money(total) + '</a>';
             els.cart.hidden = false;
@@ -418,11 +446,11 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         if (els.footnote) {
-            els.footnote.textContent = bundle || canCart
+            els.footnote.textContent = buyable
                 ? 'Secure payment via Gumroad. Your license key is emailed within 24 hours.'
                 : (total === 0
                     ? 'Choose at least one piece to see a price.'
-                    : 'This combination is not on sale yet — the ready-to-run computers are still coming. The software on its own and both feeder kits can be bought today.');
+                    : 'This combination is not quite ready to order yet. Everything else on this page can be bought today.');
         }
     }
 

@@ -1522,6 +1522,12 @@ ul {
     border-radius: var(--radius-sm);
 }
 
+.cfg-lines li.cfg-line-saving,
+.cfg-lines li.cfg-line-saving span:last-child {
+    color: var(--color-primary);
+    font-weight: 700;
+}
+
 /* Per-piece cart adds, for builds with no single Gumroad product */
 .cfg-cart[hidden] {
     display: none;
