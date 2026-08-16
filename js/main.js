@@ -105,7 +105,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Buy Full Nest button - Gumroad product link
+    // Buy The Nest (outdoor) button - Gumroad product link
     const buyNestBtn = document.getElementById('buy-nest-btn');
     if (buyNestBtn) {
         buyNestBtn.addEventListener('click', function(e) {
