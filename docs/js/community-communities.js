@@ -107,8 +107,70 @@ function renderCommunityFilter() {
 async function onCommunityFilterChange(value) {
     selectedCommunity = value || '';
     await loadCommunityFeederIndex();
-    scopeDropdownsToCommunity(true);
+    await scopeDropdownsToCommunity(true);
     if (typeof refilter === 'function') await refilter();
+}
+
+// feeder_id -> display_name, for the roster-based Feeder dropdown. Cached
+// across community switches; feeder names change rarely and a stale one is
+// cosmetic.
+const communityFeederNames = new Map();
+
+async function loadCommunityFeederNames(feederIds) {
+    const missing = feederIds.filter(id => !communityFeederNames.has(id));
+    if (!missing.length) return;
+    try {
+        const res = await fetch(
+            `${SUPABASE_URL}/rest/v1/feeders?id=in.(${missing.join(',')})&select=id,display_name`,
+            { headers: sbHeaders(hasAuthSession()) }
+        );
+        if (!res.ok) return;
+        (await res.json()).forEach(f => {
+            if (f.id && f.display_name) communityFeederNames.set(f.id, f.display_name);
+        });
+    } catch {
+        // Leave the map short; the caller falls back to the detections-derived list.
+    }
+}
+
+// Build the Feeder dropdown from the community's ROSTER rather than from
+// whatever happens to be in the current results.
+//
+// The detections-derived list is period-filtered, so a feeder silently appears
+// and disappears as you switch between Today and All — for a teacher, "the
+// classroom feeder vanished" reads as a fault rather than as "it was quiet
+// today". A community's feeders are a stable fact about the community, so the
+// roster is the honest list, with quiet ones marked instead of hidden.
+//
+// Only used when a specific community is selected. On the public feed the
+// roster is hundreds of feeders and the detections-derived list is genuinely
+// more useful.
+//
+// Returns false when the roster isn't resolvable, so the caller can fall back.
+function populateFeederDropdownFromRoster(inScope) {
+    const sel = document.getElementById('feeder-filter');
+    if (!sel || !communityFeederIndex) return false;
+
+    const ids = communityFeederIndex.get(selectedCommunity);
+    if (!ids || !ids.size) return false;
+
+    const names = [...ids]
+        .map(id => communityFeederNames.get(id))
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b));
+    if (!names.length) return false;
+
+    // display_name is the filter's value (applyClientFilters matches on
+    // d.feeders.display_name), so the "(no detections)" hint goes in the option
+    // TEXT only — putting it in the value would silently match nothing.
+    const active = new Set(inScope.map(d => d.feeders?.display_name).filter(Boolean));
+    const prev = sel.value;
+    sel.innerHTML = '<option value="">All feeders</option>' +
+        names.map(n =>
+            `<option value="${esc(n)}">${esc(n)}${active.has(n) ? '' : ' (no detections)'}</option>`
+        ).join('');
+    if (names.includes(prev)) sel.value = prev;
+    return true;
 }
 
 // A community is a SCOPE, not merely another filter: once you are looking at
@@ -120,15 +182,23 @@ async function onCommunityFilterChange(value) {
 // refresh must not silently drop the operator's filters — and true on an actual
 // community change, where a feeder or species that no longer exists in scope
 // would otherwise leave the feed stubbornly empty with no visible cause.
-function scopeDropdownsToCommunity(resetInvalidSelections) {
+async function scopeDropdownsToCommunity(resetInvalidSelections) {
     if (typeof allDetections === 'undefined') return;
     if (!selectedCommunity) return;   // nothing to narrow to
 
     const inScope = allDetections.filter(d => !communityFilterExcludes(d));
 
+    const ids = communityFeederIndex ? communityFeederIndex.get(selectedCommunity) : null;
+    if (ids && ids.size) await loadCommunityFeederNames([...ids]);
+
     const feederSel = document.getElementById('feeder-filter');
     const prevFeeder = feederSel ? feederSel.value : '';
-    if (typeof populateFeederDropdown === 'function') populateFeederDropdown(inScope);
+    // Roster first; fall back to the detections-derived list if the roster
+    // isn't resolvable (no index yet, or the names fetch failed).
+    if (!populateFeederDropdownFromRoster(inScope)
+        && typeof populateFeederDropdown === 'function') {
+        populateFeederDropdown(inScope);
+    }
     if (typeof populateFeedSpeciesDropdown === 'function') populateFeedSpeciesDropdown(inScope);
     if (typeof populateMapSpeciesDropdown === 'function') populateMapSpeciesDropdown(inScope);
 
@@ -296,6 +366,7 @@ function clearCommunityState() {
     communityFeederIndex = null;
     selectedCommunity = '';
     signedUrlCache.clear();
+    communityFeederNames.clear();
     const sel = document.getElementById('community-filter');
     if (sel) sel.value = '';
     renderCommunityFilter();
