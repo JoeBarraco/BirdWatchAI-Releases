@@ -21,7 +21,7 @@
          GitHub Pages serves these with a 10-minute max-age, so without it a
          browser can pair new HTML with the previous JS, and a mismatch there
          silently breaks anything scripted (the pricing configurator especially). -->
-    <link rel="stylesheet" href="css/style.css?v=20260816e">
+    <link rel="stylesheet" href="css/style.css?v=20260816f">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="icon" type="image/png" href="images/favicon.png">
     <link rel="manifest" href="manifest.json">
@@ -545,11 +545,13 @@
                 <h4 class="fullnest-group"><span aria-hidden="true">📷</span> Camera &amp; lens</h4>
                 <div class="opt-cards opt-cards-2">
                     <div class="opt-card">
+                        <img src="images/camera.jpg" alt="The camera: a white indoor RTSP camera with a black circular face, wide-angle lens, twin infrared illuminators and a status light, sitting on a ribbed dome stand." class="opt-image opt-image-product" loading="lazy" width="800" height="800">
                         <h5>Camera</h5>
                         <p>An RTSP camera matched to whichever feeder you choose, so the framing and focus distance are right out of the box. Already own an RTSP camera — Tapo, Reolink, Wyze, Amcrest? Leave this out and point the software at yours instead.</p>
                     </div>
 
                     <div class="opt-card">
+                        <img src="images/macro-lens.jpg" alt="The macro lens: a circular clip-on lens in a grey mount with a white band that clips over the camera body." class="opt-image opt-image-product" loading="lazy" width="800" height="533">
                         <h5>Macro lens</h5>
                         <p>A snap-on lens that tightens the shot for smaller visitors. Chickadees, wrens and finches fill much more of the frame, which makes for better photos and gives the AI more to work with.</p>
                     </div>
@@ -581,9 +583,34 @@
                     </div>
                 </div>
 
-                <p class="pricing-note">
-                    💾 Either computer comes with a <strong>30 GB SSD</strong> for snapshots and recent clips, or a <strong>250 GB SSD</strong> if you want to keep a full season of video. Both watch a single feeder camera; the difference is speed and how much history they hold comfortably. <a href="docs/manual/part-4-first-time-setup.html#preloaded-pi">See what setup looks like</a> before you buy.
-                </p>
+                <h4 class="fullnest-group"><span aria-hidden="true">💾</span> Storage <span>— how much history the drive holds</span></h4>
+                <figure class="storage-compare">
+                    <svg viewBox="0 0 800 210" class="storage-compare-svg" role="img" aria-labelledby="sc-title sc-desc">
+                        <title id="sc-title">The two storage options compared</title>
+                        <desc id="sc-desc">The standard 30 GB drive keeps snapshots and recent clips. The extended 250 GB drive holds roughly eight times as much — about a full season of video.</desc>
+
+                        <!-- Standard -->
+                        <text class="sc-label" x="200" y="26" text-anchor="middle">Standard</text>
+                        <text class="sc-size" x="200" y="76" text-anchor="middle">30 GB</text>
+                        <rect class="sc-track" x="50" y="100" width="300" height="20" rx="10"></rect>
+                        <rect class="sc-fill" x="50" y="100" width="36" height="20" rx="10"></rect>
+                        <text class="sc-caption" x="200" y="152" text-anchor="middle">Snapshots and recent clips</text>
+                        <text class="sc-caption sc-muted" x="200" y="176" text-anchor="middle">A few weeks of activity</text>
+
+                        <line class="sc-divider" x1="400" y1="16" x2="400" y2="194"></line>
+
+                        <!-- Extended -->
+                        <text class="sc-label" x="600" y="26" text-anchor="middle">Extended</text>
+                        <text class="sc-size" x="600" y="76" text-anchor="middle">250 GB</text>
+                        <rect class="sc-track" x="450" y="100" width="300" height="20" rx="10"></rect>
+                        <rect class="sc-fill" x="450" y="100" width="300" height="20" rx="10"></rect>
+                        <text class="sc-caption" x="600" y="152" text-anchor="middle">A full season of video</text>
+                        <text class="sc-caption sc-muted" x="600" y="176" text-anchor="middle">Roughly 8&#215; the space</text>
+                    </svg>
+                    <figcaption>
+                        Either computer takes either drive. Storage changes how much history you keep, not how fast the bird is identified — that's the computer. <a href="docs/manual/part-4-first-time-setup.html#preloaded-pi">See what setup looks like</a> before you buy.
+                    </figcaption>
+                </figure>
             </div>
 
             <!-- ── BUILD & PRICE ──────────────────────────────────── -->
@@ -858,7 +885,7 @@
     </footer>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="js/main.js?v=20260816e"></script>
+    <script src="js/main.js?v=20260816f"></script>
     <script>
     function toggleMainTheme() {
         const current = document.documentElement.getAttribute('data-theme');

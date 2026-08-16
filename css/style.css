@@ -1365,6 +1365,72 @@ ul {
     font-style: italic;
 }
 
+/* Storage comparison — inline SVG so it follows the theme and the numbers
+   stay editable text rather than baked pixels. */
+.storage-compare {
+    max-width: 800px;
+    margin: 0 auto var(--space-lg);
+    padding: var(--space-lg);
+    background: var(--color-white);
+    border: 1px solid var(--color-gray-200);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+}
+
+.storage-compare-svg {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.sc-label {
+    font-family: var(--font-body);
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    fill: var(--color-gray-500);
+}
+
+.sc-size {
+    font-family: var(--font-display);
+    font-size: 42px;
+    font-weight: 700;
+    fill: var(--color-primary);
+}
+
+.sc-track {
+    fill: var(--color-gray-200);
+}
+
+.sc-fill {
+    fill: var(--color-primary);
+}
+
+.sc-caption {
+    font-family: var(--font-body);
+    font-size: 16px;
+    fill: var(--color-gray-700);
+}
+
+.sc-muted {
+    font-size: 14px;
+    fill: var(--color-gray-500);
+}
+
+.sc-divider {
+    stroke: var(--color-gray-200);
+    stroke-width: 1;
+}
+
+.storage-compare figcaption {
+    margin-top: var(--space-md);
+    font-size: 0.875rem;
+    line-height: 1.6;
+    text-align: center;
+    color: var(--color-gray-500);
+}
+
 /* Descriptive option cards (no prices — those live in the builder) */
 .opt-cards {
     display: grid;
@@ -1423,6 +1489,18 @@ ul {
     margin-bottom: var(--space-md);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-sm);
+}
+
+/* Catalogue shots on a white sweep, rather than photographs of a real object:
+   contain them so nothing is cropped, and carry the white with them so they
+   don't sit on a dark card as a bright rectangle. Same 3:2 footprint as the
+   photographs, so the row keeps its rhythm. */
+.opt-image-product {
+    object-fit: contain;
+    padding: var(--space-sm);
+    background: #ffffff;
+    border: 1px solid var(--color-gray-200);
+    box-shadow: none;
 }
 
 .opt-note {
