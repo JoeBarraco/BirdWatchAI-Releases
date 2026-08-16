@@ -237,8 +237,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const computerCost = PRICES.computerBase[computer] + storageCost;
 
         // Storage only means anything alongside a computer.
-        els.storageRow.classList.toggle('cfg-row-disabled', !hasComputer);
-        form.elements.storage.disabled = !hasComputer;
+        if (els.storageRow) els.storageRow.classList.toggle('cfg-row-disabled', !hasComputer);
+        if (form.elements.storage) form.elements.storage.disabled = !hasComputer;
 
         const hasHardware = feeder !== 'none' || camera !== 'none' || hasComputer || macro;
         const softwareCost = software === 'none'
@@ -309,6 +309,22 @@ document.addEventListener('DOMContentLoaded', function () {
         els.hint.hidden = !hint;
     }
 
-    form.addEventListener('change', render);
-    render();
+    // A throw inside render() would leave the total frozen on whatever it last
+    // showed, which looks exactly like "the price doesn't update" — the failure
+    // mode when cached JS meets newer HTML. Say so instead of going quiet.
+    function safeRender() {
+        try {
+            render();
+        } catch (err) {
+            console.error('Configurator failed to update:', err);
+            if (els.hint) {
+                els.hint.textContent = 'Something went wrong updating this price. Please refresh the page.';
+                els.hint.hidden = false;
+            }
+        }
+    }
+
+    form.addEventListener('change', safeRender);
+    form.addEventListener('input', safeRender);
+    safeRender();
 });
