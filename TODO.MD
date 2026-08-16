@@ -13,6 +13,10 @@ TO DO LIST
 - Favorited detection uploads should translate to "Liked" by the uploaded (requires backend: add is_favorite column to community_detections and auto-create reaction on upload)
 - ~~Need to provide some photos of the bird feeder (both types) so we can price "The full nest" option. I am thinking the Full Nest should be $150 and the software half that ($75).~~ DONE (Full Nest priced at $150, software license at $75)
      - ~~Need to update pricing on "Gumroad" first, as well as add Full nest to gumroad.~~ DONE
+- **Gumroad needs updating to match the site.** Two things are now out of sync, and both are live:
+     - **Price.** The Nest — Outdoor is $125 on the site (was $150). The Gumroad listing (`birdbrainllc.gumroad.com/l/irvwmy`) still charges $150, so anyone clicking Buy sees a higher price than advertised. Fix this one first.
+     - **Names.** The kits were renamed from "The Full Nest — Indoor/Outdoor" to "The Nest — Indoor/Outdoor"; "The Full Nest" now means the kit plus a preloaded computer. The Gumroad listings still use the old names. Product URLs are unchanged, so this is a rename in Gumroad only — no link edits needed here.
+     - Nothing to do yet for the eight Full Nest bundles or the two computers; they're all Coming Soon and have no listings.
 - The "Download Free Trial" button still ships the old WinForms app, and there is no click-to-download path to the server edition at all. Today index.html's #download-btn is hardcoded to
   .../releases/download/v2.1.2.0/BirdWatchAI_Setup_2.1.2.0.exe, so a visitor sold on the server screenshots gets the desktop app instead. Installing the server is documented in the manual, but reading install docs is not a download button. Options, roughly in order of effort:
      - Publish self-contained builds as release assets on birdwatchai-server-releases (win-x64, linux-x64, linux-arm64, osx-arm64) and give the download section a small platform picker. Note this changes docs/RELEASING.md, which deliberately publishes tags + notes only, no binaries — that decision needs revisiting first.
