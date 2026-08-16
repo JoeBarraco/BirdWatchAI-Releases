@@ -79,14 +79,23 @@ async function loadCommunityFeederIndex(force) {
 // platform while you're looking at one community.
 function communityScopeFeederIds() {
     if (!selectedCommunity || !communityFeederIndex) return null;
-    return communityFeederIndex.get(selectedCommunity) || null;
+    // An EMPTY set, not null. A community with no approved feeders has no entry
+    // in the index, and returning null there told every caller "no scope
+    // selected" — so selecting an empty community showed the entire feed.
+    // Null must mean "cannot scope"; empty must mean "scopes to nothing".
+    return communityFeederIndex.get(selectedCommunity) || new Set();
 }
 
 function communityFilterExcludes(d) {
     if (!selectedCommunity) return false;
+    // Index not loaded yet — fail open rather than blanking the feed on a race.
     if (!communityFeederIndex) return false;
     const members = communityFeederIndex.get(selectedCommunity);
-    if (!members) return false;
+    // No entry means the community genuinely has no approved feeders. That is
+    // an answer, not a failure: exclude everything. Previously this fell open
+    // and an empty community displayed the whole feed — a scope filter that
+    // shows MORE than asked for when it doesn't recognise its own target.
+    if (!members) return true;
     return !members.has(d.feeder_id);
 }
 
@@ -160,14 +169,20 @@ function populateFeederDropdownFromRoster(inScope) {
     const sel = document.getElementById('feeder-filter');
     if (!sel || !communityFeederIndex) return false;
 
-    const ids = communityFeederIndex.get(selectedCommunity);
-    if (!ids || !ids.size) return false;
+    // Empty set rather than bailing out: a community with no feeders should
+    // render an EMPTY roster. Returning false here fell back to the
+    // detections-derived list, which is every feeder in the feed — the exact
+    // opposite of what selecting an empty community should show.
+    const ids = communityFeederIndex.get(selectedCommunity) || new Set();
 
     const names = [...ids]
         .map(id => communityFeederNames.get(id))
         .filter(Boolean)
         .sort((a, b) => a.localeCompare(b));
-    if (!names.length) return false;
+    // Members exist but none of their names resolved — that IS a failure (the
+    // lookup didn't complete), so fall back rather than show a misleadingly
+    // empty roster.
+    if (ids.size && !names.length) return false;
 
     // display_name is the filter's value (applyClientFilters matches on
     // d.feeders.display_name), so the "(no detections)" hint goes in the option
