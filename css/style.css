@@ -879,9 +879,10 @@ ul {
 
 .pricing-price {
     display: flex;
+    flex-wrap: wrap;
     align-items: baseline;
     justify-content: center;
-    gap: var(--space-xs);
+    gap: 0 var(--space-xs);
 }
 
 .price-amount {
@@ -892,7 +893,10 @@ ul {
 }
 
 .price-period {
+    flex-basis: 100%;
     font-size: 0.9375rem;
+    line-height: 1.4;
+    text-align: center;
     color: var(--color-gray-500);
 }
 
@@ -1083,6 +1087,26 @@ ul {
     border: 0;
 }
 
+/* "You still need X" bar */
+.pricing-requires {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-xs);
+    padding: var(--space-xs) var(--space-sm);
+    margin-bottom: var(--space-md);
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    text-align: left;
+    color: var(--color-gray-700);
+    background: color-mix(in srgb, var(--color-accent) 20%, var(--color-white));
+    border: 1px solid color-mix(in srgb, var(--color-accent) 50%, transparent);
+    border-radius: var(--radius-sm);
+}
+
+.pricing-requires strong {
+    color: var(--color-gray-900);
+}
+
 /* The complete bundle */
 .pricing-complete {
     max-width: 800px;
@@ -1128,6 +1152,59 @@ ul {
     margin: 0 auto var(--space-md);
     font-size: 0.875rem;
     line-height: 1.6;
+    color: var(--color-gray-500);
+}
+
+.pricing-complete .pricing-price {
+    margin-bottom: var(--space-sm);
+}
+
+.pricing-complete-math {
+    max-width: 560px;
+    margin: 0 auto var(--space-sm);
+    display: grid;
+    gap: var(--space-xs);
+}
+
+.pcm-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 2px var(--space-sm);
+    padding: var(--space-xs) var(--space-sm);
+    text-align: left;
+    background: var(--color-white);
+    border: 1px solid var(--color-gray-200);
+    border-radius: var(--radius-md);
+}
+
+.pcm-label {
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: var(--color-gray-900);
+}
+
+.pcm-calc {
+    grid-column: 1;
+    font-size: 0.8125rem;
+    color: var(--color-gray-500);
+}
+
+.pcm-total {
+    grid-column: 2;
+    grid-row: 1 / 3;
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--color-primary);
+    white-space: nowrap;
+}
+
+.pricing-complete-fine {
+    max-width: 560px;
+    margin: 0 auto var(--space-md);
+    font-size: 0.8125rem;
+    line-height: 1.5;
     color: var(--color-gray-500);
 }
 
