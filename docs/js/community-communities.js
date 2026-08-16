@@ -730,6 +730,13 @@ async function createCommunityFromAdmin() {
 
 // ── Admin: the community roster ──────────────────────────
 
+// Self-wiring: this file owns both the button hook and the function, so the
+// section works whenever THIS file is current, regardless of what version of
+// community-auth.js the CDN happens to be serving. The inline
+// onclick="openAdminPanel()" still runs; this listener fires alongside it.
+document.getElementById('navbar-admin-btn')
+    ?.addEventListener('click', () => { refreshCommunityAdminList(); });
+
 async function refreshCommunityAdminList() {
     const list = document.getElementById('community-admin-list');
     if (!list) return;
@@ -738,8 +745,18 @@ async function refreshCommunityAdminList() {
     if (!email) { list.innerHTML = ''; return; }
 
     list.innerHTML = '<li style="color:var(--color-gray-500)">Loading…</li>';
-    const { data, error } = await sbRpc('community_admin_list',
-        { p_email: email, p_password: password }, false);
+
+    // Everything below is wrapped: an exception here used to leave the section
+    // sitting on "Loading…" forever, which is indistinguishable from a hung
+    // request and tells the operator nothing.
+    let data, error;
+    try {
+        ({ data, error } = await sbRpc('community_admin_list',
+            { p_email: email, p_password: password }, false));
+    } catch (err) {
+        list.innerHTML = `<li style="color:#e74c3c">${esc(err.message || 'Request failed')}</li>`;
+        return;
+    }
 
     if (error) {
         list.innerHTML = `<li style="color:#e74c3c">${esc(error.message || 'Failed to load')}</li>`;

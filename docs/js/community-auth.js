@@ -475,8 +475,11 @@ document.getElementById('mod-login-modal').addEventListener('click', e => {
 async function openAdminPanel() {
     if (!isAdmin()) return;
     document.getElementById('mod-admin-modal').classList.add('open');
-    // Community roster loads in parallel (community-communities.js).
-    if (typeof refreshCommunityAdminList === 'function') refreshCommunityAdminList();
+    // The community roster wires itself up from community-communities.js — see
+    // the navbar-admin-btn listener there. Deliberately NOT called from here:
+    // doing so made a feature in one file depend on this file being the same
+    // deployed version, and a CDN serving one fresh and one stale left the
+    // section stuck on its placeholder.
     await refreshModUserList();
 }
 
