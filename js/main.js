@@ -202,12 +202,44 @@ document.addEventListener('DOMContentLoaded', function () {
         'high|extended': 'The Cardinal'
     };
 
-    // Builds that can actually be bought today. Anything else is Coming Soon,
-    // because it contains a computer and those are not on sale yet.
-    const BUYABLE = {
-        'software': { url: 'https://birdbrainllc.gumroad.com/l/dajhd', label: 'Buy the software' },
-        'software+indoor+camera': { url: 'https://birdbrainllc.gumroad.com/l/dzjxfn', label: 'Buy The Nest Indoor' },
-        'software+outdoor+camera': { url: 'https://birdbrainllc.gumroad.com/l/irvwmy', label: 'Buy The Nest Outdoor' }
+    /* Gumroad wiring.
+
+       Two ways to buy, because Gumroad supports two and they suit different
+       builds:
+
+       BUNDLES are single products covering a whole build — one click, one
+       checkout. Best where one exists.
+
+       COMPONENTS are added to Gumroad's cart one at a time, via
+       gumroad.com/checkout?product=<permalink>. There is no URL that adds
+       several at once (?product= repeated keeps only the last, and product[],
+       products= and comma-separated forms add nothing), but adds do
+       accumulate, so a build becomes one link per line and a single checkout.
+       The cart holds up to 50 products, far more than any build needs.
+
+       To switch a component on, create the product in Gumroad at the price
+       shown and paste its permalink here — the bit after /l/. Anything left
+       null makes builds needing it fall back to Coming Soon, so half-finished
+       wiring cannot send someone to a checkout that is missing pieces. */
+    const GUMROAD_CART = 'https://gumroad.com/checkout?product=';
+
+    const BUNDLES = {
+        'software': { permalink: 'dajhd', label: 'Buy the software' },
+        'software+indoor+camera': { permalink: 'dzjxfn', label: 'Buy The Nest Indoor' },
+        'software+outdoor+camera': { permalink: 'irvwmy', label: 'Buy The Nest Outdoor' }
+    };
+
+    const COMPONENTS = {
+        softwareAlone:      { permalink: 'dajhd', price: 75,  label: 'BirdWatchAI license' },
+        softwareBundled:    { permalink: null,    price: 50,  label: 'BirdWatchAI license (with hardware)' },
+        feederIndoor:       { permalink: null,    price: 20,  label: 'Indoor feeder' },
+        feederOutdoor:      { permalink: null,    price: 40,  label: 'Outdoor feeder' },
+        camera:             { permalink: null,    price: 40,  label: 'Camera' },
+        macro:              { permalink: null,    price: 25,  label: 'Macro lens' },
+        computerStdStd:     { permalink: null,    price: 110, label: 'Standard computer, 32 GB' },
+        computerStdExt:     { permalink: null,    price: 165, label: 'Standard computer, 256 GB' },
+        computerHighStd:    { permalink: null,    price: 160, label: 'High Performance computer, 32 GB' },
+        computerHighExt:    { permalink: null,    price: 215, label: 'High Performance computer, 256 GB' }
     };
 
     const els = {
@@ -220,6 +252,7 @@ document.addEventListener('DOMContentLoaded', function () {
         selComputer: document.getElementById('cfg-computer'),
         buy: document.getElementById('cfg-buy'),
         soon: document.getElementById('cfg-soon'),
+        cart: document.getElementById('cfg-cart'),
         footnote: document.getElementById('cfg-footnote')
     };
 
@@ -331,35 +364,65 @@ document.addEventListener('DOMContentLoaded', function () {
         els.hint.textContent = hint;
         els.hint.hidden = !hint;
 
-        // Offer the real Gumroad link when the build is one we can ship today,
-        // so the builder is the way to buy and not just the way to price.
-        const key = [
+        // Which Gumroad products this build needs, in the order they are listed.
+        const parts = [];
+        if (software !== 'none') parts.push(hasHardware ? 'softwareBundled' : 'softwareAlone');
+        if (feeder === 'indoor') parts.push('feederIndoor');
+        if (feeder === 'outdoor') parts.push('feederOutdoor');
+        if (camera !== 'none') parts.push('camera');
+        if (hasComputer) {
+            parts.push(computer === 'standard'
+                ? (storage === 'standard' ? 'computerStdStd' : 'computerStdExt')
+                : (storage === 'standard' ? 'computerHighStd' : 'computerHighExt'));
+        }
+        if (macro) parts.push('macro');
+
+        // A single product covering the whole build beats several cart adds.
+        const bundleKey = [
             software !== 'none' ? 'software' : null,
             feeder !== 'none' ? feeder : null,
             camera !== 'none' ? 'camera' : null,
             hasComputer ? computer : null,
             macro ? 'macro' : null
         ].filter(Boolean).join('+');
-        const sellable = BUYABLE[key];
+        const bundle = BUNDLES[bundleKey];
 
-        if (els.buy && els.soon) {
-            if (sellable) {
-                els.buy.href = sellable.url;
-                els.buy.textContent = sellable.label + ' — ' + money(total);
-                els.buy.hidden = false;
-                els.soon.hidden = true;
-            } else {
-                els.buy.hidden = true;
-                els.soon.hidden = false;
-            }
+        const missing = parts.filter(p => !COMPONENTS[p].permalink);
+        const canCart = parts.length > 0 && missing.length === 0;
+
+        els.buy.hidden = true;
+        els.soon.hidden = true;
+        els.cart.hidden = true;
+
+        if (bundle) {
+            els.buy.href = 'https://birdbrainllc.gumroad.com/l/' + bundle.permalink;
+            els.buy.textContent = bundle.label + ' — ' + money(total);
+            els.buy.hidden = false;
+        } else if (canCart) {
+            // One link per piece: Gumroad has no multi-add URL, but the cart
+            // keeps what each one adds, so these end in a single checkout.
+            els.cart.innerHTML =
+                '<p class="cfg-cart-lead">Add each piece to your Gumroad cart, then check out once:</p>' +
+                '<ol class="cfg-cart-list">' +
+                parts.map(p => {
+                    const c = COMPONENTS[p];
+                    return '<li><a href="' + GUMROAD_CART + encodeURIComponent(c.permalink) +
+                        '" target="_blank" rel="noopener">' + c.label +
+                        ' <span>' + money(c.price) + '</span></a></li>';
+                }).join('') +
+                '</ol>' +
+                '<a class="btn btn-primary btn-block" href="https://gumroad.com/checkout" target="_blank" rel="noopener">Go to checkout — ' + money(total) + '</a>';
+            els.cart.hidden = false;
+        } else {
+            els.soon.hidden = false;
         }
 
         if (els.footnote) {
-            els.footnote.textContent = sellable
+            els.footnote.textContent = bundle || canCart
                 ? 'Secure payment via Gumroad. Your license key is emailed within 24 hours.'
                 : (total === 0
                     ? 'Choose at least one piece to see a price.'
-                    : 'Builds that include a computer go on sale alongside the ready-to-run machines. The software on its own and both feeder kits can be bought today.');
+                    : 'This combination is not on sale yet — the ready-to-run computers are still coming. The software on its own and both feeder kits can be bought today.');
         }
     }
 

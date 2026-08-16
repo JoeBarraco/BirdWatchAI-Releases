@@ -16,11 +16,27 @@ TO DO LIST
 - **When you change `css/style.css` or `js/main.js`, bump the `?v=` on both tags in index.html.** GitHub Pages serves assets with a 10-minute max-age, so a browser can load new HTML against the previous JS. That mismatch is silent and looks like a feature is simply broken — it is what made the pricing configurator's total stop updating. The current stamp is `20260816b`; any new value works, a date plus a letter is fine.
 - **Gumroad: selling configured builds.** Prices are now in sync — checked live: `l/dajhd` $75, `l/dzjxfn` $110, `l/irvwmy` $130, all matching the builder. Still outstanding:
      - **Names.** The kits were renamed from "The Full Nest — Indoor/Outdoor" to "The Nest — Indoor/Outdoor"; "The Full Nest" now means the kit plus a preloaded computer. The Gumroad listings still use the old names. Product URLs are unchanged, so this is a rename in Gumroad only — no link edits needed here.
+     - **Create these 7 products, then paste their permalinks into `COMPONENTS` in `js/main.js`.** The builder is already wired; each entry left `null` makes any build needing it fall back to Coming Soon, so it can be switched on one product at a time. The permalink is the bit after `/l/`.
+
+       | Product | Price | Key in `COMPONENTS` |
+       |---|---|---|
+       | BirdWatchAI License — with hardware | $50 | `softwareBundled` |
+       | Indoor Feeder | $20 | `feederIndoor` |
+       | Outdoor Feeder | $40 | `feederOutdoor` |
+       | Camera | $40 | `camera` |
+       | Macro Lens | $25 | `macro` |
+       | Computer — Standard, 32 GB | $110 | `computerStdStd` |
+       | Computer — Standard, 256 GB | $165 | `computerStdExt` |
+       | Computer — High Performance, 32 GB | $160 | `computerHighStd` |
+       | Computer — High Performance, 256 GB | $215 | `computerHighExt` |
+
+       (Nine rows, seven of them new — `softwareAlone` already points at `dajhd`.) The four computer prices already include the case, power supply and drive. Keep the two kit bundles (`dzjxfn`, `irvwmy`): the builder prefers a single product when one covers the whole build, so those stay one-click.
+     - **The $50 software price is public.** With component checkout the builder has to link the discounted licence whenever hardware is selected, so anyone reading the page source can buy it at $50 alone. Either accept that, or settle on a single software price and adjust the kit totals.
      - **What the builder can offer.** Findings from probing Gumroad directly, so nobody repeats the work:
           - The overlay widget does **not** bundle. Reading `assets.gumroad.com/js/gumroad-bundle.js`: it binds every `<a>` on the page and, on click, sets a single iframe's `src` to that one product. Each click replaces the last. The help-centre text claiming linked products bundle together is wrong for the current script.
           - Gumroad *does* have a real cart — `/checkout` exposes `max_allowed_cart_products: 50` plus `add_products` and `clear_cart`.
           - `https://gumroad.com/checkout?product=<permalink>` adds exactly one product to it. Repeating `?product=` keeps only the last; `product[]`, `products=`, comma-separated and `add_products[]` all add nothing.
-          - The cart is held client-side — a cookie-only session shows `cart: null` after two adds — so whether sequential visits accumulate could not be verified without a real browser. **That is the open question:** open `gumroad.com/checkout?product=dajhd`, then `gumroad.com/checkout?product=dzjxfn`, and see whether the cart holds both. If it does, the builder can offer one add-to-cart link per line item. If not, configured builds need either fixed Gumroad bundles per combination, or an invoice flow.
+          - Adds **do** accumulate — confirmed by hand in a real browser, since the cart is held client-side and a cookie-only session always reports `cart: null`. So a build becomes one link per line and a single checkout, which is what the builder now renders.
      - Nothing to list yet for the computers or complete builds — all Coming Soon.
 - The "Download Free Trial" button still ships the old WinForms app, and there is no click-to-download path to the server edition at all. Today index.html's #download-btn is hardcoded to
   .../releases/download/v2.1.2.0/BirdWatchAI_Setup_2.1.2.0.exe, so a visitor sold on the server screenshots gets the desktop app instead. Installing the server is documented in the manual, but reading install docs is not a download button. Options, roughly in order of effort:

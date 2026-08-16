@@ -1522,6 +1522,45 @@ ul {
     border-radius: var(--radius-sm);
 }
 
+/* Per-piece cart adds, for builds with no single Gumroad product */
+.cfg-cart[hidden] {
+    display: none;
+}
+
+.cfg-cart-lead {
+    margin-bottom: var(--space-xs);
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    text-align: left;
+    color: var(--color-gray-700);
+}
+
+.cfg-cart-list {
+    margin: 0 0 var(--space-sm);
+    padding-left: 1.25rem;
+    list-style: decimal;
+    text-align: left;
+}
+
+.cfg-cart-list li {
+    margin-bottom: 4px;
+    font-size: 0.8125rem;
+    color: var(--color-gray-500);
+}
+
+.cfg-cart-list a {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-sm);
+    color: var(--color-primary);
+    font-weight: 600;
+}
+
+.cfg-cart-list a span {
+    color: var(--color-gray-500);
+    font-weight: 400;
+}
+
 .cfg-footnote {
     margin-top: var(--space-sm);
     font-size: 0.75rem;
