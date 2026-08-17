@@ -178,6 +178,9 @@ console.log('%cInterested in how this works? Check out the GitHub: https://githu
    So Nest Indoor = 50+20+40 = $110, and a full Wren Indoor build =
    50+20+40+(90+20) = $220. Change a number here and every total and
    every named build follows.
+
+   On top of that, shipping: free at $100 or more, otherwise a flat $25,
+   and never on a digital-only order. See SHIPPING below.
    ────────────────────────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', function () {
     const form = document.getElementById('cfg-form');
@@ -259,6 +262,30 @@ document.addEventListener('DOMContentLoaded', function () {
         // Still to create: Indoor Finch $275 / Cardinal $325,
         // Outdoor Wren $240 / Jay $290 / Finch $295 / Cardinal $345.
     ];
+
+    /* Shipping & handling.
+
+       Free at the threshold or above, a flat fee below it, and never charged
+       on a digital-only order — nothing ships when the license is all you buy.
+       The threshold is measured on the POST-discount subtotal, i.e. what is
+       actually paid, so $100 exactly ships free.
+
+       Gumroad's own shipping is per-product, which can express neither half of
+       that rule: a two-item small cart would pay the fee twice, and no
+       per-product setting can make a $105 order free. So shipping is set to $0
+       on every Gumroad product and the fee rides along as its own product,
+       leaving the threshold logic here.
+
+       The permalink stays null until that product exists in Gumroad. Same
+       convention as COMPONENTS above: null makes the builds that need it fall
+       back to Coming Soon, rather than sending someone to a checkout that is
+       missing the fee. */
+    const SHIPPING = {
+        permalink: null,
+        price: 25,
+        threshold: 100,
+        label: 'Shipping & Handling'
+    };
 
     const els = {
         total: document.getElementById('cfg-total'),
@@ -362,14 +389,29 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         const leftovers = bundle ? parts.filter(p => !bundle.contains.includes(p)) : parts;
-        const total = listTotal - bundleSaving;
+        const subtotal = listTotal - bundleSaving;
+
+        // Shipping is decided on the discounted subtotal, so the threshold is
+        // measured against what is actually paid. The headline total includes
+        // the fee — a total here that disagrees with the Gumroad checkout total
+        // is the bug you would hear about.
+        const needsShipping = hasHardware && subtotal < SHIPPING.threshold;
+        const total = subtotal + (needsShipping ? SHIPPING.price : 0);
+
+        // Free shipping earns a line of its own even though it adds nothing to
+        // the total: a rule nobody can see sells nothing.
+        const shippingLine = !hasHardware
+            ? ''
+            : needsShipping
+                ? '<li><span>Shipping &amp; Handling</span><span>' + money(SHIPPING.price) + '</span></li>'
+                : '<li class="cfg-line-saving"><span>Shipping</span><span>Free</span></li>';
 
         els.lines.innerHTML = lines.map(l => l[1] === null
             ? '<li class="cfg-line-out"><span>' + l[0] + '</span><span>Not included</span></li>'
             : '<li><span>' + l[0] + '</span><span>' + money(l[1]) + '</span></li>'
         ).join('') + (bundleSaving > 0
             ? '<li class="cfg-line-saving"><span>' + bundle.label + ' saving</span><span>&minus;' + money(bundleSaving) + '</span></li>'
-            : '');
+            : '') + shippingLine;
 
         // Flash the total when it moves. On a narrow screen the summary can sit
         // below the fold of whatever you just changed, so a silent update reads
@@ -392,7 +434,7 @@ document.addEventListener('DOMContentLoaded', function () {
             name = 'The Nest — ' + style;
         } else if (software !== 'none' && !hasHardware) {
             name = 'BirdWatchAI Software';
-        } else if (total === 0) {
+        } else if (subtotal === 0) {
             name = 'Nothing selected';
         } else {
             name = 'Custom build';
@@ -414,6 +456,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // whatever it did not cover.
         const cartItems = (bundle ? [{ permalink: bundle.permalink, label: bundle.label, price: bundle.price }] : [])
             .concat(leftovers.map(p => COMPONENTS[p]));
+        if (needsShipping) cartItems.push(SHIPPING);
         const buyable = cartItems.length > 0 && cartItems.every(c => c.permalink);
 
         els.buy.hidden = true;
@@ -446,11 +489,18 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         if (els.footnote) {
+            // When the shipping product is the only thing not wired up yet, say
+            // so — the parts themselves are on sale, and "not ready to order"
+            // reads as though they are not.
+            const shippingBlocks = needsShipping && !SHIPPING.permalink &&
+                cartItems.every(c => c === SHIPPING || c.permalink);
             els.footnote.textContent = buyable
                 ? 'Secure payment via Gumroad. Your license key is emailed within 24 hours.'
-                : (total === 0
+                : (subtotal === 0
                     ? 'Choose at least one piece to see a price.'
-                    : 'This combination is not quite ready to order yet. Everything else on this page can be bought today.');
+                    : shippingBlocks
+                        ? 'Small orders like this one cannot be checked out just yet — shipping is still being set up. Builds of ' + money(SHIPPING.threshold) + ' or more ship free and can be bought today.'
+                        : 'This combination is not quite ready to order yet. Everything else on this page can be bought today.');
         }
     }
 
