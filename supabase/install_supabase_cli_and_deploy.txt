@@ -13,7 +13,11 @@ supabase functions deploy unsubscribe
 supabase functions deploy send-temp-password
 supabase functions deploy moderator-delete-media
 
-# Set the secrets
-supabase secrets set RESEND_API_KEY=re_NZFNyYPo_65EWNoew82LcAUHFHoVppchA
+# Set the secrets. Paste the real values at the prompt or from your shell
+# history — never write them into this file. THIS REPO IS PUBLIC, so a key
+# committed here is a key that has to be rotated. (One was, in Apr 2026.)
+# The full secret list lives in
+# supabase/functions/gumroad-license-webhook/README.md, step 3.
+supabase secrets set RESEND_API_KEY=re_...
 supabase secrets set DIGEST_FROM_EMAIL="BirdWatchAI Weekly <digest@birdwatchai.com>"
 supabase secrets set SITE_URL=https://joebarraco.github.io/birdwatchai-releases

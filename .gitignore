@@ -14,6 +14,13 @@ private_key.xml
 license_private_key*
 .env
 .env.*
+# Scratch files people keep a key in while setting a secret. The Resend key
+# was committed to supabase/resendapikey.txt once (Apr 2026) and had to be
+# rotated; these patterns are here so the next one doesn't get that far.
+*apikey*.txt
+*api_key*.txt
+*secret*.txt
+*.key
 
 # OS / editor noise
 .DS_Store
