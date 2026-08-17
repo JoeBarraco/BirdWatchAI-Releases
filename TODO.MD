@@ -13,7 +13,7 @@ TO DO LIST
 - Favorited detection uploads should translate to "Liked" by the uploaded (requires backend: add is_favorite column to community_detections and auto-create reaction on upload)
 - ~~Need to provide some photos of the bird feeder (both types) so we can price "The full nest" option. I am thinking the Full Nest should be $150 and the software half that ($75).~~ DONE (Full Nest priced at $150, software license at $75)
      - ~~Need to update pricing on "Gumroad" first, as well as add Full nest to gumroad.~~ DONE
-- **When you change `css/style.css` or `js/main.js`, bump the `?v=` on both tags in index.html.** GitHub Pages serves assets with a 10-minute max-age, so a browser can load new HTML against the previous JS. That mismatch is silent and looks like a feature is simply broken — it is what made the pricing configurator's total stop updating. The current stamp is `20260817a`; any new value works, a date plus a letter is fine.
+- **When you change `css/style.css` or `js/main.js`, bump the `?v=` on both tags in index.html.** GitHub Pages serves assets with a 10-minute max-age, so a browser can load new HTML against the previous JS. That mismatch is silent and looks like a feature is simply broken — it is what made the pricing configurator's total stop updating. The current stamp is `20260817b`; any new value works, a date plus a letter is fine.
 - **Gumroad: selling configured builds.** Prices are now in sync — checked live: `l/dajhd` $75, `l/dzjxfn` $110, `l/irvwmy` $130, all matching the builder.
 
      **Products still to create — seven, and Gumroad caps new products at 10 per day:**
