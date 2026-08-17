@@ -343,7 +343,10 @@ Deno.serve(async (req) => {
   const gumroadKey   = p['license_key'] ?? '';
   const isTest       = isTruthy(p['test']);
   const isRefund     = isTruthy(p['refunded']);
-  const isDispute    = isTruthy(p['dispute']) || isTruthy(p['dispute_won']);
+  // dispute_won means the SELLER won the chargeback — the sale stands, so this
+  // is the opposite of a revoke trigger. Only an open/lost dispute revokes.
+  const disputeWon   = isTruthy(p['dispute_won']);
+  const isDispute    = isTruthy(p['dispute']) && !disputeWon;
   const orderNumber  = p['order_number'] ?? '';
 
   if (!saleId) {
@@ -365,7 +368,26 @@ Deno.serve(async (req) => {
     console.warn('GUMROAD_PRODUCT_ID unset — every product on the account can mint licenses');
   }
 
-  // ── Refund / dispute: revoke rather than mint ─────────────────────────────
+  // ── dispute_won: the seller won, so un-revoke ─────────────────────────────
+  // Reached from the `dispute_won` resource subscription. The sale stands, so
+  // undo the revocation the earlier `dispute` ping wrote. Checked before the
+  // revoke branch below, since a dispute_won payload also carries dispute=true.
+  if (disputeWon) {
+    const { data, error } = await supabase
+      .from('licenses')
+      .update({ revoked_at: null, revoked_reason: null })
+      .eq('gumroad_sale_id', saleId)
+      .eq('revoked_reason', 'gumroad dispute')
+      .select('license_id');
+    if (error) {
+      console.error('un-revoke failed:', error.message);
+      return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    }
+    console.log(`dispute won for sale ${saleId}: restored ${data?.length ?? 0} key(s)`);
+    return new Response(JSON.stringify({ success: true, restored: data?.length ?? 0 }), { status: 200 });
+  }
+
+  // ── Refund / lost dispute: revoke rather than mint ────────────────────────
   // Reached when Gumroad's `refund` or `dispute` resource subscription points
   // at this same URL. Revocation is bookkeeping — an already-activated install
   // keeps working because validation is offline (see setup-licenses.sql).

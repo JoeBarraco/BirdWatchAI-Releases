@@ -153,17 +153,28 @@ creating anything.
 
 6. **Refunds and disputes (optional, can wait).** Gumroad's ping only covers
    sales. To have refunds auto-revoke, register resource subscriptions pointing
-   at the same URL:
+   at the same URL. Note **`-X PUT`** — Gumroad creates resource subscriptions
+   with PUT, not POST:
 
    ```bash
-   curl https://api.gumroad.com/v2/resource_subscriptions \
+   curl -X PUT https://api.gumroad.com/v2/resource_subscriptions \
      -d "access_token=YOUR_TOKEN" \
      -d "resource_name=refund" \
-     -d "post_url=https://<ref>.functions.supabase.co/gumroad-license-webhook?token=YOUR_PING_TOKEN"
+     -d "post_url=https://<ref>.supabase.co/functions/v1/gumroad-license-webhook?token=YOUR_PING_TOKEN"
    ```
 
-   Repeat with `resource_name=dispute`. The function routes those to the revoke
-   path instead of minting.
+   Repeat with `resource_name=dispute` and `resource_name=dispute_won`. The
+   function routes refunds and lost disputes to the revoke path, and
+   `dispute_won` (the seller won the chargeback, so the sale stands) back to
+   un-revoke. Confirm what's registered with:
+
+   ```bash
+   curl "https://api.gumroad.com/v2/resource_subscriptions?access_token=YOUR_TOKEN&resource_name=refund"
+   ```
+
+   Valid resource names, for reference: `sale`, `refund`, `dispute`,
+   `dispute_won`, `cancellation`, `subscription_updated`,
+   `subscription_ended`, `subscription_restarted`.
 
 ## Step 5 — Deploy the function
 
