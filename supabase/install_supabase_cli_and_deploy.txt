@@ -53,7 +53,10 @@ This repo is PUBLIC — it serves www.birdwatchai.com via GitHub Pages. Anything
 committed here is world-readable, permanently, including in git history.
 Secrets belong in the Supabase dashboard only.
 
-(The Resend key previously pasted into this file and into
-supabase/resendapikey.txt was published that way and must be treated as
-compromised: rotate it in Resend, update the RESEND_API_KEY secret, then delete
-resendapikey.txt from the repo.)
+(This already happened once. A Resend key was pasted into this file and into
+supabase/resendapikey.txt, making it world-readable from Apr 2026 until
+2026-08-17. RESOLVED: that key was revoked in Resend, a replacement was issued
+with Sending-access scope restricted to birdwatchai.com, and RESEND_API_KEY was
+updated. The dead key is still visible in history under 24a2616 and 3ca56fc —
+harmless now that it's revoked, which is why no history rewrite was done. The
+lesson it paid for is the rule above.)
