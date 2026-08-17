@@ -1,19 +1,59 @@
-# Install Supabase CLI (if not already installed)
-npm install -g supabase
+SUPABASE CLI + DEPLOY NOTES
+Project ref: lsamggztfizmkyljdgwq   (URL: https://lsamggztfizmkyljdgwq.supabase.co)
 
-# Log in
-supabase login
+-- CLI ---------------------------------------------------------------------
+`npm install -g supabase` is NO LONGER SUPPORTED by Supabase. Use npx, which
+needs no install and always runs the current version:
 
-# Link to your project (get project ref from Supabase Dashboard → Settings → General)
-supabase link --project-ref https://lsamggztfizmkyljdgwq.supabase.co
+    npx supabase@latest --version
+    npx supabase@latest login          # opens a browser for the access token
 
-# Deploy both functions
-supabase functions deploy weekly-digest
-supabase functions deploy unsubscribe
-supabase functions deploy send-temp-password
-supabase functions deploy moderator-delete-media
+Run every command below from the ROOT of this repo (the dir containing
+supabase/functions/), and pass --project-ref rather than running `link` — link
+prompts for the database password and isn't needed just to deploy functions.
+(The old note here passed a full URL to --project-ref, which the CLI rejects;
+it wants the bare ref.)
 
-# Set the secrets
-supabase secrets set RESEND_API_KEY=re_NZFNyYPo_65EWNoew82LcAUHFHoVppchA
-supabase secrets set DIGEST_FROM_EMAIL="BirdWatchAI Weekly <digest@birdwatchai.com>"
-supabase secrets set SITE_URL=https://joebarraco.github.io/birdwatchai-releases
+-- DEPLOY FUNCTIONS -------------------------------------------------------
+    npx supabase@latest functions deploy weekly-digest          --project-ref lsamggztfizmkyljdgwq
+    npx supabase@latest functions deploy unsubscribe            --project-ref lsamggztfizmkyljdgwq
+    npx supabase@latest functions deploy send-temp-password     --project-ref lsamggztfizmkyljdgwq
+    npx supabase@latest functions deploy moderator-delete-media --project-ref lsamggztfizmkyljdgwq
+
+Licensing (see functions/gumroad-license-webhook/README.md for the full
+runbook). The --no-verify-jwt flag is MANDATORY here: Gumroad's ping carries no
+Authorization header, so without it every sale gets a 401 and no license key is
+ever issued.
+
+    npx supabase@latest functions deploy gumroad-license-webhook --project-ref lsamggztfizmkyljdgwq --no-verify-jwt
+
+If the CLI rejects --no-verify-jwt (it moved into config.toml in newer
+versions), deploy without it and turn JWT verification off in the dashboard:
+Edge Functions -> gumroad-license-webhook -> Settings -> Verify JWT = off.
+
+-- SECRETS ----------------------------------------------------------------
+Set these in the DASHBOARD (Edge Functions -> Secrets), not on a command line.
+Multi-line values like the license PEM get mangled by shell quoting, and a
+mangled PEM fails on every sale. The dashboard textarea takes a paste as-is.
+
+    RESEND_API_KEY              re_...          (shared by all mail functions)
+    DIGEST_FROM_EMAIL           BirdWatchAI Weekly <digest@birdwatchai.com>
+    SITE_URL                    https://joebarraco.github.io/birdwatchai-releases
+
+Licensing:
+    LICENSE_PRIVATE_KEY_PEM     -----BEGIN PRIVATE KEY-----...   (whole PEM)
+    LICENSE_FROM_EMAIL          BirdWatch AI <licenses@birdwatchai.com>
+    GUMROAD_PING_TOKEN          long random string; also goes in the ping URL
+    GUMROAD_PRODUCT_ID          every license-bearing product, comma-separated
+    GUMROAD_ACCESS_TOKEN        Gumroad -> Settings -> Advanced -> Applications
+    GUMROAD_REQUIRE_CALLBACK    set to 1 after the first successful test sale
+
+-- NEVER PUT SECRETS IN THIS REPO ----------------------------------------
+This repo is PUBLIC — it serves www.birdwatchai.com via GitHub Pages. Anything
+committed here is world-readable, permanently, including in git history.
+Secrets belong in the Supabase dashboard only.
+
+(The Resend key previously pasted into this file and into
+supabase/resendapikey.txt was published that way and must be treated as
+compromised: rotate it in Resend, update the RESEND_API_KEY secret, then delete
+resendapikey.txt from the repo.)
