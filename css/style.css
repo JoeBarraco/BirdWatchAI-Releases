@@ -1271,11 +1271,28 @@ ul {
 }
 
 /* Stacked, the summary goes above the form and stays pinned — otherwise you
-   change a dropdown and the total you are watching for is off the bottom. */
+   change a dropdown and the total you are watching for is off the bottom.
+
+   It has to be capped, though. A full summary runs to ~740px, which on a phone
+   is the whole screen: pinned, it buries the dropdowns it is meant to be
+   reporting on. Bounding it to half the viewport and letting the contents
+   scroll keeps the build name and total — the first things in the panel —
+   always visible, while the form always has the other half. */
 @media (max-width: 900px) {
     .configurator > .cfg-summary { grid-row: 1; }
     .configurator > .cfg-form { grid-row: 2; }
-    .cfg-summary { top: 76px; }
+
+    .cfg-summary {
+        top: 70px;
+        max-height: 50vh;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        padding: var(--space-sm);
+    }
+
+    .cfg-total { margin: var(--space-xs) 0; }
+    .cfg-total-amount { font-size: 2.25rem; }
+    .cfg-name { font-size: 1.125rem; }
 }
 
 @keyframes cfgBump {
@@ -2257,7 +2274,10 @@ section {
     from { transform: translateX(100vw); }
     to   { transform: translateX(-100%); }
 }
-#live-ticker { position: fixed; top: 70px; left: 0; right: 0; z-index: 999; }
+/* overflow:hidden is load-bearing: the inner track runs to ~16,000px and the
+   animation starts it a full viewport to the right, so without clipping the
+   marquee drags the page sideways on narrow screens. */
+#live-ticker { position: fixed; top: 70px; left: 0; right: 0; z-index: 999; overflow: hidden; }
 body.ticker-visible { padding-top: 32px; }
 #ticker-inner { gap: 0; }
 .ticker-item {
@@ -2371,6 +2391,11 @@ body.ticker-visible { padding-top: 32px; }
     gap: 1rem;
 }
 .feeder-dir-card {
+    /* Grid and flex items default to min-width:auto, so the nowrap species line
+       below sets this card's minimum width to the full untruncated string — a
+       few hundred pixels — and widens the whole page on a phone. The
+       text-overflow only hides the paint, not the contribution. */
+    min-width: 0;
     background: var(--color-white);
     border-radius: 12px;
     padding: 1.25rem;
@@ -2390,7 +2415,7 @@ body.ticker-visible { padding-top: 32px; }
 .feeder-dir-stats { display: flex; gap: 1rem; font-size: 0.8rem; color: var(--color-gray-500); }
 .feeder-dir-stat strong { color: var(--color-gray-700); }
 [data-theme="dark"] .feeder-dir-stat strong { color: var(--color-cream); }
-.feeder-dir-species { font-size: 0.78rem; color: var(--color-gray-500); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.feeder-dir-species { min-width: 0; font-size: 0.78rem; color: var(--color-gray-500); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .feeder-dir-last { font-size: 0.75rem; color: var(--color-primary); }
 .feeder-dir-img {
     display: flex; gap: 3px; margin-bottom: 2px;
