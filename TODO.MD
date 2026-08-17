@@ -13,8 +13,26 @@ TO DO LIST
 - Favorited detection uploads should translate to "Liked" by the uploaded (requires backend: add is_favorite column to community_detections and auto-create reaction on upload)
 - ~~Need to provide some photos of the bird feeder (both types) so we can price "The full nest" option. I am thinking the Full Nest should be $150 and the software half that ($75).~~ DONE (Full Nest priced at $150, software license at $75)
      - ~~Need to update pricing on "Gumroad" first, as well as add Full nest to gumroad.~~ DONE
-- **When you change `css/style.css` or `js/main.js`, bump the `?v=` on both tags in index.html.** GitHub Pages serves assets with a 10-minute max-age, so a browser can load new HTML against the previous JS. That mismatch is silent and looks like a feature is simply broken — it is what made the pricing configurator's total stop updating. The current stamp is `20260816b`; any new value works, a date plus a letter is fine.
-- **Gumroad: selling configured builds.** Prices are now in sync — checked live: `l/dajhd` $75, `l/dzjxfn` $110, `l/irvwmy` $130, all matching the builder. Still outstanding:
+- **When you change `css/style.css` or `js/main.js`, bump the `?v=` on both tags in index.html.** GitHub Pages serves assets with a 10-minute max-age, so a browser can load new HTML against the previous JS. That mismatch is silent and looks like a feature is simply broken — it is what made the pricing configurator's total stop updating. The current stamp is `20260817a`; any new value works, a date plus a letter is fine.
+- **Gumroad: selling configured builds.** Prices are now in sync — checked live: `l/dajhd` $75, `l/dzjxfn` $110, `l/irvwmy` $130, all matching the builder.
+
+     **Products still to create — seven, and Gumroad caps new products at 10 per day:**
+
+     | # | Product | Price | Contains | Paste the permalink into |
+     |---|---|---|---|---|
+     | 1 | Shipping & Handling (Continental US) | $25 | the fee itself — nothing physical | `SHIPPING.permalink` in `js/main.js` |
+     | 2 | Full Nest Indoor — The Finch | $275 | software, feederIndoor, camera, computerStdExt | a new `BUNDLES` row |
+     | 3 | Full Nest Indoor — The Cardinal | $325 | software, feederIndoor, camera, computerHighExt | a new `BUNDLES` row |
+     | 4 | Full Nest Outdoor — The Wren | $240 | software, feederOutdoor, camera, computerStdStd | a new `BUNDLES` row |
+     | 5 | Full Nest Outdoor — The Jay | $290 | software, feederOutdoor, camera, computerHighStd | a new `BUNDLES` row |
+     | 6 | Full Nest Outdoor — The Finch | $295 | software, feederOutdoor, camera, computerStdExt | a new `BUNDLES` row |
+     | 7 | Full Nest Outdoor — The Cardinal | $345 | software, feederOutdoor, camera, computerHighExt | a new `BUNDLES` row |
+
+     Then the shipping settings, and the older items, still outstanding:
+     - **#1 is the only blocking one.** Until it exists, every hardware order under $100 shows Coming Soon instead of a buy path — a lone camera ($40), macro lens ($25), indoor feeder ($20), outdoor feeder ($40), and small combos up to indoor+camera+macro ($85) and license+indoor feeder ($95). That is deliberate: `SHIPPING.permalink` is null, and the builder will not send anyone to a checkout that is missing the fee. Pasting the permalink in makes all of them buyable again, no other change needed.
+     - **Set Gumroad's own shipping rate to $0 on every physical product** once #1 exists — the eight physical components (both feeders, camera, macro lens, four computers) and every bundle containing hardware (Nest Indoor/Outdoor, Full Nest Wren/Jay, plus #2–7 as they are created). Gumroad shipping is per-product, so leaving a rate on would charge it again on top of the S&H product, and twice on a two-item cart. The threshold rule only works with those rates at zero.
+     - **Confirm a shipping address is still collected at a $0 rate** — check one physical product before relying on it, or you sell a feeder with nowhere to send it.
+     - **"Continental US" is not expressible in Gumroad.** Destination restrictions are country-level, so restricting to the US still includes AK and HI. The site copy says continental US and points anywhere else at support@birdwatchai.com; those orders get handled by hand.
      - **Names.** Done — both kits read "The Nest" in Gumroad, matching the site, where "The Full Nest" now means the kit plus a computer. Two cosmetic slips remain if anyone is in there anyway: `dzjxfn` has a double space in "The Nest  - Indoor", `irvwmy` is missing the space before the em dash in "Outdoor— Complete", and both repeat the feeder style in a trailing "(Indoor)" / "(Outdoor)" that the name already states.
      - **Every component is wired and every combination is purchasable at the right price.** All nine components exist in Gumroad and are in `COMPONENTS` in `js/main.js`; four bundles are in `BUNDLES`. Verified against Gumroad that all thirteen permalinks resolve with the correct name and price.
      - **The remaining six bundles are optional, not blocking.** Indoor Finch $275 / Cardinal $325 and all four Outdoor builds already check out at exactly the right total as *The Nest* bundle plus the computer component — two cart adds instead of one click. Creating them buys a nicer checkout, nothing more, so the 10-a-day product limit is not in the way. When they exist, add a row to `BUNDLES` with its `contains` list and the builder picks it up automatically:
