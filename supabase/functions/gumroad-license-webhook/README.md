@@ -151,10 +151,17 @@ creating anything.
    Applications** → create an application → generate an access token. Scope it
    to your own account; this is not an OAuth app for anyone else.
 
-6. **Refunds and disputes (optional, can wait).** Gumroad's ping only covers
-   sales. To have refunds auto-revoke, register resource subscriptions pointing
-   at the same URL. Note **`-X PUT`** — Gumroad creates resource subscriptions
-   with PUT, not POST:
+6. **Refunds and disputes — deliberately NOT set up.** There are no returns on
+   the software license (owner's decision, 2026-08-17), so Gumroad is never
+   told to call this function for refunds or disputes. The revoke and
+   `dispute_won` un-revoke paths in the code are live but unreachable. Don't
+   "fix" that; it's the intent.
+
+   If the policy ever changes, here's the wiring. Note **`-X PUT`** — Gumroad
+   creates resource subscriptions with PUT, not POST — and note that creating
+   one needs a broader OAuth scope than the `view_sales` token the function
+   runs on. Mint a separate short-lived token for these calls rather than
+   widening the one in `GUMROAD_ACCESS_TOKEN`:
 
    ```bash
    curl -X PUT https://api.gumroad.com/v2/resource_subscriptions \
