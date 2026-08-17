@@ -444,7 +444,25 @@ td code{white-space:nowrap;}
     content:"";position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:55;
   }
   .topbar .menu-toggle{display:inline-block;}
-  main.content{padding:24px 18px 80px;}
+  /* The bar cannot fit ☰ Menu, the brand, both crumbs and two links in 375px —
+     it needed 527px, so Theme and Community Feed sat off the right edge where
+     nothing could reach them. The crumbs go first: the page's own H1 already
+     says which part this is. */
+  .topbar .crumb{display:none;}
+  /* Hiding the crumbs still leaves it 13px over on a 375px screen; tighter
+     padding and gaps close that without touching the type. */
+  .topbar{padding:14px;gap:10px;}
+  /* min-width:0 is the important half. As a grid item the content column would
+     not shrink below its min-content width, and the widest reference table set
+     that at 543px — so on a 375px phone every paragraph on the page ran off the
+     right edge with no way to scroll it back. Let the column shrink to the
+     screen and let the wide things scroll inside themselves instead. */
+  main.content{padding:24px 18px 80px;min-width:0;}
+  .content table{display:block;overflow-x:auto;}
+  .content code{overflow-wrap:anywhere;}
+  /* Long UI paths — "Settings → Camera (RTSP) → …" — are nowrap by design, which
+     runs them off a narrow screen. Let them wrap on phones only. */
+  .content .ui{white-space:normal;}
 }
 
 /* Print — drop the chrome, render flat */
