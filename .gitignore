@@ -4,6 +4,17 @@
 screensaver/node_modules/
 screensaver/dist/
 
+# Secrets. THIS REPO IS PUBLIC (it serves www.birdwatchai.com via GitHub
+# Pages), so anything committed here is world-readable. Supabase function
+# secrets, the license signing key, and API keys belong in the Supabase
+# dashboard — never in a file here.
+*.pem
+*.p8
+private_key.xml
+license_private_key*
+.env
+.env.*
+
 # OS / editor noise
 .DS_Store
 Thumbs.db
