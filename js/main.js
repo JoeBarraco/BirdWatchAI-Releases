@@ -56,20 +56,14 @@ document.addEventListener('DOMContentLoaded', function() {
         lastScroll = currentScroll;
     });
     
-    // Download button - GitHub Releases
-    const downloadBtn = document.getElementById('download-btn');
-    if (downloadBtn) {
-        downloadBtn.addEventListener('click', function(e) {
-            const downloadUrl = 'https://github.com/JoeBarraco/BirdWatchAI-Releases/releases/download/v2.1.2.0/BirdWatchAI_Setup_2.1.2.0.exe';
-            
-            // Track download (if you add analytics later)
-            console.log('Download initiated');
-            
-            // Start download
-            window.location.href = downloadUrl;
-        });
-    }
-    
+    // The old #download-btn handler lived here: it hijacked the hero/download
+    // button and sent every visitor to the WinForms desktop installer, pinned to
+    // an exact version so each release needed a code edit. The desktop app is
+    // retired; the server edition installs with Docker and has no single file to
+    // hand over, so the download section now links to the two install guides and
+    // the legacy installer is a plain <a> in a collapsed footnote. Nothing to
+    // wire up here.
+
     // Screensaver download button - GitHub Releases
     const screensaverBtn = document.getElementById('screensaver-download-btn');
     if (screensaverBtn) {

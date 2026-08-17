@@ -115,7 +115,10 @@
 
 html {
     scroll-behavior: smooth;
-    scroll-padding-top: 80px;
+    /* 70px nav + the live detection ticker below it. At 80px an anchored heading
+       landed underneath the ticker — noticeable now that the builder's labels
+       jump to specific headings. */
+    scroll-padding-top: 110px;
     overflow-x: hidden;
 }
 
@@ -316,6 +319,10 @@ ul {
     font-size: 0.9375rem;
     font-weight: 500;
     color: var(--color-gray-700);
+    /* Without this a tight window breaks "How It Works" across two lines and the
+       whole bar grows to 71px, overlapping the logo. Shrink the gaps instead
+       (below), and hand over to the hamburger when even that isn't enough. */
+    white-space: nowrap;
 }
 
 .nav-links a:not(.btn):hover {
@@ -350,7 +357,27 @@ ul {
     transition: var(--transition-fast);
 }
 
-@media (max-width: 768px) {
+/* Between the widest desktop and the hamburger, buy room by tightening rather
+   than by dropping links. Seven items fit at 1200px+ comfortably; below that
+   they need the smaller type and gaps. */
+@media (max-width: 1200px) {
+    .nav-links {
+        gap: 0.75rem;
+    }
+
+    .nav-links a:not(.btn) {
+        font-size: 0.875rem;
+    }
+
+    .btn-nav {
+        padding: 0.5rem 0.875rem;
+        font-size: 0.875rem;
+    }
+}
+
+/* Hamburger from 1024px down — was 768px, but the bar gained a "Build Yours"
+   entry and stopped fitting on narrow laptops well before phone widths. */
+@media (max-width: 1024px) {
     .nav-links {
         display: none;
         position: absolute;
@@ -1226,6 +1253,60 @@ ul {
     color: var(--color-gray-900);
 }
 
+/* The label text links up to that piece's write-up. A dotted underline rather
+   than a link colour: it has to read as "there's more about this" without
+   turning the form into a wall of blue. Only the word is the link, so clicking
+   the rest of the label still focuses the select. */
+.cfg-row label a {
+    color: inherit;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-decoration-color: var(--color-gray-300);
+    text-underline-offset: 4px;
+    transition: color var(--transition-fast), text-decoration-color var(--transition-fast);
+}
+
+.cfg-row label a:hover,
+.cfg-row label a:focus-visible {
+    color: var(--color-primary);
+    text-decoration-color: var(--color-primary);
+}
+
+.cfg-form-hint {
+    margin-bottom: var(--space-xs);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: var(--color-gray-500);
+}
+
+.cfg-form-hint strong {
+    color: var(--color-gray-700);
+}
+
+/* Return path from a write-up back down to the builder. */
+.opt-back {
+    max-width: 1400px;
+    margin: var(--space-sm) auto 0;
+    text-align: center;
+    font-size: 0.875rem;
+}
+
+.opt-back a {
+    color: var(--color-gray-500);
+    text-decoration: none;
+    border-bottom: 1px dotted var(--color-gray-300);
+    padding-bottom: 1px;
+    transition: color var(--transition-fast);
+}
+
+.opt-back a:hover {
+    color: var(--color-primary);
+}
+
+.section-header-jump {
+    margin-top: var(--space-md);
+}
+
 .cfg-row select {
     width: 100%;
     padding: 0.625rem 2rem 0.625rem 0.75rem;
@@ -1954,6 +2035,76 @@ ul {
 }
 
 /* ==========================================================================
+   Build CTA band
+
+   Sits between the screenshots and the testimonials, pointing at the builder
+   that lives five sections further down. Deliberately quieter than the download
+   band (cream, not the green gradient) so the two CTAs don't compete.
+   ========================================================================== */
+
+.build-cta {
+    padding: var(--space-xl) var(--space-md);
+    background: var(--color-cream);
+    border-top: 1px solid var(--color-gray-200);
+    border-bottom: 1px solid var(--color-gray-200);
+}
+
+.build-cta-inner {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--space-lg);
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: var(--space-lg);
+    background: var(--color-white);
+    border: 2px solid var(--color-primary);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+}
+
+.build-cta-eyebrow {
+    font-size: 0.8125rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-primary);
+    margin-bottom: var(--space-xs);
+}
+
+.build-cta-text h2 {
+    font-size: 1.75rem;
+    margin-bottom: var(--space-xs);
+}
+
+.build-cta-text p {
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--color-gray-700);
+    max-width: 520px;
+}
+
+.build-cta-actions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    align-items: stretch;
+    text-align: center;
+}
+
+@media (max-width: 768px) {
+    .build-cta-inner {
+        grid-template-columns: 1fr;
+        text-align: center;
+    }
+
+    .build-cta-text p {
+        margin-left: auto;
+        margin-right: auto;
+    }
+}
+
+/* ==========================================================================
    Download Section
    ========================================================================== */
 
@@ -1973,9 +2124,16 @@ ul {
     margin-bottom: var(--space-sm);
 }
 
-.download > .download-content > p {
-    color: var(--color-secondary);
+/* `.download > .download-content` never matched — .download-content is inside
+   .container, not a direct child of the section — so the lead paragraph fell
+   back to gray-700 body text on a dark green band and was barely readable. */
+/* --color-white, not a literal white: in dark mode the token flips to near-black
+   and the band's gradient lightens, which is how .download h2 already behaves.
+   Hardcoding #fff here left light text under a dark heading. */
+.download .download-content > p {
+    color: var(--color-white);
     font-size: 1.125rem;
+    line-height: 1.6;
     margin-bottom: var(--space-lg);
 }
 
@@ -2048,6 +2206,162 @@ ul {
     background: rgba(255,255,255,0.25);
     color: var(--color-white);
     border-color: rgba(255,255,255,0.4);
+}
+
+/* ── Install paths ──────────────────────────────────────────────────────────
+   Two cards where a single "Download for Windows" button used to be. The
+   section is a green gradient, so everything here is a white overlay rather
+   than a themed surface — the same treatment as .screensaver-btn above. */
+
+.download-content-wide {
+    max-width: 900px;
+}
+
+.install-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--space-md);
+    margin-top: var(--space-lg);
+    text-align: left;
+}
+
+.install-card {
+    display: flex;
+    flex-direction: column;
+    padding: var(--space-md);
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: var(--radius-md);
+}
+
+.install-card-icon {
+    display: block;
+    font-size: 2rem;
+    line-height: 1;
+    margin-bottom: var(--space-xs);
+}
+
+.install-card h3 {
+    color: var(--color-white);
+    font-size: 1.1875rem;
+    margin-bottom: var(--space-xs);
+}
+
+.install-card > p {
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    color: color-mix(in srgb, var(--color-white) 90%, transparent);
+    margin-bottom: var(--space-md);
+}
+
+/* Pushes the buttons to the bottom edge so cards of different text lengths
+   still line their calls to action up with each other. */
+.install-card > p:last-of-type,
+.install-card .install-card-note {
+    margin-top: auto;
+    margin-bottom: 0;
+}
+
+.install-card .btn,
+.install-card-links .btn {
+    background: var(--color-white);
+    color: var(--color-primary);
+    border-color: var(--color-white);
+}
+
+.install-card .btn:hover,
+.install-card-links .btn:hover {
+    background: var(--color-cream);
+    border-color: var(--color-cream);
+    color: var(--color-primary);
+}
+
+.install-card-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+}
+
+.install-card-note {
+    margin-top: var(--space-sm) !important;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: color-mix(in srgb, var(--color-white) 80%, transparent);
+}
+
+.install-card-note a {
+    color: var(--color-white);
+    text-decoration: underline;
+}
+
+.install-quick {
+    margin-top: var(--space-lg);
+    text-align: left;
+}
+
+.install-quick-lead {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--color-white);
+    margin-bottom: var(--space-xs);
+}
+
+.install-quick .code-block {
+    background: rgba(0,0,0,0.35);
+    border: 1px solid rgba(255,255,255,0.2);
+    margin-bottom: var(--space-xs);
+}
+
+.install-quick .download-info {
+    text-align: left;
+}
+
+.install-quick code {
+    font-family: 'SFMono-Regular', Consolas, monospace;
+}
+
+/* ── Legacy desktop app ─────────────────────────────────────────────────────
+   Collapsed by default and visually quiet on purpose: reachable for existing
+   users, invisible to anyone installing for the first time. */
+
+.legacy-app {
+    margin-top: var(--space-xl);
+    padding-top: var(--space-lg);
+    border-top: 1px solid rgba(255,255,255,0.2);
+    text-align: left;
+}
+
+.legacy-app summary {
+    cursor: pointer;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: color-mix(in srgb, var(--color-white) 75%, transparent);
+    text-align: center;
+    list-style-position: inside;
+}
+
+.legacy-app summary:hover {
+    color: var(--color-white);
+}
+
+.legacy-app p {
+    margin-top: var(--space-sm);
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: color-mix(in srgb, var(--color-white) 80%, transparent);
+}
+
+.legacy-app strong {
+    color: var(--color-white);
+}
+
+.legacy-app a {
+    color: var(--color-white);
+    text-decoration: underline;
+}
+
+.legacy-app-link {
+    font-weight: 600;
 }
 
 /* ==========================================================================

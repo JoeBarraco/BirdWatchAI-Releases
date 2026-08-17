@@ -21,7 +21,7 @@
          GitHub Pages serves these with a 10-minute max-age, so without it a
          browser can pair new HTML with the previous JS, and a mismatch there
          silently breaks anything scripted (the pricing configurator especially). -->
-    <link rel="stylesheet" href="css/style.css?v=20260817b">
+    <link rel="stylesheet" href="css/style.css?v=20260817c">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="icon" type="image/png" href="images/favicon.png">
     <link rel="manifest" href="manifest.json">
@@ -50,12 +50,19 @@
                 <a href="#features" role="menuitem">Features</a>
                 <a href="#how-it-works" role="menuitem">How It Works</a>
                 <a href="#pricing" role="menuitem">Pricing</a>
+                <!-- The builder is the buying path, and it sits at the bottom of the
+                     pricing section — too far down to find by scrolling. It gets its
+                     own nav entry rather than hiding behind "Pricing". -->
+                <a href="#build" role="menuitem">Build Yours</a>
                 <a href="docs/manual/" role="menuitem">Manual</a>
                 <!-- Name first, "live" as a modifier: the label has to predict
                      the destination, and that page is headed "Community Feed".
                      "Live Community Feed" read as a different page. -->
                 <a href="docs/community.html" class="nav-live" role="menuitem">🔴 Community Feed (LIVE!)</a>
-                <a href="#download" class="btn btn-nav" role="menuitem">Download Free Trial</a>
+                <!-- "Start", not "Download": the server edition is installed with
+                     Docker rather than fetched as a .exe, so a download label
+                     promises a button that doesn't exist. -->
+                <a href="#download" class="btn btn-nav" role="menuitem">Start Free Trial</a>
             </div>
             <button id="theme-toggle-main" onclick="toggleMainTheme()" aria-label="Toggle dark mode" style="background:none;border:none;cursor:pointer;font-size:1rem;padding:4px 8px;line-height:1;margin-right:4px;color:inherit;" title="Toggle dark mode">🌙 Theme</button>
             <button class="nav-mobile-toggle" aria-label="Toggle menu" aria-expanded="false">
@@ -83,16 +90,17 @@
             </p>
             <div class="hero-cta">
                 <a href="#download" class="btn btn-primary btn-large">
-                    <span>Download Free Trial</span>
+                    <span>Start Free Trial</span>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                        <polyline points="7 10 12 15 17 10"/>
-                        <line x1="12" y1="15" x2="12" y2="3"/>
+                        <polyline points="9 18 15 12 9 6"/>
                     </svg>
                 </a>
-                <a href="#how-it-works" class="btn btn-secondary btn-large">See How It Works</a>
+                <!-- Second hero button is the builder, not "See How It Works":
+                     How It Works is one nav click away, the builder was three
+                     screens of scrolling away. -->
+                <a href="#build" class="btn btn-secondary btn-large">🪺 Build Yours Today</a>
             </div>
-            <p class="hero-trial-note">14-day free trial • No credit card required</p>
+            <p class="hero-trial-note">30-day free trial • No credit card required • Runs on a Pi, PC or Mac</p>
         </div>
         <div class="hero-image">
             <div class="hero-screenshot-wrapper">
@@ -329,6 +337,28 @@
         </div>
     </section>
 
+    <!-- Build CTA band.
+         Sits directly after the screenshots — the point where a visitor has seen
+         what the thing does and wants to know what it costs. The builder itself
+         lives at the bottom of the pricing section, which is another five
+         sections down; without this band the only way to find it was to scroll
+         past everything. -->
+    <section id="build-cta" class="build-cta" aria-labelledby="build-cta-heading">
+        <div class="container">
+            <div class="build-cta-inner">
+                <div class="build-cta-text">
+                    <p class="build-cta-eyebrow">🪺 Build &amp; price</p>
+                    <h2 id="build-cta-heading">Build Yours Today</h2>
+                    <p>Pick a feeder, a camera and a computer — or bring the ones you already own — and see the price update as you go. Nothing recurring, and anything you skip is listed so you know exactly what's in the box.</p>
+                </div>
+                <div class="build-cta-actions">
+                    <a href="#build" class="btn btn-primary btn-large">Customize your build →</a>
+                    <a href="#options" class="btn btn-secondary">See what's available first</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- Testimonials -->
     <section id="testimonials" class="testimonials-section">
         <div class="container">
@@ -457,6 +487,7 @@
             <div class="section-header">
                 <h2 id="pricing-heading">Simple, One-Time Pricing</h2>
                 <p>Buy once, own it. No subscriptions, no hidden fees, just great bird watching.</p>
+                <p class="section-header-jump"><a href="#build" class="btn btn-primary">🪺 Build &amp; price yours →</a></p>
             </div>
 
             <!-- What a working setup takes -->
@@ -495,10 +526,10 @@
                 <div class="pricing-tier-head">
                     <p class="pricing-tier-eyebrow">The pieces</p>
                     <h3>What's Available</h3>
-                    <p class="pricing-tier-lead">Four things to choose between, and a lens if you want one. No prices here on purpose — pick what you want in the builder below and it totals everything up in one place.</p>
+                    <p class="pricing-tier-lead">Four things to choose between, and a lens if you want one. No prices here on purpose — pick what you want in <a href="#build">the builder below</a> and it totals everything up in one place.</p>
                 </div>
 
-                <h4 class="fullnest-group"><span aria-hidden="true">🧠</span> Software</h4>
+                <h4 class="fullnest-group" id="opt-software"><span aria-hidden="true">🧠</span> Software</h4>
                 <div class="opt-cards opt-cards-1">
                     <div class="opt-card">
                         <h5>BirdWatchAI</h5>
@@ -511,11 +542,14 @@
                             <li><span class="check">✓</span> Optional sharing to the community feed</li>
                             <li><span class="check">✓</span> Lifetime license, free updates, email support</li>
                         </ul>
-                        <p class="opt-note">Free to try for 14 days — <a href="#download">download it</a> and see what turns up before you buy anything.</p>
+                        <p class="opt-note">Free to try for 30 days — <a href="#download">install it</a> and see what turns up before you buy anything.</p>
                     </div>
                 </div>
+                <!-- The builder's labels link up here, so every group offers a way
+                     back down rather than stranding you mid-page. -->
+                <p class="opt-back"><a href="#build">↓ Back to the builder</a></p>
 
-                <h4 class="fullnest-group"><span aria-hidden="true">🪺</span> Feeders <span>— two styles, pick one</span></h4>
+                <h4 class="fullnest-group" id="opt-feeder"><span aria-hidden="true">🪺</span> Feeders <span>— two styles, pick one</span></h4>
                 <div class="opt-cards opt-cards-2">
                     <div class="opt-card">
                         <img src="images/full-nest-indoor.jpg" alt="The indoor feeder: a BirdWatchAI camera mounted on the inside of a window pane facing outdoors, with a feeder tray on the exterior of the window and a chickadee perched on it." class="pricing-image" loading="lazy" width="768" height="768">
@@ -541,8 +575,9 @@
                         </ul>
                     </div>
                 </div>
+                <p class="opt-back"><a href="#build">↓ Back to the builder</a></p>
 
-                <h4 class="fullnest-group"><span aria-hidden="true">📷</span> Camera &amp; lens</h4>
+                <h4 class="fullnest-group" id="opt-camera"><span aria-hidden="true">📷</span> Camera &amp; lens</h4>
                 <div class="opt-cards opt-cards-2">
                     <div class="opt-card">
                         <img src="images/camera.jpg" alt="The camera: a white indoor RTSP camera with a black circular face, wide-angle lens, twin infrared illuminators and a status light, sitting on a ribbed dome stand." class="opt-image opt-image-product" loading="lazy" width="800" height="800">
@@ -550,13 +585,14 @@
                         <p>An RTSP camera matched to whichever feeder you choose, so the framing and focus distance are right out of the box. Already own an RTSP camera — Tapo, Reolink, Wyze, Amcrest? Leave this out and point the software at yours instead.</p>
                     </div>
 
-                    <div class="opt-card">
+                    <div class="opt-card" id="opt-macro">
                         <img src="images/macro-lens.jpg" alt="The macro lens: a circular clip-on lens in a grey mount with a white band that clips over the camera body." class="opt-image opt-image-product" loading="lazy" width="800" height="533">
                         <h5>Macro lens</h5>
                         <p>A snap-on lens that tightens the shot for smaller visitors. Chickadees, wrens and finches fill much more of the frame, which makes for better photos and gives the AI more to work with.</p>
                         <p>It also throws everything behind the feeder out of focus. A neighbor, a passer-by or a car in the background comes out as a soft blur rather than a recognizable face — handy if the camera happens to look out over a sidewalk or a shared yard.</p>
                     </div>
                 </div>
+                <p class="opt-back"><a href="#build">↓ Back to the builder</a></p>
 
                 <h4 class="fullnest-group" id="computers"><span aria-hidden="true">💻</span> Ready-to-run computers <span>— or use a machine you own</span></h4>
                 <div class="opt-cards opt-cards-2">
@@ -583,8 +619,9 @@
                         </ul>
                     </div>
                 </div>
+                <p class="opt-back"><a href="#build">↓ Back to the builder</a></p>
 
-                <h4 class="fullnest-group"><span aria-hidden="true">💾</span> Storage <span>— how much history the drive holds</span></h4>
+                <h4 class="fullnest-group" id="opt-storage"><span aria-hidden="true">💾</span> Storage <span>— how much history the drive holds</span></h4>
                 <figure class="storage-compare">
                     <svg viewBox="0 0 800 210" class="storage-compare-svg" role="img" aria-labelledby="sc-title sc-desc">
                         <title id="sc-title">The two storage options compared</title>
@@ -612,6 +649,7 @@
                         Either computer takes either drive. Storage changes how much history you keep, not how fast the bird is identified — that's the computer. <a href="docs/manual/part-4-first-time-setup.html#preloaded-pi">See what setup looks like</a> before you buy.
                     </figcaption>
                 </figure>
+                <p class="opt-back"><a href="#build">↓ Back to the builder</a></p>
 
                 <p class="pricing-note">
                     📷 The photos on this page are for illustration. Feeders, cameras, lenses and computers are sourced as models come and go, so the piece that arrives may not be the exact one pictured — it will do everything described here, but the color, case or model can differ.
@@ -627,9 +665,17 @@
                 </div>
 
                 <div class="configurator" id="configurator">
+                    <!-- Each row's label links up to that piece's write-up in
+                         "What's Available" above. The link is inside the <label> and
+                         wraps only the word, so clicking the row's whitespace still
+                         focuses the select the way a label should, while "what IS
+                         extended storage?" is one click away instead of a scroll
+                         hunt. Anchors: #opt-software, #opt-feeder, #opt-camera,
+                         #computers, #opt-storage, #opt-macro. -->
                     <form class="cfg-form" id="cfg-form">
+                        <p class="cfg-form-hint">Not sure what something is? Click a <strong>label</strong> to read about that piece.</p>
                         <div class="cfg-row">
-                            <label for="cfg-software"><span aria-hidden="true">🧠</span> Software</label>
+                            <label for="cfg-software"><span aria-hidden="true">🧠</span> <a href="#opt-software" title="Read about the software">Software</a></label>
                             <select id="cfg-software" name="software">
                                 <option value="yes" selected data-label="Include a license">Include a license</option>
                                 <option value="none">Not needed — I already have one</option>
@@ -637,7 +683,7 @@
                         </div>
 
                         <div class="cfg-row">
-                            <label for="cfg-feeder"><span aria-hidden="true">🪺</span> Feeder</label>
+                            <label for="cfg-feeder"><span aria-hidden="true">🪺</span> <a href="#opt-feeder" title="Read about the two feeder styles">Feeder</a></label>
                             <select id="cfg-feeder" name="feeder">
                                 <option value="indoor" selected>Indoor — window tray ($20)</option>
                                 <option value="outdoor">Outdoor — post-mounted feeder ($40)</option>
@@ -646,7 +692,7 @@
                         </div>
 
                         <div class="cfg-row">
-                            <label for="cfg-camera"><span aria-hidden="true">📷</span> Camera</label>
+                            <label for="cfg-camera"><span aria-hidden="true">📷</span> <a href="#opt-camera" title="Read about the camera">Camera</a></label>
                             <select id="cfg-camera" name="camera">
                                 <option value="yes" selected>Include a camera ($40)</option>
                                 <option value="none">No camera — I'll use my own RTSP camera</option>
@@ -654,7 +700,7 @@
                         </div>
 
                         <div class="cfg-row">
-                            <label for="cfg-computer"><span aria-hidden="true">💻</span> Computer</label>
+                            <label for="cfg-computer"><span aria-hidden="true">💻</span> <a href="#computers" title="Read about the two computers">Computer</a></label>
                             <select id="cfg-computer" name="computer">
                                 <option value="standard" selected data-label="Standard">Standard</option>
                                 <option value="high" data-label="High Performance">High Performance</option>
@@ -663,7 +709,7 @@
                         </div>
 
                         <div class="cfg-row" id="cfg-storage-row">
-                            <label for="cfg-storage"><span aria-hidden="true">💾</span> Storage</label>
+                            <label for="cfg-storage"><span aria-hidden="true">💾</span> <a href="#opt-storage" title="Read about the two drive sizes">Storage</a></label>
                             <select id="cfg-storage" name="storage">
                                 <option value="standard" selected>32 GB SSD — snapshots &amp; recent clips</option>
                                 <option value="extended">256 GB SSD — a full season of video (+$55)</option>
@@ -671,7 +717,7 @@
                         </div>
 
                         <div class="cfg-row">
-                            <label for="cfg-macro"><span aria-hidden="true">🔍</span> Macro lens</label>
+                            <label for="cfg-macro"><span aria-hidden="true">🔍</span> <a href="#opt-macro" title="Read about the macro lens">Macro lens</a></label>
                             <select id="cfg-macro" name="macro">
                                 <option value="none" selected>Not included</option>
                                 <option value="yes">Add a macro lens ($25)</option>
@@ -726,10 +772,11 @@
                     <h3>💻 Computer</h3>
                     <p class="requirement-note">BirdWatchAI runs on a machine in your home, not in the cloud, so it needs somewhere to live. Any of these work — or <a href="#computers">let us send you one ready to go</a>.</p>
                     <ul>
-                        <li><strong>Windows app:</strong> Windows 10 or 11, 4 GB RAM (8 GB recommended), 500 MB free disk</li>
-                        <li><strong>Server edition:</strong> a Raspberry Pi or any always-on Linux machine</li>
+                        <li><strong>Raspberry Pi:</strong> a Pi 4 or 5, 4 GB RAM, and an SD card or SSD</li>
+                        <li><strong>Windows / macOS / Linux:</strong> Docker Desktop, 8 GB RAM, 20 GB free disk</li>
                         <li>Best on a machine that stays on — birds don't keep office hours</li>
                         <li>Internet connection for notifications and community sharing</li>
+                        <li>You watch it in a browser, so any phone, tablet or laptop on your network is the screen</li>
                     </ul>
                 </div>
                 
@@ -755,28 +802,54 @@
         </div>
     </section>
 
-    <!-- Download Section -->
+    <!-- Get the software.
+         This section used to be a single "Download for Windows" button wired to
+         the WinForms desktop app. That app is being retired, and the server
+         edition — the one every screenshot on this page comes from — is installed
+         with Docker rather than downloaded as an .exe, so there is no single file
+         to hand over. Two install paths, each pointing at the walkthrough that
+         covers it, and the old desktop app demoted to a footnote at the bottom. -->
     <section id="download" class="download">
         <div class="container">
-            <div class="download-content">
+            <div class="download-content download-content-wide">
                 <h2>Ready to Meet Your Feathered Visitors?</h2>
-                <p>Download BirdWatchAI and start your 14-day free trial today.</p>
-                
-                <a href="#" class="btn btn-primary btn-large download-btn" id="download-btn">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                        <polyline points="7 10 12 15 17 10"/>
-                        <line x1="12" y1="15" x2="12" y2="3"/>
-                    </svg>
-                    <span>Download for Windows</span>
-                </a>
-                
-                <p class="download-info">
-                    Version 2.1.2.0 • Windows 10/11 • 102 MB
-                </p>
-                
+                <p>BirdWatchAI Server is <strong>free for 30 days</strong>, no card needed. It runs on a small computer in your house and you watch it from a browser on any device — phone, laptop, tablet. Two ways to install it:</p>
+
+                <div class="install-grid">
+                    <div class="install-card">
+                        <span class="install-card-icon" aria-hidden="true">🍓</span>
+                        <h3>On a Raspberry Pi</h3>
+                        <p>The always-on option. A Pi is the size of a deck of cards, silent, fanless, and costs pennies a month to leave running. The guide starts from a blank SD card and ends at your dashboard.</p>
+                        <a href="docs/manual/part-3-installation.html#raspberry-pi" class="btn btn-primary">Raspberry Pi setup guide →</a>
+                        <p class="install-card-note">Rather skip the setup? A <a href="#computers">preloaded Pi</a> arrives with everything already installed and pointed at your camera.</p>
+                    </div>
+
+                    <div class="install-card">
+                        <span class="install-card-icon" aria-hidden="true">💻</span>
+                        <h3>On a computer you already own</h3>
+                        <p>Windows, macOS or Linux, using Docker Desktop. The best choice if you already have a machine that stays on all day. Pick your platform:</p>
+                        <div class="install-card-links">
+                            <a href="docs/manual/part-3-installation.html#windows-docker" class="btn btn-primary">Windows →</a>
+                            <a href="https://github.com/JoeBarraco/birdwatchai-server-releases/blob/main/MACOS-SETUP.md" class="btn btn-primary" target="_blank" rel="noopener">macOS →</a>
+                            <a href="docs/manual/part-3-installation.html#linux-x86" class="btn btn-primary">Linux →</a>
+                        </div>
+                        <p class="install-card-note">Intel or Apple Silicon, x86 or ARM — the image is built for all of them.</p>
+                    </div>
+                </div>
+
+                <div class="install-quick">
+                    <p class="install-quick-lead">Already have Docker? The whole install is three lines:</p>
+                    <div class="code-block">
+                        <button class="code-copy-btn" onclick="copyInstallCode(this)" aria-label="Copy install commands">Copy</button>
+                        <pre><code id="install-code">git clone https://github.com/JoeBarraco/birdwatchai-server-releases.git ~/birdwatch
+cd ~/birdwatch
+docker compose up -d</code></pre>
+                    </div>
+                    <p class="download-info">Then open <code>http://&lt;your-host-ip&gt;:8080</code> and follow the setup wizard. Your photos, database and settings stay in <code>~/birdwatch/data/</code> on your own machine.</p>
+                </div>
+
                 <div class="download-help">
-                    <p>Need help setting up? Read the complete <a href="docs/manual/">User Manual</a> (covers Windows desktop, Raspberry Pi, and Docker), our <a href="docs/setup-guide.html">Setup Guide</a>, or the <a href="docs/tapo-setup.html">TAPO C113 Camera Guide</a>.</p>
+                    <p>Need help setting up? Read the complete <a href="docs/manual/">User Manual</a>, or the <a href="docs/tapo-setup.html">TAPO C113 Camera Guide</a> for getting the camera itself online.</p>
                 </div>
 
                 <div class="screensaver-download">
@@ -807,6 +880,18 @@
                     <p class="download-info">Free • Windows 10/11 • Scans your local network</p>
                     <p class="download-info finder-note">Not code-signed yet — if Windows SmartScreen warns, click <strong>More info → Run anyway</strong>.</p>
                 </div>
+
+                <!-- The original WinForms desktop app. Kept reachable for people
+                     already running it, but collapsed and labelled so nobody
+                     installing BirdWatchAI for the first time lands on it by
+                     mistake. Everything on this page describes the server. -->
+                <details class="legacy-app">
+                    <summary>Looking for the old Windows desktop app?</summary>
+                    <p>BirdWatchAI started as a Windows desktop program. It still works and existing licenses still activate it, but it is <strong>no longer being developed</strong> — new features, the statistics dashboard, the species gallery and the community feed all live in the server edition above, and that is where support goes.</p>
+                    <p>If you are already running it, the last release stays available:</p>
+                    <p><a href="https://github.com/JoeBarraco/BirdWatchAI-Releases/releases/download/v2.1.2.0/BirdWatchAI_Setup_2.1.2.0.exe" class="legacy-app-link">Download the legacy desktop app (v2.1.2.0, Windows 10/11, 102 MB)</a></p>
+                    <p class="download-info">Moving over? Your license key works on both, and <a href="docs/manual/part-8-advanced.html#backups">Part 8 of the manual</a> covers bringing your detection history with you.</p>
+                </details>
             </div>
         </div>
     </section>
@@ -836,12 +921,17 @@
                 
                 <div class="faq-item">
                     <h3>Can I use this on Mac or Linux?</h3>
-                    <p>Yes. There are two editions. The desktop app is Windows-only (Windows 10 and 11), but the <strong>server edition runs on Windows, Linux, and macOS</strong> — you use it from a browser on any device in your house instead of a desktop window. If you'd rather not set one up, a <a href="#computers">preloaded Raspberry Pi</a> arrives with the server edition already running.</p>
+                    <p>Yes. BirdWatchAI Server <strong>runs on Windows, macOS, Linux and the Raspberry Pi</strong> — it installs with Docker and you use it from a browser on any device in your house rather than in a desktop window. <a href="#download">Pick your platform above.</a> If you'd rather not set one up at all, a <a href="#computers">preloaded Raspberry Pi</a> arrives already running.</p>
                 </div>
-                
+
+                <div class="faq-item">
+                    <h3>Is there still a Windows desktop app?</h3>
+                    <p>There is, but it's the old edition and it's <strong>no longer being developed</strong>. Everything shown on this page — the statistics dashboard, the species gallery, community sharing — is the server edition. Existing desktop users keep working and their license keys carry over; the last desktop release is linked at the bottom of the <a href="#download">install section</a>.</p>
+                </div>
+
                 <div class="faq-item">
                     <h3>What happens after the trial ends?</h3>
-                    <p>After 14 days, the app will continue to work but exports will have a watermark. Simply purchase a license key to remove the watermark and unlock full functionality forever.</p>
+                    <p>The 30-day trial is fully featured — nothing is held back. When it ends, detection stops until you enter a license key. It's a one-time purchase, not a subscription, and your detection history and settings are waiting where you left them.</p>
                 </div>
                 
                 <div class="faq-item">
@@ -866,7 +956,8 @@
                         <h4>Product</h4>
                         <a href="#features">Features</a>
                         <a href="#pricing">Pricing</a>
-                        <a href="#download">Download</a>
+                        <a href="#build">Build Yours</a>
+                        <a href="#download">Install It</a>
                         <a href="#requirements">Requirements</a>
                     </div>
                     
@@ -895,7 +986,7 @@
     </footer>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="js/main.js?v=20260817b"></script>
+    <script src="js/main.js?v=20260817c"></script>
     <script>
     function toggleMainTheme() {
         const current = document.documentElement.getAttribute('data-theme');
@@ -1235,6 +1326,18 @@
             msg.style.display = 'block';
             btn.disabled = false; btn.textContent = 'Subscribe Free';
         }
+    }
+
+    // ── Install command copy ─────────────────────────────────
+    // Takes the button so it can find its own code block — copyWidgetCode below
+    // grabs the first .code-copy-btn on the page, which is no longer the only one.
+    function copyInstallCode(btn) {
+        const code = document.getElementById('install-code');
+        if (!code) return;
+        navigator.clipboard.writeText(code.textContent).then(() => {
+            btn.textContent = 'Copied!';
+            setTimeout(() => btn.textContent = 'Copy', 2000);
+        }).catch(() => {});
     }
 
     // ── Widget embed code copy ───────────────────────────────
