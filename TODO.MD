@@ -14,47 +14,25 @@ TO DO LIST
 - ~~Need to provide some photos of the bird feeder (both types) so we can price "The full nest" option. I am thinking the Full Nest should be $150 and the software half that ($75).~~ DONE (Full Nest priced at $150, software license at $75)
      - ~~Need to update pricing on "Gumroad" first, as well as add Full nest to gumroad.~~ DONE
 - **When you change `css/style.css` or `js/main.js`, bump the `?v=` on both tags in index.html.** GitHub Pages serves assets with a 10-minute max-age, so a browser can load new HTML against the previous JS. That mismatch is silent and looks like a feature is simply broken — it is what made the pricing configurator's total stop updating. The current stamp is `20260817c`; any new value works, a date plus a letter is fine.
-- **Gumroad: selling configured builds.** Prices are now in sync — checked live: `l/dajhd` $75, `l/dzjxfn` $110, `l/irvwmy` $130, all matching the builder.
+- **Gumroad: selling configured builds.** Done — every product exists, is wired, and was verified live. All 22 permalinks resolve with the expected name and price; all 120 builder combinations were driven end to end, and 119 of 119 real ones check out at the correct total (the 120th is an empty selection at $0, which correctly offers nothing).
 
-     **Products still to create — seven, and Gumroad caps new products at 10 per day:**
+     - **Shipping is live and rate-limited by order size.** `SHIPPING.permalink` is `gktxni` ($25). It is added once per order, only when something physical is in the build, and waived at $100 or more. A licence on its own never posts it. That makes 15 of the 120 combinations one-click: the licence, the four computers (all over $100, so shipping-free), and all ten bundles. Small hardware orders — a lone lens, a feeder, a camera — are two adds, the item plus the fee.
+     - **The two BYOC listings are retired.** The builder now points at the new `nuhhw` (Nest — Indoor, $110) and `dtqrunq` (Nest — Outdoor, $130). `dzjxfn` and `irvwmy` are no longer referenced anywhere in the site, and the dead `#buy-btn` / `#buy-nest-btn` handlers that still called `irvwmy` are gone. Both old listings are still Published in Gumroad — unpublish them so nobody reaches a duplicate through search.
+     - **All ten bundles are wired**, each verified to link to its own product: Nest Indoor/Outdoor, and Wren/Finch/Jay/Cardinal in both feeder styles.
 
-     | # | Product | Price | Contains | Paste the permalink into |
-     |---|---|---|---|---|
-     | 1 | Shipping & Handling (Continental US) | $25 | the fee itself — nothing physical | `SHIPPING.permalink` in `js/main.js` |
-     | 2 | Full Nest Indoor — The Finch | $275 | software, feederIndoor, camera, computerStdExt | a new `BUNDLES` row |
-     | 3 | Full Nest Indoor — The Cardinal | $325 | software, feederIndoor, camera, computerHighExt | a new `BUNDLES` row |
-     | 4 | Full Nest Outdoor — The Wren | $240 | software, feederOutdoor, camera, computerStdStd | a new `BUNDLES` row |
-     | 5 | Full Nest Outdoor — The Jay | $290 | software, feederOutdoor, camera, computerHighStd | a new `BUNDLES` row |
-     | 6 | Full Nest Outdoor — The Finch | $295 | software, feederOutdoor, camera, computerStdExt | a new `BUNDLES` row |
-     | 7 | Full Nest Outdoor — The Cardinal | $345 | software, feederOutdoor, camera, computerHighExt | a new `BUNDLES` row |
-
-     Then the shipping settings, and the older items, still outstanding:
-     - **#1 is the only blocking one.** Until it exists, every hardware order under $100 shows Coming Soon instead of a buy path — a lone camera ($40), macro lens ($25), indoor feeder ($20), outdoor feeder ($40), and small combos up to indoor+camera+macro ($85) and license+indoor feeder ($95). That is deliberate: `SHIPPING.permalink` is null, and the builder will not send anyone to a checkout that is missing the fee. Pasting the permalink in makes all of them buyable again, no other change needed.
-     - **Set Gumroad's own shipping rate to $0 on every physical product** once #1 exists — the eight physical components (both feeders, camera, macro lens, four computers) and every bundle containing hardware (Nest Indoor/Outdoor, Full Nest Wren/Jay, plus #2–7 as they are created). Gumroad shipping is per-product, so leaving a rate on would charge it again on top of the S&H product, and twice on a two-item cart. The threshold rule only works with those rates at zero.
+     Still to check in Gumroad itself, none of it visible from the site:
+     - **Set Gumroad's own shipping rate to $0 on every physical product** — the eight physical components and every bundle containing hardware. Gumroad shipping is per-product, so a rate left on charges again on top of the S&H product, and twice on a two-item cart. The $100 threshold rule only holds with those rates at zero.
      - **Confirm a shipping address is still collected at a $0 rate** — check one physical product before relying on it, or you sell a feeder with nowhere to send it.
      - **"Continental US" is not expressible in Gumroad.** Destination restrictions are country-level, so restricting to the US still includes AK and HI. The site copy says continental US and points anywhere else at support@birdwatchai.com; those orders get handled by hand.
-     - **Names.** Done — both kits read "The Nest" in Gumroad, matching the site, where "The Full Nest" now means the kit plus a computer. Two cosmetic slips remain if anyone is in there anyway: `dzjxfn` has a double space in "The Nest  - Indoor", `irvwmy` is missing the space before the em dash in "Outdoor— Complete", and both repeat the feeder style in a trailing "(Indoor)" / "(Outdoor)" that the name already states.
-     - **Every component is wired and every combination is purchasable at the right price.** All nine components exist in Gumroad and are in `COMPONENTS` in `js/main.js`; four bundles are in `BUNDLES`. Verified against Gumroad that all thirteen permalinks resolve with the correct name and price.
-     - **The remaining six bundles are optional, not blocking.** Indoor Finch $275 / Cardinal $325 and all four Outdoor builds already check out at exactly the right total as *The Nest* bundle plus the computer component — two cart adds instead of one click. Creating them buys a nicer checkout, nothing more, so the 10-a-day product limit is not in the way. When they exist, add a row to `BUNDLES` with its `contains` list and the builder picks it up automatically:
+     - Cosmetic: `dzjxfn` has a double space in "The Nest  - Indoor" and `irvwmy` is missing the space before its em dash. Only matters if you keep them rather than unpublishing.
 
-       | Bundle | Price | `contains` |
-       |---|---|---|
-       | Full Nest Indoor — The Finch | $275 | software, feederIndoor, camera, computerStdExt |
-       | Full Nest Indoor — The Cardinal | $325 | software, feederIndoor, camera, computerHighExt |
-       | Full Nest Outdoor — The Wren | $240 | software, feederOutdoor, camera, computerStdStd |
-       | Full Nest Outdoor — The Jay | $290 | software, feederOutdoor, camera, computerHighStd |
-       | Full Nest Outdoor — The Finch | $295 | software, feederOutdoor, camera, computerStdExt |
-       | Full Nest Outdoor — The Cardinal | $345 | software, feederOutdoor, camera, computerHighExt |
-
-     - **The software discount now lives in bundle prices, not in a discounted licence.** Every bundle is exactly $25 under the sum of its parts, which is the old $50-vs-$75 licence gap expressed as a bundle saving. No cheap licence product exists to be found in the page source. The consequence: a combination with no matching bundle pays the full $75 — "software + camera, no feeder" is $115, not $90.
-     - **What the builder can offer.** Findings from probing Gumroad directly, so nobody repeats the work:
+     **How the mechanism works**, from probing Gumroad directly, so nobody repeats the work:
           - The overlay widget does **not** bundle. Reading `assets.gumroad.com/js/gumroad-bundle.js`: it binds every `<a>` on the page and, on click, sets a single iframe's `src` to that one product. Each click replaces the last. The help-centre text claiming linked products bundle together is wrong for the current script.
           - Gumroad *does* have a real cart — `/checkout` exposes `max_allowed_cart_products: 50` plus `add_products` and `clear_cart`.
           - `https://gumroad.com/checkout?product=<permalink>` adds exactly one product to it. Repeating `?product=` keeps only the last; `product[]`, `products=`, comma-separated and `add_products[]` all add nothing.
-          - Adds **do** accumulate — confirmed by hand in a real browser, since the cart is held client-side and a cookie-only session always reports `cart: null`. So a build becomes one link per line and a single checkout, which is what the builder now renders.
-     - Nothing to list yet for the computers or complete builds — all Coming Soon.
+          - Adds **do** accumulate, so a build becomes one link per item and a single checkout.
+          - The software discount lives in bundle prices: every bundle is exactly $25 under the sum of its parts, which is the old $50-vs-$75 licence gap expressed as a saving. No cheap licence product exists to be found in the page source. The consequence: a combination with no matching bundle pays the full $75 — "software + camera, no feeder" is $115, not $90.
 - ~~The "Download Free Trial" button still ships the old WinForms app, and there is no click-to-download path to the server edition at all.~~ DONE (2026-08-17) — the download section is now server-first: two install cards (Raspberry Pi / a computer you already own, with Windows · macOS · Linux buttons), a copy-paste three-line Docker quick start, and the legacy desktop installer demoted to a collapsed `<details>` labelled "no longer being developed". `#download-btn` and its JS handler are gone; the legacy installer is a plain `<a>` (still pinned to v2.1.2.0, which is correct now that the desktop app is frozen). Nav and hero say "Start Free Trial", not "Download", since there is no single file to hand over. Trial length corrected to 30 days everywhere on the page (server default, `BirdWatchSettings.TrialDays`); the old copy said 14 days and claimed a watermark, which is desktop behavior — on the server, expiry stops monitoring until a key is entered.
-
   Still open, and now purely upside rather than a gap:
      - Publish self-contained builds as release assets on birdwatchai-server-releases (win-x64, linux-x64, linux-arm64, osx-arm64) and turn the platform buttons into real downloads. Note this changes docs/RELEASING.md, which deliberately publishes tags + notes only, no binaries — that decision needs revisiting first.
      - Publish a prebuilt Raspberry Pi SD-card image. Still the genuinely clean "one click, flash, done" path, and it doubles as the thing the preloaded-Pi product is built from.

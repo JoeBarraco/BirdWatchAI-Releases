@@ -86,32 +86,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Buy button - Gumroad product link
-    const buyBtn = document.getElementById('buy-btn');
-    if (buyBtn) {
-        buyBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-
-            const gumroadUrl = 'https://birdbrainllc.gumroad.com/l/dajhd';
-
-            // Open in new tab for payment
-            window.open(gumroadUrl, '_blank');
-        });
-    }
-
-    // Buy The Nest (outdoor) button - Gumroad product link
-    const buyNestBtn = document.getElementById('buy-nest-btn');
-    if (buyNestBtn) {
-        buyNestBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-
-            const gumroadUrl = 'https://birdbrainllc.gumroad.com/l/irvwmy';
-
-            // Open in new tab for payment
-            window.open(gumroadUrl, '_blank');
-        });
-    }
-    
+    // The #buy-btn and #buy-nest-btn handlers lived here. Both buttons went
+    // when pricing moved into the builder, and the second still pointed at the
+    // BYOC listing that the new Nest products replace. The builder writes its
+    // own Gumroad links now, so there is nothing to wire up here.
     // Intersection Observer for scroll animations
     const observerOptions = {
         threshold: 0.1,
@@ -240,21 +218,28 @@ document.addEventListener('DOMContentLoaded', function () {
        `contains` lets a bundle be matched even when the build has extras: the
        best-value bundle whose contents are a subset of the build is used, and
        whatever is left over is added as components. So a Full Nest plus a
-       macro lens is two cart adds, not five.
-
-       Add the remaining six as they are created in Gumroad — nothing else
-       needs changing. */
+       macro lens is two cart adds, not five. */
     const BUNDLES = [
-        { permalink: 'dzjxfn', price: 110, label: 'The Nest — Indoor',
+        { permalink: 'nuhhw',   price: 110, label: 'The Nest — Indoor',
           contains: ['software', 'feederIndoor', 'camera'] },
-        { permalink: 'irvwmy', price: 130, label: 'The Nest — Outdoor',
+        { permalink: 'dtqrunq', price: 130, label: 'The Nest — Outdoor',
           contains: ['software', 'feederOutdoor', 'camera'] },
-        { permalink: 'nbnqg',  price: 220, label: 'Full Nest Indoor — The Wren',
+        { permalink: 'nbnqg',   price: 220, label: 'The Wren — Indoor',
           contains: ['software', 'feederIndoor', 'camera', 'computerStdStd'] },
-        { permalink: 'tlvqwi', price: 270, label: 'Full Nest Indoor — The Jay',
-          contains: ['software', 'feederIndoor', 'camera', 'computerHighStd'] }
-        // Still to create: Indoor Finch $275 / Cardinal $325,
-        // Outdoor Wren $240 / Jay $290 / Finch $295 / Cardinal $345.
+        { permalink: 'umvcj',   price: 275, label: 'The Finch — Indoor',
+          contains: ['software', 'feederIndoor', 'camera', 'computerStdExt'] },
+        { permalink: 'tlvqwi',  price: 270, label: 'The Jay — Indoor',
+          contains: ['software', 'feederIndoor', 'camera', 'computerHighStd'] },
+        { permalink: 'nbtwam',  price: 325, label: 'The Cardinal — Indoor',
+          contains: ['software', 'feederIndoor', 'camera', 'computerHighExt'] },
+        { permalink: 'lyzizr',  price: 240, label: 'The Wren — Outdoor',
+          contains: ['software', 'feederOutdoor', 'camera', 'computerStdStd'] },
+        { permalink: 'zfgmyp',  price: 295, label: 'The Finch — Outdoor',
+          contains: ['software', 'feederOutdoor', 'camera', 'computerStdExt'] },
+        { permalink: 'fvypf',   price: 290, label: 'The Jay — Outdoor',
+          contains: ['software', 'feederOutdoor', 'camera', 'computerHighStd'] },
+        { permalink: 'siqskd',  price: 345, label: 'The Cardinal — Outdoor',
+          contains: ['software', 'feederOutdoor', 'camera', 'computerHighExt'] }
     ];
 
     /* Shipping & handling.
@@ -275,7 +260,7 @@ document.addEventListener('DOMContentLoaded', function () {
        back to Coming Soon, rather than sending someone to a checkout that is
        missing the fee. */
     const SHIPPING = {
-        permalink: null,
+        permalink: 'gktxni',
         price: 25,
         threshold: 100,
         label: 'Shipping & Handling'
@@ -483,18 +468,13 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         if (els.footnote) {
-            // When the shipping product is the only thing not wired up yet, say
-            // so — the parts themselves are on sale, and "not ready to order"
-            // reads as though they are not.
-            const shippingBlocks = needsShipping && !SHIPPING.permalink &&
-                cartItems.every(c => c === SHIPPING || c.permalink);
             els.footnote.textContent = buyable
-                ? 'Secure payment via Gumroad. Your license key is emailed within 24 hours.'
+                ? (needsShipping
+                    ? 'Secure payment via Gumroad. Shipping is a separate ' + money(SHIPPING.price) + ' item in the cart — free on builds of ' + money(SHIPPING.threshold) + ' or more.'
+                    : 'Secure payment via Gumroad. Your license key is emailed within 24 hours.')
                 : (subtotal === 0
                     ? 'Choose at least one piece to see a price.'
-                    : shippingBlocks
-                        ? 'Small orders like this one cannot be checked out just yet — shipping is still being set up. Builds of ' + money(SHIPPING.threshold) + ' or more ship free and can be bought today.'
-                        : 'This combination is not quite ready to order yet. Everything else on this page can be bought today.');
+                    : 'This combination is not quite ready to order yet. Everything else on this page can be bought today.');
         }
     }
 
