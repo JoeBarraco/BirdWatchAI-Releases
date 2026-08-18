@@ -267,6 +267,52 @@ document.addEventListener('DOMContentLoaded', function () {
         label: 'Shipping & Handling'
     };
 
+    /* Shipping-inclusive products.
+
+       The fee riding along as its own cart item has one flaw the buyer can
+       exploit without meaning to: it is a line in the Gumroad cart like any
+       other, and it can be deleted there. The build then ships for free and we
+       eat $25. Baking the fee into a single product removes the line, so there
+       is nothing to remove.
+
+       Only builds BELOW the threshold need one, and only eleven exist — every
+       computer starts at $110, so any build with one already ships free, and
+       the two feeders are mutually exclusive. The key is the build's component
+       list, sorted and joined; the price is the discounted subtotal plus the
+       fee. None of the eleven matches a bundle, so each replaces a pure
+       component cart.
+
+       Same null convention as everywhere else, but a softer fallback: a null
+       permalink here does NOT mean Coming Soon, it means "sell this the old
+       way" — components plus the separate fee. That lets these be created a
+       few at a time (Gumroad caps product creation at 10 a day) with each one
+       going live the moment its permalink is pasted in, and nothing breaking
+       in between.
+
+       Two traps when creating them:
+        - Turn ON "Require shipping address". Gumroad has no Physical good
+          type any more; this toggle is what collects an address, and without
+          it you take the money with nowhere to send the feeder. A Bundle
+          cannot set it directly, but inherits it from any item inside that
+          requires shipping — so a bundle built from the physical components
+          collects an address as long as those components do.
+        - 'feederIndoor+software' includes a license. Add its permalink to the
+          GUMROAD_PRODUCT_ID env var on the gumroad-license-webhook function
+          or the buyer pays $120 and never gets a key. */
+    const SHIPPED = {
+        'feederIndoor':              { permalink: 'asuoeh', price: 45,  label: 'Indoor Feeder — delivered' },
+        'macro':                     { permalink: null, price: 50,  label: 'Macro Lens — delivered' },
+        'camera':                    { permalink: null, price: 65,  label: 'Camera — delivered' },
+        'feederOutdoor':             { permalink: null, price: 65,  label: 'Outdoor Feeder — delivered' },
+        'feederIndoor+macro':        { permalink: null, price: 70,  label: 'Indoor Feeder + Macro Lens — delivered' },
+        'camera+feederIndoor':       { permalink: null, price: 85,  label: 'Indoor Feeder + Camera — delivered' },
+        'camera+macro':              { permalink: null, price: 90,  label: 'Camera + Macro Lens — delivered' },
+        'feederOutdoor+macro':       { permalink: null, price: 90,  label: 'Outdoor Feeder + Macro Lens — delivered' },
+        'camera+feederOutdoor':      { permalink: null, price: 105, label: 'Outdoor Feeder + Camera — delivered' },
+        'camera+feederIndoor+macro': { permalink: null, price: 110, label: 'Indoor Feeder + Camera + Macro Lens — delivered' },
+        'feederIndoor+software':     { permalink: null, price: 120, label: 'BirdWatchAI License + Indoor Feeder — delivered' }
+    };
+
     const els = {
         total: document.getElementById('cfg-total'),
         name: document.getElementById('cfg-name'),
@@ -384,12 +430,19 @@ document.addEventListener('DOMContentLoaded', function () {
         const needsShipping = hasHardware && subtotal < SHIPPING.threshold;
         const total = subtotal + (needsShipping ? SHIPPING.price : 0);
 
+        // Sold as one product with the fee already inside it, if that product
+        // has been created yet. Until then this build falls back to the
+        // component adds plus the separate fee, exactly as before.
+        const shipped = needsShipping ? SHIPPED[parts.slice().sort().join('+')] : null;
+        const useShipped = !!(shipped && shipped.permalink);
+
         // Free shipping earns a line of its own even though it adds nothing to
         // the total: a rule nobody can see sells nothing.
         const shippingLine = !hasHardware
             ? ''
             : needsShipping
-                ? '<li><span>Shipping &amp; Handling</span><span>' + money(SHIPPING.price) + '</span></li>'
+                ? '<li><span>Shipping &amp; Handling' + (useShipped ? ' <em>(included)</em>' : '') +
+                  '</span><span>' + money(SHIPPING.price) + '</span></li>'
                 : '<li class="cfg-line-saving"><span>Shipping</span><span>Free</span></li>';
 
         els.lines.innerHTML = lines.map(l => l[1] === null
@@ -440,9 +493,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // What actually goes in the cart: the bundle, if one matched, then
         // whatever it did not cover.
-        const cartItems = (bundle ? [{ permalink: bundle.permalink, label: bundle.label, price: bundle.price }] : [])
-            .concat(leftovers.map(p => COMPONENTS[p]));
-        if (needsShipping) cartItems.push(SHIPPING);
+        const cartItems = useShipped
+            ? [shipped]
+            : (bundle ? [{ permalink: bundle.permalink, label: bundle.label, price: bundle.price }] : [])
+                .concat(leftovers.map(p => COMPONENTS[p]));
+        if (needsShipping && !useShipped) cartItems.push(SHIPPING);
         const buyable = cartItems.length > 0 && cartItems.every(c => c.permalink);
 
         els.buy.hidden = true;
@@ -451,7 +506,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (buyable && cartItems.length === 1) {
             const only = cartItems[0];
-            els.buy.href = bundle
+            els.buy.href = (bundle || useShipped)
                 ? 'https://birdbrainllc.gumroad.com/l/' + only.permalink
                 : GUMROAD_CART + encodeURIComponent(only.permalink);
             els.buy.textContent = 'Buy ' + only.label + ' — ' + money(total);
@@ -505,9 +560,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (els.footnote) {
             els.footnote.textContent = buyable
-                ? (needsShipping
-                    ? 'Secure payment via Gumroad. Shipping is a separate ' + money(SHIPPING.price) + ' item in the cart — free on builds of ' + money(SHIPPING.threshold) + ' or more.'
-                    : 'Secure payment via Gumroad. Your license key is emailed within 24 hours.')
+                ? (useShipped
+                    ? 'Secure payment via Gumroad. The ' + money(SHIPPING.price) + ' shipping & handling is already in this price — free on builds of ' + money(SHIPPING.threshold) + ' or more.'
+                    : needsShipping
+                        ? 'Secure payment via Gumroad. Shipping is a separate ' + money(SHIPPING.price) + ' item in the cart — free on builds of ' + money(SHIPPING.threshold) + ' or more.'
+                        : 'Secure payment via Gumroad. Your license key is emailed within 24 hours.')
                 : (subtotal === 0
                     ? 'Choose at least one piece to see a price.'
                     : 'That combination cannot be ordered as it stands. Add or change a piece and the price will appear.');

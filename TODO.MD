@@ -17,6 +17,35 @@ TO DO LIST
 - **Gumroad: selling configured builds.** Done — every product exists, is wired, and was verified live. All 22 permalinks resolve with the expected name and price; all 120 builder combinations were driven end to end, and 119 of 119 real ones check out at the correct total (the 120th is an empty selection at $0, which correctly offers nothing).
 
      - **Shipping is live and rate-limited by order size.** `SHIPPING.permalink` is `gktxni` ($25). It is added once per order, only when something physical is in the build, and waived at $100 or more. A licence on its own never posts it. That makes 15 of the 120 combinations one-click: the licence, the four computers (all over $100, so shipping-free), and all ten bundles. Small hardware orders — a lone lens, a feeder, a camera — are two adds, the item plus the fee.
+     - **IN PROGRESS — shipping-inclusive products, to stop the fee being deleted from the cart.** The separate `gktxni` fee is a normal cart line, so a buyer can remove it and ship for free. Fix: sell each sub-$100 build as one product with the $25 already inside. **Exactly 11 exist** — every computer starts at $110 so any build with one already ships free, and the two feeders are mutually exclusive. Code is wired and verified (`SHIPPED` table in `js/main.js`); a `null` permalink there falls back to the old component-plus-fee cart, so these can be created a few at a time and each goes live the moment its permalink is pasted in. Nothing breaks in between.
+
+          Done (1 of 11):
+
+          | Product name | Price | `SHIPPED` key | Permalink |
+          |---|---|---|---|
+          | Indoor Feeder — delivered | $45 | `feederIndoor` | `asuoeh` — wired, verified live |
+
+          Remaining (10 of 11 — exactly one day at the cap):
+
+          | Product name | Price | `SHIPPED` key |
+          |---|---|---|
+          | Macro Lens — delivered | $50 | `macro` |
+          | Camera — delivered | $65 | `camera` |
+          | Outdoor Feeder — delivered | $65 | `feederOutdoor` |
+          | Indoor Feeder + Macro Lens — delivered | $70 | `feederIndoor+macro` |
+          | Indoor Feeder + Camera — delivered | $85 | `camera+feederIndoor` |
+          | Camera + Macro Lens — delivered | $90 | `camera+macro` |
+          | Outdoor Feeder + Macro Lens — delivered | $90 | `feederOutdoor+macro` |
+          | Outdoor Feeder + Camera — delivered | $105 | `camera+feederOutdoor` |
+          | Indoor Feeder + Camera + Macro Lens — delivered | $110 | `camera+feederIndoor+macro` |
+          | BirdWatchAI License + Indoor Feeder — delivered | $120 | `feederIndoor+software` |
+
+          Rules for every one of them:
+          - Turn on **"Require shipping address"**. Gumroad no longer has a Physical good type — this toggle is what collects an address. A Bundle cannot set it directly but **inherits** it from any item inside that requires shipping, so a bundle built from the physical components is fine as long as those components have it on. (Verified on `asuoeh`, which is not a bundle and has the toggle set.)
+          - Paste the permalink into the matching `SHIPPED` key in `js/main.js` and bump the `?v=` on both tags in `index.html`.
+          - The $120 one delivers a licence: its permalink must be appended to the comma-separated `GUMROAD_PRODUCT_ID` env var on the `gumroad-license-webhook` function, or the buyer pays and never gets a key.
+
+          Known and accepted: the four bare components (`ittcdq`, `pqwifk`, `mnrvz`, `ujgfpc`) **must stay published** — 60+ over-$100 builds still add them individually at free shipping. So a $20 indoor feeder and a $45 indoor-feeder-delivered coexist in the store. Hide the bare four from the Gumroad profile/discovery so only builder links reach them, otherwise someone finds the $20 listing and ships free anyway.
      - **The two BYOC listings are retired.** The builder now points at the new `nuhhw` (Nest — Indoor, $110) and `dtqrunq` (Nest — Outdoor, $130). `dzjxfn` and `irvwmy` are no longer referenced anywhere in the site, and the dead `#buy-btn` / `#buy-nest-btn` handlers that still called `irvwmy` are gone. Both old listings are still Published in Gumroad — unpublish them so nobody reaches a duplicate through search.
      - **All ten bundles are wired**, each verified to link to its own product: Nest Indoor/Outdoor, and Wren/Finch/Jay/Cardinal in both feeder styles.
 
