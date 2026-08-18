@@ -57,6 +57,7 @@
                     <li><a href="part-3-installation.html#windows-desktop">Windows desktop app</a></li>
                     <li><a href="part-3-installation.html#raspberry-pi">Raspberry Pi server</a></li>
                     <li><a href="part-3-installation.html#windows-docker">Windows + Docker server</a></li>
+                    <li><a href="part-3-installation.html#macos-docker">macOS + Docker server</a></li>
                     <li><a href="part-3-installation.html#linux-x86">Other Linux (x86_64)</a></li>
                     <li><a href="part-3-installation.html#licensing">Licensing &amp; the free trial</a></li>
                 </ul>
@@ -116,8 +117,9 @@
         <h1>Installation</h1>
 
         <p class="lead">Pick the section that matches your platform. The Windows desktop app
-            is a regular Windows installer; the server is a Docker container that runs on a
-            Raspberry Pi, Windows, or any x86_64 Linux box.</p>
+            is a regular Windows installer and is no longer being developed; the server is a
+            Docker container that runs on a Raspberry Pi, Windows, macOS, or any x86_64 Linux
+            box.</p>
 
         <div class="box tip">
             <span class="lbl">Not sure which edition to install?</span>
@@ -459,6 +461,154 @@ cd BirdWatch</code></pre>
             <code>http://&lt;tailscale-ip&gt;:8080</code>. No port-forwarding required. Full
             steps: <a href="part-8-advanced.html#tailscale">Part 8 → Remote access with
             Tailscale</a>.
+        </div>
+
+        <!-- ============================================================= -->
+        <h2 id="macos-docker">macOS + Docker server</h2>
+
+        <p>The server edition runs on a Mac under Docker Desktop — Intel or Apple Silicon,
+            both native. Pick this if you already have a Mac that stays on all day. Total
+            time: ~20&ndash;30 minutes, mostly waiting for Docker Desktop to download.</p>
+
+        <h3>What you need</h3>
+        <ul>
+            <li>macOS 12 Monterey or newer (Intel or Apple Silicon — the BirdWatchAI image is
+                multi-arch and runs natively on both)</li>
+            <li>8 GB RAM minimum, 16 GB recommended (Docker Desktop is RAM-hungry)</li>
+            <li>20 GB free disk space (Docker image + the embedded Linux VM)</li>
+            <li>Wired Ethernet or solid Wi-Fi to your camera</li>
+            <li>An RTSP-capable IP camera. (The wired Pi camera path doesn&rsquo;t apply on
+                macOS.)</li>
+        </ul>
+
+        <h3>1. Install Docker Desktop</h3>
+
+        <div class="box note">
+            <span class="lbl">You don&rsquo;t need a Docker account</span>
+            The installer&rsquo;s &ldquo;sign in / sign up&rdquo; prompts are all optional — skip
+            them. BirdWatchAI&rsquo;s image pulls from a public registry that needs no login.
+        </div>
+
+        <ol class="steps">
+            <li>Download the right build from
+                <a href="https://www.docker.com/products/docker-desktop/">docker.com/products/docker-desktop</a>:
+                <strong>Apple Silicon</strong> (M1/M2/M3/M4) or <strong>Intel chip</strong>.
+                Not sure which you have? <span class="ui">Apple menu → About This Mac</span> —
+                &ldquo;Chip&rdquo; reads either &ldquo;Apple M…&rdquo; or &ldquo;Intel
+                Core…&rdquo;.</li>
+            <li>Open the downloaded <code>.dmg</code>, drag <strong>Docker</strong> into
+                <strong>Applications</strong>, then launch it from Launchpad. First launch takes
+                1&ndash;2 minutes — accept the privileged-helper prompt when it asks for your
+                password.</li>
+            <li>Open <span class="ui">Docker Desktop → Settings → General</span> and tick
+                <strong>Start Docker Desktop when you log in</strong>. This is what makes the
+                BirdWatch stack come back automatically after a reboot.</li>
+            <li>Leave <strong>Use Rosetta for x86_64/amd64 emulation</strong> (Apple Silicon
+                only) at its default. The BirdWatchAI image is native arm64, so emulation never
+                kicks in.</li>
+            <li>Skip the optional sign-in and tutorial prompts.</li>
+        </ol>
+
+        <h3>2. Confirm Git is available</h3>
+        <p>Open <strong>Terminal</strong> (<kbd>Cmd</kbd>+<kbd>Space</kbd> →
+            &ldquo;Terminal&rdquo;) and run:</p>
+        <pre><code>git --version</code></pre>
+        <p>If it prints a version, you&rsquo;re set. If macOS offers to install the Command Line
+            Tools instead, click <strong>Install</strong> and wait ~5 minutes — that brings in
+            Git plus a few other Unix utilities.</p>
+        <p>If you&rsquo;d rather not install the Command Line Tools, download the release repo as
+            a <a href="https://github.com/JoeBarraco/birdwatchai-server-releases/archive/refs/heads/main.zip">ZIP</a>
+            and extract it into your home folder. Trade-off: you&rsquo;ll have to re-download the
+            zip when <code>docker-compose.yml</code> changes (every few months).</p>
+
+        <h3>3. Clone the release repo</h3>
+        <pre><code>cd ~
+git clone https://github.com/JoeBarraco/birdwatchai-server-releases.git BirdWatch
+cd BirdWatch</code></pre>
+        <p>(If you used the zip route, <code>cd</code> to wherever you extracted it instead.)</p>
+
+        <h3>4. Start the stack</h3>
+        <pre><code>docker compose up -d</code></pre>
+        <p>First run downloads the ~600 MB BirdWatchAI image plus the small Watchtower image.
+            Expect 1&ndash;5 minutes on typical home internet. Then:</p>
+        <pre><code>docker ps</code></pre>
+        <p>You should see <strong>two</strong> containers: <code>birdwatch</code> and
+            <code>birdwatch-watchtower</code>. If only one appears, the compose file predates the
+            Watchtower sidecar — run <code>git pull</code>, then
+            <code>docker compose up -d</code> again.</p>
+
+        <h3>5. Open the dashboard</h3>
+        <pre><code>http://localhost:8080</code></pre>
+        <p>The first-time setup wizard greets you — camera, location, notifications, license.
+            <a href="part-4-first-time-setup.html">Part 4</a> walks through it.</p>
+
+        <h3>6. Verify auto-start on reboot</h3>
+        <p>The default setup brings everything back without you doing anything:
+            <strong>Docker Desktop</strong> auto-starts from step 1.3, and
+            <strong>the containers</strong> have <code>restart: unless-stopped</code>. Test it by
+            rebooting, logging back in, waiting ~30 seconds for Docker, then opening
+            <code>http://localhost:8080</code>.</p>
+
+        <h3>Daily-ops helper scripts</h3>
+        <p>The repo ships a few <code>.command</code> files at the root that wrap the common
+            <code>docker compose</code> operations. Double-click any of them in Finder, or run
+            them from a Terminal in the repo folder:</p>
+        <table>
+            <tr><th>Script</th><th>What it does</th></tr>
+            <tr><td><code>birdwatch-start.command</code></td><td><code>docker compose up -d</code></td></tr>
+            <tr><td><code>birdwatch-stop.command</code></td><td><code>docker compose stop</code> (containers stay defined, just stopped)</td></tr>
+            <tr><td><code>birdwatch-update.command</code></td><td><code>docker compose pull &amp;&amp; docker compose up -d</code> — the dashboard&rsquo;s <span class="ui">⬆ Update available</span> button does the same thing one-click.</td></tr>
+            <tr><td><code>birdwatch-logs.command</code></td><td>Live log tail. <kbd>Ctrl</kbd>+<kbd>C</kbd> to stop tailing (the container keeps running).</td></tr>
+        </table>
+
+        <div class="box warn">
+            <span class="lbl">First time you run a .command file</span>
+            Gatekeeper may refuse it — &ldquo;…cannot be opened because it is from an
+            unidentified developer&rdquo;. Right-click the file in Finder →
+            <strong>Open</strong> → <strong>Open</strong>, and macOS remembers your approval
+            thereafter. Or <code>chmod +x birdwatch-*.command</code> from Terminal.
+        </div>
+
+        <h3>Hands-off mode (no login required)</h3>
+        <p>Docker Desktop on macOS needs a logged-in user session — the Linux VM runs inside the
+            GUI session, not as a system daemon. If you want truly headless operation (the Mac
+            boots, nobody logs in, BirdWatch is up):</p>
+        <ol>
+            <li><strong>Auto-login</strong>: <span class="ui">System Settings → Users &amp;
+                Groups → Automatically log in as…</span> → pick the BirdWatch user. Docker
+                Desktop&rsquo;s &ldquo;Start when I log in&rdquo; handles the rest. Trade-off:
+                anyone with physical access has that account&rsquo;s permissions.</li>
+            <li><strong>colima</strong> — Docker without Docker Desktop, able to run as a
+                launchd service with no GUI session. Much more involved and out of scope here;
+                search &ldquo;colima docker macos headless&rdquo; for the standard recipe.</li>
+        </ol>
+        <p>For a dedicated always-on server, a Raspberry Pi is genuinely simpler — headless is
+            its default. See <a href="#raspberry-pi">Raspberry Pi server</a> above.</p>
+
+        <div class="box tip">
+            <span class="lbl">Two macOS-only gotchas worth knowing up front</span>
+            <p><strong>&ldquo;Docker.app is damaged&rdquo;</strong> on Apple Silicon — some Macs
+            need Rosetta 2 even for Apple-Silicon-native apps. Run
+            <code>softwareupdate --install-rosetta --agree-to-license</code> in Terminal, then
+            relaunch Docker Desktop.</p>
+            <p><strong>Detection timestamps off by hours</strong> — containers run inside Docker
+            Desktop&rsquo;s Linux VM, which can interpose its own timezone over the
+            <code>/etc/localtime</code> mount the compose file ships with. Check with
+            <code>docker exec birdwatch date</code>; if it disagrees with your wall clock, add
+            <code>TZ: America/New_York</code> (or your zone) under the <code>birdwatch:</code>
+            service&rsquo;s <code>environment:</code> block in <code>docker-compose.yml</code>,
+            then run <code>docker compose up -d --force-recreate birdwatch</code>.</p>
+        </div>
+
+        <div class="box tip">
+            <span class="lbl">Optional — reach your server from anywhere (Tailscale)</span>
+            To open the dashboard securely from outside your home network, install
+            <strong>Tailscale</strong> on the Mac (from
+            <a href="https://tailscale.com/download">tailscale.com/download</a> or the Mac App
+            Store, then sign in from the menu bar) and on the devices you&rsquo;ll watch from,
+            then browse to <code>http://&lt;tailscale-ip&gt;:8080</code>. No port-forwarding
+            required. Full steps: <a href="part-8-advanced.html#tailscale">Part 8 → Remote access
+            with Tailscale</a>.
         </div>
 
         <!-- ============================================================= -->
