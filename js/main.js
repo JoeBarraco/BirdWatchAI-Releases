@@ -472,15 +472,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
             els.cart.innerHTML =
                 '<p class="cfg-cart-lead">' + (remaining
-                    ? 'Add each item to your cart — the last one takes you to checkout.'
+                    ? 'Add each item, then use your browser’s Back button to return here. Your build is remembered. The last item leaves you at checkout.'
                     : 'All added. Your cart should hold ' + cartItems.length + ' items totalling ' + money(total) + '.') +
                 '</p>' +
                 '<ol class="cfg-cart-list">' +
                 cartItems.map(c => {
                     const done = cartAdded.has(c.permalink);
                     return '<li><a class="cfg-add' + (done ? ' cfg-add-done' : '') +
-                        '" data-perm="' + c.permalink + '" href="' + GUMROAD_CART + encodeURIComponent(c.permalink) +
-                        '" target="_blank" rel="noopener">' +
+                        '" data-perm="' + c.permalink + '" href="' + GUMROAD_CART + encodeURIComponent(c.permalink) + '">' +
                         '<span class="cfg-add-tick" aria-hidden="true">' + (done ? '✓' : '+') + '</span>' +
                         '<span class="cfg-add-label">' + c.label + '</span>' +
                         '<span class="cfg-add-price">' + money(c.price) + '</span></a></li>';
@@ -492,7 +491,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
             els.cart.querySelectorAll('.cfg-add').forEach(a => {
                 a.addEventListener('click', function () {
+                    // Runs just before the browser leaves for Gumroad, so the
+                    // tick has to be written out here or Back forgets it.
                     cartAdded.add(this.dataset.perm);
+                    saveState();
                     safeRender();
                 });
             });
@@ -527,7 +529,39 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    form.addEventListener('change', safeRender);
-    form.addEventListener('input', safeRender);
+    /* Adding an item means leaving the page for Gumroad, so the build and the
+       progress through it have to survive the trip back. sessionStorage rather
+       than localStorage: this is one shopping session, not a saved preference. */
+    const STORE = 'bwa-build-v1';
+
+    function saveState() {
+        try {
+            const cfg = {};
+            ['software', 'feeder', 'camera', 'computer', 'storage', 'macro']
+                .forEach(k => { if (form.elements[k]) cfg[k] = form.elements[k].value; });
+            sessionStorage.setItem(STORE, JSON.stringify({
+                cfg: cfg, sig: cartSignature, added: Array.from(cartAdded)
+            }));
+        } catch (e) { /* private browsing, or storage full — not worth failing over */ }
+    }
+
+    function restoreState() {
+        try {
+            const raw = sessionStorage.getItem(STORE);
+            if (!raw) return;
+            const s = JSON.parse(raw);
+            Object.keys(s.cfg || {}).forEach(k => {
+                const el = form.elements[k];
+                if (el && s.cfg[k]) { el.disabled = false; el.value = s.cfg[k]; }
+            });
+            cartSignature = s.sig || '';
+            (s.added || []).forEach(p => cartAdded.add(p));
+        } catch (e) { /* ignore a malformed or unreadable entry */ }
+    }
+
+    restoreState();
+
+    form.addEventListener('change', function () { safeRender(); saveState(); });
+    form.addEventListener('input', function () { safeRender(); saveState(); });
     safeRender();
 });
