@@ -64,6 +64,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // the legacy installer is a plain <a> in a collapsed footnote. Nothing to
     // wire up here.
 
+
     // Screensaver download button - GitHub Releases
     const screensaverBtn = document.getElementById('screensaver-download-btn');
     if (screensaverBtn) {
@@ -292,6 +293,12 @@ document.addEventListener('DOMContentLoaded', function () {
         if (opt && opt.dataset.label) opt.textContent = opt.dataset.label + ' (' + money(price) + ')';
     };
 
+    // Which add-to-cart links have been clicked, and for which build. Gumroad
+    // cannot tell us what is in the cart, so this only records that a link was
+    // followed — enough to stop someone reaching checkout before adding anything.
+    let cartSignature = '';
+    const cartAdded = new Set();
+
     function render() {
         const software = pick('software');
         const feeder = pick('feeder');
@@ -450,18 +457,45 @@ document.addEventListener('DOMContentLoaded', function () {
             els.buy.textContent = 'Buy ' + only.label + ' — ' + money(total);
             els.buy.hidden = false;
         } else if (buyable) {
-            // One link per item: Gumroad has no multi-add URL, but the cart
-            // keeps what each one adds, so these end in a single checkout.
+            /* One link per item, because Gumroad has no multi-add URL. Each
+               link adds its product and lands on the checkout page, so the
+               last one clicked is already the finished cart.
+
+               The earlier version put a big "Go to checkout" button under a
+               list of plain text links, so the obvious thing to click went
+               straight to an empty cart. Now each item is the button, the
+               ones already added are ticked off, and checkout stays disabled
+               until none are left. */
+            const sig = cartItems.map(c => c.permalink).join(',');
+            if (sig !== cartSignature) { cartSignature = sig; cartAdded.clear(); }
+            const remaining = cartItems.filter(c => !cartAdded.has(c.permalink)).length;
+
             els.cart.innerHTML =
-                '<p class="cfg-cart-lead">Add each item to your Gumroad cart, then check out once:</p>' +
+                '<p class="cfg-cart-lead">' + (remaining
+                    ? 'Add each item to your cart — the last one takes you to checkout.'
+                    : 'All added. Your cart should hold ' + cartItems.length + ' items totalling ' + money(total) + '.') +
+                '</p>' +
                 '<ol class="cfg-cart-list">' +
-                cartItems.map(c =>
-                    '<li><a href="' + GUMROAD_CART + encodeURIComponent(c.permalink) +
-                    '" target="_blank" rel="noopener">' + c.label +
-                    ' <span>' + money(c.price) + '</span></a></li>'
-                ).join('') +
+                cartItems.map(c => {
+                    const done = cartAdded.has(c.permalink);
+                    return '<li><a class="cfg-add' + (done ? ' cfg-add-done' : '') +
+                        '" data-perm="' + c.permalink + '" href="' + GUMROAD_CART + encodeURIComponent(c.permalink) +
+                        '" target="_blank" rel="noopener">' +
+                        '<span class="cfg-add-tick" aria-hidden="true">' + (done ? '✓' : '+') + '</span>' +
+                        '<span class="cfg-add-label">' + c.label + '</span>' +
+                        '<span class="cfg-add-price">' + money(c.price) + '</span></a></li>';
+                }).join('') +
                 '</ol>' +
-                '<a class="btn btn-primary btn-block" href="https://gumroad.com/checkout" target="_blank" rel="noopener">Go to checkout — ' + money(total) + '</a>';
+                (remaining
+                    ? '<p class="cfg-cart-foot">' + remaining + ' still to add</p>'
+                    : '<a class="btn btn-primary btn-block" href="https://gumroad.com/checkout" target="_blank" rel="noopener">Go to checkout — ' + money(total) + '</a>');
+
+            els.cart.querySelectorAll('.cfg-add').forEach(a => {
+                a.addEventListener('click', function () {
+                    cartAdded.add(this.dataset.perm);
+                    safeRender();
+                });
+            });
             els.cart.hidden = false;
         } else {
             els.soon.hidden = false;

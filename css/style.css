@@ -1634,6 +1634,56 @@ ul {
 }
 
 /* Per-piece cart adds, for builds with no single Gumroad product */
+
+.cfg-add {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: var(--space-xs) var(--space-sm);
+    background: color-mix(in srgb, var(--color-primary) 10%, var(--color-white));
+    border: 2px solid var(--color-primary);
+    border-radius: var(--radius-md);
+    color: var(--color-primary);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.cfg-add:hover { background: color-mix(in srgb, var(--color-primary) 18%, var(--color-white)); }
+
+.cfg-add-tick {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--color-primary);
+    color: var(--color-white);
+    font-size: 0.8125rem;
+    line-height: 1;
+}
+
+/* Added: step back visually so what is left to do stands out. */
+.cfg-add-done {
+    background: var(--color-gray-100);
+    border-color: var(--color-gray-200);
+    color: var(--color-gray-500);
+}
+
+.cfg-add-done .cfg-add-tick { background: var(--color-gray-500); }
+.cfg-add-done .cfg-add-label { text-decoration: line-through; }
+
+.cfg-add-price { font-weight: 400; }
+
+.cfg-cart-foot {
+    margin-top: var(--space-xs);
+    font-size: 0.8125rem;
+    font-weight: 700;
+    text-align: center;
+    color: var(--color-gray-500);
+}
+
 .cfg-cart[hidden] {
     display: none;
 }
@@ -1657,19 +1707,6 @@ ul {
     margin-bottom: 4px;
     font-size: 0.8125rem;
     color: var(--color-gray-500);
-}
-
-.cfg-cart-list a {
-    display: flex;
-    justify-content: space-between;
-    gap: var(--space-sm);
-    color: var(--color-primary);
-    font-weight: 600;
-}
-
-.cfg-cart-list a span {
-    color: var(--color-gray-500);
-    font-weight: 400;
 }
 
 .cfg-footnote {
