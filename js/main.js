@@ -296,9 +296,11 @@ document.addEventListener('DOMContentLoaded', function () {
           cannot set it directly, but inherits it from any item inside that
           requires shipping — so a bundle built from the physical components
           collects an address as long as those components do.
-        - 'feederIndoor+software' includes a license. Add its permalink to the
-          GUMROAD_PRODUCT_ID env var on the gumroad-license-webhook function
-          or the buyer pays $120 and never gets a key. */
+        - 'feederIndoor+software' includes a license, so build it as a BUNDLE
+          containing dajhd. Gumroad reports the contained license rather than
+          the bundle wrapper, so a bundle needs no GUMROAD_PRODUCT_ID change;
+          a standalone product would report its own id, match nothing, and the
+          buyer would pay $120 and never get a key. */
     const SHIPPED = {
         'feederIndoor':              { permalink: 'asuoeh', price: 45,  label: 'Indoor Feeder — delivered' },
         'macro':                     { permalink: null, price: 50,  label: 'Macro Lens — delivered' },

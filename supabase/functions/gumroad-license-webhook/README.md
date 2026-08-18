@@ -80,35 +80,38 @@ supabase secrets set LICENSE_PRIVATE_KEY_PEM="$(cat license_private_key.pem)"
 The products already exist — this is about pointing them at the function, not
 creating anything.
 
-1. **Allowlist EVERY product that includes the software license.** This is the
-   easiest thing to get wrong and the failure is silent: a buyer pays, no key
+1. **Allowlist every product that includes the software license — but a Gumroad
+   Bundle is not one of them.** The failure here is silent: a buyer pays, no key
    is minted, and you don't find out until they email you.
 
-   The license isn't only sold on its own. Per `js/main.js`, every bundle's
-   `contains` list includes `software`:
-
-   | Product | Permalink | Price |
-   |---|---|---|
-   | BirdWatchAI license (alone) | `dajhd` | $75 |
-   | The Nest — Indoor | `dzjxfn` | $110 |
-   | The Nest — Outdoor | `irvwmy` | $130 |
-   | Full Nest Indoor — The Wren | `nbnqg` | $220 |
-   | Full Nest Indoor — The Jay | `tlvqwi` | $270 |
-
-   So today:
+   **Bundles need no entry of their own.** Tested 2026-08-18; the earlier
+   advice in this file was wrong. Four different products were bought in a row,
+   and all four rows in `licenses` recorded the *same* `gumroad_product_id` —
+   the licence's. Gumroad reports the contained licence product, not the bundle
+   wrapper. So:
 
    ```
-   GUMROAD_PRODUCT_ID=dajhd,dzjxfn,irvwmy,nbnqg,tlvqwi
+   GUMROAD_PRODUCT_ID=dajhd
    ```
+
+   covers the licence sold alone **and** every bundle containing it.
+
+   That same test showed the allowlist is genuinely working rather than being
+   unset. The Nest Indoor contains three things — licence, indoor feeder,
+   camera — and produced exactly one row. Had `GUMROAD_PRODUCT_ID` been empty,
+   every constituent would have minted and there would have been three. The
+   feeder and camera pings are being ignored as intended.
 
    The function matches on either the API `product_id` or the permalink, so
    permalinks are fine here and are what you already have written down.
 
-   **Every new bundle you create needs adding to this list.** The six still on
-   the TODO (Indoor Finch/Cardinal, Outdoor Wren/Jay/Finch/Cardinal) all
-   include `software`. Treat "add the permalink to `BUNDLES` in `js/main.js`"
-   and "add it to `GUMROAD_PRODUCT_ID`" as the same task — the first makes it
-   sellable, the second makes it deliverable.
+   **What DOES need adding: a licence-bearing product that is not a Bundle.**
+   A standalone product carrying a licence reports its own id, matches nothing,
+   and the buyer pays with no key. The live example is the shipping-inclusive
+   `BirdWatchAI License + Indoor Feeder — delivered` ($120) — build it as a
+   Bundle containing `dajhd` and no allowlist change is needed; build it
+   standalone and it must be listed here. Prefer the Bundle, which also
+   inherits "Require shipping address" from the feeder.
 
    The Shipping & Handling product must **not** be in the list. It carries no
    license, and a cart containing license + S&H fires one ping per product; the
