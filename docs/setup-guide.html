@@ -192,76 +192,133 @@
         <a href="../index.html" class="back-link">← Back to BirdWatchAI</a>
 
         <h1>🚀 Getting Started with BirdWatchAI</h1>
-        
-        <p>Welcome to BirdWatchAI! This guide will help you get up and running in just a few minutes.</p>
-        
+
+        <p>Welcome to BirdWatchAI! This guide is the short path from nothing to a dashboard
+            naming the birds at your feeder. Set aside about half an hour, most of it waiting
+            on downloads.</p>
+
         <h2>What You'll Need</h2>
-        
+
         <ul>
-            <li><strong>A Windows computer</strong> (Windows 10 or 11)</li>
+            <li><strong>A computer that stays on</strong> — a Raspberry Pi, or a Windows PC,
+                Mac or Linux box you already own</li>
             <li><strong>An RTSP-compatible camera</strong> pointed at your bird feeder</li>
-            <li><strong>Both on the same WiFi network</strong></li>
+            <li><strong>Both on the same network</strong></li>
+            <li><strong>Any device with a browser</strong> — phone, tablet or laptop — to
+                watch it from</li>
         </ul>
-        
+
+        <div class="box box-info">
+            <strong>🖥️ BirdWatchAI runs as a server, not a desktop app</strong>
+            <p>It installs with Docker on the machine that stays on, and you open its
+            dashboard in a browser from anywhere in the house. Nothing needs to be installed
+            on the device you watch from.</p>
+            <p>There was once a Windows desktop version. It still runs and existing license
+            keys still activate it, but it is <strong>no longer being developed</strong> — new
+            features land in the server.</p>
+        </div>
+
         <div class="box box-tip">
             <strong>🎥 Recommended Camera</strong>
-            We recommend the <strong>TAPO C120</strong> (~$30) for its excellent 2K quality, weatherproof design, and easy RTSP setup. See our <a href="tapo-setup.html">TAPO C120 Setup Guide</a> for detailed instructions.
+            A TP-Link Tapo is the easy starting point — the <strong>C113</strong> (~$30) is
+            what we suggest for an indoor window setup. Reolink, Amcrest and Wyze RTSP models
+            work too. See the <a href="tapo-setup.html">Tapo Camera Setup Guide</a> for
+            turning on RTSP and creating the camera account.
         </div>
-        
+
         <h2>Quick Start Guide</h2>
-        
+
         <div class="step-section">
             <span class="step-number">1</span>
             <div class="step-content">
-                <h3>Download & Install</h3>
-                <p>Download BirdWatchAI from our <a href="../index.html#download">download page</a> and run the installer. The installation takes about 2 minutes.</p>
+                <h3>Install the server</h3>
+                <p>Pick the walkthrough that matches your machine — each one goes from a bare
+                    box to a running dashboard:</p>
+                <ul>
+                    <li><a href="manual/part-3-installation.html#raspberry-pi">Raspberry Pi</a>
+                        — from a blank SD card</li>
+                    <li><a href="manual/part-3-installation.html#windows-docker">Windows</a>
+                        with Docker Desktop</li>
+                    <li><a href="manual/part-3-installation.html#macos-docker">macOS</a>
+                        with Docker Desktop</li>
+                    <li><a href="manual/part-3-installation.html#linux-x86">Other Linux</a></li>
+                </ul>
+                <p>Already have Docker? The whole install is three lines:</p>
+                <code>git clone https://github.com/JoeBarraco/birdwatchai-server-releases.git ~/birdwatch</code>
+                <code>cd ~/birdwatch</code>
+                <code>docker compose up -d</code>
+                <p>Everything is free for 30 days — no card, nothing held back.</p>
             </div>
         </div>
-        
+
         <div class="step-section">
             <span class="step-number">2</span>
             <div class="step-content">
-                <h3>Run the Setup Wizard</h3>
-                <p>On first launch, the Setup Wizard guides you through:</p>
+                <h3>Open the dashboard &amp; run the setup wizard</h3>
+                <p>Browse to <code>http://&lt;your-host-ip&gt;:8080</code> — or
+                    <code>http://localhost:8080</code> if you're on the machine itself. On a Pi
+                    you gave a hostname, <code>http://birdwatch.local:8080</code> works too.</p>
+                <p>The first-time wizard walks you through:</p>
                 <ul>
                     <li>Camera connection (RTSP URL configuration)</li>
-                    <li>Your location (zip code for weather & bird rarity)</li>
-                    <li>Notification preferences (email and/or Pushover)</li>
+                    <li>Your location (zip code, for weather &amp; bird rarity)</li>
+                    <li>Notification preferences (email, Pushover and/or ntfy)</li>
                 </ul>
             </div>
         </div>
-        
+
         <div class="step-section">
             <span class="step-number">3</span>
             <div class="step-content">
                 <h3>Start Monitoring</h3>
-                <p>Click the <strong>"Start Monitoring"</strong> button, and BirdWatchAI will begin watching your feeder. When a bird appears, the AI will identify the species and save a snapshot.</p>
+                <p>Click <strong>Start monitoring</strong> on the dashboard and BirdWatchAI
+                    begins watching your feeder. When a bird appears, the AI identifies the
+                    species and saves a snapshot. The Engine status card shows what it's
+                    doing.</p>
             </div>
         </div>
-        
+
         <div class="step-section">
             <span class="step-number">4</span>
             <div class="step-content">
                 <h3>Get Notified</h3>
-                <p>If you've set up notifications, you'll receive alerts on your phone whenever a bird is detected. Each notification includes a photo and the identified species.</p>
+                <p>If you've set up notifications, alerts arrive on your phone whenever a bird
+                    is detected — each one with a photo and the identified species. Then browse
+                    the Gallery, History and Statistics pages as your list fills in.</p>
             </div>
         </div>
-        
+
         <h2>Setting Up Your Camera</h2>
-        
-        <p>BirdWatchAI connects to your camera via RTSP (Real Time Streaming Protocol). Most IP cameras support RTSP, but setup varies by brand.</p>
-        
+
+        <p>BirdWatchAI connects to your camera via RTSP (Real Time Streaming Protocol). Most IP
+            cameras support RTSP, but setup varies by brand.</p>
+
         <h3>Camera-Specific Guides</h3>
         <ul>
-            <li><a href="tapo-setup.html"><strong>TAPO C120 / C200 / C310</strong></a> - Detailed setup guide</li>
-            <li><strong>Other cameras</strong> - Check your camera's manual for the RTSP URL format</li>
+            <li><a href="tapo-setup.html"><strong>TP-Link Tapo (C1xx series)</strong></a> —
+                detailed setup guide</li>
+            <li><a href="manual/part-2-camera-hardware.html"><strong>Part 2 of the
+                manual</strong></a> — camera choice, placement and the wired Pi Camera
+                Module</li>
+            <li><strong>Other cameras</strong> — check your camera's manual for the RTSP URL
+                format</li>
         </ul>
-        
+
         <div class="box box-info">
             <strong>📹 General RTSP URL Format</strong>
             <p>Most cameras use a URL like:</p>
             <code>rtsp://username:password@192.168.1.xxx:554/stream</code>
             <p>The exact format depends on your camera brand. Common paths include <code>/stream1</code>, <code>/live</code>, or <code>/h264</code>.</p>
+        </div>
+
+        <div class="box box-warning">
+            <strong>⚠️ Pick the right Tapo stream — bigger is not better</strong>
+            <p>Tapo cameras publish two streams. <code>stream2</code> is the sub-stream and is
+            usually the right one: on a C113 it's 720p, which is plenty for identification.</p>
+            <p>On the C120 and most lower-cost models <code>stream2</code> caps at 640×360 — too
+            small — so use <code>stream1</code> set to <strong>1080p</strong> in the Tapo app.
+            Avoid running <code>stream1</code> at 2K over Wi-Fi: it saturates the camera's
+            uplink and shows up as corrupted video and dropped connections.</p>
         </div>
 
         <div class="box box-info">
@@ -270,27 +327,42 @@
         </div>
 
         <h2>Setting Up Notifications</h2>
-        
+
+        <p>All three live under <strong>Settings</strong> on the dashboard, and you can run any
+            combination of them.</p>
+
         <h3>Email Notifications</h3>
         <p>Get bird detection alerts sent to your email with photos attached.</p>
         <ol>
-            <li>Go to <strong>Settings → Email</strong></li>
+            <li>Go to <strong>Settings → Email notifications</strong></li>
             <li>Enable email notifications</li>
             <li>Enter your SMTP settings (Gmail works great)</li>
-            <li>For Gmail: Use an <a href="https://myaccount.google.com/apppasswords" target="_blank">App Password</a>, not your regular password</li>
+            <li>For Gmail: Use an <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener">App Password</a>, not your regular password</li>
         </ol>
-        
-        <h3>Pushover Notifications (Recommended)</h3>
+
+        <h3>Pushover Notifications</h3>
         <p>Pushover delivers instant push notifications to your phone with attached photos.</p>
         <ol>
-            <li>Create an account at <a href="https://pushover.net" target="_blank">pushover.net</a></li>
+            <li>Create an account at <a href="https://pushover.net" target="_blank" rel="noopener">pushover.net</a></li>
             <li>Install the Pushover app on your phone ($5 one-time purchase)</li>
             <li>Create an application at pushover.net to get an API token</li>
-            <li>Enter your User Key and API Token in BirdWatchAI settings</li>
+            <li>Enter your User Key and API Token under <strong>Settings → Pushover
+                notifications</strong></li>
         </ol>
-        
+
+        <h3>ntfy Notifications (free)</h3>
+        <p>ntfy does the same job with no account and no purchase — pick a topic name, subscribe
+            to it in the ntfy app, and BirdWatchAI publishes to it.</p>
+        <ol>
+            <li>Install <a href="https://ntfy.sh" target="_blank" rel="noopener">ntfy</a> on
+                your phone (iOS / Android)</li>
+            <li>Subscribe to a topic name only you would guess — the topic <em>is</em> the
+                password</li>
+            <li>Enter that same topic under <strong>Settings → ntfy notifications</strong></li>
+        </ol>
+
         <h2>Tips for Best Results</h2>
-        
+
         <div class="box box-tip">
             <strong>📍 Camera Placement</strong>
             <ul>
@@ -300,25 +372,28 @@
                 <li>Angle slightly downward toward the feeder</li>
             </ul>
         </div>
-        
+
         <div class="box box-tip">
             <strong>⚙️ Confidence Threshold</strong>
             <p>The default 70% confidence threshold works well for most setups. If you're getting too many false positives, increase it to 80%. If you're missing birds, try lowering it to 60%.</p>
         </div>
-        
+
         <div class="box box-tip">
             <strong>🌅 Daylight Hours</strong>
-            <p>Enable "Monitor during daylight hours only" to avoid false detections at night and save resources when birds aren't active.</p>
+            <p>Turn on <strong>daylight-only monitoring</strong> to skip false detections at
+            night and save power when birds aren't active. It defaults to 6am–8pm local time,
+            and both ends are adjustable.</p>
         </div>
-        
+
         <h2>Need Help?</h2>
-        
+
         <ul>
-            <li><a href="manual.html">Complete User Manual</a> - every feature explained in detail</li>
+            <li><a href="manual/">Complete User Manual</a> - every feature explained in detail</li>
+            <li><a href="manual/part-7-troubleshooting.html">Troubleshooting</a> - when something isn't working</li>
             <li><a href="tapo-setup.html">TAPO Camera Setup Guide</a></li>
             <li><a href="mailto:support@birdwatchai.com">Email Support</a></li>
         </ul>
-        
+
         <footer>
             <p>BirdWatchAI - Getting Started Guide</p>
             <p><a href="../index.html">← Back to Home</a></p>
