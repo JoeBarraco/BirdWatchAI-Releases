@@ -1139,6 +1139,12 @@ ul {
     border: 0;
 }
 
+/* Returning from Gumroad mid-build scrolls here. The offset keeps the section
+   clear of the fixed nav and the detection ticker above it. */
+#build {
+    scroll-margin-top: 96px;
+}
+
 /* Tiered pricing blocks */
 .pricing-tier {
     margin-top: var(--space-xl);
@@ -1381,6 +1387,22 @@ ul {
     .cfg-total { margin: var(--space-xs) 0; }
     .cfg-total-amount { font-size: 2.25rem; }
     .cfg-name { font-size: 1.125rem; }
+}
+
+/* Brief flash when a half-finished build is restored, so it is obvious the
+   page came back to something already in progress rather than reloading. */
+@keyframes cfgResume {
+    0%   { box-shadow: var(--shadow-md); }
+    30%  { box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 45%, transparent), var(--shadow-md); }
+    100% { box-shadow: var(--shadow-md); }
+}
+
+.cfg-summary-resumed {
+    animation: cfgResume 1.4s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cfg-summary-resumed { animation: none; }
 }
 
 @keyframes cfgBump {

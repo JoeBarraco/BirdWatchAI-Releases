@@ -564,4 +564,37 @@ document.addEventListener('DOMContentLoaded', function () {
     form.addEventListener('change', function () { safeRender(); saveState(); });
     form.addEventListener('input', function () { safeRender(); saveState(); });
     safeRender();
+
+    /* Coming back from Gumroad — whether by Back or by its "Continue shopping"
+       link — lands at the top of the page, a long way above the builder, with
+       no sign of the half-finished build waiting below. If items have already
+       been added, put the builder back on screen.
+
+       Deferred a frame so it runs after the browser's own scroll restoration,
+       which would otherwise fight it. */
+    if (cartAdded.size) {
+        // Stop the browser restoring its own scroll position and undoing this.
+        try { if ('scrollRestoration' in history) history.scrollRestoration = 'manual'; } catch (e) {}
+
+        const jump = () => {
+            const target = document.getElementById('build') || document.getElementById('configurator');
+            // scrollIntoView honours the scroll-margin-top set on #build, which
+            // is what clears the fixed nav and ticker — no magic offset here.
+            if (target) target.scrollIntoView({ block: 'start' });
+        };
+
+        // Everything above the builder — hero, screenshots, feeder photos — is
+        // still loading at this point, and each image that lands pushes the
+        // target further down. So jump once now and again once images have
+        // settled, rather than trusting a single early measurement.
+        jump();
+        if (document.readyState === 'complete') setTimeout(jump, 150);
+        else window.addEventListener('load', () => setTimeout(jump, 150), { once: true });
+
+        const panel = document.querySelector('.cfg-summary');
+        if (panel) {
+            panel.classList.add('cfg-summary-resumed');
+            setTimeout(function () { panel.classList.remove('cfg-summary-resumed'); }, 1800);
+        }
+    }
 });
