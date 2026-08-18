@@ -510,7 +510,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     : 'Secure payment via Gumroad. Your license key is emailed within 24 hours.')
                 : (subtotal === 0
                     ? 'Choose at least one piece to see a price.'
-                    : 'This combination is not quite ready to order yet. Everything else on this page can be bought today.');
+                    : 'That combination cannot be ordered as it stands. Add or change a piece and the price will appear.');
         }
     }
 
@@ -587,17 +587,22 @@ document.addEventListener('DOMContentLoaded', function () {
            target further down, so a single jump aims at where the page used to
            be. Re-aim whenever the target's absolute position changes, until it
            stops moving or we run out of patience. */
-        const absTop = () => {
-            const t = widget();
-            return t ? Math.round(t.getBoundingClientRect().top + window.scrollY) : -1;
-        };
-
-        let lastTop = -1;
+        /* Retry until we have actually arrived, not merely until the layout
+           stops moving. The previous version re-aimed only when the target's
+           position changed, so a jump that fell short on a page that was not
+           yet tall enough was never corrected — which is exactly what happens
+           on a cold load, where the document grows as images arrive. */
+        const OFFSET = 96;  // matches scroll-margin-top on #configurator
         let tries = 0;
         const settle = () => {
-            const now = absTop();
-            if (now !== lastTop) { lastTop = now; jump(); }
-            if (++tries < 15) setTimeout(settle, 200);
+            const t = widget();
+            if (!t) return;
+            const off = Math.abs(Math.round(t.getBoundingClientRect().top) - OFFSET);
+            const atBottom = window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2;
+            // atBottom means the page simply cannot scroll any further; stop
+            // rather than yanking the view every 200ms forever.
+            if (off > 8 && !atBottom) jump();
+            if (++tries < 20) setTimeout(settle, 200);
         };
         jump();
         settle();
