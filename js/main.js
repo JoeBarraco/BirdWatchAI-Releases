@@ -576,20 +576,31 @@ document.addEventListener('DOMContentLoaded', function () {
         // Stop the browser restoring its own scroll position and undoing this.
         try { if ('scrollRestoration' in history) history.scrollRestoration = 'manual'; } catch (e) {}
 
-        const jump = () => {
-            const target = document.getElementById('build') || document.getElementById('configurator');
-            // scrollIntoView honours the scroll-margin-top set on #build, which
-            // is what clears the fixed nav and ticker — no magic offset here.
-            if (target) target.scrollIntoView({ block: 'start' });
+        // Aim at the widget itself, not the section — #build starts with the
+        // eyebrow and heading, so landing on it leaves the dropdowns and the
+        // total below the fold, which is most of the way there but not there.
+        const widget = () => document.getElementById('configurator') || document.getElementById('build');
+        const jump = () => { const t = widget(); if (t) t.scrollIntoView({ block: 'start' }); };
+
+        /* Everything above the builder — hero, screenshots, feeder and computer
+           photos — is still loading, and every image that lands pushes the
+           target further down, so a single jump aims at where the page used to
+           be. Re-aim whenever the target's absolute position changes, until it
+           stops moving or we run out of patience. */
+        const absTop = () => {
+            const t = widget();
+            return t ? Math.round(t.getBoundingClientRect().top + window.scrollY) : -1;
         };
 
-        // Everything above the builder — hero, screenshots, feeder photos — is
-        // still loading at this point, and each image that lands pushes the
-        // target further down. So jump once now and again once images have
-        // settled, rather than trusting a single early measurement.
+        let lastTop = -1;
+        let tries = 0;
+        const settle = () => {
+            const now = absTop();
+            if (now !== lastTop) { lastTop = now; jump(); }
+            if (++tries < 15) setTimeout(settle, 200);
+        };
         jump();
-        if (document.readyState === 'complete') setTimeout(jump, 150);
-        else window.addEventListener('load', () => setTimeout(jump, 150), { once: true });
+        settle();
 
         const panel = document.querySelector('.cfg-summary');
         if (panel) {

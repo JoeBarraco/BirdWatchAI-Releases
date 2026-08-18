@@ -1141,7 +1141,8 @@ ul {
 
 /* Returning from Gumroad mid-build scrolls here. The offset keeps the section
    clear of the fixed nav and the detection ticker above it. */
-#build {
+#build,
+#configurator {
     scroll-margin-top: 96px;
 }
 
