@@ -1567,6 +1567,49 @@ ul {
     margin: 0 auto var(--space-lg);
 }
 
+.opt-cards-4 { grid-template-columns: repeat(4, 1fr); gap: var(--space-md); }
+
+@media (max-width: 1100px) {
+    .opt-cards-4 { grid-template-columns: repeat(2, 1fr); max-width: 800px; }
+}
+
+@media (max-width: 560px) {
+    .opt-cards-4 { grid-template-columns: 1fr; max-width: 400px; }
+}
+
+/* Tier cards carry a spec list rather than a feature list, so they run
+   shorter — tighten them up and let the spec sit at the bottom. */
+.opt-card-tier {
+    display: flex;
+    flex-direction: column;
+    padding: var(--space-md);
+}
+
+.opt-card-tier p {
+    flex: 1 1 auto;
+    font-size: 0.9375rem;
+    margin-bottom: var(--space-sm);
+}
+
+.opt-card-tier .fullnest-spec {
+    margin-bottom: 0;
+}
+
+.fullnest-intro,
+.fullnest-outro {
+    max-width: 800px;
+    margin: 0 auto var(--space-lg);
+    text-align: center;
+    line-height: 1.6;
+    color: var(--color-gray-700);
+}
+
+.fullnest-outro {
+    margin-top: calc(-1 * var(--space-xs));
+    font-size: 0.9375rem;
+    color: var(--color-gray-500);
+}
+
 .opt-cards-1 { max-width: 800px; grid-template-columns: 1fr; }
 .opt-cards-2 { grid-template-columns: repeat(2, 1fr); }
 
