@@ -303,15 +303,15 @@ document.addEventListener('DOMContentLoaded', function () {
           buyer would pay $120 and never get a key. */
     const SHIPPED = {
         'feederIndoor':              { permalink: 'asuoeh', price: 45,  label: 'Indoor Feeder — delivered' },
-        'macro':                     { permalink: null, price: 50,  label: 'Macro Lens — delivered' },
-        'camera':                    { permalink: null, price: 65,  label: 'Camera — delivered' },
-        'feederOutdoor':             { permalink: null, price: 65,  label: 'Outdoor Feeder — delivered' },
-        'feederIndoor+macro':        { permalink: null, price: 70,  label: 'Indoor Feeder + Macro Lens — delivered' },
-        'camera+feederIndoor':       { permalink: null, price: 85,  label: 'Indoor Feeder + Camera — delivered' },
-        'camera+macro':              { permalink: null, price: 90,  label: 'Camera + Macro Lens — delivered' },
-        'feederOutdoor+macro':       { permalink: null, price: 90,  label: 'Outdoor Feeder + Macro Lens — delivered' },
-        'camera+feederOutdoor':      { permalink: null, price: 105, label: 'Outdoor Feeder + Camera — delivered' },
-        'camera+feederIndoor+macro': { permalink: null, price: 110, label: 'Indoor Feeder + Camera + Macro Lens — delivered' },
+        'macro':                     { permalink: 'exnelh', price: 50,  label: 'Macro Lens — delivered' },
+        'camera':                    { permalink: 'ybqrn', price: 65,  label: 'Camera — delivered' },
+        'feederOutdoor':             { permalink: 'ypbrqy', price: 65,  label: 'Outdoor Feeder — delivered' },
+        'feederIndoor+macro':        { permalink: 'pnpth', price: 70,  label: 'Indoor Feeder + Macro Lens — delivered' },
+        'camera+feederIndoor':       { permalink: 'znfdbp', price: 85,  label: 'Indoor Feeder + Camera — delivered' },
+        'camera+macro':              { permalink: 'lktnp', price: 90,  label: 'Camera + Macro Lens — delivered' },
+        'feederOutdoor+macro':       { permalink: 'piqcnu', price: 90,  label: 'Outdoor Feeder + Macro Lens — delivered' },
+        'camera+feederOutdoor':      { permalink: 'typcpg', price: 105, label: 'Outdoor Feeder + Camera — delivered' },
+        'camera+feederIndoor+macro': { permalink: 'hdjurk', price: 110, label: 'Indoor Feeder + Camera + Macro Lens — delivered' },
         'feederIndoor+software':     { permalink: null, price: 120, label: 'BirdWatchAI License + Indoor Feeder — delivered' }
     };
 
