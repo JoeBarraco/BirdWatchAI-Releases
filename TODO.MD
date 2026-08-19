@@ -40,11 +40,21 @@ TO DO LIST
           | Indoor Feeder + Camera + Macro Lens — delivered | $110 | `camera+feederIndoor+macro` |
           | BirdWatchAI License + Indoor Feeder — delivered | $120 | `feederIndoor+software` |
 
+          Create that one as a **Gumroad bundle** containing the licence product, not as a standalone
+          product like the first ten. A bundle delivers its constituents, so the licence webhook fires
+          on the licence product and mints a key by itself — no `GUMROAD_PRODUCT_ID` change needed.
+          A standalone $120 product contains no licence and would take the money without issuing one.
+
           Rules for every one of them:
           - Turn on **"Require shipping address"**. Gumroad no longer has a Physical good type — this toggle is what collects an address. A Bundle cannot set it directly but **inherits** it from any item inside that requires shipping. Both halves verified live on 2026-08-17: a lone indoor feeder checked out as "Indoor Feeder — delivered" at $45 and demanded an address, and a Full Nest bundle demanded one too.
           - **Worth doing first:** turn the toggle on for the four bare components (`ittcdq`, `pqwifk`, `mnrvz`, `ujgfpc`). Because bundles inherit it, that should make all ten existing kit bundles collect addresses as well — closing the fulfilment gap across the whole storefront, not just these eleven products.
           - Paste the permalink into the matching `SHIPPED` key in `js/main.js` and bump the `?v=` on both tags in `index.html`.
           - The $120 one delivers a licence, so **build it as a Gumroad Bundle containing `dajhd`** (plus the indoor feeder). Tested 2026-08-18: Gumroad reports the *contained* licence rather than the bundle wrapper, so a bundle needs no `GUMROAD_PRODUCT_ID` change at all — while a standalone licence-bearing product reports its own id, matches nothing, and the buyer pays $120 and gets no key. The bundle also inherits "Require shipping address" from the feeder, so one choice solves both.
+
+          Superseded: `asuoeh`, `exnelh` and `ybqrn` were the first three, created as standalone
+          products rather than bundles. They were rebuilt as bundles containing Shipping & Handling —
+          `xcrqr` $45, `fifssk` $50, `fnygup` $65 — and the builder points at the new three. The old
+          three are still Published and still sell at the same prices; archive them.
 
           Known and accepted: the four bare components (`ittcdq`, `pqwifk`, `mnrvz`, `ujgfpc`) **must stay published** — 60+ over-$100 builds still add them individually at free shipping. So a $20 indoor feeder and a $45 indoor-feeder-delivered coexist in the store. Hide the bare four from the Gumroad profile/discovery so only builder links reach them, otherwise someone finds the $20 listing and ships free anyway.
      - **The two BYOC listings are retired.** The builder now points at the new `nuhhw` (Nest — Indoor, $110) and `dtqrunq` (Nest — Outdoor, $130). `dzjxfn` and `irvwmy` are no longer referenced anywhere in the site, and the dead `#buy-btn` / `#buy-nest-btn` handlers that still called `irvwmy` are gone. Both old listings are still Published in Gumroad — unpublish them so nobody reaches a duplicate through search.

@@ -302,9 +302,9 @@ document.addEventListener('DOMContentLoaded', function () {
           a standalone product would report its own id, match nothing, and the
           buyer would pay $120 and never get a key. */
     const SHIPPED = {
-        'feederIndoor':              { permalink: 'asuoeh', price: 45,  label: 'Indoor Feeder — delivered' },
-        'macro':                     { permalink: 'exnelh', price: 50,  label: 'Macro Lens — delivered' },
-        'camera':                    { permalink: 'ybqrn', price: 65,  label: 'Camera — delivered' },
+        'feederIndoor':              { permalink: 'xcrqr', price: 45,  label: 'Indoor Feeder — delivered' },
+        'macro':                     { permalink: 'fifssk', price: 50,  label: 'Macro Lens — delivered' },
+        'camera':                    { permalink: 'fnygup', price: 65,  label: 'Camera — delivered' },
         'feederOutdoor':             { permalink: 'ypbrqy', price: 65,  label: 'Outdoor Feeder — delivered' },
         'feederIndoor+macro':        { permalink: 'pnpth', price: 70,  label: 'Indoor Feeder + Macro Lens — delivered' },
         'camera+feederIndoor':       { permalink: 'znfdbp', price: 85,  label: 'Indoor Feeder + Camera — delivered' },
