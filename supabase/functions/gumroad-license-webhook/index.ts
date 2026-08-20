@@ -304,7 +304,7 @@ and paste the key there.
 Keep this email — it is your copy of the key. If you lose it, write to
 support@birdwatchai.com from this address and we will send it again.
 
--- Joe Barraco, Bird Brain Solutions LLC
+-- Bird Brain Solutions LLC
 `,
     }),
   });
