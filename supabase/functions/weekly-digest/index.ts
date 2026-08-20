@@ -133,7 +133,7 @@ Deno.serve(async (req) => {
   const SUPABASE_URL          = Deno.env.get('SUPABASE_URL') ?? '';
   const SUPABASE_SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
   const FROM_EMAIL            = Deno.env.get('DIGEST_FROM_EMAIL') ?? 'BirdWatchAI Weekly <digest@birdwatchai.com>';
-  const SITE_URL              = Deno.env.get('SITE_URL') ?? 'https://joebarraco.github.io/birdwatchai-releases';
+  const SITE_URL              = Deno.env.get('SITE_URL') ?? 'https://www.birdwatchai.com';
   const supabase              = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
 
   if (req.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
@@ -156,15 +156,44 @@ Deno.serve(async (req) => {
     }
 
     // ── Compute stats ────────────────────────────────────────────────────────
+    // Rarity is matched by rank, not by one exact string. The old code tested
+    // `rarity === 'Rare'`, and `community_detections` has never once stored
+    // that value: across 9,333 rows the tiers present are 'Common', 'Uncommon'
+    // and 'Very Rare'. So the rare-sighting card — the only photo in the whole
+    // email — silently dropped every week, and 133 genuinely rare sightings
+    // read as "nothing rare happened".
+    //
+    // Normalising means both spellings work: the community table writes Title
+    // Case with a space ('Very Rare'), while the desktop and server apps use
+    // the slug form ('very-rare'). Whichever ends up in the column, it scores.
+    const rarityRank = (r: string | null | undefined): number => {
+      const k = (r ?? '').toLowerCase().replace(/[\s_]+/g, '-');
+      if (k === 'very-rare') return 3;
+      if (k === 'rare') return 2;
+      if (k === 'uncommon') return 1;
+      return 0;
+    };
+
     const counts: Record<string, number> = {};
     let rarestSighting: typeof detections[0] | null = null;
+    let rarestRank = 0;
 
     for (const d of detections) {
       counts[d.species] = (counts[d.species] ?? 0) + 1;
-      if (d.rarity === 'Rare') {
-        if (!rarestSighting) rarestSighting = d;
+
+      // Strictly greater, so among equals the first wins — and `detections` is
+      // ordered newest-first, making that the most recent of the rarest tier.
+      // 'Uncommon' scores 1 but stays below the cutoff below.
+      const rank = rarityRank(d.rarity);
+      if (rank > rarestRank) {
+        rarestRank = rank;
+        rarestSighting = d;
       }
     }
+
+    // Only 'Rare' and above earn the card. 'Uncommon' is ranked so that a tie
+    // can be broken, not so that it gets featured.
+    if (rarestRank < 2) rarestSighting = null;
 
     const topSpecies = (Object.entries(counts) as [string, number][])
       .sort((a, b) => b[1] - a[1])
