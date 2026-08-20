@@ -312,7 +312,7 @@ document.addEventListener('DOMContentLoaded', function () {
         'feederOutdoor+macro':       { permalink: 'piqcnu', price: 90,  label: 'Outdoor Feeder + Macro Lens — delivered' },
         'camera+feederOutdoor':      { permalink: 'typcpg', price: 105, label: 'Outdoor Feeder + Camera — delivered' },
         'camera+feederIndoor+macro': { permalink: 'hdjurk', price: 110, label: 'Indoor Feeder + Camera + Macro Lens — delivered' },
-        'feederIndoor+software':     { permalink: null, price: 120, label: 'BirdWatchAI License + Indoor Feeder — delivered' }
+        'feederIndoor+software':     { permalink: 'alizce', price: 120, label: 'BirdWatchAI License + Indoor Feeder — delivered' }
     };
 
     const els = {

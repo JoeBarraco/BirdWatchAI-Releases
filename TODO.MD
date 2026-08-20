@@ -17,33 +17,29 @@ TO DO LIST
 - **Gumroad: selling configured builds.** Done — every product exists, is wired, and was verified live. All 22 permalinks resolve with the expected name and price; all 120 builder combinations were driven end to end, and 119 of 119 real ones check out at the correct total (the 120th is an empty selection at $0, which correctly offers nothing).
 
      - **Shipping is live and rate-limited by order size.** `SHIPPING.permalink` is `gktxni` ($25). It is added once per order, only when something physical is in the build, and waived at $100 or more. A licence on its own never posts it. That makes 15 of the 120 combinations one-click: the licence, the four computers (all over $100, so shipping-free), and all ten bundles. Small hardware orders — a lone lens, a feeder, a camera — are two adds, the item plus the fee.
-     - **IN PROGRESS — shipping-inclusive products, to stop the fee being deleted from the cart.** The separate `gktxni` fee is a normal cart line, so a buyer can remove it and ship for free. Fix: sell each sub-$100 build as one product with the $25 already inside. **Exactly 11 exist** — every computer starts at $110 so any build with one already ships free, and the two feeders are mutually exclusive. Code is wired and verified (`SHIPPED` table in `js/main.js`); a `null` permalink there falls back to the old component-plus-fee cart, so these can be created a few at a time and each goes live the moment its permalink is pasted in. Nothing breaks in between.
+     - **DONE — shipping-inclusive products, to stop the fee being deleted from the cart.** The separate `gktxni` fee is a normal cart line, so a buyer can remove it and ship for free. Fix: sell each sub-$100 build as one product with the $25 already inside. **Exactly 11 exist** — every computer starts at $110 so any build with one already ships free, and the two feeders are mutually exclusive. Code is wired and verified (`SHIPPED` table in `js/main.js`); a `null` permalink there falls back to the old component-plus-fee cart, so these can be created a few at a time and each goes live the moment its permalink is pasted in. Nothing breaks in between.
 
-          Done (1 of 11):
+          All 11 exist, all 11 wired into `SHIPPED` in `js/main.js`, no empty slots left:
 
           | Product name | Price | `SHIPPED` key | Permalink |
           |---|---|---|---|
-          | Indoor Feeder — delivered | $45 | `feederIndoor` | `asuoeh` — wired, verified live |
+          | Indoor Feeder — delivered | $45 | `feederIndoor` | `xcrqr` |
+          | Macro Lens — delivered | $50 | `macro` | `fifssk` |
+          | Camera — delivered | $65 | `camera` | `fnygup` |
+          | Outdoor Feeder — delivered | $65 | `feederOutdoor` | `ypbrqy` |
+          | Indoor Feeder + Macro Lens — delivered | $70 | `feederIndoor+macro` | `pnpth` |
+          | Indoor Feeder + Camera — delivered | $85 | `camera+feederIndoor` | `znfdbp` |
+          | Camera + Macro Lens — delivered | $90 | `camera+macro` | `lktnp` |
+          | Outdoor Feeder + Macro Lens — delivered | $90 | `feederOutdoor+macro` | `piqcnu` |
+          | Outdoor Feeder + Camera — delivered | $105 | `camera+feederOutdoor` | `typcpg` |
+          | Indoor Feeder + Camera + Macro Lens — delivered | $110 | `camera+feederIndoor+macro` | `hdjurk` |
+          | BirdWatchAI License + Indoor Feeder — delivered | $120 | `feederIndoor+software` | `alizce` |
 
-          Remaining (10 of 11 — exactly one day at the cap):
-
-          | Product name | Price | `SHIPPED` key |
-          |---|---|---|
-          | Macro Lens — delivered | $50 | `macro` |
-          | Camera — delivered | $65 | `camera` |
-          | Outdoor Feeder — delivered | $65 | `feederOutdoor` |
-          | Indoor Feeder + Macro Lens — delivered | $70 | `feederIndoor+macro` |
-          | Indoor Feeder + Camera — delivered | $85 | `camera+feederIndoor` |
-          | Camera + Macro Lens — delivered | $90 | `camera+macro` |
-          | Outdoor Feeder + Macro Lens — delivered | $90 | `feederOutdoor+macro` |
-          | Outdoor Feeder + Camera — delivered | $105 | `camera+feederOutdoor` |
-          | Indoor Feeder + Camera + Macro Lens — delivered | $110 | `camera+feederIndoor+macro` |
-          | BirdWatchAI License + Indoor Feeder — delivered | $120 | `feederIndoor+software` |
-
-          Create that one as a **Gumroad bundle** containing the licence product, not as a standalone
-          product like the first ten. A bundle delivers its constituents, so the licence webhook fires
-          on the licence product and mints a key by itself — no `GUMROAD_PRODUCT_ID` change needed.
-          A standalone $120 product contains no licence and would take the money without issuing one.
+          The last one was the only licence-bearing member and was built as a Gumroad **bundle**
+          containing `dajhd` + `ittcdq` + `gktxni`. Verified on creation: `native_type: bundle`,
+          $120, contains the licence, and `require_shipping: true` inherited from the feeder. So
+          the licence webhook fires on the contained licence product and mints a key with no
+          `GUMROAD_PRODUCT_ID` change.
 
           Rules for every one of them:
           - Turn on **"Require shipping address"**. Gumroad no longer has a Physical good type — this toggle is what collects an address. A Bundle cannot set it directly but **inherits** it from any item inside that requires shipping. Both halves verified live on 2026-08-17: a lone indoor feeder checked out as "Indoor Feeder — delivered" at $45 and demanded an address, and a Full Nest bundle demanded one too.
