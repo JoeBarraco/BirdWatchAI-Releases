@@ -139,10 +139,12 @@ License key (copy the entire block including the | separator):
 ${licenseKey}
 
 To activate: open BirdWatch AI, go to Help → Enter License Key, and paste
-the key above. You can re-download your key any time from your account
-page at https://birdwatchai.com/account.
+the key above.
 
-— Joe Barraco, BirdBrain Industries LLC
+Keep this email — it is your copy of the key. If you lose it, write to
+support@birdwatchai.com from this address and we will send it again.
+
+— Joe Barraco, Bird Brain Solutions LLC
 `,
     }),
   });

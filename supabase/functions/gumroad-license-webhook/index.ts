@@ -301,10 +301,10 @@ Key, and paste the key above.
 To activate the server edition: open the dashboard, go to Settings -> License,
 and paste the key there.
 
-You can re-download your key any time from https://birdwatchai.com/account
-using this email address.
+Keep this email — it is your copy of the key. If you lose it, write to
+support@birdwatchai.com from this address and we will send it again.
 
--- Joe Barraco, BirdBrain Industries LLC
+-- Joe Barraco, Bird Brain Solutions LLC
 `,
     }),
   });
