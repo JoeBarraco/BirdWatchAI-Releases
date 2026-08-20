@@ -80,6 +80,7 @@ function renderFeed() {
     const hasNew   = lastTopId !== null && newTopId !== lastTopId;
     lastTopId      = newTopId;
 
+    feedVisibleCount = visible.length;
     updateFeedCount();
 
     if (visible.length === 0) {
@@ -87,6 +88,11 @@ function renderFeed() {
             '<div class="feed-empty">No detections match your filters.</div>';
         return;
     }
+
+    // Cap the DOM. Everything below this point walks `visible`, so slice before
+    // the map rather than inside it — the cost being avoided is the string
+    // build and the parse, not the iteration.
+    if (visible.length > feedRenderLimit) visible = visible.slice(0, feedRenderLimit);
 
     // Compute first-of-season species set using cached full-year data
     const firstOfSeason = new Set();
@@ -960,27 +966,59 @@ function localDayKeyFromDate(d) {
     return `${y}-${m}-${day}`;
 }
 
+// Pulls the entire filtered period into memory. Only the paths that genuinely
+// need it should call this — see hasClientOnlyFilter().
+//
+// This used to page serially at 60 rows a time: 9,376 rows meant 156 round
+// trips at ~165ms each, 27 seconds, and it called deduplicateDetections() on a
+// growing array inside the loop for an O(n^2) finish. Now it asks for the exact
+// count once, then fetches 1000-row pages concurrently and dedupes once.
 async function loadAllDetections() {
     if (feedExhausted) return;
-    const { period } = getFilters();
-    const since = periodToISO(period);
-    let offset = allDetections.length;
-    let done = false;
-    while (!done) {
-        let url = `${SUPABASE_URL}/rest/v1/community_detections?select=*,feeders(display_name)&limit=${PAGE_SIZE}&offset=${offset}&order=detected_at.desc`;
-        if (since) url += `&detected_at=gte.${encodeURIComponent(since)}`;
-        try {
-            const res = await fetch(url, {
-                headers: sbHeaders(sbAuthed())
-            });
-            if (!res.ok) break;
-            const page = await res.json();
-            allDetections = [...allDetections, ...page];
-            deduplicateDetections();
-            offset += page.length;
-            feedOffset = offset;
-            if (page.length < PAGE_SIZE) { feedExhausted = true; done = true; }
-        } catch (e) { done = true; }
+    try {
+        // First page doubles as the count probe.
+        const first = await fetchDetectionPage(0, BULK_PAGE_SIZE, true);
+        const total = first.total;
+        let rows = first.rows;
+
+        // `complete` gates feedExhausted. Marking the set exhausted when it
+        // isn't is the dangerous failure here: infinite scroll stops, and stats
+        // and gallery quietly describe a subset as if it were everything.
+        let complete = true;
+        if (total !== null) {
+            serverTotal = total;
+            const pages = Math.ceil(total / BULK_PAGE_SIZE) - 1;   // page 0 is done
+            if (pages > 0) {
+                const rest = await mapConcurrent(pages, BULK_CONCURRENCY, async i => {
+                    try {
+                        const { rows: r } = await fetchDetectionPage((i + 1) * BULK_PAGE_SIZE, BULK_PAGE_SIZE, false);
+                        return r;
+                    } catch (e) { return null; }   // null, not [] — a hole, not an empty page
+                });
+                if (rest.some(r => r === null)) complete = false;
+                rows = rows.concat(...rest.filter(Boolean));
+            }
+        } else {
+            // No Content-Range to plan from. Fall back to sequential paging
+            // rather than trusting page 0 to be the whole set.
+            let offset = rows.length;
+            while (rows.length && offset % BULK_PAGE_SIZE === 0) {
+                const { rows: r } = await fetchDetectionPage(offset, BULK_PAGE_SIZE, false);
+                rows = rows.concat(r);
+                offset += r.length;
+                if (r.length < BULK_PAGE_SIZE) break;
+            }
+        }
+
+        // Replace rather than append. We re-fetch the ~60 rows already held,
+        // which costs nothing, and it keeps us clear of the offset arithmetic
+        // that partial-page starts would otherwise require.
+        allDetections = rows;
+        deduplicateDetections();
+        feedOffset = allDetections.length;
+        feedExhausted = complete;
+    } catch (e) {
+        return;   // keep whatever we already had rather than blanking the feed
     }
     // Private feeders' media arrives as private:// markers; exchange them for
     // signed URLs before any view renders (community-communities.js).

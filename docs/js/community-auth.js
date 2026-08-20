@@ -782,6 +782,8 @@ async function doModSave() {
         renderFeed();
         showToast(deletingMedia ? 'Detection updated (media removed)' : 'Detection updated');
         // Refresh from server so dropdowns and counts reconcile with the edit.
+        // The edit can rename a species, so the cached roster has to go too.
+        if (typeof invalidateDropdownCache === 'function') invalidateDropdownCache();
         loadFeed();
     } catch (err) {
         showToast('Error: ' + err.message);
@@ -817,8 +819,12 @@ async function confirmModDelete(detectionId) {
             const err = await res.json().catch(() => ({}));
             throw new Error(err.error || err.message || 'Delete failed');
         }
-        // Remove from local data
+        // Remove from local data. Keep serverTotal in step so the next
+        // incremental poll doesn't read the missing row as "something changed
+        // underneath us" and fall back to a full reload.
         allDetections = allDetections.filter(x => String(x.id) !== String(detectionId));
+        if (typeof serverTotal === 'number' && serverTotal > 0) serverTotal--;
+        if (typeof invalidateDropdownCache === 'function') invalidateDropdownCache();
         renderFeed();
         showToast('Detection deleted');
     } catch (err) {
@@ -904,12 +910,12 @@ let _feederDetectionCounts = null;
 async function loadFeederDetectionCounts(force) {
     if (_feederDetectionCounts && !force) return _feederDetectionCounts;
     try {
-        const url = `${SUPABASE_URL}/rest/v1/community_detections?select=feeder_id&limit=50000`;
-        const res = await fetch(url, {
-            headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` }
-        });
-        if (!res.ok) return new Map();
-        const rows = await res.json();
+        // `limit=50000` was a no-op against the 1000-row response cap, so these
+        // per-feeder totals only ever counted the first 1000 detections — they
+        // summed to 1000 against a table of 9,376.
+        const rows = await fetchAllRows(
+            `${SUPABASE_URL}/rest/v1/community_detections?select=feeder_id&order=id`, false);
+        if (!rows) return new Map();
         const counts = new Map();
         rows.forEach(r => {
             if (!r.feeder_id) return;

@@ -50,12 +50,15 @@ async function loadMyCommunities() {
 async function loadCommunityFeederIndex(force) {
     if (communityFeederIndex && !force) return communityFeederIndex;
     try {
-        const res = await fetch(
-            `${SUPABASE_URL}/rest/v1/community_feeders?select=community_id,feeder_id&status=eq.approved&limit=10000`,
-            { headers: sbHeaders(hasAuthSession()) }
-        );
-        if (!res.ok) return (communityFeederIndex = new Map());
-        const rows = await res.json();
+        // Paged rather than `limit=10000`, which the 1000-row response cap made
+        // a no-op. A truncated index doesn't degrade gracefully: any community
+        // whose memberships fell past the cut has no entry, and
+        // communityFilterExcludes then excludes everything for it — the feed
+        // just reads empty.
+        const rows = await fetchAllRows(
+            `${SUPABASE_URL}/rest/v1/community_feeders?select=community_id,feeder_id`
+            + `&status=eq.approved&order=community_id`, hasAuthSession());
+        if (!rows) return (communityFeederIndex = new Map());
         const idx = new Map();
         rows.forEach(r => {
             if (!idx.has(r.community_id)) idx.set(r.community_id, new Set());
@@ -209,6 +212,11 @@ function populateFeederDropdownFromRoster(inScope) {
 // when the scope is cleared and dropping selections that no longer exist.
 async function scopeDropdownsToCommunity(fromCommunityChange) {
     if (typeof allDetections === 'undefined') return;
+    // Same hazard as the populate calls in loadFeed: these rosters are derived
+    // from the loaded detections, and the server now narrows those to the
+    // selected species/rarity/feeder. Deriving a species list from rows already
+    // filtered to one species would strand the user on that species.
+    if (typeof serverFilterParams === 'function' && serverFilterParams().params) return;
 
     if (!selectedCommunity) {
         // Back to "All I can see". Returning early here is what left the
@@ -479,6 +487,7 @@ async function removeFeederFromCommunity(communityId, feederId, displayName) {
     showToast(`Removed "${displayName}".`);
     await loadCommunityFeederIndex(true);
     await refreshCommunityPanel();
+    if (typeof invalidateDropdownCache === 'function') invalidateDropdownCache();
     if (typeof loadFeed === 'function') loadFeed();
 }
 

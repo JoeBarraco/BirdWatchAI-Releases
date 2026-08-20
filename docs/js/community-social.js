@@ -87,9 +87,12 @@ function changeRefreshInterval(val) {
 setInterval(() => {
     if (REFRESH_SECS === 0) return;  // auto-refresh disabled
     if (document.hidden) return;     // don't tick while tab is hidden
+    // A load already running owns the countdown; ticking it down underneath
+    // would fire another one every second until that load finished.
+    if (feedLoading || refiltering) return;
     countdown--;
     if (countdown <= 0) {
-        loadFeed();
+        refreshFeed();
     } else {
         document.getElementById('countdown').textContent = `Refreshing in ${fmtCountdown(countdown)}`;
     }
@@ -100,7 +103,7 @@ document.addEventListener('visibilitychange', () => {
     if (!document.hidden && tabHiddenAt !== null) {
         const secondsAway = (Date.now() - tabHiddenAt) / 1000;
         tabHiddenAt = null;
-        if (REFRESH_SECS > 0 && secondsAway >= REFRESH_SECS) loadFeed();
+        if (REFRESH_SECS > 0 && secondsAway >= REFRESH_SECS) refreshFeed();
     } else if (document.hidden) {
         tabHiddenAt = Date.now();
     }
