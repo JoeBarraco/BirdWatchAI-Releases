@@ -54,6 +54,10 @@ All four are idempotent and re-runnable. Each drops the old password-taking
 signature before creating the token-taking one, so the password-based entry
 points are *removed*, not merely bypassed.
 
+Run `setup-moderators.sql` first for a second reason: it carries the
+`revoke … from public` that closes the account-takeover hole described under
+"Also fixed on the way through" below.
+
 ### 2. Edge functions
 
 ```bash
@@ -110,44 +114,50 @@ old schema cache — `notify pgrst, 'reload schema';` in the SQL editor.
   one on trust, so any moderator could write life-list rows or post comments as
   *any* user id. The acting user now comes from the session token.
 - **`revoke execute … from public`** added to `moderator_reset_password` and
-  `add_moderator`. They already revoked `anon` and `authenticated`, but Postgres
-  grants `EXECUTE` to `PUBLIC` on new functions by default, and revoking a role
-  does not remove a `PUBLIC` grant.
+  `add_moderator`.
 
-  **This one is confirmed exploitable, and it is worse than the sessionStorage
-  problem it was found alongside.** Reproduced by applying the pre-change
-  `setup-moderators.sql` to Postgres 15 with Supabase-shaped roles:
+  **This was a live, remotely exploitable hole, not a theoretical one.** Both
+  functions already revoked `anon` and `authenticated` — but Postgres grants
+  `EXECUTE` to `PUBLIC` on new functions by default, revoking a role does not
+  remove a `PUBLIC` grant, and every role is a member of `PUBLIC`. Confirmed on
+  the production database by creating a throwaway function and revoking exactly
+  what the old file revoked:
 
-```
- proname                  | acl
---------------------------+--------------------------------------------------------
- moderator_reset_password | =X/postgres | postgres=X/postgres | service_role=X/postgres
+```sql
+create function _acltest() returns int language sql as $$ select 1 $$;
+revoke execute on function _acltest() from anon;
+revoke execute on function _acltest() from authenticated;
+select proacl from pg_proc where proname = '_acltest';
+-- {=X/postgres,postgres=X/postgres,service_role=X/postgres}
 ```
 
   The leading `=X/postgres` — an entry with an empty grantee — is the `PUBLIC`
-  grant. Every role is a member of `PUBLIC`, so `anon` had `EXECUTE`. And
-  `moderator_reset_password` *returns* the new temporary password:
+  grant, still standing after both revokes. PostgREST exposes `public` functions
+  as `POST /rest/v1/rpc/<name>` executed as `anon`, and the anon key is published
+  in `docs/js/community-core.js`. So with nothing but the key already in the page
+  source, anyone could call:
+
+  - `add_moderator('attacker@example.com', 'chosen-password', 'admin')` — mint
+    themselves a working admin account. **This is the quiet one**: it locks
+    nobody out and leaves no visible symptom, only an extra row.
+  - `moderator_reset_password('victim@example.com')` — which *returns* the new
+    temporary password. Noisier, because it locks the real owner out.
+
+  Exposure window: 2026-04-06 (`d4ecd53`, which introduced both with the
+  ineffective revokes) to 2026-08-21, when the fix was applied. Post-fix both
+  read `{postgres=X/postgres,service_role=X/postgres}` — no `PUBLIC` entry — and
+  `anon` calling either gets `permission denied`.
+
+  **Worth auditing for past abuse**, given the window and the silent path:
 
 ```sql
-set role anon;
-select moderator_reset_password('victim@example.com');
--- {"id": "f0256f8f-…", "temp_password": "l7BI8ipm8IGX"}
+select id, email, role, must_change_password, created_at
+  from moderators order by created_at;
 ```
 
-  PostgREST exposes `public` functions as `POST /rest/v1/rpc/<name>` executed as
-  `anon`, and the anon key is embedded in `docs/js/community-core.js`. So anyone
-  on the internet could reset any moderator or admin account's password and read
-  the replacement. After the fix the same call returns `permission denied for
-  function moderator_reset_password`.
-
-  **The live database is still in the vulnerable state until
-  `setup-moderators.sql` is run** — this is the reason to run it promptly rather
-  than at leisure. Confirm before and after with:
-
-```sql
-select proname, proacl from pg_proc
- where proname in ('moderator_reset_password','add_moderator');
-```
+  Any account you do not recognise is the thing to look for. A `PUBLIC` grant on
+  a security-definer function is worth checking for elsewhere too — a revoke
+  aimed at `anon` alone is not enough anywhere in this schema.
 
 - **`search_path` pinned** (`public, extensions`) on the security-definer
   functions touched here. Most were unpinned and resolved `crypt()` via the
