@@ -1323,15 +1323,12 @@ function renderStats() {
         return `<div class="bar-stack" style="width:${widthPct.toFixed(2)}%;">${segs}${otherSeg}</div>`;
     }
 
-    // Sort the bar list descending by detection count so the busiest hour / day reads first —
-    // matches the rest of the page's top-N ordering. We bind each entry to its original index so
-    // hourSpecies / daySpecies still resolve correctly when we render the stacked segments below.
-    const hourOrdered = hourCounts
-        .map((c, h) => ({ c, h }))
-        .sort((a, b) => b.c - a.c);
-    const dayOrdered = dayCounts
-        .map((c, d) => ({ c, d }))
-        .sort((a, b) => b.c - a.c);
+    // Both bar lists stay in calendar order — hours 12am → 11pm, days Sun → Sat. An
+    // activity-by-time chart only reads as a rhythm if the axis is time, and this matches the
+    // per-species diurnal chart below. We still bind each entry to its original index so
+    // hourSpecies / daySpecies resolve correctly when we render the stacked segments below.
+    const hourOrdered = hourCounts.map((c, h) => ({ c, h }));
+    const dayOrdered  = dayCounts.map((c, d) => ({ c, d }));
 
     const hourBuckets = hourOrdered.map(({ c, h }) => ({
         title: `${fmtHour(h)} — ${c} detection${c === 1 ? '' : 's'}`,
@@ -1351,7 +1348,7 @@ function renderStats() {
                 <div class="bar-value">${c}</div>
             </div>`).join('')}
         </div>
-        <div class="chart-axis-title" style="text-align:center;color:var(--color-gray-500);font-size:0.72rem;margin-top:0.35rem;">Hour of day (local), busiest first</div>
+        <div class="chart-axis-title" style="text-align:center;color:var(--color-gray-500);font-size:0.72rem;margin-top:0.35rem;">Hour of day (local)</div>
         <div class="stats-section-title" style="margin-top:2rem;">Detections by Day of Week</div>
         <div class="bar-chart-h" data-bw-chart="bars-h" data-bw-buckets='${escAttr(JSON.stringify(dayBuckets))}'>${dayOrdered.map(({ c, d }, i) => `
             <div class="bar-row" data-bw-bucket="${i}">
@@ -1360,7 +1357,7 @@ function renderStats() {
                 <div class="bar-value">${c}</div>
             </div>`).join('')}
         </div>
-        <div class="chart-axis-title" style="text-align:center;color:var(--color-gray-500);font-size:0.72rem;margin-top:0.35rem;">Day of week, busiest first</div>
+        <div class="chart-axis-title" style="text-align:center;color:var(--color-gray-500);font-size:0.72rem;margin-top:0.35rem;">Day of week</div>
         ${activitySpeciesList.length > 0 ? `
         <div class="stats-section-title" style="margin-top:2rem;display:flex;flex-wrap:wrap;align-items:center;gap:0.75rem;">
             <span>Diurnal Pattern by Species</span>
