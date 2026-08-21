@@ -988,21 +988,34 @@ async function doModSave() {
             d.rarity = rarity;
             if (modEditDeletePhoto) d.image_url = null;
             if (modEditDeleteVideo) d.video_url = null;
-            if (reburn && result.image_updated && !modEditDeletePhoto) {
-                // Point the card at the bytes we just uploaded rather than the
-                // stored value: a public URL is fine but not yet warm, and a
-                // private row stores a private:// marker that only signPrivateMedia
-                // can turn into something an <img> will load. Either way loadFeed()
-                // replaces this a moment later.
-                const objectUrl = URL.createObjectURL(reburn.blob);
-                d.image_url = objectUrl;
-                setTimeout(() => URL.revokeObjectURL(objectUrl), 120000);
+            // Deliberately NOT pointing the row at the bytes we just uploaded.
+            // Showing the corrected pixels from memory made a failed persist look
+            // like a success: the thumbnail rendered from the in-memory blob while
+            // the detail modal read the refreshed row and showed the old caption.
+            // What's on screen should be what's stored, even if that costs a
+            // moment of the old caption until loadFeed() lands.
+        }
+
+        // A re-burn was asked for but didn't stick. Report the reason in the
+        // modal rather than a toast that vanishes, and leave the modal open so
+        // it can actually be read and acted on.
+        let reburnFailed = false;
+        if (reburn) {
+            if (result.image_updated) {
+                setModReburnNote('', false);
+            } else if (!('image_updated' in result)) {
+                reburnFailed = true;
+                setModReburnNote('Species and rarity were saved, but this site\'s backend '
+                    + 'doesn\'t support caption updates yet — the moderator-delete-media '
+                    + 'function needs to be redeployed.', true);
+            } else {
+                reburnFailed = true;
+                setModReburnNote('Species and rarity were saved, but the photo caption was not '
+                    + 'updated: ' + (result.image_error || 'reason unknown') + '.', true);
             }
         }
-        if (reburn && result.image_updated === false) {
-            showToast('Species updated, but the photo caption could not be rewritten');
-        }
-        closeModEdit();
+
+        if (!reburnFailed) closeModEdit();
         // If the species filter was pinned to the old (wrong) species, the
         // correction would leave zero matches and strand the feed in a "No
         // detections match your filters" state. Clear the filter so the mod
@@ -1014,8 +1027,9 @@ async function doModSave() {
         }
         renderFeed();
         showToast(deletingMedia ? 'Detection updated (media removed)'
-            : (reburn && result.image_updated ? 'Detection updated (photo re-captioned)'
-                                             : 'Detection updated'));
+            : reburnFailed     ? 'Detection updated — but see the note about the photo'
+            : (reburn && result.image_updated) ? 'Detection updated (photo re-captioned)'
+                                              : 'Detection updated');
         // Refresh from server so dropdowns and counts reconcile with the edit.
         // The edit can rename a species, so the cached roster has to go too.
         if (typeof invalidateDropdownCache === 'function') invalidateDropdownCache();

@@ -240,9 +240,10 @@
         return btoa(binary);
     }
 
-    // The blob comes back alongside the base64 so the caller can hand the feed a
-    // blob: URL for the corrected photo while the real one propagates — the row
-    // may come back as a private:// marker, which can't go in an <img src>.
+    // The blob comes back alongside the base64 for callers that want the bytes
+    // themselves (a download, a local preview). The edit modal deliberately does
+    // NOT render it into the feed: showing corrected pixels that aren't stored
+    // yet makes a failed upload look like a success.
     async function encodeBase64(canvas) {
         const blob  = await toBlob(canvas);
         const bytes = new Uint8Array(await blob.arrayBuffer());

@@ -110,19 +110,25 @@ function reburnPath(path: string): string {
   return `${dir}${base}-mod${Date.now()}${ext}`;
 }
 
-// Returns what to store in image_url, or null when the re-burn couldn't be
-// landed. Never throws: a failed re-caption must not cost the moderator their
-// species correction.
+// Returns the uploaded object, or a `reason` the re-burn couldn't be landed.
+// Never throws, and never fails the call: a failed re-caption must not cost the
+// moderator their species correction. The reason travels back to the browser and
+// is shown in the edit modal — diagnosing this from function logs alone means
+// asking a moderator to open DevTools, which is not a support workflow.
+type ReburnResult =
+  | { ok: true; stored: string; bucket: string; path: string }
+  | { ok: false; reason: string };
+
 async function uploadReburn(
   currentUrl: string | null | undefined,
   imageB64: string,
-): Promise<{ stored: string; bucket: string; path: string } | null> {
-  if (!currentUrl) return null;
+): Promise<ReburnResult> {
+  if (!currentUrl) return { ok: false, reason: 'this detection has no photo on file' };
 
   const ref = resolveStorageRef(currentUrl);
   if (!ref) {
     console.warn(`Re-burn skipped: image_url is not Supabase storage (${currentUrl})`);
-    return null;
+    return { ok: false, reason: 'the photo is not stored in Supabase storage' };
   }
 
   let bytes: Uint8Array;
@@ -130,19 +136,19 @@ async function uploadReburn(
     bytes = decodeBase64(imageB64);
   } catch (err) {
     console.error('Re-burn skipped: base64 decode failed:', String(err));
-    return null;
+    return { ok: false, reason: 'the uploaded image could not be decoded' };
   }
 
   if (!bytes.length || bytes.length > MAX_REBURN_BYTES) {
     console.error(`Re-burn skipped: payload of ${bytes.length} bytes is out of range.`);
-    return null;
+    return { ok: false, reason: `image size out of range (${bytes.length} bytes)` };
   }
   // A moderator session is the only gate here, so require the payload to
   // actually be a JPEG rather than letting this double as a way to park
   // arbitrary files in a media bucket.
   if (!(bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff)) {
     console.error('Re-burn skipped: payload is not a JPEG.');
-    return null;
+    return { ok: false, reason: 'the uploaded image is not a JPEG' };
   }
 
   const newPath = reburnPath(ref.path);
@@ -151,10 +157,10 @@ async function uploadReburn(
     .upload(newPath, bytes, { contentType: 'image/jpeg', upsert: false });
   if (error) {
     console.error(`Re-burn upload to ${ref.bucket}/${newPath} failed:`, error.message);
-    return null;
+    return { ok: false, reason: `storage upload failed: ${error.message}` };
   }
 
-  return { stored: storedUrlFor(ref.bucket, newPath), bucket: ref.bucket, path: newPath };
+  return { ok: true, stored: storedUrlFor(ref.bucket, newPath), bucket: ref.bucket, path: newPath };
 }
 
 Deno.serve(async (req) => {
@@ -330,9 +336,11 @@ Deno.serve(async (req) => {
       // is just "no re-burn" rather than a row whose image_url points at
       // something that doesn't exist. Deleting the photo wins over re-burning
       // it, and a caller asking for both is confused rather than malicious.
-      const reburn = (image_b64 && !delete_image)
+      const reburnAsked = !!image_b64 && !delete_image;
+      const reburn = reburnAsked
         ? await uploadReburn(detection.image_url, image_b64)
         : null;
+      const uploaded = (reburn && reburn.ok) ? reburn : null;
 
       const { error } = await supabase.rpc('moderator_update_detection', {
         p_token:         token,
@@ -346,7 +354,7 @@ Deno.serve(async (req) => {
       if (error) {
         // The species edit is the point of the call; if it failed, the object we
         // just uploaded is an orphan nothing will ever reference.
-        if (reburn) await removeStorageFile(storedUrlFor(reburn.bucket, reburn.path));
+        if (uploaded) await removeStorageFile(storedUrlFor(uploaded.bucket, uploaded.path));
         return new Response(
           JSON.stringify({ error: error.message }),
           { status: 400, headers: corsHeaders }
@@ -357,14 +365,17 @@ Deno.serve(async (req) => {
       // session token was already validated above, which is the same gate the
       // RPC applies.
       let imageUpdated = false;
-      if (reburn) {
+      let imageError: string | null = null;
+      if (reburn && reburn.ok === false) imageError = reburn.reason;
+      if (uploaded) {
         const { error: urlErr } = await supabase
           .from('community_detections')
-          .update({ image_url: reburn.stored })
+          .update({ image_url: uploaded.stored })
           .eq('id', detection_id);
         if (urlErr) {
           console.error('Re-burn: image_url update failed:', urlErr.message);
-          await removeStorageFile(storedUrlFor(reburn.bucket, reburn.path));
+          imageError = `could not point the detection at the new photo: ${urlErr.message}`;
+          await removeStorageFile(storedUrlFor(uploaded.bucket, uploaded.path));
         } else {
           imageUpdated = true;
           // Only now is the old blob unreferenced.
@@ -375,8 +386,15 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({
           success: true,
-          ...(image_b64 && !delete_image
-            ? { image_updated: imageUpdated, image_url: imageUpdated ? reburn!.stored : null }
+          // Always present, so a client that asked for a re-burn can tell "this
+          // build doesn't know about image_b64" (field absent) apart from "it
+          // tried and failed" (field false, with a reason).
+          ...(reburnAsked
+            ? {
+                image_updated: imageUpdated,
+                image_url: imageUpdated ? uploaded!.stored : null,
+                image_error: imageError,
+              }
             : {}),
         }),
         { status: 200, headers: corsHeaders }
