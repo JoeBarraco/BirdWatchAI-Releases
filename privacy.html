@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy — BirdWatchAI</title>
+    <meta name="description" content="What BirdWatchAI collects, what it doesn't, and who else sees it. Written to be specific rather than reassuring.">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css?v=20260817p">
+    <link rel="icon" type="image/png" href="images/logo.png">
+
+    <style>
+        .legal { max-width: 46rem; margin: 0 auto; padding: 7rem 1.5rem 5rem; }
+        .legal h1 { font-family: var(--font-display); font-size: clamp(2rem, 5vw, 2.75rem); line-height: 1.1; margin: 0 0 .5rem; color: var(--color-gray-900); }
+        .legal .stamp { color: var(--color-gray-500); font-size: .95rem; margin: 0 0 2.5rem; }
+        .legal h2 { font-family: var(--font-display); font-size: 1.5rem; margin: 2.75rem 0 .75rem; color: var(--color-primary-dark); border-bottom: 1px solid var(--color-gray-200); padding-bottom: .4rem; }
+        .legal h3 { font-size: 1.1rem; margin: 1.75rem 0 .5rem; color: var(--color-gray-900); }
+        .legal p, .legal li { color: var(--color-gray-700); line-height: 1.7; }
+        .legal ul { padding-left: 1.25rem; }
+        .legal li { margin-bottom: .4rem; }
+        .legal a { color: var(--color-primary-light); }
+        .legal code { background: var(--color-gray-100); border: 1px solid var(--color-gray-200); border-radius: 3px; padding: .1em .35em; font-size: .9em; }
+        .legal .lede { font-size: 1.12rem; color: var(--color-gray-700); }
+        .legal .callout { background: var(--color-gray-100); border-left: 3px solid var(--color-primary); padding: 1rem 1.25rem; margin: 1.5rem 0; border-radius: 0 6px 6px 0; }
+        .legal .callout p:last-child { margin-bottom: 0; }
+        .legal .tablewrap { overflow-x: auto; margin: 1.25rem 0; }
+        .legal table { border-collapse: collapse; width: 100%; font-size: .95rem; min-width: 32rem; }
+        .legal th { text-align: left; font-weight: 600; color: var(--color-gray-900); border-bottom: 2px solid var(--color-gray-300); padding: .5rem .75rem; }
+        .legal td { border-bottom: 1px solid var(--color-gray-200); padding: .5rem .75rem; color: var(--color-gray-700); vertical-align: top; }
+        .legal .backlink { display: inline-block; margin-bottom: 2rem; color: var(--color-primary-light); text-decoration: none; }
+        .legal .backlink:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+
+<nav class="nav" aria-label="Main navigation">
+    <div class="nav-container">
+        <a href="index.html" class="nav-logo">
+            <img src="images/logo.png" alt="BirdWatchAI" class="nav-logo-img">
+            <span>BirdWatchAI</span>
+        </a>
+    </div>
+</nav>
+
+<main class="legal">
+    <a class="backlink" href="index.html">&larr; Back to BirdWatchAI</a>
+
+    <h1>Privacy Policy</h1>
+    <p class="stamp">Bird Brain Solutions LLC &middot; Version 1.0 &middot; 21 August 2026</p>
+
+    <p class="lede">
+        This describes what BirdWatchAI collects, what it doesn't, and who else can see it. It is
+        written to be specific rather than reassuring &mdash; where something does leave your home,
+        it says so.
+    </p>
+
+    <h2>The short version</h2>
+
+    <ul>
+        <li><strong>Your camera feed never leaves your home.</strong> Bird identification runs
+            entirely on your own computer. No video is streamed to us or to anyone else.</li>
+        <li><strong>Community sharing is off until you turn it on.</strong> A fresh install shares
+            nothing. If you switch it on, sightings &mdash; and, if you enable them, photographs and
+            clips &mdash; are published publicly.</li>
+        <li><strong>We run no analytics and set no tracking cookies</strong> on this website. There
+            is no Google Analytics, no advertising pixel, no session recording.</li>
+        <li><strong>We never see your payment details.</strong> Purchases go through Gumroad, who
+            are the merchant of record.</li>
+        <li><strong>We don't sell personal information</strong> to anyone, and never have.</li>
+    </ul>
+
+    <h2>The software on your own computer</h2>
+
+    <p>
+        BirdWatchAI Server runs on hardware you control. Everything it produces &mdash; the
+        detection history, snapshots, video clips, settings &mdash; is stored on that machine, in a
+        folder you can inspect, back up or delete. We have no access to it and no way to reach it.
+    </p>
+
+    <p>Even with sharing switched off, the software makes a small number of outbound requests:</p>
+
+    <div class="tablewrap">
+        <table>
+            <thead>
+                <tr><th>Request</th><th>When</th><th>What is sent</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Weather lookup</td>
+                    <td>Periodically, if you set a location</td>
+                    <td>Your coordinates, to the US National Weather Service (or Open-Meteo, if you
+                        choose it). Rounded to four decimal places.</td>
+                </tr>
+                <tr>
+                    <td>Location lookup</td>
+                    <td>Once, only when you press it during setup</td>
+                    <td>Your postal code or address, to Zippopotam.us or OpenStreetMap Nominatim,
+                        to convert it into coordinates.</td>
+                </tr>
+                <tr>
+                    <td>Update check</td>
+                    <td>Every 30 minutes</td>
+                    <td>Nothing about you. A request to GitHub asking what the latest release is.
+                        GitHub sees the request, as any web server would.</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <p>
+        Weather can be turned off entirely (Settings &rarr; Feeder location &amp; weather &rarr;
+        <em>Don't record temperature</em>). The location lookup only runs when you press the button.
+    </p>
+
+    <h2>The community feed, if you enable it</h2>
+
+    <div class="callout">
+        <p>
+            <strong>Community sharing is off by default.</strong> Nothing leaves your installation
+            until you switch it on in Settings &rarr; Community. Everything in this section applies
+            only once you have.
+        </p>
+    </div>
+
+    <h3>What gets published, and where</h3>
+
+    <p>
+        Shared sightings appear <strong>publicly</strong> on the community feed at
+        <a href="docs/community.html">birdwatchai.com</a>. Anyone can see them without an account.
+        Each shared sighting includes the species we identified, our confidence, the time, the
+        rarity, and the temperature if recorded.
+    </p>
+
+    <p>Two things are separate switches, both of which you can leave off:</p>
+
+    <ul>
+        <li><strong>Photographs</strong> &mdash; the snapshot of the bird. These are pictures taken
+            in your garden, so consider what else is in frame.</li>
+        <li><strong>Video clips</strong> &mdash; the recorded clip around the sighting, with the same
+            consideration.</li>
+    </ul>
+
+    <h3>Your feeder's identity is a random key, not you</h3>
+
+    <p>
+        A shared feeder is identified by a <strong>random device key</strong> generated on your
+        machine. It is not linked to your name, your email address or your purchase. Publicly, your
+        feeder shows only the display name you chose &mdash; so if you call it "Kitchen Window", that
+        is what the world sees.
+    </p>
+
+    <h3>Location</h3>
+
+    <div class="callout">
+        <p>
+            <strong>Read this before enabling sharing.</strong> If you have set a location for
+            weather, that location is shared with your feeder when community sharing is on, and is
+            used to plot your feeder on the public map.
+        </p>
+        <p>
+            How precise it is depends on how you set it. A postal-code lookup gives a coarse,
+            area-level position. Entering a street address gives coordinates close to the building.
+            If you would rather share only an approximate area, set your location by postal code, or
+            clear the coordinates before enabling sharing.
+        </p>
+    </div>
+
+    <h3>Heartbeat</h3>
+
+    <p>
+        While sharing is on, your installation sends a periodic heartbeat &mdash; its device key,
+        whether it is currently monitoring, and its version &mdash; so the site can show your feeder
+        as online.
+    </p>
+
+    <h3>What we may do with what you share</h3>
+
+    <p>
+        You keep ownership of everything you share. By sharing it, you give us permission to store
+        it, display it in the community feed, and <strong>use it to promote BirdWatchAI</strong>
+        &mdash; for example a photograph appearing on this website or on social media. If you would
+        rather that did not happen, leave photograph and clip sharing switched off; the rest of the
+        feature works without them.
+    </p>
+
+    <p>
+        Ask us at <a href="mailto:support@birdwatchai.com">support@birdwatchai.com</a> and we will
+        remove your shared content. Copies other people have already downloaded, and material already
+        used in published promotion, are outside our control.
+    </p>
+
+    <p>
+        Community storage currently keeps shared media for a limited period and then removes it. We
+        may change that, introduce paid storage tiers, or discontinue the feed. Your own installation
+        keeps its full history locally either way.
+    </p>
+
+    <h2>Accounts on the community site</h2>
+
+    <p>
+        You can browse the community feed without an account. Creating one lets you keep a life list,
+        follow feeders and comment.
+    </p>
+
+    <ul>
+        <li><strong>Signing in uses a magic link</strong> &mdash; you give an email address and we
+            email you a link. There is no password to remember or for us to lose.</li>
+        <li>We store your <strong>email address</strong>, the <strong>display name</strong> and bio
+            you choose, your <strong>life list</strong>, the <strong>feeders you follow</strong>, and
+            any <strong>comments</strong> you post.</li>
+        <li>Comments and display names are <strong>public</strong>. Your email address is not shown
+            to other users.</li>
+        <li>If you invite someone to a community group, we store the email address you gave us in
+            order to send the invitation.</li>
+    </ul>
+
+    <p>
+        Ask us to delete your account and we will remove your profile, life list, follows and
+        comments.
+    </p>
+
+    <h2>Buying, and the newsletter</h2>
+
+    <h3>Purchases</h3>
+
+    <p>
+        Purchases are handled by <strong>Gumroad</strong>, who are the merchant of record. They
+        collect and hold your payment details; <strong>we never see your card number</strong>. Their
+        privacy policy governs what they do with it.
+    </p>
+
+    <p>
+        What we receive from Gumroad and keep is your <strong>email address</strong>, your
+        <strong>name</strong> if you gave one, and a record of the licence key we issued you. We keep
+        this so we can reissue a key you have lost and prove a licence is genuine. Where hardware is
+        being shipped, Gumroad collects a delivery address and we use it to send the package.
+    </p>
+
+    <h3>The weekly digest</h3>
+
+    <p>
+        If you sign up for the weekly digest, we store your email address and a private unsubscribe
+        token, and nothing else. Every digest carries an unsubscribe link that works immediately and
+        needs no account. Signing up for the digest does not sign you up for anything else, and we do
+        not use the address for marketing.
+    </p>
+
+    <h2>This website</h2>
+
+    <p>
+        We run <strong>no analytics, no advertising trackers, and no tracking cookies</strong>. The
+        only thing stored in your browser by us is your light/dark theme preference, and &mdash; if
+        you sign in &mdash; your session token so you stay signed in.
+    </p>
+
+    <p>
+        The site is static and hosted on <strong>GitHub Pages</strong>. Some pages load resources
+        from other companies, and loading a resource reveals your IP address to whoever serves it.
+        For completeness:
+    </p>
+
+    <div class="tablewrap">
+        <table>
+            <thead>
+                <tr><th>Who</th><th>What for</th><th>Where</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>GitHub</td><td>Hosting the site itself</td><td>All pages</td></tr>
+                <tr><td>Google Fonts</td><td>The two typefaces</td><td>Most pages</td></tr>
+                <tr><td>Supabase</td><td>Loading community sightings</td><td>Home page, community feed</td></tr>
+                <tr><td>unpkg</td><td>The Leaflet map library</td><td>Pages with a map</td></tr>
+                <tr><td>OpenStreetMap</td><td>Map tiles</td><td>Pages with a map</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <h2>Who else handles your data</h2>
+
+    <p>We use a small number of services to run BirdWatchAI. None of them may use your data for their own purposes.</p>
+
+    <div class="tablewrap">
+        <table>
+            <thead>
+                <tr><th>Service</th><th>What they do for us</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><strong>Supabase</strong></td><td>Hosts the community database, shared photographs and clips, and account sign-in</td></tr>
+                <tr><td><strong>Resend</strong></td><td>Sends our email &mdash; licence keys, sign-in links, the weekly digest</td></tr>
+                <tr><td><strong>Gumroad</strong></td><td>Takes payment and, for hardware, collects a delivery address</td></tr>
+                <tr><td><strong>GitHub</strong></td><td>Hosts this website and our release downloads</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <p>
+        We are based in the United States and these services store data there. If you are using
+        BirdWatchAI from elsewhere, your information is transferred to and held in the US.
+    </p>
+
+    <h2>How long we keep things</h2>
+
+    <ul>
+        <li><strong>Shared sightings and media</strong> &mdash; kept for the community retention
+            period then removed, or until you ask us to remove them.</li>
+        <li><strong>Licence records</strong> &mdash; kept for as long as the licence is valid, since
+            a perpetual licence needs a permanent record to be honoured.</li>
+        <li><strong>Digest subscriptions</strong> &mdash; until you unsubscribe, which deletes the
+            record.</li>
+        <li><strong>Community accounts</strong> &mdash; until you ask us to delete the account.</li>
+    </ul>
+
+    <h2>Your choices</h2>
+
+    <ul>
+        <li><strong>Share nothing</strong> &mdash; leave community sharing off. This is the default.</li>
+        <li><strong>Share sightings but no imagery</strong> &mdash; enable sharing, leave photographs
+            and clips off.</li>
+        <li><strong>Share no location</strong> &mdash; clear your coordinates, or set your location
+            by postal code only, before enabling sharing.</li>
+        <li><strong>Record no weather</strong> &mdash; set the weather source to <em>Don't record
+            temperature</em>.</li>
+        <li><strong>Have your data removed</strong> &mdash; email us and we will do it.</li>
+    </ul>
+
+    <p>
+        Whatever your local law entitles you to &mdash; a copy of your data, correction, deletion,
+        or objecting to how it is used &mdash; email
+        <a href="mailto:support@birdwatchai.com">support@birdwatchai.com</a> and we will honour it.
+        We will not charge you for it and we will not make it difficult.
+    </p>
+
+    <h2>Children</h2>
+
+    <p>
+        BirdWatchAI is not directed at children under 13, and we do not knowingly collect their
+        personal information. Where a school or group uses BirdWatchAI with pupils, the account
+        belongs to the adult running it. If you believe a child has given us information, email us
+        and we will delete it.
+    </p>
+
+    <h2>Security</h2>
+
+    <p>
+        Data we hold is encrypted in transit and stored with access controls limiting who can reach
+        it. No system is perfect, and we won't claim otherwise. What limits the damage most is the
+        design: your recordings live on your own machine and your feeder is identified by a random
+        key rather than your identity, so there is little about you in our systems to begin with.
+    </p>
+
+    <h2>Changes</h2>
+
+    <p>
+        We will update this policy when what we do changes. The version and date are at the top. If
+        a change materially affects what we do with information you have already shared, we will say
+        so on this website rather than quietly editing the page.
+    </p>
+
+    <h2>Contact</h2>
+
+    <p>
+        <strong>Bird Brain Solutions LLC</strong><br>
+        <a href="mailto:support@birdwatchai.com">support@birdwatchai.com</a><br>
+        <a href="index.html">www.birdwatchai.com</a>
+    </p>
+
+    <p class="stamp" style="margin-top:2.5rem">
+        Your licence terms are separate from this policy and are set out in the end-user licence
+        agreement supplied with your copy of the software.
+    </p>
+</main>
+
+</body>
+</html>
