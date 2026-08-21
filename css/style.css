@@ -1365,29 +1365,88 @@ ul {
     box-shadow: var(--shadow-md);
 }
 
-/* Stacked, the summary goes above the form and stays pinned — otherwise you
-   change a dropdown and the total you are watching for is off the bottom.
+/* Stacked, only the HEAD of the summary is pinned — build name and total. The
+   line items, Buy button and footnote drop below the form.
 
-   It has to be capped, though. A full summary runs to ~740px, which on a phone
-   is the whole screen: pinned, it buries the dropdowns it is meant to be
-   reporting on. Bounding it to half the viewport and letting the contents
-   scroll keeps the build name and total — the first things in the panel —
-   always visible, while the form always has the other half. */
+   Pinning the whole panel was the obvious thing and it did not survive a real
+   phone. Capped at 50vh it still stood 406px tall over a 620px form, so
+   scrolling down to the Storage and Macro rows dragged Software, Feeder, Camera
+   and Computer behind it — four of six dropdowns hidden by the panel reporting
+   on them. The head alone is ~87px, which leaves the form the screen and still
+   keeps the number you are watching in view. */
 @media (max-width: 900px) {
-    .configurator > .cfg-summary { grid-row: 1; }
-    .configurator > .cfg-form { grid-row: 2; }
-
+    /* display:contents lifts the head and body out to be grid items of
+       .configurator itself, so they can be placed on either side of the form
+       without duplicating the panel in the markup. The aside keeps its role and
+       label; only its box goes away. */
     .cfg-summary {
-        top: 70px;
-        max-height: 50vh;
-        overflow-y: auto;
-        overscroll-behavior: contain;
-        padding: var(--space-sm);
+        display: contents;
     }
 
-    .cfg-total { margin: var(--space-xs) 0; }
-    .cfg-total-amount { font-size: 2.25rem; }
-    .cfg-name { font-size: 1.125rem; }
+    .configurator > .cfg-summary > .cfg-summary-head { grid-row: 1; }
+    .configurator > .cfg-form { grid-row: 2; }
+    .configurator > .cfg-summary > .cfg-summary-body { grid-row: 3; }
+
+    /* The head and body each become the panel they were part of. */
+    .cfg-summary-head,
+    .cfg-summary-body {
+        padding: var(--space-sm);
+        background: linear-gradient(180deg,
+            color-mix(in srgb, var(--color-primary) 10%, var(--color-white)) 0%,
+            var(--color-white) 100%);
+        border: 2px solid var(--color-primary);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-md);
+        text-align: center;
+    }
+
+    /* Pinned as one row rather than a stack: name on the left, price on the
+       right. Stacked it stood 189px tall, which is a panel sitting on the form
+       again rather than a bar above it; as a row it is ~87px.
+
+       The offset has to clear the fixed nav AND #live-ticker below it — that
+       strip is fixed at top:70px with z-index 999, so anything pinned to 70px
+       slides under it, which is what hid the top of the old panel. z-index
+       keeps the bar over the form rows it now scrolls past. */
+    .cfg-summary-head {
+        position: sticky;
+        top: 70px;
+        z-index: 5;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-sm);
+        text-align: left;
+    }
+
+    body.ticker-visible .cfg-summary-head {
+        top: calc(70px + 34px);
+    }
+
+    /* "Your build" is what the bar plainly is; the room is better spent on the
+       two things that change. */
+    .cfg-summary-head .cfg-summary-eyebrow { display: none; }
+
+    .cfg-summary-head .cfg-name {
+        margin-top: 0;
+        font-size: 1rem;
+    }
+
+    .cfg-summary-head .cfg-total {
+        margin: 0;
+        text-align: right;
+        flex: 0 0 auto;
+    }
+
+    .cfg-summary-head .cfg-total-amount { font-size: 1.75rem; }
+    .cfg-summary-head .cfg-total-note { font-size: 0.6875rem; }
+
+    /* The body is a plain panel again, so its own total sizing still applies. */
+    .cfg-summary-body .cfg-total { margin: var(--space-xs) 0; }
+
+    /* The restore flash is set on the aside, which no longer paints anything —
+       move it to the head so a restored build still announces itself. */
+    .cfg-summary-resumed .cfg-summary-head { animation: cfgResume 1.4s ease-out; }
 }
 
 /* Brief flash when a half-finished build is restored, so it is obvious the
@@ -1403,7 +1462,8 @@ ul {
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .cfg-summary-resumed { animation: none; }
+    .cfg-summary-resumed,
+    .cfg-summary-resumed .cfg-summary-head { animation: none; }
 }
 
 @keyframes cfgBump {
@@ -1593,6 +1653,62 @@ ul {
 
 .opt-card-tier .fullnest-spec {
     margin-bottom: 0;
+}
+
+/* A tier card that presets the builder. It is an <a>, so the link colour and
+   underline have to be undone — the card is the affordance, not the text. */
+.opt-card-pick {
+    color: inherit;
+    text-decoration: none;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.opt-card-pick:hover,
+.opt-card-pick:focus-visible {
+    border-color: var(--color-primary);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+}
+
+/* Keyboard focus needs to be visible against the hover treatment, which on its
+   own reads as "the mouse is here" rather than "this is where you are". */
+.opt-card-pick:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 3px;
+}
+
+/* The cue says out loud that the card does something. Two of them, swapped by
+   .is-current: a card that is already the build in the builder should confirm
+   that rather than invite the same click again. Both are one line, so the cards
+   keep matching heights either way. */
+.opt-card-pick-cue,
+.opt-card-pick-now {
+    display: block;
+    margin-top: var(--space-sm);
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-primary);
+}
+
+.opt-card-pick-now { display: none; }
+.opt-card-pick.is-current .opt-card-pick-cue { display: none; }
+.opt-card-pick.is-current .opt-card-pick-now { display: block; }
+
+/* The build currently in the builder. Matching the summary panel's 2px primary
+   border ties the card to the total it produces. */
+.opt-card-pick.is-current {
+    border: 2px solid var(--color-primary);
+    box-shadow: var(--shadow-md);
+    background: linear-gradient(180deg,
+        color-mix(in srgb, var(--color-primary) 10%, var(--color-white)) 0%,
+        var(--color-white) 100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .opt-card-pick { transition: none; }
+    .opt-card-pick:hover,
+    .opt-card-pick:focus-visible { transform: none; }
 }
 
 .fullnest-intro,

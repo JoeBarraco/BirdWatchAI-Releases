@@ -329,6 +329,11 @@ document.addEventListener('DOMContentLoaded', function () {
         footnote: document.getElementById('cfg-footnote')
     };
 
+    // The four Full Nest cards up in "What's Available". Each names the computer
+    // and drive that define its tier; they double as presets for the builder and
+    // as a readout of which tier the builder currently holds.
+    const nestCards = Array.from(document.querySelectorAll('[data-nest-computer]'));
+
     const money = n => '$' + n;
     const pick = name => {
         const el = form.elements[name];
@@ -468,6 +473,19 @@ document.addEventListener('DOMContentLoaded', function () {
         // Name the build when it is one of the four complete tiers.
         const complete = software !== 'none' && feeder !== 'none' && camera !== 'none' && hasComputer;
         const style = feeder === 'indoor' ? 'Indoor' : 'Outdoor';
+
+        // Light up the Full Nest card this build matches, so the cards and the
+        // builder never disagree about which tier you are looking at. Only a
+        // complete build counts: a partial one with the same computer is not
+        // that tier, whatever the dropdowns say.
+        nestCards.forEach(card => {
+            const isCurrent = complete
+                && card.dataset.nestComputer === computer
+                && card.dataset.nestStorage === storage;
+            card.classList.toggle('is-current', isCurrent);
+            if (isCurrent) card.setAttribute('aria-current', 'true');
+            else card.removeAttribute('aria-current');
+        });
         let name;
         if (complete) {
             name = TIER_NAMES[computer + '|' + storage] + ' — ' + style;
@@ -622,6 +640,33 @@ document.addEventListener('DOMContentLoaded', function () {
 
     form.addEventListener('change', function () { safeRender(); saveState(); });
     form.addEventListener('input', function () { safeRender(); saveState(); });
+
+    /* Clicking a Full Nest card fills the builder in with that tier. A Full Nest
+       is all four pieces by definition, so anything switched off comes back on;
+       feeder style and the macro lens are left as they were, since every tier
+       ships with either feeder and the lens is an extra either way.
+
+       The scroll to the builder is not done here — the card is an <a href>
+       pointing at #configurator, and the smooth-scroll handler further up owns
+       that. Hence no preventDefault: both handlers are meant to run. */
+    nestCards.forEach(card => {
+        card.addEventListener('click', function () {
+            const set = (field, value) => {
+                const el = form.elements[field];
+                // Storage is disabled while no computer is chosen, and a disabled
+                // select ignores a value assignment, so clear that first.
+                if (el) { el.disabled = false; el.value = value; }
+            };
+            set('software', 'yes');
+            if (pick('feeder') === 'none') set('feeder', 'indoor');
+            set('camera', 'yes');
+            set('computer', card.dataset.nestComputer);
+            set('storage', card.dataset.nestStorage);
+            safeRender();
+            saveState();
+        });
+    });
+
     safeRender();
 
     /* Coming back from Gumroad — whether by Back or by its "Continue shopping"
