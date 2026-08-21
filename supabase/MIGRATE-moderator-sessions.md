@@ -155,9 +155,35 @@ select id, email, role, must_change_password, created_at
   from moderators order by created_at;
 ```
 
-  Any account you do not recognise is the thing to look for. A `PUBLIC` grant on
-  a security-definer function is worth checking for elsewhere too — a revoke
-  aimed at `anon` alone is not enough anywhere in this schema.
+  Any account you do not recognise is the thing to look for.
+
+- **`community_create` had the same defect** and is fixed here too (in
+  `setup-communities.sql`). It is a SECURITY DEFINER helper with no
+  authorisation check of its own — `community_admin_create` checks the admin
+  role and then calls it — so being unreachable was the whole of its security,
+  and it was revoked from `anon` and `authenticated` but not `PUBLIC`. Reachable
+  by `anon`, it creates a community with a caller-chosen `owner_user_id` and
+  writes the matching `community_members` owner row. Lower impact than minting
+  an admin, but still an unauthenticated write to a core table, and feeder
+  visibility is derived from community membership.
+
+  **Re-run `setup-communities.sql` to pick this one up.**
+
+- **The general lesson: a revoke aimed at `anon` alone protects nothing.** Any
+  SECURITY DEFINER function in `public` that relies on not being callable needs
+  `from public` as well. Worth enumerating what `PUBLIC` can currently reach:
+
+```sql
+select p.proname, pg_get_function_arguments(p.oid) as args
+  from pg_proc p
+ where p.pronamespace = 'public'::regnamespace
+   and p.prosecdef
+   and has_function_privilege('public', p.oid, 'EXECUTE')
+ order by p.proname;
+```
+
+  Anything on that list which is not deliberately part of the public API wants
+  the same treatment.
 
 - **`search_path` pinned** (`public, extensions`) on the security-definer
   functions touched here. Most were unpinned and resolved `crypt()` via the

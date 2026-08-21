@@ -1350,6 +1350,14 @@ begin
 end;
 $$;
 
+-- community_create has NO authorisation check of its own -- it is an internal
+-- helper, called by community_admin_create (which checks the admin role) and by
+-- the public-feeder autojoin trigger. Its safety rests entirely on being
+-- unreachable, so the revoke has to include PUBLIC: Postgres grants EXECUTE to
+-- PUBLIC on new functions by default, every role is a member of PUBLIC, and
+-- revoking anon and authenticated does not remove that grant. Without the third
+-- line, anon could create arbitrary communities with a caller-chosen owner.
+revoke execute on function community_create(text, text, text, uuid) from public;
 revoke execute on function community_create(text, text, text, uuid) from anon;
 revoke execute on function community_create(text, text, text, uuid) from authenticated;
 
