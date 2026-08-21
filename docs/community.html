@@ -13,7 +13,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="BirdWatchAI">
-    <link rel="stylesheet" href="css/community.css">
+    <link rel="stylesheet" href="css/community.css?v=2">
 </head>
 <body>
 <!-- Top navbar with auth controls -->
@@ -630,6 +630,21 @@
                 Photo will be deleted on save.
                 <button type="button" class="mod-edit-media-undo" onclick="toggleModDeleteMedia('photo')">Undo</button>
             </div>
+            <!-- The caption strip is burned into the JPEG at detection time, so a
+                 species correction leaves the photo itself reading the old name.
+                 This re-burns it, the same way the server build's History page
+                 does. Preview first: the strip is redrawn from what the community
+                 row knows, which is not always exactly what the feeder burned. -->
+            <div id="mod-edit-reburn" class="mod-edit-reburn" style="display:none;">
+                <label class="mod-edit-reburn-toggle">
+                    <input type="checkbox" id="mod-edit-reburn-check" checked onchange="onModReburnToggle()">
+                    <span>Update the caption burned into the photo</span>
+                </label>
+                <div id="mod-edit-reburn-preview" class="mod-edit-reburn-preview" style="display:none;">
+                    <canvas id="mod-edit-reburn-canvas"></canvas>
+                </div>
+                <div id="mod-edit-reburn-note" class="mod-edit-reburn-note" style="display:none;"></div>
+            </div>
         </div>
 
         <!-- Video section (shown only when detection has a video) -->
@@ -732,7 +747,10 @@
      shape. A moderator holding a cached copy of the previous client would get
      nothing but errors, so both are pinned to force a refetch. Bump the
      number whenever the moderator auth contract changes again. -->
-<script src="js/community-auth.js?v=2"></script>
+<!-- Canvas re-burn of the photo's caption strip, used by the moderator edit
+     modal. Must load before community-auth.js, which calls into window.bwOverlay. -->
+<script src="js/community-overlay.js"></script>
+<script src="js/community-auth.js?v=3"></script>
 <script src="js/community-communities.js?v=2"></script>
 <!-- Interactive chart runtime: crosshair tooltips on the trend chart, per-species hover rows on
      the Activity / Calendar / Rarity Mix charts. No-op until a [data-bw-chart] element appears. -->

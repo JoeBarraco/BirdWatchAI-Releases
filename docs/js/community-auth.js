@@ -653,6 +653,121 @@ async function doAdminRemoveUser(targetId, targetName) {
 let modEditDeletePhoto = false;
 let modEditDeleteVideo = false;
 
+// ── Caption re-burn state for the open mod edit modal ─────
+//
+// The photo carries its caption as burned-in pixels, so correcting the species
+// in the database alone leaves the image contradicting the card it sits on. The
+// source bitmap is loaded once when the modal opens and re-composed on every
+// field change, which is why it's held here rather than re-fetched per redraw.
+let modEditReburnSource = null;   // ImageBitmap / HTMLImageElement, or null
+let modEditReburnRow    = null;   // the detection row the modal is editing
+let modEditReburnBusy   = false;  // a load is in flight
+let modEditReburnToken  = 0;      // guards against a slow load landing late
+
+function modReburnEls() {
+    return {
+        wrap:    document.getElementById('mod-edit-reburn'),
+        check:   document.getElementById('mod-edit-reburn-check'),
+        preview: document.getElementById('mod-edit-reburn-preview'),
+        canvas:  document.getElementById('mod-edit-reburn-canvas'),
+        note:    document.getElementById('mod-edit-reburn-note'),
+    };
+}
+
+function setModReburnNote(text, isError) {
+    const { note } = modReburnEls();
+    if (!note) return;
+    note.textContent = text || '';
+    note.classList.toggle('is-error', !!isError);
+    note.style.display = text ? '' : 'none';
+}
+
+// Whether a re-burn should actually be attempted on save: the box is ticked,
+// the source loaded, the photo isn't being deleted, and something in the
+// caption actually changed.
+function modReburnWanted() {
+    const { check } = modReburnEls();
+    if (!check || !check.checked) return false;
+    if (modEditDeletePhoto || !modEditReburnSource || !modEditReburnRow) return false;
+    const next = modReburnDraft();
+    return next.species !== (modEditReburnRow.species || '')
+        || next.rarity  !== (modEditReburnRow.rarity  || '');
+}
+
+// The row as the strip should read it after the edit — the pending form values
+// folded onto the fields the strip also draws (time, confidence, temperature),
+// which the edit never touches.
+function modReburnDraft() {
+    const selVal = document.getElementById('mod-edit-species-select').value;
+    const species = (selVal === '__custom__'
+        ? document.getElementById('mod-edit-species-custom').value
+        : selVal).trim();
+    return Object.assign({}, modEditReburnRow, {
+        species: species,
+        rarity:  document.getElementById('mod-edit-rarity').value,
+    });
+}
+
+function refreshModReburnPreview() {
+    const { check, preview, canvas } = modReburnEls();
+    if (!check || !preview || !canvas) return;
+
+    const show = check.checked && !modEditDeletePhoto && !!modEditReburnSource;
+    preview.style.display = show ? '' : 'none';
+    if (!show) return;
+
+    try {
+        window.bwOverlay.compose(modEditReburnSource, modReburnDraft(), canvas);
+    } catch (err) {
+        preview.style.display = 'none';
+        setModReburnNote('Preview unavailable: ' + err.message, true);
+    }
+}
+
+function onModReburnToggle() {
+    refreshModReburnPreview();
+    const { check } = modReburnEls();
+    if (check && check.checked && !modEditReburnSource && !modEditReburnBusy) {
+        // The box was re-ticked after a failed load — try once more.
+        startModReburnLoad(modEditReburnRow);
+    }
+}
+
+async function startModReburnLoad(d) {
+    const { wrap, check } = modReburnEls();
+    if (!wrap || !d || !d.image_url) return;
+
+    // A stale cached copy of community.html can leave the overlay script out of
+    // the page entirely; degrade to the plain species/rarity edit rather than
+    // throwing on save.
+    if (!window.bwOverlay) {
+        wrap.style.display = 'none';
+        return;
+    }
+
+    wrap.style.display = '';
+    modEditReburnBusy = true;
+    const token = ++modEditReburnToken;
+    setModReburnNote('Loading photo…', false);
+
+    try {
+        const source = await window.bwOverlay.loadSource(d.image_url);
+        if (token !== modEditReburnToken) return;   // modal moved on
+        modEditReburnSource = source;
+        setModReburnNote('', false);
+        refreshModReburnPreview();
+    } catch (err) {
+        if (token !== modEditReburnToken) return;
+        modEditReburnSource = null;
+        if (check) check.checked = false;
+        refreshModReburnPreview();
+        setModReburnNote('Could not read the photo, so its caption can\'t be updated. '
+            + 'The species and rarity edit will still save.', true);
+    } finally {
+        if (token === modEditReburnToken) modEditReburnBusy = false;
+    }
+}
+
 function openModEdit(detectionId) {
     const d = allDetections.find(x => String(x.id) === String(detectionId));
     if (!d) return;
@@ -679,6 +794,18 @@ function openModEdit(detectionId) {
     modEditDeletePhoto = false;
     modEditDeleteVideo = false;
 
+    // Reset caption re-burn state. Bumping the token first means a load still
+    // in flight from a previously opened detection can't paint over this one.
+    modEditReburnToken++;
+    modEditReburnSource = null;
+    modEditReburnBusy   = false;
+    modEditReburnRow    = d;
+    const reburnEls = modReburnEls();
+    if (reburnEls.wrap) reburnEls.wrap.style.display = 'none';
+    if (reburnEls.check) reburnEls.check.checked = true;
+    if (reburnEls.preview) reburnEls.preview.style.display = 'none';
+    setModReburnNote('', false);
+
     // Photo section
     const photoRow    = document.getElementById('mod-edit-photo-row');
     const photoThumb  = document.getElementById('mod-edit-photo-thumb');
@@ -689,6 +816,8 @@ function openModEdit(detectionId) {
         photoThumb.src = d.image_url;
         photoDel.parentElement.style.display = '';
         photoMarked.style.display = 'none';
+        // Fire-and-forget: the modal opens immediately and the preview fills in.
+        startModReburnLoad(d);
     } else {
         photoRow.style.display = 'none';
     }
@@ -718,6 +847,13 @@ function toggleModDeleteMedia(kind) {
         const marked  = document.getElementById('mod-edit-photo-marked');
         preview.style.display = modEditDeletePhoto ? 'none' : '';
         marked.style.display  = modEditDeletePhoto ? '' : 'none';
+        // No point re-burning a caption onto a photo that's about to be deleted.
+        const reburn = modReburnEls();
+        if (reburn.wrap) {
+            reburn.wrap.style.display =
+                (modEditDeletePhoto || !modEditReburnRow || !modEditReburnRow.image_url) ? 'none' : '';
+        }
+        refreshModReburnPreview();
     } else if (kind === 'video') {
         modEditDeleteVideo = !modEditDeleteVideo;
         const preview = document.getElementById('mod-edit-video-del').parentElement;
@@ -736,10 +872,24 @@ document.getElementById('mod-edit-species-select').addEventListener('change', fu
         customInput.style.display = 'none';
         customInput.value = '';
     }
+    refreshModReburnPreview();
 });
+
+// Keep the caption preview in step with the form. 'input' on the custom field so
+// the strip tracks typing rather than waiting for a blur.
+document.getElementById('mod-edit-species-custom').addEventListener('input', refreshModReburnPreview);
+document.getElementById('mod-edit-rarity').addEventListener('change', refreshModReburnPreview);
 
 function closeModEdit() {
     document.getElementById('mod-edit-modal').classList.remove('open');
+    // A full-resolution ImageBitmap is real memory; a moderator working through
+    // a dozen corrections shouldn't accumulate them.
+    modEditReburnToken++;
+    if (modEditReburnSource && typeof modEditReburnSource.close === 'function') {
+        modEditReburnSource.close();
+    }
+    modEditReburnSource = null;
+    modEditReburnRow    = null;
 }
 
 document.getElementById('mod-edit-modal').addEventListener('click', e => {
@@ -762,9 +912,31 @@ async function doModSave() {
     // the RPC directly (cheaper, no edge-function round trip).
     const deletingMedia = modEditDeletePhoto || modEditDeleteVideo;
 
+    // A caption re-burn also has to go through the edge function: storage RLS is
+    // insert-only for the anon key and community_detections.image_url isn't
+    // writable by it either, so only the service role can land the new object
+    // and repoint the row at it.
+    let reburn = null;
+    if (modReburnWanted()) {
+        try {
+            const canvas = window.bwOverlay.compose(modEditReburnSource, modReburnDraft());
+            const encoded = await window.bwOverlay.encodeBase64(canvas);
+            // Edge functions accept a few MB of body; a snapshot that re-encodes
+            // past this is not a snapshot, and silently truncating would be worse
+            // than saving the text edit alone.
+            if (encoded.byteLength > 6 * 1024 * 1024) {
+                showToast('Photo too large to re-caption — saving the species change only');
+            } else {
+                reburn = encoded;
+            }
+        } catch (err) {
+            showToast('Could not re-caption the photo — saving the species change only');
+        }
+    }
+
     try {
         let res;
-        if (deletingMedia) {
+        if (deletingMedia || reburn) {
             const functionsUrl = SUPABASE_URL.replace('.supabase.co', '.supabase.co/functions/v1');
             res = await fetch(`${functionsUrl}/moderator-delete-media`, {
                 method: 'POST',
@@ -781,6 +953,7 @@ async function doModSave() {
                     rarity,
                     delete_image: modEditDeletePhoto,
                     delete_video: modEditDeleteVideo,
+                    image_b64: reburn ? reburn.base64 : undefined,
                 }),
             });
         } else {
@@ -803,6 +976,10 @@ async function doModSave() {
             const err = await res.json().catch(() => ({}));
             throw new Error(err.error || err.message || 'Update failed');
         }
+        // The RPC path answers with a bare `true` (or nothing at all); only the
+        // edge function returns an object, so normalise before reading fields.
+        const parsed = await res.json().catch(() => null);
+        const result = (parsed && typeof parsed === 'object') ? parsed : {};
         // Update local data
         const d = allDetections.find(x => String(x.id) === String(detectionId));
         const oldSpecies = d?.species;
@@ -811,6 +988,19 @@ async function doModSave() {
             d.rarity = rarity;
             if (modEditDeletePhoto) d.image_url = null;
             if (modEditDeleteVideo) d.video_url = null;
+            if (reburn && result.image_updated && !modEditDeletePhoto) {
+                // Point the card at the bytes we just uploaded rather than the
+                // stored value: a public URL is fine but not yet warm, and a
+                // private row stores a private:// marker that only signPrivateMedia
+                // can turn into something an <img> will load. Either way loadFeed()
+                // replaces this a moment later.
+                const objectUrl = URL.createObjectURL(reburn.blob);
+                d.image_url = objectUrl;
+                setTimeout(() => URL.revokeObjectURL(objectUrl), 120000);
+            }
+        }
+        if (reburn && result.image_updated === false) {
+            showToast('Species updated, but the photo caption could not be rewritten');
         }
         closeModEdit();
         // If the species filter was pinned to the old (wrong) species, the
@@ -823,7 +1013,9 @@ async function doModSave() {
             if (specSel) specSel.value = '';
         }
         renderFeed();
-        showToast(deletingMedia ? 'Detection updated (media removed)' : 'Detection updated');
+        showToast(deletingMedia ? 'Detection updated (media removed)'
+            : (reburn && result.image_updated ? 'Detection updated (photo re-captioned)'
+                                             : 'Detection updated'));
         // Refresh from server so dropdowns and counts reconcile with the edit.
         // The edit can rename a species, so the cached roster has to go too.
         if (typeof invalidateDropdownCache === 'function') invalidateDropdownCache();

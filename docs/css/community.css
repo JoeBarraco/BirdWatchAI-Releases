@@ -2061,6 +2061,31 @@
         }
         .mod-edit-media-undo:hover { background: #c0392b; color: white; }
 
+        /* Caption re-burn: toggle + full-width preview of the corrected photo */
+        .mod-edit-reburn { margin-top: 0.5rem; }
+        .mod-edit-reburn-toggle {
+            display: flex; align-items: center; gap: 8px;
+            font-size: 0.8rem; font-weight: 500; margin-bottom: 0;
+            color: var(--color-gray-700); cursor: pointer;
+        }
+        /* .mod-edit-box input is width:100% for the text fields — a checkbox
+           has to opt back out or it stretches across the modal. */
+        .mod-edit-reburn-toggle input[type="checkbox"] {
+            width: auto; margin: 0; flex-shrink: 0; cursor: pointer;
+        }
+        .mod-edit-reburn-preview {
+            margin-top: 8px; border: 1px solid var(--border-input);
+            border-radius: 6px; overflow: hidden; background: var(--bg-input);
+            line-height: 0;
+        }
+        .mod-edit-reburn-preview canvas {
+            display: block; width: 100%; height: auto;
+        }
+        .mod-edit-reburn-note {
+            margin-top: 6px; font-size: 0.75rem; color: var(--color-gray-500);
+        }
+        .mod-edit-reburn-note.is-error { color: #c0392b; }
+
         /* Mod action buttons on cards */
         .mod-actions {
             display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap;
