@@ -770,4 +770,3 @@ grant execute on function mod_post_comment(text, uuid, text, uuid) to anon;
 grant execute on function mod_delete_comment(text, uuid) to anon;
 grant execute on function mod_toggle_feeder_follow(text, uuid) to anon;
 grant execute on function mod_get_comment_history(text, int, int) to anon;
-grant execute on function mod_get_comment_history(text, text, int, int) to anon;

@@ -69,6 +69,18 @@ still sends the old shape.
 
 ### 4. Verify
 
+The four files have been applied and exercised against Postgres 15.19 in Docker,
+using a scaffold that mirrors Supabase (the `anon` / `authenticated` /
+`service_role` roles, pgcrypto in `extensions`, an `auth.users` table, and stubs
+for `feeders` / `community_detections`). All four apply with no errors on a clean
+database and are clean on a second run. 60 behavioural checks pass, covering
+token minting and hashing, expiry and the sliding idle window, the 24h cap,
+logout, change-password, reset, cascade-on-delete, admin gating, and every
+converted RPC. What that scaffold does *not* cover is the real base schema — the
+production `feeders` and `community_detections` have more columns than the stubs,
+and function bodies referencing them are not resolved until first call. So still
+walk the UI once:
+
 - Sign in as a moderator. In DevTools → Application → Session Storage there
   should be a `bwai-mod-token` and **no** `bwai-mod-pass`.
 - Edit a detection, delete a detection with media attached, open the flag queue,
@@ -100,17 +112,42 @@ old schema cache — `notify pgrst, 'reload schema';` in the SQL editor.
 - **`revoke execute … from public`** added to `moderator_reset_password` and
   `add_moderator`. They already revoked `anon` and `authenticated`, but Postgres
   grants `EXECUTE` to `PUBLIC` on new functions by default, and revoking a role
-  does not remove a `PUBLIC` grant. `moderator_reset_password` *returns* a fresh
-  temporary password, so if the `PUBLIC` grant was in fact standing, any caller
-  could have taken over any moderator account. Worth confirming against the live
-  database:
+  does not remove a `PUBLIC` grant.
+
+  **This one is confirmed exploitable, and it is worse than the sessionStorage
+  problem it was found alongside.** Reproduced by applying the pre-change
+  `setup-moderators.sql` to Postgres 15 with Supabase-shaped roles:
+
+```
+ proname                  | acl
+--------------------------+--------------------------------------------------------
+ moderator_reset_password | =X/postgres | postgres=X/postgres | service_role=X/postgres
+```
+
+  The leading `=X/postgres` — an entry with an empty grantee — is the `PUBLIC`
+  grant. Every role is a member of `PUBLIC`, so `anon` had `EXECUTE`. And
+  `moderator_reset_password` *returns* the new temporary password:
+
+```sql
+set role anon;
+select moderator_reset_password('victim@example.com');
+-- {"id": "f0256f8f-…", "temp_password": "l7BI8ipm8IGX"}
+```
+
+  PostgREST exposes `public` functions as `POST /rest/v1/rpc/<name>` executed as
+  `anon`, and the anon key is embedded in `docs/js/community-core.js`. So anyone
+  on the internet could reset any moderator or admin account's password and read
+  the replacement. After the fix the same call returns `permission denied for
+  function moderator_reset_password`.
+
+  **The live database is still in the vulnerable state until
+  `setup-moderators.sql` is run** — this is the reason to run it promptly rather
+  than at leisure. Confirm before and after with:
 
 ```sql
 select proname, proacl from pg_proc
  where proname in ('moderator_reset_password','add_moderator');
 ```
-
-  An ACL entry with an empty grantee (`=X/postgres`) is the `PUBLIC` grant.
 
 - **`search_path` pinned** (`public, extensions`) on the security-definer
   functions touched here. Most were unpinned and resolved `crypt()` via the
