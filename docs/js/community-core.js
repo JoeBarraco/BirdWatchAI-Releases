@@ -39,6 +39,9 @@ async function sbRpc(fnName, params, authenticated) {
     });
     if (!res.ok) {
         const err = await res.json().catch(() => ({}));
+        // A moderator session can lapse mid-visit; catch it here so every
+        // sbRpc caller gets the login prompt instead of a silent no-op.
+        if (typeof handleModSessionError === 'function') handleModSessionError(err);
         return { data: null, error: err };
     }
     const data = await res.json();

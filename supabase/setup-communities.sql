@@ -1366,10 +1366,10 @@ revoke execute on function community_create(text, text, text, uuid) from authent
 -- email and resolved here, which also lets an admin hand a school's community
 -- straight to the teacher who will run it.
 drop function if exists community_admin_create(text, text, text, text, text, text);
+drop function if exists community_admin_create(text, text, text, text, text);
 
 create or replace function community_admin_create(
-  p_email       text,
-  p_password    text,
+  p_token       text,
   p_slug        text,
   p_name        text,
   p_visibility  text,
@@ -1377,11 +1377,10 @@ create or replace function community_admin_create(
 )
 returns json
 language plpgsql security definer
--- `extensions` is required, not decorative: Supabase installs pgcrypto there
--- rather than in public, so pinning to public alone makes the crypt() call
--- below fail with "function crypt(text, text) does not exist" — the moderator
--- password check silently becomes unusable. The older moderator_* functions
--- avoid this only by not pinning a search_path at all.
+-- `extensions` stays pinned even though the moderator check now goes through
+-- moderator_session_role() rather than crypt() directly: `extensions` is the
+-- schema Supabase installs pgcrypto into, and pinning an explicit search_path
+-- on a security-definer function is the right default whatever the body calls.
 set search_path = public, extensions
 as $$
 declare
@@ -1389,10 +1388,7 @@ declare
   owner_id   uuid;
   new_id     uuid;
 begin
-  select role into admin_role
-  from moderators
-  where email = lower(trim(p_email))
-    and password_hash = crypt(p_password, password_hash);
+  admin_role := moderator_session_role(p_token);
 
   if admin_role is null or admin_role <> 'admin' then
     raise exception 'Admin access required';
@@ -1431,26 +1427,23 @@ begin
 end;
 $$;
 
-grant execute on function community_admin_create(text, text, text, text, text, text) to anon;
+grant execute on function community_admin_create(text, text, text, text, text) to anon;
 
 -- Admin roster of every community, with counts, for the admin panel.
--- Moderator-credential authenticated, like community_admin_create.
+-- Moderator-session authenticated, like community_admin_create.
 drop function if exists community_admin_list(text, text);
 
-create or replace function community_admin_list(p_email text, p_password text)
+create or replace function community_admin_list(p_token text)
 returns json
 language plpgsql security definer
--- `extensions` for crypt(); see the note on community_admin_create.
+-- Explicit search_path; see the note on community_admin_create.
 set search_path = public, extensions
 as $$
 declare
   admin_role text;
   result     json;
 begin
-  select role into admin_role
-  from moderators
-  where email = lower(trim(p_email))
-    and password_hash = crypt(p_password, password_hash);
+  admin_role := moderator_session_role(p_token);
 
   if admin_role is null or admin_role <> 'admin' then
     raise exception 'Admin access required';
@@ -1468,7 +1461,7 @@ begin
 end;
 $$;
 
-grant execute on function community_admin_list(text, text) to anon;
+grant execute on function community_admin_list(text) to anon;
 
 -- Delete a community — only when it has no feeders.
 --
@@ -1483,8 +1476,7 @@ grant execute on function community_admin_list(text, text) to anon;
 drop function if exists community_admin_delete(text, text, uuid);
 
 create or replace function community_admin_delete(
-  p_email        text,
-  p_password     text,
+  p_token        text,
   p_community_id uuid
 )
 returns json
@@ -1497,10 +1489,7 @@ declare
   c_name     text;
   n_feeders  int;
 begin
-  select role into admin_role
-  from moderators
-  where email = lower(trim(p_email))
-    and password_hash = crypt(p_password, password_hash);
+  admin_role := moderator_session_role(p_token);
 
   if admin_role is null or admin_role <> 'admin' then
     raise exception 'Admin access required';
@@ -1529,7 +1518,7 @@ begin
 end;
 $$;
 
-grant execute on function community_admin_delete(text, text, uuid) to anon;
+grant execute on function community_admin_delete(text, uuid) to anon;
 
 
 -- ============================================================

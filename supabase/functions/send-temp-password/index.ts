@@ -95,19 +95,20 @@ Deno.serve(async (req) => {
 
     // ── ACTION: invite (admin adds a new user) ────────────────────────────────
     if (action === 'invite') {
-      const { admin_email, admin_password, new_email, new_role } = body;
+      const { token, new_email, new_role } = body;
 
-      if (!admin_email || !admin_password || !new_email) {
+      if (!token || !new_email) {
         return new Response(
           JSON.stringify({ error: 'Missing required fields' }),
           { status: 400, headers: corsHeaders }
         );
       }
 
-      // Call the RPC to create the user (validates admin creds server-side)
+      // Call the RPC to create the user. The RPC resolves the inviting admin
+      // from their session token and checks the admin role server-side; this
+      // function never sees an admin password.
       const { data, error } = await supabase.rpc('moderator_add_user', {
-        p_email: admin_email,
-        p_password: admin_password,
+        p_token: token,
         p_new_email: new_email,
         p_new_role: new_role || 'moderator',
       });

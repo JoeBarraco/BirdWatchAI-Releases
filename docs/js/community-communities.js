@@ -725,10 +725,9 @@ async function createCommunityFromAdmin() {
         return;
     }
 
-    const { email, password } = getModCreds();
+    const token = getModToken();
     const { data, error } = await sbRpc('community_admin_create', {
-        p_email:       email,
-        p_password:    password,
+        p_token:       token,
         p_slug:        slug,
         p_name:        name,
         p_visibility:  visibility,
@@ -765,8 +764,8 @@ async function refreshCommunityAdminList() {
     const list = document.getElementById('community-admin-list');
     if (!list) return;
 
-    const { email, password } = getModCreds();
-    if (!email) { list.innerHTML = ''; return; }
+    const token = getModToken();
+    if (!token) { list.innerHTML = ''; return; }
 
     list.innerHTML = '<li style="color:var(--color-gray-500)">Loading…</li>';
 
@@ -776,7 +775,7 @@ async function refreshCommunityAdminList() {
     let data, error;
     try {
         ({ data, error } = await sbRpc('community_admin_list',
-            { p_email: email, p_password: password }, false));
+            { p_token: token }, false));
     } catch (err) {
         list.innerHTML = `<li style="color:#e74c3c">${esc(err.message || 'Request failed')}</li>`;
         return;
@@ -822,9 +821,9 @@ async function deleteCommunityAsAdmin(communityId, name) {
         'detections, photos or user accounts are touched.\n\nThis cannot be undone.'
     )) return;
 
-    const { email, password } = getModCreds();
+    const token = getModToken();
     const { error } = await sbRpc('community_admin_delete', {
-        p_email: email, p_password: password, p_community_id: communityId,
+        p_token: token, p_community_id: communityId,
     }, false);
 
     if (error) { showToast('Error: ' + (error.message || 'delete failed')); return; }

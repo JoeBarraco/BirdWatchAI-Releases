@@ -125,8 +125,7 @@ grant execute on function license_lookup_by_email(text) to anon;
 -- ────────────────────────────────────────────────────────────────────────────
 drop function if exists record_manual_license(text, text, text, text, text, text, timestamptz, text);
 create or replace function record_manual_license(
-    p_email           text,           -- admin's moderator email
-    p_password        text,           -- admin's moderator password
+    p_token           text,           -- admin's moderator session token
     p_license_id      text,           -- e.g. "BWA-XXXX-XXXX-XXXX"
     p_license_key     text,           -- full BASE64|BASE64 blob
     p_customer_email  text,
@@ -135,17 +134,15 @@ create or replace function record_manual_license(
     p_order_reference text default null
 ) returns json
 language plpgsql security definer
+set search_path = public, extensions
 as $$
 declare
     admin_role text;
     inserted   boolean := false;
 begin
-    select role into admin_role
-      from moderators
-     where email = lower(trim(p_email))
-       and password_hash = crypt(p_password, password_hash);
+    admin_role := moderator_session_role(p_token);
     if admin_role is null then
-        raise exception 'Invalid moderator credentials';
+        raise exception 'Invalid or expired moderator session';
     end if;
     if admin_role <> 'admin' then
         raise exception 'Admin access required';
@@ -173,7 +170,7 @@ begin
 end;
 $$;
 
-grant execute on function record_manual_license(text, text, text, text, text, text, timestamptz, text) to anon;
+grant execute on function record_manual_license(text, text, text, text, text, timestamptz, text) to anon;
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- revoke_license: admin-only. Used when a refund comes back or when a key
@@ -188,22 +185,19 @@ grant execute on function record_manual_license(text, text, text, text, text, te
 -- ────────────────────────────────────────────────────────────────────────────
 drop function if exists revoke_license(text, text, text, text);
 create or replace function revoke_license(
-    p_email      text,
-    p_password   text,
+    p_token      text,
     p_license_id text,
     p_reason     text default null
 ) returns json
 language plpgsql security definer
+set search_path = public, extensions
 as $$
 declare
     admin_role text;
 begin
-    select role into admin_role
-      from moderators
-     where email = lower(trim(p_email))
-       and password_hash = crypt(p_password, password_hash);
+    admin_role := moderator_session_role(p_token);
     if admin_role is null then
-        raise exception 'Invalid moderator credentials';
+        raise exception 'Invalid or expired moderator session';
     end if;
     if admin_role <> 'admin' then
         raise exception 'Admin access required';
@@ -219,4 +213,4 @@ begin
 end;
 $$;
 
-grant execute on function revoke_license(text, text, text, text) to anon;
+grant execute on function revoke_license(text, text, text) to anon;

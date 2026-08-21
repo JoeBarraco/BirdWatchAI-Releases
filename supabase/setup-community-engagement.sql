@@ -490,21 +490,19 @@ $$;
 
 -- RPC: Get moderation queue (moderator-only, uses existing moderator auth)
 drop function if exists get_flag_queue(text, text);
-create or replace function get_flag_queue(p_email text, p_password text)
+create or replace function get_flag_queue(p_token text)
 returns json
 language plpgsql security definer
+set search_path = public, extensions
 as $$
 declare
   mod_id uuid;
   result json;
 begin
-  select id into mod_id
-  from moderators
-  where email = lower(trim(p_email))
-    and password_hash = crypt(p_password, password_hash);
+  mod_id := moderator_session_id(p_token);
 
   if mod_id is null then
-    raise exception 'Invalid moderator credentials';
+    raise exception 'Invalid or expired moderator session';
   end if;
 
   select json_agg(json_build_object(
@@ -537,24 +535,21 @@ $$;
 -- RPC: Resolve a flag (moderator-only)
 drop function if exists resolve_flag(text, text, uuid, text);
 create or replace function resolve_flag(
-  p_email    text,
-  p_password text,
+  p_token    text,
   p_flag_id  uuid,
   p_action   text  -- 'reviewed' or 'dismissed'
 )
 returns boolean
 language plpgsql security definer
+set search_path = public, extensions
 as $$
 declare
   mod_id uuid;
 begin
-  select id into mod_id
-  from moderators
-  where email = lower(trim(p_email))
-    and password_hash = crypt(p_password, password_hash);
+  mod_id := moderator_session_id(p_token);
 
   if mod_id is null then
-    raise exception 'Invalid moderator credentials';
+    raise exception 'Invalid or expired moderator session';
   end if;
 
   update detection_flags
@@ -568,38 +563,37 @@ end;
 $$;
 
 grant execute on function flag_detection(uuid, text, text) to authenticated;
-grant execute on function get_flag_queue(text, text) to anon;
-grant execute on function resolve_flag(text, text, uuid, text) to anon;
+grant execute on function get_flag_queue(text) to anon;
+grant execute on function resolve_flag(text, uuid, text) to anon;
 
 
 -- ── 6. Moderator-accessible community functions ─────────────
 -- These allow moderators (who use a separate auth system) to use
 -- community features without needing a Supabase Auth session.
--- They verify moderator credentials and accept a user_id parameter.
+-- They authenticate on a moderator session token and act as that moderator:
+-- the acting user id comes from the session, never from the caller, so a
+-- moderator cannot write life-list rows or comments as somebody else.
 
 -- Mod: add to life list
 drop function if exists mod_add_to_life_list(text, text, text, text, uuid, text);
 create or replace function mod_add_to_life_list(
-  p_email        text,
-  p_password     text,
-  p_user_id      text,
+  p_token        text,
   p_species      text,
   p_detection_id uuid default null,
   p_notes        text default ''
 )
 returns json
 language plpgsql security definer
+set search_path = public, extensions
 as $$
 declare
   mod_id uuid;
 begin
-  select id into mod_id from moderators
-  where email = lower(trim(p_email))
-    and password_hash = crypt(p_password, password_hash);
-  if mod_id is null then raise exception 'Invalid moderator credentials'; end if;
+  mod_id := moderator_session_id(p_token);
+  if mod_id is null then raise exception 'Invalid or expired moderator session'; end if;
 
   insert into user_life_list (user_id, species, detection_id, notes, first_seen)
-  values (p_user_id::uuid, p_species, p_detection_id, p_notes, now())
+  values (mod_id, p_species, p_detection_id, p_notes, now())
   on conflict (user_id, species) do nothing;
 
   return json_build_object('species', p_species, 'added', true);
@@ -609,23 +603,20 @@ $$;
 -- Mod: remove from life list
 drop function if exists mod_remove_from_life_list(text, text, text, text);
 create or replace function mod_remove_from_life_list(
-  p_email    text,
-  p_password text,
-  p_user_id  text,
+  p_token    text,
   p_species  text
 )
 returns boolean
 language plpgsql security definer
+set search_path = public, extensions
 as $$
 declare
   mod_id uuid;
 begin
-  select id into mod_id from moderators
-  where email = lower(trim(p_email))
-    and password_hash = crypt(p_password, password_hash);
-  if mod_id is null then raise exception 'Invalid moderator credentials'; end if;
+  mod_id := moderator_session_id(p_token);
+  if mod_id is null then raise exception 'Invalid or expired moderator session'; end if;
 
-  delete from user_life_list where user_id = p_user_id::uuid and species = p_species;
+  delete from user_life_list where user_id = mod_id and species = p_species;
   return found;
 end;
 $$;
@@ -633,38 +624,35 @@ $$;
 -- Mod: post comment
 drop function if exists mod_post_comment(text, text, text, uuid, text, uuid);
 create or replace function mod_post_comment(
-  p_email        text,
-  p_password     text,
-  p_user_id      text,
+  p_token        text,
   p_detection_id uuid,
   p_body         text,
   p_parent_id    uuid default null
 )
 returns json
 language plpgsql security definer
+set search_path = public, extensions
 as $$
 declare
   mod_id uuid;
   new_id uuid;
 begin
-  select id into mod_id from moderators
-  where email = lower(trim(p_email))
-    and password_hash = crypt(p_password, password_hash);
-  if mod_id is null then raise exception 'Invalid moderator credentials'; end if;
+  mod_id := moderator_session_id(p_token);
+  if mod_id is null then raise exception 'Invalid or expired moderator session'; end if;
 
   insert into detection_comments (detection_id, user_id, body, parent_id)
-  values (p_detection_id, p_user_id::uuid, p_body, p_parent_id)
+  values (p_detection_id, mod_id, p_body, p_parent_id)
   returning id into new_id;
 
   return json_build_object(
     'id', new_id,
     'detection_id', p_detection_id,
-    'user_id', p_user_id,
+    'user_id', mod_id,
     'display_name', coalesce(
-      nullif((select display_name from user_profiles where id = p_user_id::uuid), ''),
-      nullif((select display_name from moderators    where id = p_user_id::uuid), ''),
+      nullif((select display_name from user_profiles where id = mod_id), ''),
+      nullif((select display_name from moderators    where id = mod_id), ''),
       (select initcap(role) || ': ' || split_part(email, '@', 1)
-         from moderators where id = p_user_id::uuid),
+         from moderators where id = mod_id),
       'Birder'
     ),
     'body', p_body,
@@ -677,20 +665,18 @@ $$;
 -- Mod: delete comment
 drop function if exists mod_delete_comment(text, text, uuid);
 create or replace function mod_delete_comment(
-  p_email      text,
-  p_password   text,
+  p_token      text,
   p_comment_id uuid
 )
 returns boolean
 language plpgsql security definer
+set search_path = public, extensions
 as $$
 declare
   mod_id uuid;
 begin
-  select id into mod_id from moderators
-  where email = lower(trim(p_email))
-    and password_hash = crypt(p_password, password_hash);
-  if mod_id is null then raise exception 'Invalid moderator credentials'; end if;
+  mod_id := moderator_session_id(p_token);
+  if mod_id is null then raise exception 'Invalid or expired moderator session'; end if;
 
   delete from detection_comments where id = p_comment_id;
   return found;
@@ -700,32 +686,29 @@ $$;
 -- Mod: toggle follow feeder
 drop function if exists mod_toggle_feeder_follow(text, text, text, uuid);
 create or replace function mod_toggle_feeder_follow(
-  p_email     text,
-  p_password  text,
-  p_user_id   text,
+  p_token     text,
   p_feeder_id uuid
 )
 returns json
 language plpgsql security definer
+set search_path = public, extensions
 as $$
 declare
   mod_id uuid;
   existing_id uuid;
 begin
-  select id into mod_id from moderators
-  where email = lower(trim(p_email))
-    and password_hash = crypt(p_password, password_hash);
-  if mod_id is null then raise exception 'Invalid moderator credentials'; end if;
+  mod_id := moderator_session_id(p_token);
+  if mod_id is null then raise exception 'Invalid or expired moderator session'; end if;
 
   select id into existing_id from feeder_follows
-  where user_id = p_user_id::uuid and feeder_id = p_feeder_id;
+  where user_id = mod_id and feeder_id = p_feeder_id;
 
   if existing_id is not null then
     delete from feeder_follows where id = existing_id;
     return json_build_object('following', false);
   else
     insert into feeder_follows (user_id, feeder_id)
-    values (p_user_id::uuid, p_feeder_id);
+    values (mod_id, p_feeder_id);
     return json_build_object('following', true);
   end if;
 end;
@@ -734,22 +717,20 @@ $$;
 -- Mod: global comment history across all detections (chronological)
 drop function if exists mod_get_comment_history(text, text, int, int);
 create or replace function mod_get_comment_history(
-  p_email    text,
-  p_password text,
+  p_token    text,
   p_limit    int default 100,
   p_offset   int default 0
 )
 returns json
 language plpgsql security definer
+set search_path = public, extensions
 as $$
 declare
   mod_id uuid;
   result json;
 begin
-  select id into mod_id from moderators
-  where email = lower(trim(p_email))
-    and password_hash = crypt(p_password, password_hash);
-  if mod_id is null then raise exception 'Invalid moderator credentials'; end if;
+  mod_id := moderator_session_id(p_token);
+  if mod_id is null then raise exception 'Invalid or expired moderator session'; end if;
 
   select json_agg(row_to_json(t)) into result
   from (
@@ -783,9 +764,10 @@ begin
 end;
 $$;
 
-grant execute on function mod_add_to_life_list(text, text, text, text, uuid, text) to anon;
-grant execute on function mod_remove_from_life_list(text, text, text, text) to anon;
-grant execute on function mod_post_comment(text, text, text, uuid, text, uuid) to anon;
-grant execute on function mod_delete_comment(text, text, uuid) to anon;
-grant execute on function mod_toggle_feeder_follow(text, text, text, uuid) to anon;
+grant execute on function mod_add_to_life_list(text, text, uuid, text) to anon;
+grant execute on function mod_remove_from_life_list(text, text) to anon;
+grant execute on function mod_post_comment(text, uuid, text, uuid) to anon;
+grant execute on function mod_delete_comment(text, uuid) to anon;
+grant execute on function mod_toggle_feeder_follow(text, uuid) to anon;
+grant execute on function mod_get_comment_history(text, int, int) to anon;
 grant execute on function mod_get_comment_history(text, text, int, int) to anon;

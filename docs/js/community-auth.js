@@ -339,18 +339,54 @@ function openDetailModal(id) {
 
 // ── Moderator system ───────────────────────────────────────
 function isModLoggedIn() {
-    return !!sessionStorage.getItem('bwai-mod-user');
+    return !!sessionStorage.getItem('bwai-mod-token');
 }
 
 function isAdmin() {
     return sessionStorage.getItem('bwai-mod-role') === 'admin';
 }
 
-function getModCreds() {
-    return {
-        email: sessionStorage.getItem('bwai-mod-user'),
-        password: sessionStorage.getItem('bwai-mod-pass'),
-    };
+// The moderator session token — the only credential the browser keeps.
+//
+// It used to keep the password instead, so a single XSS, a rogue extension, or
+// anyone with the machine could lift a working, reusable admin password. Now
+// the password is posted once to moderator_login and never written anywhere;
+// what's here is a short-lived bearer token the server can revoke.
+function getModToken() {
+    return sessionStorage.getItem('bwai-mod-token');
+}
+
+// Forget the moderator session locally, including the bridged community user.
+function clearModSession() {
+    sessionStorage.removeItem('bwai-mod-token');
+    sessionStorage.removeItem('bwai-mod-user');
+    sessionStorage.removeItem('bwai-mod-role');
+    sessionStorage.removeItem('bwai-mod-display-name');
+    // Older builds parked the plaintext password under this key. Clear it on
+    // sight so a browser upgrading into this version stops carrying one.
+    sessionStorage.removeItem('bwai-mod-pass');
+    if (isModAsCommunityUser) {
+        currentUser = null;
+        currentProfile = null;
+        userLifeList = [];
+        userFollowedFeeders = [];
+        isModAsCommunityUser = false;
+        updateCommunityUI();
+    }
+}
+
+// Tokens expire (8h idle, 24h hard cap), which the password-based scheme never
+// did. Any privileged call can therefore come back with a dead session; when it
+// does, drop the moderator back at the login modal rather than failing silently.
+// Returns true if the error was a session expiry and has been handled.
+function handleModSessionError(err) {
+    const msg = String((err && (err.message || err.error || err.msg)) || err || '');
+    if (!/expired moderator session/i.test(msg)) return false;
+    clearModSession();
+    updateModUI();
+    showToast('Your moderator session has expired — please sign in again');
+    if (typeof renderFeed === 'function') renderFeed();
+    return true;
 }
 
 // Bridge moderator/admin session into a community user so they
@@ -391,19 +427,21 @@ function updateModUI() {
 
 function toggleModLogin() {
     if (isModLoggedIn()) {
-        sessionStorage.removeItem('bwai-mod-user');
-        sessionStorage.removeItem('bwai-mod-pass');
-        sessionStorage.removeItem('bwai-mod-role');
-        sessionStorage.removeItem('bwai-mod-display-name');
-        // Clear bridged community user if it came from mod login
-        if (isModAsCommunityUser) {
-            currentUser = null;
-            currentProfile = null;
-            userLifeList = [];
-            userFollowedFeeders = [];
-            isModAsCommunityUser = false;
-            updateCommunityUI();
+        // Delete the session server-side, not just locally, so a token already
+        // copied off the machine stops working the moment the mod signs out.
+        const token = getModToken();
+        if (token) {
+            fetch(`${SUPABASE_URL}/rest/v1/rpc/moderator_logout`, {
+                method: 'POST',
+                headers: {
+                    apikey: ANON_KEY,
+                    Authorization: `Bearer ${ANON_KEY}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ p_token: token }),
+            }).catch(() => {});
         }
+        clearModSession();
         updateModUI();
         showToast('Moderator logged out');
         renderFeed();
@@ -436,12 +474,14 @@ async function doModLogin() {
             body: JSON.stringify({ p_email: email, p_password: password }),
         });
         const data = await res.json();
-        if (!data || !data.id) {
+        if (!data || !data.id || !data.token) {
             document.getElementById('mod-login-error').style.display = 'block';
             return;
         }
+        // `password` goes out of scope with this function and is never stored.
+        // Only the server-minted session token is kept.
+        sessionStorage.setItem('bwai-mod-token', data.token);
         sessionStorage.setItem('bwai-mod-user', email);
-        sessionStorage.setItem('bwai-mod-pass', password);
         sessionStorage.setItem('bwai-mod-role', data.role);
         sessionStorage.setItem('bwai-mod-display-name', data.display_name || '');
         // Bridge: give moderators community user access automatically
@@ -451,9 +491,11 @@ async function doModLogin() {
         showToast(`Logged in as ${data.role}: ${email}`);
         renderFeed();
 
-        // Force password change if using a temporary password
+        // Force password change if using a temporary password. The temp
+        // password is handed straight to the modal in memory — it is needed one
+        // more time, to prove ownership on the change, and then discarded.
         if (data.must_change_password) {
-            showMustChangePassword();
+            showMustChangePassword(password);
         }
     } catch (err) {
         document.getElementById('mod-login-error').textContent = 'Login failed: ' + err.message;
@@ -492,7 +534,8 @@ document.getElementById('mod-admin-modal').addEventListener('click', e => {
 });
 
 async function refreshModUserList() {
-    const { email, password } = getModCreds();
+    const token = getModToken();
+    const selfEmail = sessionStorage.getItem('bwai-mod-user');
     const list = document.getElementById('mod-user-list');
     try {
         const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/moderator_list_users`, {
@@ -502,9 +545,12 @@ async function refreshModUserList() {
                 Authorization: `Bearer ${ANON_KEY}`,
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ p_email: email, p_password: password }),
+            body: JSON.stringify({ p_token: token }),
         });
-        if (!res.ok) throw new Error('Failed to load');
+        if (!res.ok) {
+            const e = await res.json().catch(() => ({}));
+            throw new Error(e.message || e.hint || 'Failed to load');
+        }
         const users = await res.json();
         if (!users || !users.length) {
             list.innerHTML = '<li style="color:var(--color-gray-500)">No moderators found.</li>';
@@ -516,18 +562,19 @@ async function refreshModUserList() {
                     <strong>${esc(u.email)}</strong>
                     <span class="mod-role-tag ${u.role}">${u.role}</span>
                 </div>
-                ${u.email !== email
+                ${u.email !== selfEmail
                     ? `<button class="mod-remove-btn" onclick="doAdminRemoveUser('${u.id}', '${esc(u.email)}')">Remove</button>`
                     : '<span style="font-size:0.75rem;color:var(--color-gray-500);">you</span>'}
             </li>
         `).join('');
     } catch (err) {
+        if (handleModSessionError(err)) return;
         list.innerHTML = `<li style="color:#e74c3c">Error: ${esc(err.message)}</li>`;
     }
 }
 
 async function doAdminAddUser() {
-    const { email, password } = getModCreds();
+    const token = getModToken();
     const newEmail = document.getElementById('mod-add-email').value.trim();
     const newRole = document.getElementById('mod-add-role').value;
     const statusEl = document.getElementById('mod-add-status');
@@ -549,8 +596,7 @@ async function doAdminAddUser() {
             },
             body: JSON.stringify({
                 action: 'invite',
-                admin_email: email,
-                admin_password: password,
+                token,
                 new_email: newEmail,
                 new_role: newRole,
             }),
@@ -571,13 +617,13 @@ async function doAdminAddUser() {
     } catch (err) {
         statusEl.textContent = 'Error: ' + err.message;
         statusEl.style.color = '#e74c3c';
-        showToast('Error: ' + err.message);
+        if (!handleModSessionError(err)) showToast('Error: ' + err.message);
     }
 }
 
 async function doAdminRemoveUser(targetId, targetName) {
     if (!confirm(`Remove moderator "${targetName}"?`)) return;
-    const { email, password } = getModCreds();
+    const token = getModToken();
 
     try {
         const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/moderator_remove_user`, {
@@ -588,8 +634,7 @@ async function doAdminRemoveUser(targetId, targetName) {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                p_email: email,
-                p_password: password,
+                p_token: token,
                 p_target_id: targetId,
             }),
         });
@@ -600,7 +645,7 @@ async function doAdminRemoveUser(targetId, targetName) {
         showToast(`Removed: ${targetName}`);
         await refreshModUserList();
     } catch (err) {
-        showToast('Error: ' + err.message);
+        if (!handleModSessionError(err)) showToast('Error: ' + err.message);
     }
 }
 
@@ -702,7 +747,7 @@ document.getElementById('mod-edit-modal').addEventListener('click', e => {
 });
 
 async function doModSave() {
-    const { email, password } = getModCreds();
+    const token = getModToken();
     const detectionId = document.getElementById('mod-edit-id').value;
     const selVal = document.getElementById('mod-edit-species-select').value;
     const species = (selVal === '__custom__'
@@ -730,8 +775,7 @@ async function doModSave() {
                 },
                 body: JSON.stringify({
                     action: 'update',
-                    email,
-                    password,
+                    token,
                     detection_id: detectionId,
                     species,
                     rarity,
@@ -748,8 +792,7 @@ async function doModSave() {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    p_email: email,
-                    p_password: password,
+                    p_token: token,
                     p_detection_id: detectionId,
                     p_species: species,
                     p_rarity: rarity,
@@ -786,7 +829,7 @@ async function doModSave() {
         if (typeof invalidateDropdownCache === 'function') invalidateDropdownCache();
         loadFeed();
     } catch (err) {
-        showToast('Error: ' + err.message);
+        if (!handleModSessionError(err)) showToast('Error: ' + err.message);
     }
 }
 
@@ -795,7 +838,7 @@ async function confirmModDelete(detectionId) {
     if (!d) return;
     if (!confirm(`Delete detection of "${d.species}"?\nThis cannot be undone.`)) return;
 
-    const { email, password } = getModCreds();
+    const token = getModToken();
     try {
         // Always route through the edge function so any attached photo /
         // video files are also removed from Supabase Storage, not just
@@ -810,8 +853,7 @@ async function confirmModDelete(detectionId) {
             },
             body: JSON.stringify({
                 action: 'delete',
-                email,
-                password,
+                token,
                 detection_id: detectionId,
             }),
         });
@@ -828,7 +870,7 @@ async function confirmModDelete(detectionId) {
         renderFeed();
         showToast('Detection deleted');
     } catch (err) {
-        showToast('Error: ' + err.message);
+        if (!handleModSessionError(err)) showToast('Error: ' + err.message);
     }
 }
 
@@ -848,7 +890,7 @@ async function confirmModDeleteFeeder(btn) {
     if (!feederId) return;
     if (!confirm(`Delete the feeder "${displayName}"?\n\nThis also removes every community detection (and its photo / video) that was shared by this feeder. It cannot be undone.`)) return;
 
-    const { email, password } = getModCreds();
+    const token = getModToken();
     try {
         const functionsUrl = SUPABASE_URL.replace('.supabase.co', '.supabase.co/functions/v1');
         const res = await fetch(`${functionsUrl}/moderator-delete-media`, {
@@ -860,8 +902,7 @@ async function confirmModDeleteFeeder(btn) {
             },
             body: JSON.stringify({
                 action:    'delete_feeder',
-                email,
-                password,
+                token,
                 feeder_id: feederId,
             }),
         });
@@ -887,7 +928,7 @@ async function confirmModDeleteFeeder(btn) {
             : '';
         showToast(`Feeder "${displayName}" deleted${detCount}.`);
     } catch (err) {
-        showToast('Error: ' + err.message);
+        if (!handleModSessionError(err)) showToast('Error: ' + err.message);
     }
 }
 
@@ -1130,7 +1171,7 @@ async function doModMergeFeeder() {
         return;
     }
 
-    const { email, password } = getModCreds();
+    const token = getModToken();
     try {
         const functionsUrl = SUPABASE_URL.replace('.supabase.co', '.supabase.co/functions/v1');
         const res = await fetch(`${functionsUrl}/moderator-delete-media`, {
@@ -1142,8 +1183,7 @@ async function doModMergeFeeder() {
             },
             body: JSON.stringify({
                 action:            'merge_feeder',
-                email,
-                password,
+                token,
                 source_feeder_id:  sourceId,
                 target_feeder_id:  targetId,
             }),
@@ -1186,6 +1226,7 @@ async function doModMergeFeeder() {
         showToast(`Merged "${sourceName}" into "${targetName}"${movedLabel}.`);
         closeModMergeFeeder();
     } catch (err) {
+        if (handleModSessionError(err)) { closeModMergeFeeder(); return; }
         errorEl.textContent = 'Error: ' + err.message;
         errorEl.style.display = 'block';
     }
@@ -1258,14 +1299,15 @@ function showChangePassword() {
     document.getElementById('mod-changepw-current').focus();
 }
 
-function showMustChangePassword() {
+function showMustChangePassword(tempPassword) {
     const modal = document.getElementById('mod-changepw-modal');
     document.getElementById('mod-changepw-username').value = sessionStorage.getItem('bwai-mod-user') || '';
     document.getElementById('mod-changepw-title').textContent = 'Set Your Password';
     document.getElementById('mod-changepw-msg').textContent = 'You are using a temporary password. Please set a new password to continue.';
     document.getElementById('mod-changepw-cancel').style.display = 'none';
     modal.style.display = 'flex';
-    document.getElementById('mod-changepw-current').value = sessionStorage.getItem('bwai-mod-pass') || '';
+    // Prefilled from the value just typed at login, not from storage.
+    document.getElementById('mod-changepw-current').value = tempPassword || '';
     document.getElementById('mod-changepw-new').focus();
 }
 
@@ -1291,7 +1333,7 @@ document.getElementById('mod-changepw-confirm').addEventListener('keydown', e =>
 });
 
 async function doChangePassword() {
-    const { email } = getModCreds();
+    const token = getModToken();
     const currentPw = document.getElementById('mod-changepw-current').value;
     const newPw = document.getElementById('mod-changepw-new').value;
     const confirmPw = document.getElementById('mod-changepw-confirm').value;
@@ -1324,8 +1366,8 @@ async function doChangePassword() {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                p_email: email,
-                p_password: currentPw,
+                p_token: token,
+                p_current_password: currentPw,
                 p_new_password: newPw,
             }),
         });
@@ -1333,11 +1375,12 @@ async function doChangePassword() {
             const err = await res.json();
             throw new Error(err.message || 'Failed to change password');
         }
-        // Update stored password
-        sessionStorage.setItem('bwai-mod-pass', newPw);
+        // Nothing to update in storage: the session token is unaffected by a
+        // password change, and the new password is not kept either.
         closeChangePassword();
         showToast('Password changed successfully');
     } catch (err) {
+        if (handleModSessionError(err)) { closeChangePassword(); return; }
         errorEl.textContent = err.message;
         errorEl.style.display = 'block';
     }
@@ -1594,11 +1637,11 @@ async function saveUserProfile() {
         // whenever a mod is logged in, regardless of whether an additional
         // community account is also signed in.
         if (isModLoggedIn()) {
-            const creds = getModCreds();
+            const token = getModToken();
             const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/moderator_update_display_name`, {
                 method: 'POST',
                 headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ p_email: creds.email, p_password: creds.password, p_display_name: name }),
+                body: JSON.stringify({ p_token: token, p_display_name: name }),
             });
             if (!res.ok) {
                 const err = await res.json().catch(() => ({}));
@@ -1650,8 +1693,8 @@ async function toggleLifeListSpecies(species, detectionId, btn) {
     const isOnList = userLifeList.includes(species);
     if (isOnList) {
         if (isModAsCommunityUser) {
-            const c = getModCreds();
-            await sbRpc('mod_remove_from_life_list', { p_email: c.email, p_password: c.password, p_user_id: currentUser.id, p_species: species }, false);
+            const token = getModToken();
+            await sbRpc('mod_remove_from_life_list', { p_token: token, p_species: species }, false);
         } else {
             await sbRpc('remove_from_life_list', { p_species: species }, true);
         }
@@ -1660,8 +1703,8 @@ async function toggleLifeListSpecies(species, detectionId, btn) {
         showToast(`${species} removed from life list`);
     } else {
         if (isModAsCommunityUser) {
-            const c = getModCreds();
-            await sbRpc('mod_add_to_life_list', { p_email: c.email, p_password: c.password, p_user_id: currentUser.id, p_species: species, p_detection_id: detectionId || null, p_notes: '' }, false);
+            const token = getModToken();
+            await sbRpc('mod_add_to_life_list', { p_token: token, p_species: species, p_detection_id: detectionId || null, p_notes: '' }, false);
         } else {
             await sbRpc('add_to_life_list', { p_species: species, p_detection_id: detectionId || null, p_notes: '' }, true);
         }
@@ -1713,8 +1756,8 @@ async function loadAndRenderLifeList(userId, isOwn) {
 
 async function removeFromLifeListModal(species, btn) {
     if (isModAsCommunityUser) {
-        const c = getModCreds();
-        await sbRpc('mod_remove_from_life_list', { p_email: c.email, p_password: c.password, p_user_id: currentUser.id, p_species: species }, false);
+        const token = getModToken();
+        await sbRpc('mod_remove_from_life_list', { p_token: token, p_species: species }, false);
     } else {
         await sbRpc('remove_from_life_list', { p_species: species }, true);
     }
@@ -1753,8 +1796,8 @@ async function toggleFollowFeeder(feederId, btn) {
 
     let data;
     if (isModAsCommunityUser) {
-        const c = getModCreds();
-        ({ data } = await sbRpc('mod_toggle_feeder_follow', { p_email: c.email, p_password: c.password, p_user_id: currentUser.id, p_feeder_id: feederId }, false));
+        const token = getModToken();
+        ({ data } = await sbRpc('mod_toggle_feeder_follow', { p_token: token, p_feeder_id: feederId }, false));
     } else {
         ({ data } = await sbRpc('toggle_feeder_follow', { p_feeder_id: feederId }, true));
     }
@@ -1883,8 +1926,8 @@ async function submitComment(detectionId) {
 
     let data, error;
     if (isModAsCommunityUser) {
-        const c = getModCreds();
-        ({ data, error } = await sbRpc('mod_post_comment', { p_email: c.email, p_password: c.password, p_user_id: currentUser.id, p_detection_id: detectionId, p_body: body, p_parent_id: parentId }, false));
+        const token = getModToken();
+        ({ data, error } = await sbRpc('mod_post_comment', { p_token: token, p_detection_id: detectionId, p_body: body, p_parent_id: parentId }, false));
     } else {
         ({ data, error } = await sbRpc('post_comment', { p_detection_id: detectionId, p_body: body, p_parent_id: parentId }, true));
     }
@@ -1908,8 +1951,8 @@ async function submitComment(detectionId) {
 
 async function deleteComment(commentId, detectionId) {
     if (isModAsCommunityUser) {
-        const c = getModCreds();
-        await sbRpc('mod_delete_comment', { p_email: c.email, p_password: c.password, p_comment_id: commentId }, false);
+        const token = getModToken();
+        await sbRpc('mod_delete_comment', { p_token: token, p_comment_id: commentId }, false);
     } else {
         await sbRpc('delete_comment', { p_comment_id: commentId }, true);
     }
@@ -1983,13 +2026,14 @@ async function loadFlagQueue() {
     const list = document.getElementById('flag-queue-list');
     list.innerHTML = '<div style="text-align:center;color:var(--color-gray-500);padding:1rem;">Loading...</div>';
 
-    const creds = getModCreds();
+    const token = getModToken();
     const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_flag_queue`, {
         method: 'POST',
         headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ p_email: creds.email, p_password: creds.password }),
+        body: JSON.stringify({ p_token: token }),
     });
     const flags = await res.json();
+    if (!res.ok && handleModSessionError(flags)) return;
 
     if (!Array.isArray(flags) || !flags.length) {
         list.innerHTML = '<div style="text-align:center;color:var(--color-gray-500);padding:1rem;">No pending flags. All clear!</div>';
@@ -2015,12 +2059,13 @@ async function loadFlagQueue() {
 }
 
 async function resolveFlag(flagId, action) {
-    const creds = getModCreds();
-    await fetch(`${SUPABASE_URL}/rest/v1/rpc/resolve_flag`, {
+    const token = getModToken();
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/resolve_flag`, {
         method: 'POST',
         headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ p_email: creds.email, p_password: creds.password, p_flag_id: flagId, p_action: action }),
+        body: JSON.stringify({ p_token: token, p_flag_id: flagId, p_action: action }),
     });
+    if (!res.ok && handleModSessionError(await res.json().catch(() => ({})))) return;
     const item = document.querySelector(`.flag-queue-item[data-flag-id="${flagId}"]`);
     if (item) item.remove();
     showToast(action === 'reviewed' ? 'Flag reviewed' : 'Flag dismissed');
@@ -2049,14 +2094,15 @@ async function loadCommentsHistory() {
     const list = document.getElementById('comments-history-list');
     list.innerHTML = '<div style="text-align:center;color:var(--color-gray-500);padding:1rem;">Loading...</div>';
 
-    const creds = getModCreds();
+    const token = getModToken();
     try {
         const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/mod_get_comment_history`, {
             method: 'POST',
             headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ p_email: creds.email, p_password: creds.password, p_limit: 500, p_offset: 0 }),
+            body: JSON.stringify({ p_token: token, p_limit: 500, p_offset: 0 }),
         });
         const comments = await res.json();
+        if (!res.ok && handleModSessionError(comments)) return;
 
         if (!Array.isArray(comments) || !comments.length) {
             list.innerHTML = '<div style="text-align:center;color:var(--color-gray-500);padding:1rem;">No comments yet.</div>';
@@ -2115,12 +2161,12 @@ function viewDetectionFromHistory(detectionId) {
 
 async function deleteCommentFromHistory(commentId) {
     if (!confirm('Delete this comment? This cannot be undone.')) return;
-    const creds = getModCreds();
+    const token = getModToken();
     try {
         const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/mod_delete_comment`, {
             method: 'POST',
             headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ p_email: creds.email, p_password: creds.password, p_comment_id: commentId }),
+            body: JSON.stringify({ p_token: token, p_comment_id: commentId }),
         });
         const ok = await res.json();
         if (ok === true) {

@@ -65,13 +65,13 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { action, email, password, detection_id, feeder_id,
+    const { action, token, detection_id, feeder_id,
             source_feeder_id, target_feeder_id } = body;
 
     // Per-action required-field validation — feeder-level actions use
     // feeder_id (delete) or source/target ids (merge), detection actions
-    // use detection_id, but all need an action + creds.
-    if (!action || !email || !password) {
+    // use detection_id, but all need an action + a session token.
+    if (!action || !token) {
       return new Response(
         JSON.stringify({ error: 'Missing required fields' }),
         { status: 400, headers: corsHeaders }
@@ -104,14 +104,16 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Validate moderator credentials via the existing login RPC
-    const { data: modData, error: loginErr } = await supabase.rpc('moderator_login', {
-      p_email: email,
-      p_password: password,
+    // Resolve the moderator session token. A moderator's password never reaches
+    // this function — moderator_login is the only thing that ever sees it — so
+    // the worst a captured request can replay is a short-lived, revocable
+    // session rather than a reusable admin credential.
+    const { data: modData, error: sessionErr } = await supabase.rpc('moderator_session_lookup', {
+      p_token: token,
     });
-    if (loginErr || !modData || !modData.id) {
+    if (sessionErr || !modData || !modData.id) {
       return new Response(
-        JSON.stringify({ error: 'Invalid moderator credentials' }),
+        JSON.stringify({ error: 'Invalid or expired moderator session' }),
         { status: 401, headers: corsHeaders }
       );
     }
@@ -139,8 +141,7 @@ Deno.serve(async (req) => {
       }
 
       const { data: result, error: rpcErr } = await supabase.rpc('moderator_delete_feeder', {
-        p_email:     email,
-        p_password:  password,
+        p_token:     token,
         p_feeder_id: feeder_id,
       });
       if (rpcErr) {
@@ -168,8 +169,7 @@ Deno.serve(async (req) => {
     // feeder_id foreign key changes.
     if (action === 'merge_feeder') {
       const { data: result, error: rpcErr } = await supabase.rpc('moderator_merge_feeder', {
-        p_email:     email,
-        p_password:  password,
+        p_token:     token,
         p_source_id: source_feeder_id,
         p_target_id: target_feeder_id,
       });
@@ -217,8 +217,7 @@ Deno.serve(async (req) => {
       if (delete_video) await removeStorageFile(detection.video_url);
 
       const { error } = await supabase.rpc('moderator_update_detection', {
-        p_email:         email,
-        p_password:      password,
+        p_token:         token,
         p_detection_id:  detection_id,
         p_species:       species ?? null,
         p_rarity:        rarity ?? null,
@@ -245,8 +244,7 @@ Deno.serve(async (req) => {
       await removeStorageFile(detection.video_url);
 
       const { error } = await supabase.rpc('moderator_delete_detection', {
-        p_email:        email,
-        p_password:     password,
+        p_token:        token,
         p_detection_id: detection_id,
       });
 
