@@ -179,7 +179,8 @@
             <tr><td>Periodic reconnect (minutes)</td><td>0 (off)</td><td>Force a fresh
                 connection every N minutes</td></tr>
             <tr><td>Feeder Zip Code / GPS</td><td>—</td><td>Location for weather, rarity,
-                daylight. GPS optional (with "Pick on Map")</td></tr>
+                daylight. GPS optional (with "Pick on Map"). <strong>Also published with your
+                feeder if community sharing is on</strong> — see Community sharing below</td></tr>
             <tr><td>Temperature Unit</td><td>Fahrenheit</td><td>°F or °C</td></tr>
         </table>
 
@@ -246,7 +247,7 @@
             <li><strong>Location &amp; weather</strong> — ZIP code or lat/long, temperature
                 unit.</li>
             <li><strong>Notifications</strong> — Email (SMTP), ntfy push.</li>
-            <li><strong>Community</strong> — sharing toggle + Share Level.</li>
+            <li><strong>Community</strong> — sharing toggle, feeder name, and separate switches for uploading images and clips (the server has no Share Level dial; see below).</li>
             <li><strong>License</strong> — paste a license key; deactivate to move to another
                 machine.</li>
             <li><strong>Storage</strong> — snapshot retention policy, video retention,
@@ -340,9 +341,59 @@
 
         <h2 id="community">Community sharing</h2>
 
-        <p>Sharing is controlled in <span class="ui">Settings → Community</span> on both
-            editions. The most important control is the <strong>Share Level</strong>, which
-            precisely governs what leaves your machine:</p>
+        <p>Sharing is controlled in <span class="ui">Settings → Community</span>. It is
+            <strong>off by default</strong> on both editions &mdash; nothing leaves your machine
+            until you turn it on.</p>
+
+        <div class="box warn">
+            <span class="lbl">The two editions control this differently</span>
+            The desktop app uses a single <strong>Share Level</strong> dial. The server uses three
+            independent switches and has no Level&nbsp;2 tier, so <strong>on the server, location is
+            shared whenever you have one set</strong> &mdash; opting into sharing at all is the
+            opt-in. Read the section for the edition you actually run.
+        </div>
+
+        <h3>Server edition</h3>
+
+        <p>Three checkboxes, on <span class="ui">Settings → Community</span>:</p>
+
+        <table>
+            <tr><th>Control</th><th>Default</th><th>What it does</th></tr>
+            <tr><td><span class="ui">Share my sightings with the BirdWatch community</span></td>
+                <td><strong>Off</strong></td>
+                <td>The master switch. While it is off, nothing at all is shared.</td></tr>
+            <tr><td><span class="ui">Also upload the snapshot image</span></td>
+                <td><strong>On</strong></td>
+                <td>Publishes the photograph of the bird with each sighting.</td></tr>
+            <tr><td><span class="ui">Also upload the recorded video clip</span></td>
+                <td><strong>On</strong></td>
+                <td>Publishes the clip too. The heaviest upload and the most storage.</td></tr>
+        </table>
+
+        <div class="box warn">
+            <span class="lbl">The image and clip switches are on to begin with</span>
+            They only take effect once the master switch is on &mdash; but that means ticking the
+            master switch alone publishes your photographs <em>and</em> your clips. If you want to
+            share sightings without imagery, untick those two before you turn sharing on.
+        </div>
+
+        <p>What a shared sighting always carries: the species, our confidence, the timestamp, the
+            rarity, and the temperature when one was recorded.</p>
+
+        <p><strong>Location.</strong> If you have set a ZIP code or coordinates &mdash; which you
+            probably have, since the temperature lookup needs one &mdash; that location is attached
+            to your feeder when sharing is on, and is used to place it on the public map. There is
+            no separate level that withholds it. How precise it is depends on how you set it: a ZIP
+            lookup gives an area-level position, while a street address gives coordinates close to
+            the building. To share only an approximate area, set your location by ZIP code. To share
+            none, clear the location before enabling sharing &mdash; and set
+            <span class="ui">Weather source</span> to <span class="ui">Don't record temperature</span>,
+            or the location will be needed again.</p>
+
+        <h3>Desktop edition</h3>
+
+        <p>The desktop app uses a single <strong>Share Level</strong> (0&ndash;4), which governs
+            what leaves your machine:</p>
 
         <table>
             <tr><th>Level</th><th>What is shared</th></tr>
@@ -355,13 +406,18 @@
             <tr><td><strong>4</strong></td><td>The above <strong>+ the video clip</strong></td></tr>
         </table>
 
+        <p>On the desktop, and only on the desktop, location is shared at Level&nbsp;2 and above,
+            and GPS is used in place of ZIP only if you explicitly enable GPS coordinates.</p>
+
+        <h3>Both editions</h3>
+
         <div class="box tip">
-            <span class="lbl">You stay anonymous</span>
+            <span class="lbl">You stay anonymous either way</span>
             Your feeder is identified only by a random <strong>Device Key</strong> (a UUID)
-            — never linked to your name or email. Your public identity is just the
-            <strong>Feeder Display Name</strong> (which mirrors your Camera Name). Location
-            is shared <em>only</em> at Level 2 and above, and GPS is used in place of ZIP
-            only if you explicitly enable GPS coordinates.
+            &mdash; never linked to your name, your email or your purchase. Your public identity is
+            just the <strong>Feeder Display Name</strong> you choose. What you share may also be
+            used to promote BirdWatchAI; see the
+            <a href="../../privacy.html">privacy policy</a>.
         </div>
 
         <p>Other options on the tab:</p>
