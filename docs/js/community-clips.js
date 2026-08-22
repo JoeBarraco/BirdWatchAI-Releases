@@ -19,10 +19,13 @@ let clipGridSig  = '';              // last painted grid signature, to skip no-o
 let clipErrors   = 0;               // consecutive playback failures
 let clipPaused   = false;
 let clipMuted    = localStorage.getItem('bwai-clips-muted') === '1';
+// Auto Loop is the "leave it running on the kitchen screen" mode: at the end of the reel it
+// rebuilds the playlist and starts over, so anything the auto-refresh pulled in during the last
+// pass is part of the next one. Default on — that matches how the theater already behaved.
+let clipAutoLoop = localStorage.getItem('bwai-clips-loop') !== '0';
+let clipWakeLock = null;            // screen wake lock, held while looping
 let clipIdleTimer = null;
 let clipActiveSlot = 0;             // 0 = A, 1 = B
-let clipsTopUpPending = false;      // a full-set fetch is in flight
-let clipsTopUpTries = 0;            // bounded, so a failing fetch can't spin forever
 
 const clipTheater = document.getElementById('clip-theater');
 const clipVideoA  = document.getElementById('clip-video-a');
@@ -114,23 +117,13 @@ function renderClips() {
         return;
     }
 
+    // Note: the full period is already in memory by the time anything renders — loadFeed()'s
+    // `needsAll` list includes the clips view, the same way it does for stats and gallery. Without
+    // that, a render triggered by a filter change would describe page 1 as the whole set ("60
+    // clips" when there are thousands).
     summary.textContent = clipList.length === 1
         ? '1 clip'
         : `${clipList.length.toLocaleString()} clips`;
-
-    // Changing a filter re-runs loadFeed(), which only fetches the first page — so a render
-    // triggered from there would describe page 1 as if it were the whole set ("60 clips" when
-    // there are thousands). Pull the rest in, then repaint with the real count.
-    if (!feedExhausted && currentView === 'clips' && !clipsTopUpPending && clipsTopUpTries < 3) {
-        clipsTopUpPending = true;
-        clipsTopUpTries++;
-        summary.textContent += ' · loading more…';
-        loadAllDetections().finally(() => {
-            clipsTopUpPending = false;
-            if (feedExhausted) clipsTopUpTries = 0;
-            if (currentView === 'clips') renderClips();
-        });
-    }
 
     // The feed auto-refreshes every 30s. Repainting an unchanged grid would restart every lazy
     // image and throw away scroll anchoring for no reason, so bail when nothing visible moved.
@@ -202,9 +195,11 @@ function openClipTheater(startIdx) {
     clipTheater.classList.add('open');
     lockScroll();
     syncClipMuteButton();
+    syncClipLoopControls();
     document.getElementById('clip-playpause').textContent = '⏸';
     showClip(startIdx);
     requestClipFullscreen();
+    acquireClipWakeLock();
     bumpClipIdle();
 }
 
@@ -232,8 +227,7 @@ function showClip(i) {
     document.getElementById('clip-caption').textContent =
         clip.species + (clip.feeder ? ` · ${clip.feeder}` : '');
     document.getElementById('clip-subcaption').textContent = fmtDetectedAt(clip.date);
-    document.getElementById('clip-counter').textContent =
-        `${clipIdx + 1} / ${clipList.length}`;
+    updateClipCounter();
     document.getElementById('clip-progress-fill').style.width = '0%';
 
     // Warm the slot we just vacated with whatever comes next, so `ended` is a swap, not a fetch.
@@ -297,6 +291,90 @@ function syncClipMuteButton() {
     }
 }
 
+// ── Auto Loop ───────────────────────────────────────────
+function toggleClipLoop() {
+    setClipLoop(!clipAutoLoop);
+    showToast(clipAutoLoop ? 'Auto Loop on — the reel will keep going' : 'Auto Loop off — stops after the last clip');
+    bumpClipIdle();
+}
+
+function onClipLoopToggle() {
+    setClipLoop(document.getElementById('clips-loop').checked);
+}
+
+function setClipLoop(on) {
+    clipAutoLoop = on;
+    localStorage.setItem('bwai-clips-loop', on ? '1' : '0');
+    syncClipLoopControls();
+    updateClipCounter();
+    // Turning it on at the end of a finished reel should start it moving again, not sit there.
+    if (on && clipPaused && clipTheater?.classList.contains('open') && clipIdx >= clipList.length - 1) {
+        toggleClipPauseTo(false);
+        advanceClip();
+    }
+    if (on) acquireClipWakeLock(); else releaseClipWakeLock();
+}
+
+function syncClipLoopControls() {
+    const box = document.getElementById('clips-loop');
+    if (box) box.checked = clipAutoLoop;
+    const btn = document.getElementById('clip-loop');
+    if (btn) {
+        btn.classList.toggle('active', clipAutoLoop);
+        btn.setAttribute('aria-pressed', clipAutoLoop ? 'true' : 'false');
+        btn.setAttribute('aria-label', clipAutoLoop ? 'Auto Loop on' : 'Auto Loop off');
+    }
+}
+
+function updateClipCounter() {
+    const el = document.getElementById('clip-counter');
+    if (el) el.textContent = `${clipIdx + 1} / ${clipList.length}${clipAutoLoop ? ' · 🔁' : ''}`;
+}
+
+// One step forward at the end of a clip. Everything about looping lives here: mid-reel it is just
+// the next index, and at the end it either rebuilds and starts over or stops.
+function advanceClip() {
+    if (clipIdx < clipList.length - 1) { showClip(clipIdx + 1); return; }
+
+    if (!clipAutoLoop) {
+        toggleClipPauseTo(true);
+        clipTheater.classList.remove('idle');   // bring the chrome back so it doesn't look frozen
+        showToast('End of clips — turn on Auto Loop to keep going');
+        return;
+    }
+
+    // Wrapping is where a new pass picks up whatever the auto-refresh pulled in while this one was
+    // playing. Rebuilding from the live set (rather than replaying the array we started with) is
+    // what makes "leave it on all day" show today's birds as they arrive.
+    const before = clipList.length;
+    const fresh = buildClipList();
+    if (fresh.length) clipList = fresh;
+    const added = clipList.length - before;
+    if (added > 0) showToast(`${added} new clip${added === 1 ? '' : 's'} added to the loop`);
+    showClip(0);
+}
+
+// Keep the screen awake while the reel is playing — the whole point of Auto Loop is walking away
+// from it. Unsupported browsers (Safari < 16.4) just no-op; the lock is dropped on close, and
+// re-taken when the tab comes back, since the browser releases it whenever the page is hidden.
+async function acquireClipWakeLock() {
+    if (!clipAutoLoop || clipWakeLock || document.hidden) return;
+    if (!('wakeLock' in navigator)) return;
+    try {
+        clipWakeLock = await navigator.wakeLock.request('screen');
+        clipWakeLock.addEventListener('release', () => { clipWakeLock = null; });
+    } catch (_) { /* refused (battery saver, no gesture) — playback still works */ }
+}
+
+function releaseClipWakeLock() {
+    try { clipWakeLock?.release(); } catch (_) { /* already gone */ }
+    clipWakeLock = null;
+}
+
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && clipTheater?.classList.contains('open')) acquireClipWakeLock();
+});
+
 function closeClipTheater() {
     if (!clipTheater || !clipTheater.classList.contains('open')) return;
     clipTheater.classList.remove('open', 'idle');
@@ -308,6 +386,7 @@ function closeClipTheater() {
     });
     clearTimeout(clipIdleTimer);
     exitClipFullscreen();
+    releaseClipWakeLock();
     unlockScroll();
     renderClips();              // pick up anything the feed added while we were watching
 }
@@ -318,8 +397,13 @@ clipSlots().forEach(v => {
     v.addEventListener('ended', () => {
         if (v !== clipActive() || !clipTheater.classList.contains('open')) return;
         clipErrors = 0;
-        if (clipList.length === 1) { v.currentTime = 0; playClipSlot(v); return; }
-        showClip(clipIdx + 1);
+        if (clipList.length === 1) {
+            if (!clipAutoLoop) { toggleClipPauseTo(true); return; }
+            v.currentTime = 0;
+            playClipSlot(v);
+            return;
+        }
+        advanceClip();
     });
     v.addEventListener('timeupdate', () => {
         if (v !== clipActive() || !v.duration) return;
@@ -336,7 +420,7 @@ clipSlots().forEach(v => {
             toggleClipPauseTo(true);
             return;
         }
-        if (clipList.length > 1) showClip(clipIdx + 1);
+        if (clipList.length > 1) advanceClip();
     });
 });
 
@@ -377,6 +461,8 @@ function bumpClipIdle() {
     }, 2500);
 }
 
+syncClipLoopControls();     // reflect the remembered Auto Loop choice on first paint
+
 if (clipTheater) {
     document.getElementById('clip-close').addEventListener('click', closeClipTheater);
     document.getElementById('clip-prev').addEventListener('click', () => clipNav(-1));
@@ -401,6 +487,8 @@ document.addEventListener('keydown', e => {
         F:          toggleClipFullscreen,
         m:          toggleClipMute,
         M:          toggleClipMute,
+        l:          toggleClipLoop,
+        L:          toggleClipLoop,
         Escape:     closeClipTheater,
     }[e.key];
     if (!handled) {
@@ -436,5 +524,5 @@ function refreshClipTheater() {
         const at = clipList.findIndex(c => c.id === currentId);
         clipIdx = at >= 0 ? at : Math.min(clipIdx, clipList.length - 1);
     }
-    document.getElementById('clip-counter').textContent = `${clipIdx + 1} / ${clipList.length}`;
+    updateClipCounter();
 }

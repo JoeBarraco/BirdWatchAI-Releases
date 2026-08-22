@@ -539,7 +539,7 @@ async function loadFeed(append = false) {
         const sortOrder = document.getElementById('sort-filter')?.value || 'recent';
         const needsAll = sortOrder === 'liked' || sortOrder === 'commented'
             || hasClientOnlyFilter()
-            || currentView === 'stats' || currentView === 'gallery';
+            || currentView === 'stats' || currentView === 'gallery' || currentView === 'clips';
         if (!append && !feedExhausted && needsAll) {
             await loadAllDetections();
         }

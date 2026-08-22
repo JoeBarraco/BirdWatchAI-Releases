@@ -13,7 +13,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="BirdWatchAI">
-    <link rel="stylesheet" href="css/community.css?v=3">
+    <link rel="stylesheet" href="css/community.css?v=5">
 </head>
 <body>
 <!-- Top navbar with auth controls -->
@@ -267,6 +267,10 @@
                 <option value="alpha">By Species</option>
                 <option value="random">Random</option>
             </select>
+            <label class="clips-loop" title="Keep playing after the last clip, picking up anything new that arrived (l)">
+                <input type="checkbox" id="clips-loop" onchange="onClipLoopToggle()">
+                <span>🔁 Auto Loop</span>
+            </label>
             <span id="clips-summary" class="clips-summary"></span>
         </div>
         <div id="clips-grid" class="gallery-grid"></div>
@@ -292,6 +296,7 @@
         <div class="slideshow-bar">
             <button class="slideshow-ctrl" id="clip-playpause" onclick="toggleClipPause()" title="Play / pause (space)" aria-label="Play or pause">⏸</button>
             <div class="slideshow-progress"><div class="slideshow-progress-fill" id="clip-progress-fill"></div></div>
+            <button class="slideshow-ctrl" id="clip-loop" onclick="toggleClipLoop()" title="Auto Loop (l)" aria-pressed="true" aria-label="Auto Loop">🔁</button>
             <button class="slideshow-ctrl" id="clip-mute" onclick="toggleClipMute()" title="Mute / unmute (m)" aria-label="Mute">🔊</button>
             <button class="slideshow-ctrl" id="clip-fullscreen-btn" onclick="toggleClipFullscreen()" title="Toggle fullscreen (f)" aria-label="Toggle fullscreen">⛶</button>
         </div>
@@ -789,13 +794,13 @@
      a stale community-views.js is the bad mix: the old switchView() has no branch for a tab that
      now exists, so it hides every view, matches none, and leaves a blank page under the tab bar.
      Bump these whenever a change to the view list or the render hooks must land immediately. -->
-<script src="js/community-core.js?v=1"></script>
+<script src="js/community-core.js?v=2"></script>
 <script src="js/community-views.js?v=1"></script>
 <script src="js/community-social.js"></script>
 <!-- Clips tab. Must load before community-auth.js: the theater's key handler calls
      stopImmediatePropagation so the global single-key shortcuts registered there don't also fire
      while a clip is playing, and that only works if this listener is registered first. -->
-<script src="js/community-clips.js"></script>
+<script src="js/community-clips.js?v=2"></script>
 <!-- ?v= on the moderator-auth scripts: moderator calls now carry a session
      token instead of a replayed password, and the RPCs no longer accept the old
      shape. A moderator holding a cached copy of the previous client would get

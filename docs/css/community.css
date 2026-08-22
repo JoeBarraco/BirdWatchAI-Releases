@@ -1502,7 +1502,31 @@
             font-size: 0.85rem;
             color: var(--color-gray-500);
             margin-left: auto;
+            white-space: nowrap;
         }
+        /* At 375px the four controls come to exactly the available width, which squeezed the
+           checkbox label down to ~41px and wrapped "Auto Loop" onto three lines. Let the row wrap
+           as a whole and keep each control at its natural width instead. */
+        #clips-view .gallery-controls { flex-wrap: wrap; row-gap: 0.6rem; }
+        .clips-loop {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            flex: 0 0 auto;
+            white-space: nowrap;
+            font-size: 0.85rem;
+            color: var(--color-gray-900);
+            cursor: pointer;
+            user-select: none;
+        }
+        .clips-loop input { cursor: pointer; accent-color: var(--color-primary); }
+        /* Active state for a toggle in the theater bar (Auto Loop), so its on/off state reads at a
+           glance against the neutral controls beside it. */
+        .slideshow-ctrl.active {
+            background: var(--color-primary);
+            color: #fff;
+        }
+        #clip-loop:not(.active) { opacity: 0.55; }
         .clip-thumb {
             position: relative;
             line-height: 0;     /* kills the inline-image descender gap under the poster */
