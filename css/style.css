@@ -2256,7 +2256,7 @@ ul {
 /* ==========================================================================
    Build CTA band
 
-   Sits between the screenshots and the testimonials, pointing at the builder
+   Sits between the screenshots and the interactive demo, pointing at the builder
    that lives five sections further down. Deliberately quieter than the download
    band (cream, not the green gradient) so the two CTAs don't compete.
    ========================================================================== */
@@ -3027,43 +3027,9 @@ body.ticker-visible { padding-top: 32px; }
 }
 .inline-newsletter-btn { padding: 0.5rem 1.25rem; font-size: 0.875rem; white-space: nowrap; }
 
-/* ── Testimonials Section ──────────────────────────────── */
-.testimonials-section {
-    padding: 5rem 1.5rem;
-    background: var(--color-cream);
-}
-.testimonials-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 1.5rem;
-    max-width: 1100px;
-    margin: 0 auto;
-}
-.testimonial-card {
-    background: var(--color-white);
-    border-radius: var(--radius-md);
-    padding: 2rem;
-    box-shadow: var(--shadow-sm);
-    border-left: 4px solid var(--color-primary);
-    transition: transform 0.2s, box-shadow 0.2s;
-}
-.testimonial-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
-.testimonial-stars { color: #f5a623; font-size: 1.125rem; margin-bottom: 0.75rem; letter-spacing: 2px; }
-.testimonial-card blockquote {
-    font-size: 0.9375rem;
-    color: var(--color-gray-700);
-    line-height: 1.7;
-    margin-bottom: 1.25rem;
-    font-style: italic;
-}
-.testimonial-author {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.875rem;
-}
-.testimonial-author strong { color: var(--color-gray-900); }
-.testimonial-author span { color: var(--color-gray-500); }
+/* Testimonials Section removed 2026-08-22 along with its markup in index.html.
+   See the comment there for why the cards went and what would have to be true
+   before a section like it comes back. */
 
 /* ── Interactive Demo Section ──────────────────────────── */
 .demo-section {
@@ -3223,7 +3189,6 @@ body.ticker-visible { padding-top: 32px; }
     .demo-cta { text-align: center; }
     .widget-docs-content { grid-template-columns: 1fr; justify-items: center; }
     .widget-preview-iframe { width: 100%; max-width: 360px; }
-    .testimonials-grid { grid-template-columns: 1fr; }
     .inline-newsletter-inner { justify-content: center; text-align: center; }
     .on-this-day-cards { grid-template-columns: repeat(2, 1fr); }
 }

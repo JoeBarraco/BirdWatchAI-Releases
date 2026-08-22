@@ -21,7 +21,7 @@
          GitHub Pages serves these with a 10-minute max-age, so without it a
          browser can pair new HTML with the previous JS, and a mismatch there
          silently breaks anything scripted (the pricing configurator especially). -->
-    <link rel="stylesheet" href="css/style.css?v=20260821a">
+    <link rel="stylesheet" href="css/style.css?v=20260822a">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="icon" type="image/png" href="images/favicon.png">
     <link rel="manifest" href="manifest.json">
@@ -359,41 +359,16 @@
         </div>
     </section>
 
-    <!-- Testimonials -->
-    <section id="testimonials" class="testimonials-section">
-        <div class="container">
-            <div class="section-header">
-                <h2>What Birders Are Saying</h2>
-                <p>Join a growing community of backyard bird enthusiasts.</p>
-            </div>
-            <div class="testimonials-grid">
-                <div class="testimonial-card">
-                    <div class="testimonial-stars">★★★★★</div>
-                    <blockquote>"I never knew how many species visited my feeder until BirdWatchAI showed me. I've logged over 30 species in three months — including a Painted Bunting I would have completely missed!"</blockquote>
-                    <div class="testimonial-author">
-                        <strong>Sarah M.</strong>
-                        <span>Austin, TX</span>
-                    </div>
-                </div>
-                <div class="testimonial-card">
-                    <div class="testimonial-stars">★★★★★</div>
-                    <blockquote>"Setup took five minutes with my TAPO camera. Now my kids race to check the app every morning to see what birds visited overnight. It's become our family's favorite hobby."</blockquote>
-                    <div class="testimonial-author">
-                        <strong>Mike R.</strong>
-                        <span>Portland, OR</span>
-                    </div>
-                </div>
-                <div class="testimonial-card">
-                    <div class="testimonial-stars">★★★★★</div>
-                    <blockquote>"The community feed is addictive. I love seeing what other feeders are catching across the country. And the weekly digest email is the highlight of my Sunday morning."</blockquote>
-                    <div class="testimonial-author">
-                        <strong>Linda K.</strong>
-                        <span>Asheville, NC</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
+    <!-- Testimonials removed 2026-08-22. The three cards here quoted "Sarah M.",
+         "Mike R." and "Linda K." as five-star customers, on a product that had
+         not launched and had no customers to quote. Invented endorsements are an
+         FTC problem, and a reader who suspects one discounts every real claim on
+         the page. Do not restore a section like this with anything other than
+         attributable quotes from real users who consented to being quoted.
+         Until those exist, this feeder's own numbers are the honest form of
+         social proof - real detection counts, real screenshots, real dates,
+         attributed to Joe - and the live detection ticker plus the community
+         feed embed already carry some of that weight. -->
 
     <!-- Interactive Community Demo -->
     <section id="try-it" class="demo-section">
@@ -1055,7 +1030,7 @@ docker compose up -d</code></pre>
     </footer>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="js/main.js?v=20260821a"></script>
+    <script src="js/main.js?v=20260822a"></script>
     <script>
     function toggleMainTheme() {
         const current = document.documentElement.getAttribute('data-theme');
