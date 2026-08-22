@@ -65,27 +65,16 @@ document.addEventListener('DOMContentLoaded', function() {
     // wire up here.
 
 
-    // Screensaver download button - GitHub Releases
-    const screensaverBtn = document.getElementById('screensaver-download-btn');
-    if (screensaverBtn) {
-        screensaverBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            const screensaverUrl = 'https://github.com/JoeBarraco/BirdWatchAI-Releases/releases/download/v2.1.2.0/BirdWatchAI_Screensaver_1.0.0.zip';
-            console.log('Screensaver download initiated');
-            window.location.href = screensaverUrl;
-        });
-    }
-
-    // Server/Camera finder download button - GitHub Releases (server-releases repo)
-    const finderBtn = document.getElementById('finder-download-btn');
-    if (finderBtn) {
-        finderBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            const finderUrl = 'https://github.com/JoeBarraco/birdwatchai-server-releases/releases/latest/download/BirdWatchFinder.exe';
-            console.log('Finder download initiated');
-            window.location.href = finderUrl;
-        });
-    }
+    // The screensaver and Finder download buttons used to live here as click
+    // handlers that called preventDefault() and then set window.location, with
+    // href="#" in the markup. Both are plain <a href="..."> now.
+    //
+    // The old shape worked on a left click and failed at everything else:
+    // ctrl-click and middle-click opened "#", right-click offered to save the
+    // page instead of the file, and the whole thing went silent if main.js was
+    // stale or blocked - which is a live failure mode on this site, since Pages
+    // serves assets with a 10-minute max-age and new HTML can load against old
+    // JS. A URL in the href survives all of that and needs no script at all.
 
     // The #buy-btn and #buy-nest-btn handlers lived here. Both buttons went
     // when pricing moved into the builder, and the second still pointed at the

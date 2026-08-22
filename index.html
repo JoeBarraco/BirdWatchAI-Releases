@@ -21,7 +21,7 @@
          GitHub Pages serves these with a 10-minute max-age, so without it a
          browser can pair new HTML with the previous JS, and a mismatch there
          silently breaks anything scripted (the pricing configurator especially). -->
-    <link rel="stylesheet" href="css/style.css?v=20260822a">
+    <link rel="stylesheet" href="css/style.css?v=20260822b">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="icon" type="image/png" href="images/favicon.png">
     <link rel="manifest" href="manifest.json">
@@ -508,6 +508,14 @@
                 <div class="opt-cards opt-cards-1">
                     <div class="opt-card">
                         <h5>BirdWatchAI</h5>
+                        <!-- The only option card that names a price. Every other one stays
+                             silent and lets the builder do the arithmetic, which is right for
+                             parts nobody buys alone - but the licence IS bought alone, and
+                             leaving it unpriced meant a visitor had to drive the configurator
+                             to find out what the software costs. The two figures below are the
+                             same ones in js/main.js (softwareAlone / softwareBundled); if
+                             those change, change these. -->
+                        <p class="opt-price"><strong>$75</strong> one-time <span class="opt-price-alt">— or <strong>$50</strong> as part of any kit below</span></p>
                         <p>The part that watches the camera and tells you what landed. Runs on a computer in your home rather than in the cloud, so your footage never leaves the house unless you choose to share it.</p>
                         <ul class="pricing-features">
                             <li><span class="check">✓</span> Identifies 965+ North American species</li>
@@ -898,7 +906,7 @@ docker compose up -d</code></pre>
                 <div class="screensaver-download">
                     <h3>Community Gallery Screensaver</h3>
                     <p>Turn your idle screens into a live bird gallery. Displays community photos with beautiful transitions across all your monitors.</p>
-                    <a href="#" class="btn btn-secondary screensaver-btn" id="screensaver-download-btn">
+                    <a href="https://github.com/JoeBarraco/BirdWatchAI-Releases/releases/download/v2.1.2.0/BirdWatchAI_Screensaver_1.0.0.zip" class="btn btn-secondary screensaver-btn" id="screensaver-download-btn">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                             <polyline points="7 10 12 15 17 10"/>
@@ -912,7 +920,7 @@ docker compose up -d</code></pre>
                 <div class="screensaver-download">
                     <h3>Server &amp; Camera Finder</h3>
                     <p>Running the Raspberry Pi or Docker server? <strong>BirdWatchFinder</strong> scans your network, hands you a clickable link to your server's dashboard, and finds your Tapo / ONVIF cameras' IP addresses for setup — no IP hunting.</p>
-                    <a href="#" class="btn btn-secondary" id="finder-download-btn">
+                    <a href="https://github.com/JoeBarraco/BirdWatchAI-Releases/releases/download/v1.0.0-finder/BirdWatchFinder.exe" class="btn btn-secondary" id="finder-download-btn">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                             <polyline points="7 10 12 15 17 10"/>
@@ -1030,7 +1038,7 @@ docker compose up -d</code></pre>
     </footer>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="js/main.js?v=20260822a"></script>
+    <script src="js/main.js?v=20260822b"></script>
     <script>
     function toggleMainTheme() {
         const current = document.documentElement.getAttribute('data-theme');
