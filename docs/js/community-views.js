@@ -614,10 +614,24 @@ async function loadFeeders() {
             throw new Error(`HTTP ${res.status}${body ? ' — ' + body.slice(0, 200) : ''}`);
         }
         allFeeders = await res.json();
+        // Badge stats are fetched once per page load and shared with the
+        // Stats leaderboard. Awaited (not fire-and-forget) so the cards
+        // render with their badge strips already in place rather than
+        // visibly reflowing a moment later. A failed/missing view resolves
+        // rather than throwing, so feeders still render without badges.
+        if (typeof ensureBadgeStats === 'function') await ensureBadgeStats();
         renderFeeders();
     } catch (err) {
         grid.innerHTML = `<div class="feed-error">Error loading feeders: ${esc(err.message)}</div>`;
     }
+}
+
+// The Feeders tab's Refresh button. Badges move on the scale of days, so
+// the 30s auto-refresh reuses the cached evaluation; only an explicit
+// refresh re-derives them.
+function refreshFeedersAndBadges() {
+    if (typeof invalidateBadgeStats === 'function') invalidateBadgeStats();
+    loadFeeders();
 }
 
 function feederHeartbeat(f) {
@@ -757,6 +771,7 @@ function renderFeeders() {
                 <div><dt>Location</dt><dd>${locationCell}</dd></div>
                 <div><dt>Last heartbeat</dt><dd title="${hb ? esc(new Date(hb).toLocaleString()) : ''}">${esc(fmtFeederHeartbeat(f))}</dd></div>
             </dl>
+            ${typeof feederBadgeStripHtml === 'function' ? feederBadgeStripHtml(f.id || f.feeder_id) : ''}
             <div class="feeder-actions">
                 ${f.display_name ? `<button class="feeder-view-detections" data-feeder-name="${esc(f.display_name)}" onclick="viewFeederDetections(this)">View detections →</button>` : ''}
                 ${f.display_name ? `<button class="feeder-copy-link" data-feeder-name="${esc(f.display_name)}" onclick="copyFeederDeepLink(this)" title="Copy a shareable link to this feeder's view">🔗 Copy link</button>` : ''}
@@ -1030,6 +1045,11 @@ async function loadAllDetections() {
 
 async function loadAllThenRenderStats() {
     await loadAllDetections();
+    // The Leaderboard sub-tab carries badge columns, so the (cached,
+    // page-lifetime) badge evaluation has to be in hand before the table
+    // is built. Resolves even when the view is missing, in which case the
+    // badge columns are simply omitted.
+    if (typeof ensureBadgeStats === 'function') await ensureBadgeStats();
     renderFullStats();
 }
 
@@ -1543,12 +1563,20 @@ function renderStats() {
 
     const medals = ['🥇', '🥈', '🥉'];
 
+    // Badge columns. The counts to their left are scoped to the selected
+    // PERIOD (they're derived from `visible`), whereas badges are always
+    // all-time — that's inherent to what a badge is, and the header says
+    // so rather than letting the mismatch look like a bug.
+    const hasBadges = typeof badgeLeaderboardCellsHtml === 'function';
+
     document.getElementById('stats-leaderboard').innerHTML = leaderboard.length === 0
         ? '<div class="feed-empty">No feeder data for the current filters.</div>'
         : `<table class="stats-table">
+            ${hasBadges ? `<caption class="stats-table-note">Badge columns are all-time; the counts to their left follow the selected period.</caption>` : ''}
             <thead><tr>
                 <th class="stats-rank">#</th><th>Feeder</th><th class="stats-count">Detections</th>
                 <th class="stats-pct">% of Total</th><th class="stats-count">Species</th><th class="stats-count">Streak</th><th class="stats-count">Rare / Very Rare</th>
+                ${hasBadges ? badgeLeaderboardHeadHtml() : ''}
             </tr></thead>
             <tbody>${leaderboard.map((f, i) => `
                 <tr>
@@ -1562,6 +1590,7 @@ function renderStats() {
                     <td class="stats-count">${f.species}</td>
                     <td class="stats-count">${f.streak >= 7 ? `🔥 ${f.streak}d <span class="streak-badge">HOT</span>` : f.streak > 0 ? `🔥 ${f.streak}d` : '—'}</td>
                     <td class="stats-count">${f.rareCount > 0 ? `<span style="color:#d32f2f;font-weight:600;">${f.rareCount}</span>` : '—'}</td>
+                    ${hasBadges ? badgeLeaderboardCellsHtml(f.name) : ''}
                 </tr>`).join('')}
             </tbody>
         </table>`;

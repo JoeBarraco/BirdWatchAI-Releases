@@ -3048,3 +3048,241 @@
             box-shadow: inset 1px 0 0 rgba(0, 0, 0, 0.25);
         }
 
+        /* ════════════════════════════════════════════════════════════
+           Feeder badges
+           Strip on each feeder card, plus the full badge-wall modal.
+           Rendered by docs/js/community-badges.js.
+           ════════════════════════════════════════════════════════════ */
+
+        /* ── Card strip ───────────────────────────────────────────── */
+        .feeder-badges {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+            padding-top: 10px;
+            border-top: 1px solid var(--border);
+        }
+        .feeder-badges-head {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 8px;
+        }
+        .badge-rank {
+            font-size: 0.8125rem;
+            font-weight: 600;
+            color: var(--color-primary);
+            /* Rank names run long ("Elite Ornithologist"); let them shrink
+               before the tally, which is short and must stay readable. */
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .badge-tally {
+            font-size: 0.75rem;
+            color: var(--color-gray-500);
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .badge-next {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+        .badge-next-bar {
+            flex: 1;
+            min-width: 0;
+            height: 4px;
+            border-radius: 2px;
+            background: var(--color-gray-100);
+            overflow: hidden;
+        }
+        .badge-next-fill {
+            display: block;
+            height: 100%;
+            border-radius: 2px;
+            background: var(--color-primary);
+        }
+        .badge-next-label {
+            font-size: 0.6875rem;
+            color: var(--color-gray-500);
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .badge-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            align-items: center;
+        }
+        .badge-chip {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 26px;
+            height: 26px;
+            border-radius: 7px;
+            background: var(--color-gray-100);
+            border: 1px solid var(--border);
+            font-size: 0.875rem;
+            line-height: 1;
+            cursor: default;
+        }
+        .badge-chip-more {
+            width: auto;
+            padding: 0 7px;
+            font-size: 0.6875rem;
+            font-weight: 600;
+            color: var(--color-gray-500);
+        }
+        .badge-chips-empty {
+            font-size: 0.75rem;
+            color: var(--color-gray-500);
+            font-style: italic;
+        }
+        .feeder-badges-btn {
+            align-self: flex-start;
+            font-family: inherit;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 6px;
+            border: 1px solid var(--border-input);
+            background: var(--bg-card);
+            color: var(--color-primary);
+            cursor: pointer;
+        }
+        .feeder-badges-btn:hover {
+            background: var(--color-primary);
+            color: #fff;
+            border-color: var(--color-primary);
+        }
+
+        /* ── Badge wall modal ─────────────────────────────────────── */
+        #badges-modal {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.5); z-index: 9480;
+            justify-content: center; align-items: center;
+        }
+        #badges-modal.open { display: flex; }
+        .badges-box {
+            background: var(--bg-card); border-radius: 12px;
+            padding: 1.75rem; width: 860px; max-width: 92vw;
+            max-height: 86vh; overflow-y: auto;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+        .badges-header {
+            display: flex; justify-content: space-between;
+            align-items: flex-start; gap: 12px;
+        }
+        .badges-box h3 {
+            font-family: 'Fraunces', Georgia, serif;
+            font-size: 1.25rem; margin: 0 0 0.25rem;
+            color: var(--color-gray-900);
+        }
+        .badges-sub { font-size: 0.85rem; color: var(--color-gray-500); }
+        .badges-close {
+            background: none; border: none; cursor: pointer;
+            font-size: 1.1rem; color: var(--color-gray-500);
+            padding: 2px 6px; line-height: 1; flex-shrink: 0;
+        }
+        .badges-close:hover { color: var(--color-gray-900); }
+        .badges-explainer {
+            margin: 0.9rem 0 1.25rem;
+            padding: 9px 12px;
+            border-radius: 8px;
+            background: var(--color-gray-100);
+            font-size: 0.78rem;
+            line-height: 1.45;
+            color: var(--color-gray-700);
+        }
+        .badge-cat { margin-bottom: 1.5rem; }
+        .badge-cat-head {
+            display: flex; align-items: baseline; gap: 8px;
+            font-family: 'Fraunces', Georgia, serif;
+            font-size: 0.95rem; font-weight: 600;
+            color: var(--color-gray-900);
+            margin: 0 0 0.6rem;
+            padding-bottom: 5px;
+            border-bottom: 1px solid var(--border);
+        }
+        .badge-cat-count {
+            margin-left: auto;
+            font-family: inherit;
+            font-size: 0.75rem; font-weight: 600;
+            color: var(--color-gray-500);
+        }
+        .badge-cat-note {
+            margin: -0.25rem 0 0.7rem;
+            font-size: 0.72rem; font-style: italic;
+            color: var(--color-gray-500);
+        }
+        .badge-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(158px, 1fr));
+            gap: 8px;
+        }
+        .badge-tile {
+            display: flex; flex-direction: column; gap: 3px;
+            padding: 10px 11px;
+            border-radius: 9px;
+            border: 1px solid var(--border);
+            background: var(--bg-input);
+        }
+        .badge-tile.earned {
+            border-color: var(--color-primary);
+            /* Faint primary wash so an earned tile reads as filled-in at a
+               glance rather than relying on the icon's colour alone. */
+            background: color-mix(in srgb, var(--color-primary) 8%, var(--bg-card));
+        }
+        .badge-tile.locked { opacity: 0.62; }
+        .badge-tile.locked .badge-tile-icon { filter: grayscale(1); }
+        .badge-tile-icon { font-size: 1.35rem; line-height: 1.1; }
+        .badge-tile-name {
+            font-size: 0.8125rem; font-weight: 600;
+            color: var(--color-gray-900);
+            line-height: 1.25;
+        }
+        .badge-tile-desc {
+            font-size: 0.6875rem;
+            color: var(--color-gray-500);
+            line-height: 1.35;
+        }
+        .badge-tile-bar {
+            display: block; height: 3px; margin-top: 3px;
+            border-radius: 2px; overflow: hidden;
+            background: var(--color-gray-100);
+        }
+        .badge-tile-fill {
+            display: block; height: 100%; border-radius: 2px;
+            background: var(--color-gray-500);
+        }
+        .badge-tile-progress {
+            font-size: 0.6875rem; font-variant-numeric: tabular-nums;
+            color: var(--color-gray-500);
+        }
+        .badge-tile-points {
+            margin-top: auto; padding-top: 4px;
+            font-size: 0.6875rem; font-weight: 600;
+            color: var(--color-gray-500);
+        }
+        .badge-tile.earned .badge-tile-points { color: var(--color-primary); }
+
+        /* ── Leaderboard columns ──────────────────────────────────── */
+        .badge-rank-cell { white-space: nowrap; font-size: 0.8125rem; }
+        .stats-table-note {
+            caption-side: bottom;
+            padding-top: 8px;
+            text-align: left;
+            font-size: 0.7rem; font-style: italic;
+            color: var(--color-gray-500);
+        }
+
+        @media (max-width: 640px) {
+            .badges-box { padding: 1.25rem; max-height: 92vh; }
+            .badge-grid { grid-template-columns: repeat(auto-fill, minmax(136px, 1fr)); }
+            .badge-rank { font-size: 0.75rem; }
+            .badge-next-label { font-size: 0.65rem; }
+        }
+

@@ -13,7 +13,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="BirdWatchAI">
-    <link rel="stylesheet" href="css/community.css?v=5">
+    <link rel="stylesheet" href="css/community.css?v=6">
 </head>
 <body>
 <!-- Top navbar with auth controls -->
@@ -319,7 +319,7 @@
                     <option value="name">Name (A–Z)</option>
                     <option value="recent">Last update</option>
                 </select>
-                <button class="refresh-btn" onclick="loadFeeders()">↺ Refresh</button>
+                <button class="refresh-btn" onclick="refreshFeedersAndBadges()">↺ Refresh</button>
             </div>
         </div>
         <div id="feeders-grid" class="feeders-grid">
@@ -455,6 +455,27 @@
         <div style="display:flex;gap:8px;margin-top:1rem;">
             <button class="btn-cancel" style="flex:1;padding:10px 14px;border-radius:6px;border:1px solid var(--border);cursor:pointer;font-family:inherit;font-size:0.875rem;font-weight:600;background:var(--bg-card);color:var(--color-gray-700);" onclick="closeLifeList()">Close</button>
         </div>
+    </div>
+</div>
+
+<!-- ── Feeder badge wall ─────────────────────────────────────────
+     Opened from a feeder card's "All badges" button. Body is built by
+     openFeederBadges() in community-badges.js. -->
+<div id="badges-modal" role="dialog" aria-modal="true" aria-labelledby="badges-modal-title">
+    <div class="badges-box">
+        <div class="badges-header">
+            <div>
+                <h3 id="badges-modal-title">Community Badges</h3>
+                <span class="badges-sub" id="badges-modal-sub"></span>
+            </div>
+            <button class="badges-close" onclick="closeFeederBadges()" aria-label="Close">✕</button>
+        </div>
+        <p class="badges-explainer">
+            Earned on <strong>shared</strong> sightings only, so these won't match the
+            achievement count inside the app — a feeder's community history starts when
+            it joined and switched sharing on.
+        </p>
+        <div id="badges-modal-body"></div>
     </div>
 </div>
 
@@ -795,7 +816,11 @@
      now exists, so it hides every view, matches none, and leaves a blank page under the tab bar.
      Bump these whenever a change to the view list or the render hooks must land immediately. -->
 <script src="js/community-core.js?v=2"></script>
-<script src="js/community-views.js?v=1"></script>
+<!-- ?v=2: renderFeeders() now emits a badge strip per card and the Leaderboard
+     grew four badge columns. A stale copy would leave the new badges modal and
+     community-badges.js loaded but never called, so the feature would silently
+     not appear. -->
+<script src="js/community-views.js?v=2"></script>
 <script src="js/community-social.js"></script>
 <!-- Clips tab. Must load before community-auth.js: the theater's key handler calls
      stopImmediatePropagation so the global single-key shortcuts registered there don't also fire
@@ -814,6 +839,13 @@
 <!-- Interactive chart runtime: crosshair tooltips on the trend chart, per-species hover rows on
      the Activity / Calendar / Rarity Mix charts. No-op until a [data-bw-chart] element appears. -->
 <script src="js/community-charts.js"></script>
+<!-- Feeder badges: the achievement catalog ported from the WinForms app's
+     BadgeService, scored per feeder against the feeder_badge_stats view
+     (supabase/setup-feeder-badges.sql). Rules are evaluated client-side and
+     never stored, so a species correction re-scores automatically. Must load
+     after community-core.js (sbHeaders) and community-social.js (esc); both
+     are only needed at call time, not parse time. -->
+<script src="js/community-badges.js?v=1"></script>
 
 <!-- Everything on this page is content people chose to publish from their own feeders, and this is
      where they arrive to look at it — so the privacy policy belongs here, not only on the landing
