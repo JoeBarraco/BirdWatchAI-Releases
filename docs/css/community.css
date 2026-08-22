@@ -1494,6 +1494,119 @@
             backdrop-filter: blur(4px);
         }
 
+        /* ── Clips view ───────────────────────────────────────── */
+        /* Cards reuse .gallery-card for shape and hover; only the thumbnail differs, since a clip
+           tile needs a play affordance over the poster frame. */
+        #clips-view { display: none; }
+        .clips-summary {
+            font-size: 0.85rem;
+            color: var(--color-gray-500);
+            margin-left: auto;
+        }
+        .clip-thumb {
+            position: relative;
+            line-height: 0;     /* kills the inline-image descender gap under the poster */
+        }
+        /* …but the overlaid text badge still needs a real line box, or it collapses to a sliver. */
+        .clip-thumb .gallery-card-badge { line-height: 1.5; }
+        .clip-thumb img {
+            width: 100%;
+            aspect-ratio: 4/3;
+            object-fit: cover;
+            display: block;
+        }
+        .clip-thumb-empty {
+            width: 100%;
+            aspect-ratio: 4/3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            background: linear-gradient(135deg, rgba(0,0,0,0.35), rgba(0,0,0,0.15));
+        }
+        .clip-play-badge {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.5);
+            color: #fff;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding-left: 3px;   /* optically centre the triangle */
+            backdrop-filter: blur(3px);
+            transition: background 0.15s, transform 0.15s;
+            pointer-events: none;
+        }
+        .clip-card:hover .clip-play-badge {
+            background: var(--color-primary);
+            transform: translate(-50%, -50%) scale(1.08);
+        }
+        .clips-more {
+            display: block;
+            margin: 1.25rem auto 0;
+            font-family: inherit;
+            font-size: 0.875rem;
+            font-weight: 600;
+            padding: 9px 22px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--bg-card);
+            color: var(--color-gray-900);
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .clips-more:hover { background: var(--color-primary); color: #fff; }
+
+        /* ── Clip theater ─────────────────────────────────────── */
+        /* Shares the slideshow's chrome classes (.slideshow-chrome / -bar / -arrow / -ctrl), so the
+           two fullscreen players look and behave alike. Only the stage differs: <video> slots
+           instead of <img>, with A/B double-buffering so the next clip is loaded before the
+           current one ends. */
+        #clip-theater {
+            display: none;
+            position: fixed;
+            inset: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+            z-index: 9997;
+        }
+        #clip-theater.open { display: block; }
+        .clip-stage {
+            position: absolute;
+            inset: 0;
+        }
+        .clip-slide {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: #000;
+            opacity: 0;
+            transition: opacity 0.25s ease;
+        }
+        .clip-slide.active { opacity: 1; }
+        .clip-subcaption {
+            font-family: var(--font-body, 'Source Sans 3', sans-serif);
+            font-size: 0.85rem;
+            font-weight: 400;
+            color: rgba(255,255,255,0.72);
+            margin-top: 2px;
+        }
+        #clip-theater.idle .slideshow-chrome,
+        #clip-theater.idle .slideshow-bar,
+        #clip-theater.idle .slideshow-arrow { opacity: 0; }
+        #clip-theater .slideshow-arrow,
+        #clip-theater .slideshow-chrome,
+        #clip-theater .slideshow-bar { z-index: 3; }
+
         /* ── Slideshow modal ──────────────────────────────────── */
         #slideshow-modal {
             display: none;

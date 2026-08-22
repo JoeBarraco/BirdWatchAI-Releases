@@ -13,7 +13,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="BirdWatchAI">
-    <link rel="stylesheet" href="css/community.css?v=2">
+    <link rel="stylesheet" href="css/community.css?v=3">
 </head>
 <body>
 <!-- Top navbar with auth controls -->
@@ -173,6 +173,7 @@
         <button class="view-tab active" role="tab" aria-selected="true" aria-controls="feed-view" onclick="switchView('feed', this)">📋 Feed</button>
         <button class="view-tab" role="tab" aria-selected="false" aria-controls="map-view" onclick="switchView('map', this)">🗺️ Map</button>
         <button class="view-tab" role="tab" aria-selected="false" aria-controls="gallery-view" onclick="switchView('gallery', this)">🖼️ Gallery</button>
+        <button class="view-tab" role="tab" aria-selected="false" aria-controls="clips-view" onclick="switchView('clips', this)">🎬 Clips</button>
         <button class="view-tab" role="tab" aria-selected="false" aria-controls="stats-view" onclick="switchView('stats', this)">📊 Stats</button>
         <button class="view-tab" role="tab" aria-selected="false" aria-controls="feeders-view" onclick="switchView('feeders', this)">🪺 Feeders</button>
     </div>
@@ -256,6 +257,46 @@
         </div>
     </div>
 
+    <!-- Clips view -->
+    <div id="clips-view" role="tabpanel">
+        <div class="gallery-controls">
+            <button class="gallery-slideshow-btn" id="clips-playall" onclick="startClipTheater()">▶ Play all</button>
+            <select id="clips-sort" class="filter-select" onchange="onClipsSortChange()" aria-label="Sort clips">
+                <option value="recent">Newest First</option>
+                <option value="oldest">Oldest First</option>
+                <option value="alpha">By Species</option>
+                <option value="random">Random</option>
+            </select>
+            <span id="clips-summary" class="clips-summary"></span>
+        </div>
+        <div id="clips-grid" class="gallery-grid"></div>
+        <button id="clips-more" class="clips-more" onclick="showMoreClips()" style="display:none;">Show more</button>
+    </div>
+
+    <!-- Clip theater: back-to-back playback of whatever the filter bar currently selects -->
+    <div id="clip-theater" role="dialog" aria-modal="true" aria-label="Clip player">
+        <div class="clip-stage">
+            <video class="clip-slide active" id="clip-video-a" playsinline preload="auto"></video>
+            <video class="clip-slide" id="clip-video-b" playsinline preload="auto"></video>
+        </div>
+        <div class="slideshow-chrome">
+            <div class="slideshow-caption">
+                <div id="clip-caption"></div>
+                <div class="clip-subcaption" id="clip-subcaption"></div>
+            </div>
+            <div class="slideshow-counter" id="clip-counter"></div>
+            <button class="slideshow-close" id="clip-close" aria-label="Close">✕</button>
+        </div>
+        <button class="slideshow-arrow slideshow-prev" id="clip-prev" aria-label="Previous clip">‹</button>
+        <button class="slideshow-arrow slideshow-next" id="clip-next" aria-label="Next clip">›</button>
+        <div class="slideshow-bar">
+            <button class="slideshow-ctrl" id="clip-playpause" onclick="toggleClipPause()" title="Play / pause (space)" aria-label="Play or pause">⏸</button>
+            <div class="slideshow-progress"><div class="slideshow-progress-fill" id="clip-progress-fill"></div></div>
+            <button class="slideshow-ctrl" id="clip-mute" onclick="toggleClipMute()" title="Mute / unmute (m)" aria-label="Mute">🔊</button>
+            <button class="slideshow-ctrl" id="clip-fullscreen-btn" onclick="toggleClipFullscreen()" title="Toggle fullscreen (f)" aria-label="Toggle fullscreen">⛶</button>
+        </div>
+    </div>
+
     <!-- Feeders view -->
     <div id="feeders-view" role="tabpanel" style="display:none;">
         <div class="feeders-toolbar">
@@ -322,8 +363,11 @@
     <kbd>/</kbd> &nbsp;Focus search bar<br>
     <kbd>f</kbd> &nbsp;Toggle My Likes filter<br>
     <kbd>r</kbd> &nbsp;Refresh feed<br>
-    <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd> &nbsp;Switch Feed / Map / Gallery / Stats<br>
-    <kbd>Esc</kbd> &nbsp;Close lightbox / hints
+    <kbd>1</kbd>&hellip;<kbd>6</kbd> &nbsp;Feed / Map / Gallery / Clips / Stats / Feeders<br>
+    <kbd>Esc</kbd> &nbsp;Close lightbox / hints<br>
+    <strong style="display:block;margin:6px 0 4px;">While a clip is playing</strong>
+    <kbd>&larr;</kbd> / <kbd>&rarr;</kbd> &nbsp;Previous / next clip<br>
+    <kbd>space</kbd> &nbsp;Pause &nbsp; <kbd>m</kbd> &nbsp;Mute &nbsp; <kbd>f</kbd> &nbsp;Fullscreen
 </div>
 
 <!-- Moderator login modal -->
@@ -742,6 +786,10 @@
 <script src="js/community-core.js"></script>
 <script src="js/community-views.js"></script>
 <script src="js/community-social.js"></script>
+<!-- Clips tab. Must load before community-auth.js: the theater's key handler calls
+     stopImmediatePropagation so the global single-key shortcuts registered there don't also fire
+     while a clip is playing, and that only works if this listener is registered first. -->
+<script src="js/community-clips.js"></script>
 <!-- ?v= on the moderator-auth scripts: moderator calls now carry a session
      token instead of a replayed password, and the RPCs no longer accept the old
      shape. A moderator holding a cached copy of the previous client would get

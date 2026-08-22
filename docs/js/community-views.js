@@ -538,6 +538,7 @@ function switchView(view, btn) {
     document.getElementById('feed-view').style.display    = view === 'feed'    ? 'grid'  : 'none';
     document.getElementById('map-view').style.display     = view === 'map'     ? 'block' : 'none';
     document.getElementById('gallery-view').style.display = view === 'gallery' ? 'block' : 'none';
+    document.getElementById('clips-view').style.display   = view === 'clips'   ? 'block' : 'none';
     document.getElementById('stats-view').style.display   = view === 'stats'   ? 'block' : 'none';
     document.getElementById('feeders-view').style.display = view === 'feeders' ? 'block' : 'none';
 
@@ -558,6 +559,8 @@ function switchView(view, btn) {
         }));
     } else if (view === 'gallery') {
         loadAllThenRenderGallery();
+    } else if (view === 'clips') {
+        loadAllThenRenderClips();
     } else if (view === 'stats') {
         loadAllThenRenderStats();
     } else if (view === 'feeders') {
@@ -2325,6 +2328,7 @@ function filterBySpecies(btn) {
     document.getElementById('feed-view').style.display    = 'grid';
     document.getElementById('map-view').style.display     = 'none';
     document.getElementById('gallery-view').style.display = 'none';
+    document.getElementById('clips-view').style.display   = 'none';
     document.getElementById('stats-view').style.display   = 'none';
     document.getElementById('feeders-view').style.display = 'none';
     stopFeedersAutoRefresh();

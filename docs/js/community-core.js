@@ -155,6 +155,7 @@ async function refilter() {
         renderFeed();
         if (currentView === 'map')     renderMap();
         if (currentView === 'gallery') renderGallery();
+        if (currentView === 'clips')   renderClips();
         if (currentView === 'stats')   renderFullStats();
         // The Feeders tab draws from allFeeders rather than from the
         // detections, so it was never re-rendered here — changing community
@@ -565,8 +566,10 @@ async function loadFeed(append = false) {
         renderFeed();
         if (currentView === 'map')     renderMap();
         if (currentView === 'gallery') renderGallery();
+        if (currentView === 'clips')   renderClips();
         if (currentView === 'stats')   renderFullStats();
         if (typeof refreshSlideshowPhotos === 'function') refreshSlideshowPhotos();
+        if (typeof refreshClipTheater === 'function') refreshClipTheater();
         checkForRareNotifications(allDetections);
         renderBirdOfTheDay(allDetections);
         // Confetti for brand-new Very Rare detections (even without notifications)
@@ -700,6 +703,7 @@ async function refreshFeed() {
         renderFeed();
         if (currentView === 'map') renderMap();
         if (typeof refreshSlideshowPhotos === 'function') refreshSlideshowPhotos();
+        if (typeof refreshClipTheater === 'function') refreshClipTheater();
         if (fresh.length) {
             checkForRareNotifications(allDetections);
             renderBirdOfTheDay(allDetections);
@@ -832,6 +836,7 @@ async function loadAllDropdownOptions(force = false) {
             renderFeed();
             if (currentView === 'map')     renderMap();
             if (currentView === 'gallery') renderGallery();
+            if (currentView === 'clips')   renderClips();
             if (currentView === 'stats')   renderFullStats();
         }
     } catch (e) {

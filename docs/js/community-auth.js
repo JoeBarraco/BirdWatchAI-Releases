@@ -177,6 +177,7 @@ document.addEventListener('keydown', e => {
         closeLightbox();
         closeCarousel();
         closeSlideshow();
+        if (typeof closeClipTheater === 'function') closeClipTheater();
         closeDetailModal();
         kbdHintVisible = false;
         document.getElementById('kbd-hint').classList.remove('visible');
@@ -187,10 +188,14 @@ document.addEventListener('keydown', e => {
     if (e.key === '/') { e.preventDefault(); document.getElementById('search-input').focus(); return; }
     if (e.key === 'f') { toggleFavorites(); return; }
     if (e.key === 'r') { loadFeed(); return; }
+    // Indices are positions in the tab bar, so they shift whenever a tab is added — keep this
+    // list in the same order as the .view-tab buttons in community.html.
     if (e.key === '1') { switchView('feed',    document.querySelectorAll('.view-tab')[0]); return; }
     if (e.key === '2') { switchView('map',     document.querySelectorAll('.view-tab')[1]); return; }
     if (e.key === '3') { switchView('gallery', document.querySelectorAll('.view-tab')[2]); return; }
-    if (e.key === '4') { switchView('stats',   document.querySelectorAll('.view-tab')[3]); return; }
+    if (e.key === '4') { switchView('clips',   document.querySelectorAll('.view-tab')[3]); return; }
+    if (e.key === '5') { switchView('stats',   document.querySelectorAll('.view-tab')[4]); return; }
+    if (e.key === '6') { switchView('feeders', document.querySelectorAll('.view-tab')[5]); return; }
 });
 
 // ── Arrow-key navigation for tab lists (ARIA tabs pattern) ──
