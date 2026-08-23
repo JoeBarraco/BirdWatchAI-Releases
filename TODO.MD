@@ -121,6 +121,27 @@ Monetization & Product
 - Add a referral program — existing users get a discount for referring someone who buys.
 - ~~Add affiliate links to recommended cameras (TAPO C120, etc.).~~ DONE
 - Add a subscription tier for extended cloud storage of photos/videos beyond the free Basic retention window (14 days as published on the landing page).
+- **Sell communities — users buy an unlock code, create their own community, and pick its admins.** Requested 2026-08-23. Tiers by feeder count: **1–5 feeders $20**, **6–25 $50**, **26–100 $150** (see the boundary note below — the numbers as first written overlapped at 5 and 25). A Gumroad product per tier delivers a one-per-purchase unlock code; redeeming it lets that user create one community at that tier and become its owner. Public or private is the buyer's choice.
+
+     **Most of the substrate is already built** — this is much less work than it sounds, and the parts that exist should not be rebuilt:
+     - `communities.visibility` is already `public | private` with a check constraint, and private already suppresses precise feeder coordinates by default (`suppress_location`).
+     - `community_members.role` is already `owner | moderator | viewer`, so "choose your admins" is largely a UI job over an existing column.
+     - `community_invites` already invites by **email** with a role, a token and a 30-day expiry, and materializes membership on first sign-in — so an owner can already staff a community with people who have no account yet.
+     - `community_feeders` already has the `pending | approved | rejected` join flow, initiated feeder-side because `device_key` is the only proof of feeder ownership.
+     - RLS already hides private communities' feeders and detections from everyone outside them (`community_user_sees_feeder`).
+
+     **What's actually new:**
+     - **A tier and a feeder cap on `communities`** (`tier`, `feeder_limit`), enforced where a join is *approved* rather than where it's requested — otherwise a full community silently swallows requests. Decide what a cap breach does to feeders already approved: grandfather them, or block new joins only.
+     - **An unlock-code table and a redeem RPC.** Codes minted by a Gumroad webhook, single-use, bound to a tier, and marked redeemed atomically so one code can't create two communities. This is the same shape as the licence webhook — reuse `gumroad-license-webhook` as the template, including the `GUMROAD_REQUIRE_CALLBACK` lock-down item from that punch list, so a spoofed ping can't mint free communities.
+     - **A self-serve create flow.** `community_create` exists but is deliberately reachable only through a moderator-credentialed admin wrapper (its `execute` is revoked from `public`, `anon` and `authenticated` — see the PUBLIC-grant trap in CLAUDE.md). A user-facing path needs a *new* RPC that takes a code, validates it, and creates the community in one transaction. **Do not loosen the grants on the existing function** — that's exactly the hole that was open from 2026-04-06 to 2026-08-21.
+     - **Slug collision handling on a user-facing form.** `communities.slug` is unique and today only a moderator picks one; a public form needs to handle "taken" gracefully and reject reserved words.
+
+     **Open questions, worth settling before any code:**
+     - **One-time or recurring?** This is the big one. "Unlock code" implies one-time, but a community is an ongoing hosting cost — 100 feeders publishing images and clips indefinitely for a single $150 is a bet on storage prices. Stream 2 (tiered storage) is a subscription, and these two interact: does a community's tier cover its feeders' storage, or does each feeder still carry its own? Decide together, not separately.
+     - **Does the community fee stack on top of per-install licences?** A school with 100 feeders already owes 100 × $75. If the $150 is *instead of* that, this undercuts Stream 1; if it's *in addition*, say so plainly on the storefront, because "buy a community" reads like it includes the software.
+     - **Tier boundaries overlap as written** (1–5 / 5–25 / 25–100). Clean bands are 1–5 / 6–25 / 26–100. Worth noting the implied per-feeder price is $4 → $2 → $1.50, which is a sensible volume curve.
+     - **Upgrade path.** Buying the $50 tier after the $20 one: a second code that raises the existing community's tier, or a fresh community? Raising in place is friendlier and avoids orphaning feeders.
+     - **Refund and chargeback.** A Gumroad refund should suspend the community rather than delete it — the member feeders' detections are other people's data.
 
 Technical
 - ~~Document and promote the embeddable widget (widget.html exists but isn't documented). A copy-paste iframe for "Latest birds from my feeder."~~ DONE
