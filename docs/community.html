@@ -983,12 +983,12 @@
      a stale community-views.js is the bad mix: the old switchView() has no branch for a tab that
      now exists, so it hides every view, matches none, and leaves a blank page under the tab bar.
      Bump these whenever a change to the view list or the render hooks must land immediately. -->
-<script src="js/community-core.js?v=2"></script>
+<script src="js/community-core.js?v=3"></script>
 <!-- ?v=2: renderFeeders() now emits a badge strip per card and the Leaderboard
      grew four badge columns. A stale copy would leave the new badges modal and
      community-badges.js loaded but never called, so the feature would silently
      not appear. -->
-<script src="js/community-views.js?v=3"></script>
+<script src="js/community-views.js?v=4"></script>
 <!-- ?v=2: gained escJs(), which community-views / -auth / -communities now all
      call. Every one of those must be re-fetched with it — a cached social.js
      leaves escJs undefined and the handlers throw. -->

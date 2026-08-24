@@ -537,9 +537,15 @@ async function loadFeed(append = false) {
         // so the paged feed is already complete and infinite scroll handles the
         // rest. Only genuinely client-side work forces a full load.
         const sortOrder = document.getElementById('sort-filter')?.value || 'recent';
+        // 'map' belongs here for the same reason as stats/gallery/clips: it
+        // summarises the whole period rather than paging through it. It was
+        // missing, so renderMap() plotted whatever the feed happened to hold —
+        // one page, 60 rows — and every marker's count was wrong by orders of
+        // magnitude with nothing on screen to say so.
         const needsAll = sortOrder === 'liked' || sortOrder === 'commented'
             || hasClientOnlyFilter()
-            || currentView === 'stats' || currentView === 'gallery' || currentView === 'clips';
+            || currentView === 'stats' || currentView === 'gallery'
+            || currentView === 'clips' || currentView === 'map';
         if (!append && !feedExhausted && needsAll) {
             await loadAllDetections();
         }

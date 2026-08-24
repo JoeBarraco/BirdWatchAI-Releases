@@ -328,6 +328,26 @@ function renderLegend(usedSpecies) {
     ).join('');
 }
 
+// The map summarises the whole period, so it needs the whole period — the same
+// contract gallery, clips and stats each declare with their own wrapper. The
+// map never had one, so it drew whatever the feed had paged in: 60 rows of
+// 10,011, with marker counts to match and nothing on screen admitting it.
+async function loadAllThenRenderMap() {
+    if (!feedExhausted) {
+        const loading = document.getElementById('map-loading');
+        if (loading) {
+            loading.textContent = 'Loading all detections…';
+            loading.style.display = 'block';
+        }
+        await loadAllDetections();
+        if (loading) loading.style.display = 'none';
+        // Bail if the operator switched tabs while the pages were in flight;
+        // renderMap() would otherwise measure a hidden div and lay out wrong.
+        if (currentView !== 'map') return;
+    }
+    renderMap();
+}
+
 async function renderMap() {
     initMap();
 
@@ -555,7 +575,7 @@ function switchView(view, btn) {
         requestAnimationFrame(() => requestAnimationFrame(() => {
             if (!map) initMap();
             map.invalidateSize();
-            renderMap();
+            loadAllThenRenderMap();
         }));
     } else if (view === 'gallery') {
         loadAllThenRenderGallery();
