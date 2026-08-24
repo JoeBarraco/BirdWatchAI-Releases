@@ -938,3 +938,84 @@ function suggestCommunitySlug() {
     slugEl.value = nameEl.value.trim().toLowerCase()
         .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
 }
+
+// ── Bulk invite: paste a roster ───────────────────────────
+
+function toggleCommunityBulk() {
+    const box = document.getElementById('community-bulk-box');
+    if (!box) return;
+    box.style.display = box.style.display === 'none' ? '' : 'none';
+    if (box.style.display !== 'none') document.getElementById('community-bulk-emails')?.focus();
+}
+
+/**
+ * Invite everything in the textarea in one call.
+ *
+ * Splitting happens here rather than server-side because "one per line, or
+ * commas, or semicolons" is a presentation concern — the RPC takes a clean
+ * text[]. Everything that decides whether an address is ACCEPTED stays in
+ * community_invite_bulk: validity, duplicates, existing members, and the
+ * owner-only rule for inviting moderators.
+ */
+async function bulkInviteToCommunity() {
+    const communityId = document.getElementById('community-panel-select')?.value;
+    const raw    = document.getElementById('community-bulk-emails').value;
+    const role   = document.getElementById('community-bulk-role').value;
+    const status = document.getElementById('community-bulk-status');
+    const btn    = document.getElementById('community-bulk-btn');
+
+    const say = (html, ok) => {
+        status.style.color = ok ? '#2eaa4f' : '#e74c3c';
+        status.innerHTML = html;
+        status.style.display = 'block';
+    };
+
+    if (!communityId) { say('Pick a community first.', false); return; }
+
+    const emails = raw.split(/[\s,;]+/).map(s => s.trim()).filter(Boolean);
+    if (!emails.length) { say('Paste at least one address.', false); return; }
+    if (emails.length > 1000) {
+        say(`That's ${emails.length} addresses — paste up to 1000 at a time.`, false);
+        return;
+    }
+
+    btn.disabled = true;
+    say(`Inviting ${emails.length}…`, true);
+
+    const { data, error } = await sbRpc('community_invite_bulk', {
+        p_community_id: communityId,
+        p_emails:       emails,
+        p_role:         role,
+    }, true);
+
+    btn.disabled = false;
+
+    if (error) { say(error.message || 'Bulk invite failed.', false); return; }
+
+    // One line per outcome, and the rejected addresses listed — a bare count
+    // leaves the owner unable to find the typo in a 400-line paste.
+    const rows = Array.isArray(data) ? data : [];
+    const by = rows.reduce((a, r) => ((a[r.status] = a[r.status] || []).push(r.email), a), {});
+    const n = k => (by[k] || []).length;
+
+    const parts = [];
+    if (n('invited'))        parts.push(`<strong>${n('invited')} invited</strong>`);
+    if (n('already_member')) parts.push(`${n('already_member')} already a member`);
+    if (n('duplicate'))      parts.push(`${n('duplicate')} duplicate`);
+    if (n('invalid'))        parts.push(`${n('invalid')} not a valid address`);
+
+    let html = parts.join(' · ');
+    for (const bad of ['invalid', 'already_member']) {
+        if (n(bad)) {
+            const label = bad === 'invalid' ? 'Not sent' : 'Already members';
+            html += `<div style="margin-top:0.35rem;font-size:0.75rem;color:var(--color-gray-500);">`
+                  + `${label}: ${by[bad].map(esc).join(', ')}</div>`;
+        }
+    }
+    say(html, n('invited') > 0);
+
+    if (n('invited')) {
+        document.getElementById('community-bulk-emails').value = '';
+        await refreshCommunityMembers();
+    }
+}

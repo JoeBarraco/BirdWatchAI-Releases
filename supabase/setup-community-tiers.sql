@@ -381,3 +381,117 @@ grant  execute on function community_tier_status(uuid) to authenticated;
 --
 -- Expected: redeem and tier_status are auth_user only (anon false, pub false);
 -- decide_feeder the same; tier_limit is a pure lookup and may be public.
+
+-- ── 7. Bulk invite ──────────────────────────────────────────────────
+--
+-- `community_invites` was keyed by email precisely so a roster could be
+-- pasted in ("paste 400 addresses, get 400 pending invites" — see the table
+-- comment in setup-communities.sql). This is the RPC that makes that one
+-- round-trip instead of 400.
+--
+-- Same rules as community_invite, deliberately: same role guard, same
+-- owner-only restriction on inviting moderators, same upsert that reopens a
+-- revoked or expired address. Divergence between the two would mean a bulk
+-- paste could grant something the single-invite form refuses.
+
+/**
+ * Invite many addresses at once. Returns one row per input so the UI can show
+ * exactly which addresses took and which were rejected, rather than a count.
+ *
+ * Invalid and duplicate addresses are REPORTED, not fatal: a 400-line paste
+ * from a school roster will contain a typo, and failing the whole batch for one
+ * bad line would make the feature useless at the size it exists for.
+ */
+create or replace function community_invite_bulk(
+  p_community_id uuid,
+  p_emails       text[],
+  p_role         text default 'viewer'
+)
+returns table (email text, status text, token text)
+language plpgsql security definer
+as $$
+-- The RETURNS TABLE columns `email` and `token` are also PL/pgSQL variables, and
+-- they collide with community_invites' own columns in `on conflict (…, email)`
+-- and `returning *` — Postgres raises "column reference is ambiguous" and the
+-- insert never runs. Tell PL/pgSQL that a bare name means the COLUMN; the OUT
+-- values are only ever produced positionally by `return query`, never referenced
+-- by name, so nothing here needs the variable meaning.
+#variable_conflict use_column
+declare
+  my_role text;
+  raw     text;
+  addr    text;
+  seen    text[] := '{}';
+  inv     community_invites%rowtype;
+begin
+  perform community_require_role(p_community_id, auth.uid(),
+                                 array['owner', 'moderator']);
+
+  my_role := community_role(p_community_id, auth.uid());
+  if p_role not in ('viewer', 'moderator') then
+    raise exception 'Role must be viewer or moderator';
+  end if;
+  if p_role = 'moderator' and my_role <> 'owner' then
+    raise exception 'Only the community owner can invite moderators';
+  end if;
+
+  -- Cap the batch. Unbounded input here is a way to make one request hold a
+  -- transaction open for a very long time.
+  if array_length(p_emails, 1) is null then
+    return;
+  end if;
+  if array_length(p_emails, 1) > 1000 then
+    raise exception 'Too many addresses at once — paste up to 1000 per batch (got %)',
+      array_length(p_emails, 1);
+  end if;
+
+  foreach raw in array p_emails loop
+    addr := lower(trim(raw));
+
+    if addr = '' then
+      continue;                                   -- blank lines in a paste
+    end if;
+
+    -- Deliberately loose: the authoritative check is whether the invite is
+    -- ever redeemed. Rejecting valid-but-unusual addresses is worse than
+    -- accepting one that never gets claimed.
+    if addr !~ '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$' then
+      return query select addr, 'invalid'::text, null::text;
+      continue;
+    end if;
+
+    if addr = any(seen) then
+      return query select addr, 'duplicate'::text, null::text;
+      continue;
+    end if;
+    seen := seen || addr;
+
+    -- Already a member? Say so rather than creating an invite they can't use.
+    if exists (
+      select 1 from community_members m
+        join auth.users u on u.id = m.user_id
+       where m.community_id = p_community_id and lower(u.email) = addr
+    ) then
+      return query select addr, 'already_member'::text, null::text;
+      continue;
+    end if;
+
+    insert into community_invites (community_id, email, role, invited_by)
+    values (p_community_id, addr, p_role, auth.uid())
+    on conflict (community_id, email) do update
+      set role        = excluded.role,
+          invited_by  = excluded.invited_by,
+          expires_at  = now() + interval '30 days',
+          redeemed_at = null,
+          redeemed_by = null,
+          token       = encode(gen_random_bytes(18), 'hex')
+    returning * into inv;
+
+    return query select inv.email, 'invited'::text, inv.token;
+  end loop;
+end;
+$$;
+
+revoke execute on function community_invite_bulk(uuid, text[], text) from public;
+revoke execute on function community_invite_bulk(uuid, text[], text) from anon;
+grant  execute on function community_invite_bulk(uuid, text[], text) to authenticated;

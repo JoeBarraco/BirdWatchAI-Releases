@@ -731,7 +731,6 @@
         <p style="font-size:0.8rem;color:var(--color-gray-500);margin-bottom:0.5rem;">
             No email is sent. The invite is held against the address and applied automatically
             the next time they sign in with it — so there is nothing to forward and no link to leak.
-            Paste one address at a time.
         </p>
         <div class="mod-add-form">
             <input type="email" id="community-invite-email" placeholder="Email address">
@@ -743,6 +742,37 @@
             <button class="mod-remove-btn" onclick="revokeCommunityInvite()">Revoke</button>
         </div>
         <div id="community-invite-status" style="font-size:0.8rem;margin-top:0.5rem;display:none;"></div>
+
+        <!-- Bulk roster paste. community_invites was keyed by email specifically so
+             this would work (see the table comment in setup-communities.sql), and
+             community_invite_bulk does the whole list in one round-trip — 1000
+             addresses in under 100ms — rather than one RPC per line. -->
+        <button type="button" id="community-bulk-toggle" onclick="toggleCommunityBulk()"
+                style="margin-top:0.75rem;font-size:0.8rem;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--color-primary);cursor:pointer;font-family:inherit;font-weight:600;">
+            + Paste a list of addresses
+        </button>
+
+        <div id="community-bulk-box" style="display:none;border:1px solid var(--border);border-radius:8px;padding:0.75rem;margin-top:0.5rem;">
+            <p style="font-size:0.78rem;color:var(--color-gray-500);margin:0 0 0.5rem;line-height:1.45;">
+                One address per line, or separated by commas or semicolons — paste straight
+                from a roster. Blank lines are skipped, duplicates and typos are reported
+                rather than stopping the batch. Up to 1000 at a time.
+            </p>
+            <textarea id="community-bulk-emails" rows="6" spellcheck="false"
+                      placeholder="parent1@example.com&#10;parent2@example.com&#10;teacher@school.example.org"
+                      style="width:100%;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:0.8rem;margin-bottom:0.4rem;"></textarea>
+            <div style="display:flex;gap:8px;align-items:center;">
+                <select id="community-bulk-role" style="flex:1;">
+                    <option value="viewer">Invite all as Viewer</option>
+                    <option value="moderator">Invite all as Moderator</option>
+                </select>
+                <button type="button" id="community-bulk-btn" onclick="bulkInviteToCommunity()"
+                        style="padding:7px 14px;border-radius:6px;border:none;background:var(--color-primary);color:#fff;cursor:pointer;font-family:inherit;font-size:0.85rem;font-weight:600;">
+                    Send invites
+                </button>
+            </div>
+            <div id="community-bulk-status" style="font-size:0.8rem;margin-top:0.5rem;display:none;"></div>
+        </div>
         </div><!-- /#community-panel-manage — hidden until the user manages at least one community -->
 
         <div class="mod-btn-row" style="margin-top:1.25rem;">
@@ -916,12 +946,13 @@
      modal. Must load before community-auth.js, which calls into window.bwOverlay. -->
 <script src="js/community-overlay.js"></script>
 <script src="js/community-auth.js?v=4"></script>
-<!-- ?v=4: the panel gained the tier picker alongside the redeem form. Markup,
+<!-- ?v=5: the panel gained the tier picker, the redeem form and the bulk
+     roster paste. Markup,
      script and stylesheet all have to land together — new HTML against a cached
      script renders buttons wired to functions that don't exist, and against a
      cached stylesheet renders the tier rows as bare links. css/community.css is
      pinned to v=7 for the same reason. -->
-<script src="js/community-communities.js?v=4"></script>
+<script src="js/community-communities.js?v=5"></script>
 <!-- Interactive chart runtime: crosshair tooltips on the trend chart, per-species hover rows on
      the Activity / Calendar / Rarity Mix charts. No-op until a [data-bw-chart] element appears. -->
 <script src="js/community-charts.js"></script>
