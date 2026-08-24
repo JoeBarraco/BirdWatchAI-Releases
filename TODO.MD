@@ -121,6 +121,37 @@ Monetization & Product
 - Add a referral program — existing users get a discount for referring someone who buys.
 - ~~Add affiliate links to recommended cameras (TAPO C120, etc.).~~ DONE
 - Add a subscription tier for extended cloud storage of photos/videos beyond the free Basic retention window (14 days as published on the landing page).
+- **Community upgrades — designed, deliberately not built (2026-08-24).** Buying Medium after Small currently gives you a *second* community, not a bigger one: your feeders and members are in the first one, so you'd have to rebuild. Here is the whole design, so it can be picked up cold.
+
+     **Do the manual path until the second person asks.** There are no customers on these products yet, so every choice below is a guess about behaviour nobody has observed. The manual path is one statement:
+
+     ```sql
+     update communities
+        set tier = 'medium', feeder_limit = community_tier_limit('medium')
+      where slug = 'their-community';
+     ```
+
+     Take the difference by invoice or a "pay what you want" Gumroad link, run that, done. The admin community list shows tier and owner email, so finding them is easy. Build the real flow when a *second* person asks — by then you'll know whether upgrades cluster at Small→Medium (build only that) or barely happen (keep doing it by hand). Mitigation shipped instead: the tiers and their feeder counts are now on the pricing page (`#opt-community`) with "pick by how many feeders will join, not how many you own today", because most upgrade demand is really "I couldn't tell which one I needed".
+
+     **The key idea: separate the mechanism from the pricing.** Today a code means "create a community at tier X". Widen it to "a code carries a tier and a KIND" — `create` or `upgrade` — and let redemption either create a community or raise an existing one's cap. Build that once and pricing becomes a storefront decision changeable without touching code.
+
+     **Two new Gumroad products, priced as the difference — not three:**
+
+     | Product | Price |
+     |---|---|
+     | Community upgrade: Small → Medium | $30 |
+     | Community upgrade: Medium → Large | $100 |
+
+     You don't need a Small → Large product, and the reason is worth keeping: two hops cost $30 + $100 = $130, and the direct difference is $150 − $20 = $130. **Identical.** So someone on Small who needs Large buys both top-ups and pays exactly the direct price. The product matrix stays linear instead of combinatorial, and it stays that way if a fourth tier is added, as long as tiers remain additively priced.
+
+     **What changes:**
+     - Schema — one column: `alter table community_unlock_codes add column if not exists kind text not null default 'create' check (kind in ('create','upgrade'));`
+     - `community_apply_upgrade_code(p_code, p_community_id)`, mirroring `community_redeem_unlock_code`: owner-only on that community; claim the code with the same atomic `UPDATE … WHERE redeemed_at IS NULL` plus `kind = 'upgrade'`; require the code's tier to rank **strictly above** the community's current tier (that single condition blocks both a no-op and a downgrade); set `tier` + `feeder_limit`; stamp `community_id` on the code. Existing feeders are never touched, so an upgrade can't fail half-done — and `community_decide_feeder` reads `feeder_limit` fresh on every approval, so the new headroom is live with nothing to migrate.
+     - Webhook — `COMMUNITY_TIERS` becomes `{tier, kind}` and gains the two permalinks. Upgrade emails need their own copy ("apply this to your existing community", not "create one").
+     - UI — two explicit entry points, *Create a community* and *Upgrade a community* (pick which, paste the code), rather than one form that inspects the code. A "look up this code" RPC would let someone probe whether a code is valid; with explicit paths, a create code used on the upgrade path fails with the same generic message as an invalid one, so neither enumerates.
+
+     **One edge accepted rather than solved:** enforcing only "strictly higher" lets someone on Small buy the *Medium → Large* top-up ($100) and land on Large for $100 instead of $130. They'd have to deliberately buy the wrong product, the loss is $30, and the admin list shows tier so you'd spot it. Enforcing an exact `from_tier` instead would mean a confusing error — "this upgrade is for Medium communities" — for everyone who guesses wrong. Not worth it.
+
 - **Sell communities — users buy an unlock code, create their own community, and pick its admins.** Requested 2026-08-23. A Gumroad product per tier delivers a one-per-purchase unlock code; redeeming it lets that user create one community at that tier and become its owner. Public or private is the buyer's choice.
 
      **Pricing — decided 2026-08-23. One-time purchase, no overlap:**
@@ -157,7 +188,7 @@ Monetization & Product
 
      **Still open — smaller than the pricing questions, but decide before coding:**
      - **Cap breach.** What happens when a community's approved feeder count would exceed its tier: block new approvals only, or also handle a tier that somehow shrinks below its current membership? Blocking new approvals and grandfathering the existing ones is the humane default, but the error the owner sees needs writing.
-     - **Upgrade path.** Buying the $50 tier after the $20 one: a second code that raises the existing community's tier, or a fresh community? Raising in place is friendlier and avoids orphaning feeders. Since the purchase is one-time, an upgrade probably wants to be its own cheaper "top-up" product rather than making someone pay $50 on top of $20 for a $50 tier — otherwise the incentive is to guess high on the first buy.
+     - ~~**Upgrade path.**~~ DESIGNED 2026-08-24, deliberately NOT BUILT — see the entry below.
      - **Refund and chargeback.** A Gumroad refund should suspend the community rather than delete it — the member feeders' detections are other people's data.
      - **One community per code, but how many communities per person?** Nothing stops someone buying three $20 codes instead of one $50, and at $4/feeder versus $2/feeder that's a worse deal for them, so probably no guard is needed. Worth a moment's thought only because three 5-feeder communities and one 15-feeder community are not the same product.
 

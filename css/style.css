@@ -3213,3 +3213,56 @@ body.ticker-visible { padding-top: 32px; }
     .inline-newsletter-inner { justify-content: center; text-align: center; }
     .on-this-day-cards { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* Community size/price table on the pricing page. Three rows, so a table
+   rather than cards: the numbers are being compared column-wise, and the
+   per-feeder column is the one that makes the larger tiers look sensible.
+   Feeder counts are on the page deliberately — guessing low is what creates
+   upgrade requests, and upgrading is a manual job today. */
+.community-price-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    font-size: 0.95rem;
+}
+
+.community-price-table th,
+.community-price-table td {
+    padding: 0.5rem 0.6rem;
+    text-align: left;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.community-price-table thead th {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #6b6b6b;
+    font-weight: 600;
+}
+
+.community-price-table tbody th {
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.community-price-table tbody tr:last-child th,
+.community-price-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Price is what the eye should land on; the per-feeder figure supports it. */
+.community-price-table td strong {
+    font-size: 1.05rem;
+}
+
+.community-price-table td:last-child {
+    color: #6b6b6b;
+    font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 520px) {
+    .community-price-table { font-size: 0.875rem; }
+    .community-price-table th,
+    .community-price-table td { padding: 0.45rem 0.4rem; }
+}

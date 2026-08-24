@@ -21,7 +21,7 @@
          GitHub Pages serves these with a 10-minute max-age, so without it a
          browser can pair new HTML with the previous JS, and a mismatch there
          silently breaks anything scripted (the pricing configurator especially). -->
-    <link rel="stylesheet" href="css/style.css?v=20260822b">
+    <link rel="stylesheet" href="css/style.css?v=20260824a">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="icon" type="image/png" href="images/favicon.png">
     <link rel="manifest" href="manifest.json">
@@ -532,6 +532,50 @@
                      back down rather than stranding you mid-page. -->
                 <p class="opt-back"><a href="#build">↓ Back to the builder</a></p>
 
+                <!-- Communities. Deliberately NOT in the configurator: the builder
+                     prices one feeder setup, and a community is bought once for a
+                     group of them. Sits next to Software because it's the other
+                     software-side purchase. The feeder counts are on the page so
+                     people pick the right size first time — guessing low is what
+                     creates upgrade requests, and an upgrade is a manual job today.
+                     See TODO.MD. -->
+                <h4 class="fullnest-group" id="opt-community"><span aria-hidden="true">🏫</span> Communities <span>— optional, for groups of feeders</span></h4>
+                <div class="opt-cards opt-cards-1">
+                    <div class="opt-card">
+                        <h5>Your own community</h5>
+                        <p>Group several feeders under one name and decide whether the group is public or private. Built for a school, a nature centre, a bird club, or a family with feeders in different towns. Members get the group's own feed, gallery, statistics and leaderboard.</p>
+
+                        <table class="community-price-table">
+                            <thead>
+                                <tr><th scope="col">Feeders</th><th scope="col">One-time</th><th scope="col">Per feeder</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><th scope="row">Up&nbsp;to&nbsp;5</th>   <td><strong>$20</strong></td>  <td>$4.00</td></tr>
+                                <tr><th scope="row">Up&nbsp;to&nbsp;25</th>  <td><strong>$50</strong></td>  <td>$2.00</td></tr>
+                                <tr><th scope="row">Up&nbsp;to&nbsp;100</th> <td><strong>$150</strong></td> <td>$1.50</td></tr>
+                            </tbody>
+                        </table>
+
+                        <ul class="pricing-features">
+                            <li><span class="check">✓</span> Public or private — private hides feeder locations</li>
+                            <li><span class="check">✓</span> Invite members by email, in bulk if you have a roster</li>
+                            <li><span class="check">✓</span> Name moderators to approve feeders and tidy sightings</li>
+                            <li><span class="check">✓</span> The group's own statistics, gallery and leaderboard</li>
+                            <li><span class="check">✓</span> One-time purchase, no subscription</li>
+                        </ul>
+
+                        <!-- Said plainly, because "buy a community" reads like it includes
+                             the software, and that misreading ends in a refund request. -->
+                        <p class="opt-note">
+                            <strong>Pick by how many feeders will join, not how many you own today.</strong>
+                            Each feeder still needs its own BirdWatchAI license, and this doesn't
+                            include cloud photo storage.
+                            <a href="docs/community.html">Buy from the dashboard →</a>
+                        </p>
+                    </div>
+                </div>
+                <p class="opt-back"><a href="#build">↓ Back to the builder</a></p>
+
                 <h4 class="fullnest-group" id="opt-feeder"><span aria-hidden="true">🪺</span> Feeders <span>— two styles, pick one</span></h4>
                 <div class="opt-cards opt-cards-2">
                     <div class="opt-card">
@@ -1038,7 +1082,7 @@ docker compose up -d</code></pre>
     </footer>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="js/main.js?v=20260822b"></script>
+    <script src="js/main.js?v=20260824a"></script>
     <script>
     function toggleMainTheme() {
         const current = document.documentElement.getAttribute('data-theme');
