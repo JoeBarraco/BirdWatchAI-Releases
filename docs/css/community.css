@@ -3286,3 +3286,55 @@
             .badge-next-label { font-size: 0.65rem; }
         }
 
+
+/* ══════════════════════════════════════════════════════════════════════
+   Community tier picker (Manage Community panel)
+
+   Three rows, one per paid tier, each a plain link to its Gumroad product
+   page — the same mechanism js/main.js uses for every purchase on the
+   landing page, rather than an embed script the dashboard would otherwise
+   have no reason to load.
+
+   Rows rather than side-by-side cards: the panel is a ~500px modal, and
+   three cards at that width squeeze the price into two lines.
+   ══════════════════════════════════════════════════════════════════════ */
+
+.community-tier-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.community-tier {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 12px;
+    border: 1px solid var(--border-input);
+    border-radius: 8px;
+    background: var(--bg-input);
+    color: var(--color-gray-900);
+    text-decoration: none;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.community-tier:hover,
+.community-tier:focus-visible {
+    border-color: var(--color-primary);
+    background: var(--bg-card);
+}
+
+.community-tier-size {
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.community-tier-price {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--color-primary);
+    /* Prices are the thing being compared, so keep them on one optical line. */
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}

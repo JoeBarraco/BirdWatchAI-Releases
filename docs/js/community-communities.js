@@ -300,6 +300,11 @@ function openCommunityPanel() {
     if (manageEls) manageEls.style.display = hasAny ? '' : 'none';
     const redeemBox = document.getElementById('community-redeem-box');
     if (redeemBox) redeemBox.style.display = hasAny ? 'none' : '';
+    // The tier picker travels with the redeem form: someone with no community
+    // needs both ("buy one" and "I already did"), and an existing owner sees
+    // neither until they ask for them via the toggle.
+    const buyBox = document.getElementById('community-buy-box');
+    if (buyBox) buyBox.style.display = hasAny ? 'none' : '';
     const redeemToggle = document.getElementById('community-redeem-toggle');
     if (redeemToggle) redeemToggle.style.display = hasAny ? '' : 'none';
     const empty = document.getElementById('community-panel-empty');
@@ -309,11 +314,17 @@ function openCommunityPanel() {
     if (hasAny) refreshCommunityPanel();
 }
 
-/** Show the redeem form for an owner who already has a community (second purchase). */
+/**
+ * Reveal the buy + redeem pair for an owner who already has a community and
+ * wants another. Both move together — showing the redeem form without the
+ * prices would leave an owner hunting the storefront for the tier they need.
+ */
 function toggleCommunityRedeem() {
-    const box = document.getElementById('community-redeem-box');
-    if (!box) return;
-    box.style.display = box.style.display === 'none' ? '' : 'none';
+    const boxes = ['community-buy-box', 'community-redeem-box']
+        .map(id => document.getElementById(id)).filter(Boolean);
+    if (!boxes.length) return;
+    const show = boxes[0].style.display === 'none';
+    boxes.forEach(b => { b.style.display = show ? '' : 'none'; });
 }
 
 // ── Redeem an unlock code → create a community ────────────

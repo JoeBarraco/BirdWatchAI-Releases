@@ -13,7 +13,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="BirdWatchAI">
-    <link rel="stylesheet" href="css/community.css?v=6">
+    <link rel="stylesheet" href="css/community.css?v=7">
 </head>
 <body>
 <!-- Top navbar with auth controls -->
@@ -627,24 +627,59 @@
         <h3>Manage Community</h3>
 
         <!-- Shown when the signed-in user manages nothing yet. The nav button is
-             visible to any signed-in user so a fresh buyer can reach this form;
-             without that they'd hold an unlock code with nowhere to type it. -->
+             visible to any signed-in user so someone who has just bought can reach
+             the redeem form; without that they'd hold a code with nowhere to type it. -->
         <p id="community-panel-empty" style="display:none;font-size:0.85rem;color:var(--color-gray-500);margin-bottom:0.75rem;">
-            You don't manage a community yet. If you've bought one, redeem the unlock
-            code below. Communities are available at
-            <a href="https://birdbrainllc.gumroad.com/l/zrrzco" target="_blank" rel="noopener">birdbrainllc.gumroad.com</a>.
+            You don't manage a community yet. Pick a size below, or redeem an unlock
+            code you already have.
         </p>
+
+        <!-- Buy a community. Plain links to the Gumroad product pages, matching how
+             js/main.js does every purchase on the landing page — no overlay script.
+             The code is emailed on purchase and redeemed in the form below; it isn't
+             tied to the account that bought it, so a gift or a purchase made on a
+             work address both still work. -->
+        <div id="community-buy-box" style="display:none;border:1px solid var(--border);border-radius:8px;padding:0.75rem;margin-bottom:1rem;">
+            <h4 style="font-size:0.9rem;margin:0 0 0.35rem;color:var(--color-gray-900);">Get a community</h4>
+            <p style="font-size:0.78rem;color:var(--color-gray-500);margin:0 0 0.6rem;line-height:1.45;">
+                Group your feeders together and choose whether the group is public or
+                private. One-time purchase — not a subscription.
+            </p>
+
+            <div class="community-tier-list">
+                <a class="community-tier" href="https://birdbrainllc.gumroad.com/l/zrrzco" target="_blank" rel="noopener">
+                    <span class="community-tier-size">Up to 5 feeders</span>
+                    <span class="community-tier-price">$20</span>
+                </a>
+                <a class="community-tier" href="https://birdbrainllc.gumroad.com/l/ppbud" target="_blank" rel="noopener">
+                    <span class="community-tier-size">Up to 25 feeders</span>
+                    <span class="community-tier-price">$50</span>
+                </a>
+                <a class="community-tier" href="https://birdbrainllc.gumroad.com/l/vdhkakw" target="_blank" rel="noopener">
+                    <span class="community-tier-size">Up to 100 feeders</span>
+                    <span class="community-tier-price">$150</span>
+                </a>
+            </div>
+
+            <!-- Said plainly because it is the likeliest cause of a refund request:
+                 "buy a community" reads like it includes the software. -->
+            <p style="font-size:0.72rem;color:var(--color-gray-500);margin:0.6rem 0 0;line-height:1.45;">
+                Each feeder still needs its own BirdWatchAI Server license, and this
+                doesn't include cloud photo storage. What it buys is the grouping and
+                the privacy setting. Your unlock code arrives by email — redeem it below.
+            </p>
+        </div>
 
         <!-- Redeem an unlock code. Server-side, community_redeem_unlock_code
              validates the slug and claims the code in one transaction, so a
              rejected address never spends the purchase. -->
         <button type="button" id="community-redeem-toggle" onclick="toggleCommunityRedeem()"
                 style="display:none;margin-bottom:0.75rem;font-size:0.8rem;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--color-primary);cursor:pointer;font-family:inherit;font-weight:600;">
-            + Create another community
+            + Get or create another community
         </button>
 
         <div id="community-redeem-box" style="display:none;border:1px solid var(--border);border-radius:8px;padding:0.75rem;margin-bottom:1rem;">
-            <h4 style="font-size:0.9rem;margin:0 0 0.5rem;color:var(--color-gray-900);">Create a community</h4>
+            <h4 style="font-size:0.9rem;margin:0 0 0.5rem;color:var(--color-gray-900);">Already have an unlock code?</h4>
             <input id="community-redeem-code" type="text" placeholder="Unlock code (BWC-XXXX-XXXX-XXXX)"
                    autocomplete="off" spellcheck="false"
                    style="width:100%;margin-bottom:0.4rem;text-transform:uppercase;">
@@ -881,10 +916,12 @@
      modal. Must load before community-auth.js, which calls into window.bwOverlay. -->
 <script src="js/community-overlay.js"></script>
 <script src="js/community-auth.js?v=4"></script>
-<!-- ?v=3: the panel gained the unlock-code redeem form, and the markup and the
-     script have to land together — new HTML against the cached v=2 script would
-     render a Create button wired to a function that doesn't exist. -->
-<script src="js/community-communities.js?v=3"></script>
+<!-- ?v=4: the panel gained the tier picker alongside the redeem form. Markup,
+     script and stylesheet all have to land together — new HTML against a cached
+     script renders buttons wired to functions that don't exist, and against a
+     cached stylesheet renders the tier rows as bare links. css/community.css is
+     pinned to v=7 for the same reason. -->
+<script src="js/community-communities.js?v=4"></script>
 <!-- Interactive chart runtime: crosshair tooltips on the trend chart, per-species hover rows on
      the Activity / Calendar / Rarity Mix charts. No-op until a [data-bw-chart] element appears. -->
 <script src="js/community-charts.js"></script>
