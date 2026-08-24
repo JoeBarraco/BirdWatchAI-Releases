@@ -192,19 +192,10 @@ begin
   end if;
 
   -- Slug rules, checked before the code is spent: a rejected slug must not
-  -- consume the purchase. Reserved words are the ones that would collide with
-  -- dashboard routes or read as official.
-  if v_slug !~ '^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$' then
-    raise exception 'Community address must be 3-40 characters, lowercase letters, numbers and hyphens, and cannot start or end with a hyphen';
-  end if;
-  if v_slug in ('admin', 'api', 'app', 'birdwatch', 'birdwatchai', 'community',
-                'dashboard', 'feed', 'help', 'login', 'moderator', 'official',
-                'public', 'private', 'settings', 'support', 'system', 'www') then
-    raise exception 'That community address is reserved';
-  end if;
-  if exists (select 1 from communities where slug = v_slug) then
-    raise exception 'That community address is already taken';
-  end if;
+  -- consume the purchase. Shared with community_owner_reset via
+  -- community_assert_slug_ok (section 8) so the two paths can't drift into
+  -- accepting different addresses.
+  perform community_assert_slug_ok(v_slug);
 
   -- Claim the code. The WHERE clause is the lock: only an unredeemed,
   -- unrevoked code matches, and only one caller can win it.
@@ -495,3 +486,146 @@ $$;
 revoke execute on function community_invite_bulk(uuid, text[], text) from public;
 revoke execute on function community_invite_bulk(uuid, text[], text) from anon;
 grant  execute on function community_invite_bulk(uuid, text[], text) to authenticated;
+
+
+-- ── 8. Slug validation, shared ──────────────────────────────────────
+--
+-- Extracted so redeem and reset can't drift. Two functions each carrying their
+-- own copy of the regex and the reserved list is how you end up with an address
+-- that one path accepts and the other rejects.
+
+/**
+ * Raise unless p_slug is a usable community address.
+ *
+ * p_allow_id lets a community keep its own slug — reset passes its own id so
+ * "rename the display name, keep the address" isn't reported as a collision.
+ */
+create or replace function community_assert_slug_ok(p_slug text, p_allow_id uuid default null)
+returns void
+language plpgsql
+as $$
+begin
+  if p_slug !~ '^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$' then
+    raise exception 'Community address must be 3-40 characters, lowercase letters, numbers and hyphens, and cannot start or end with a hyphen';
+  end if;
+  if p_slug in ('admin', 'api', 'app', 'birdwatch', 'birdwatchai', 'community',
+                'dashboard', 'feed', 'help', 'login', 'moderator', 'official',
+                'public', 'private', 'settings', 'support', 'system', 'www') then
+    raise exception 'That community address is reserved';
+  end if;
+  if exists (select 1 from communities
+              where slug = p_slug
+                and (p_allow_id is null or id <> p_allow_id)) then
+    raise exception 'That community address is already taken';
+  end if;
+end;
+$$;
+
+revoke execute on function community_assert_slug_ok(text, uuid) from public;
+revoke execute on function community_assert_slug_ok(text, uuid) from anon;
+grant  execute on function community_assert_slug_ok(text, uuid) to authenticated;
+
+
+-- ── 9. Owner reset ──────────────────────────────────────────────────
+--
+-- Start the community over: drop every feeder, clear everyone except the
+-- owner, and rename it. The tier and the feeder allowance are kept, because
+-- those are what was paid for.
+--
+-- There is deliberately NO owner-facing DELETE. Removing a feeder from its only
+-- community makes it visible to nobody on the community site: is_public is
+-- already false for a private-only feeder, and feeders_autojoin_public_trg fires
+-- on feeder INSERT only, so nothing rejoins it to the public feed. After a reset
+-- that is recoverable — the community still exists, the owner can re-approve and
+-- the feeder's owner can re-request. After a delete it is not: the community is
+-- gone, and someone else's feeder has silently gone dark through no action of
+-- their own. An owner who genuinely wants out asks support, and
+-- community_admin_delete already handles that safely (it refuses while feeders
+-- remain). Reset covers the real cases — set up wrong, or a new school year.
+
+/**
+ * Reset a community to a fresh state, keeping its tier.
+ *
+ * Owner only, not moderator: it removes every feeder and every other member,
+ * which is not something a delegated moderator should be able to do to the
+ * owner's purchase.
+ *
+ * Returns what it cleared, so the UI can report it rather than claiming success
+ * in the abstract.
+ */
+create or replace function community_owner_reset(
+  p_community_id uuid,
+  p_new_name     text,
+  p_new_slug     text,
+  p_visibility   text
+)
+returns json
+language plpgsql security definer
+as $$
+declare
+  v_slug      text := lower(trim(p_new_slug));
+  v_name      text := trim(p_new_name);
+  v_old_slug  text;
+  n_feeders   int;
+  n_members   int;
+  n_invites   int;
+begin
+  -- Owner only. community_require_role raises for anyone else, including a
+  -- moderator of this community.
+  perform community_require_role(p_community_id, auth.uid(), array['owner']);
+
+  if p_visibility not in ('public', 'private') then
+    raise exception 'Visibility must be public or private';
+  end if;
+  if v_name = '' then
+    raise exception 'Community name is required';
+  end if;
+
+  select slug into v_old_slug from communities where id = p_community_id;
+  if v_old_slug is null then
+    raise exception 'No such community';
+  end if;
+  if v_old_slug = 'public' then
+    raise exception 'The Public Feed cannot be reset';
+  end if;
+
+  -- Validated before anything is cleared: a rejected address must not cost the
+  -- owner their feeders.
+  perform community_assert_slug_ok(v_slug, p_community_id);
+
+  -- Feeders first. The AFTER trigger on community_feeders recomputes
+  -- feeders.is_public per removed row, so visibility stays consistent without
+  -- touching it here.
+  select count(*) into n_feeders from community_feeders where community_id = p_community_id;
+  delete from community_feeders where community_id = p_community_id;
+
+  -- Everyone except the owner, and every outstanding invite: "like they just
+  -- bought it" means the roster is empty too, not just the feeder list.
+  select count(*) into n_members from community_members
+   where community_id = p_community_id and user_id <> auth.uid();
+  delete from community_members
+   where community_id = p_community_id and user_id <> auth.uid();
+
+  select count(*) into n_invites from community_invites where community_id = p_community_id;
+  delete from community_invites where community_id = p_community_id;
+
+  update communities
+     set name              = v_name,
+         slug              = v_slug,
+         visibility        = p_visibility,
+         suppress_location = (p_visibility = 'private')
+   where id = p_community_id;
+
+  return json_build_object(
+    'community_id',     p_community_id,
+    'slug',             v_slug,
+    'feeders_removed',  n_feeders,
+    'members_removed',  n_members,
+    'invites_cleared',  n_invites
+  );
+end;
+$$;
+
+revoke execute on function community_owner_reset(uuid, text, text, text) from public;
+revoke execute on function community_owner_reset(uuid, text, text, text) from anon;
+grant  execute on function community_owner_reset(uuid, text, text, text) to authenticated;

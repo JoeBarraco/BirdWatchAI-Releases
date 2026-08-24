@@ -399,6 +399,18 @@ async function refreshCommunityPanel() {
     const list = document.getElementById('community-pending-list');
     if (!cid || !list) return;
 
+    // Reset belongs to the owner alone — it removes every feeder and every other
+    // member, which a delegated moderator shouldn't be able to do to the owner's
+    // purchase. Hidden here for clarity; community_owner_reset is what enforces
+    // it. Collapsed on every community switch, so the form is never left open
+    // with a different community's name prefilled.
+    const resetSection = document.getElementById('community-reset-section');
+    if (resetSection) {
+        resetSection.style.display = communityRoleIn(cid) === 'owner' ? '' : 'none';
+        const resetBox = document.getElementById('community-reset-box');
+        if (resetBox) resetBox.style.display = 'none';
+    }
+
     // Moderators can approve feeders and invite viewers, but only the owner can
     // mint another moderator — that keeps a compromised teacher account from
     // being an escalation path.
@@ -443,7 +455,18 @@ async function refreshCommunityPanel() {
             ? `<button onclick="decideFeeder('${esc(cid)}','${esc(f.feeder_id)}','approved')">Approve</button>
                <button class="mod-remove-btn" onclick="decideFeeder('${esc(cid)}','${esc(f.feeder_id)}','rejected')">Reject</button>`
             : f.status === 'approved'
-                ? `<button class="mod-remove-btn" onclick="removeFeederFromCommunity('${esc(cid)}','${esc(f.feeder_id)}','${esc(f.display_name || 'this feeder')}')">Remove</button>`
+                // The name goes in a data- attribute, NOT interpolated into the
+                // onclick. esc() turns ' into &#39;, the HTML parser decodes it
+                // back to ' when it parses the attribute, and the JS the browser
+                // then evaluates is  fn('id','id','Joe's Feeder')  — a syntax
+                // error, so the button silently did nothing for every feeder
+                // with an apostrophe in its name. Attribute values have no such
+                // problem, and this matches the data-feeder-name pattern used in
+                // community-views.js.
+                ? `<button class="mod-remove-btn" data-community-id="${esc(cid)}"
+                           data-feeder-id="${esc(f.feeder_id)}"
+                           data-feeder-name="${esc(f.display_name || 'this feeder')}"
+                           onclick="removeFeederFromCommunity(this)">Remove</button>`
                 : `<button onclick="decideFeeder('${esc(cid)}','${esc(f.feeder_id)}','approved')">Approve</button>`;
 
         return `
@@ -524,7 +547,7 @@ async function refreshCommunityMembers() {
         } else if (m.role === 'owner') {
             action = '<span style="font-size:0.75rem;color:var(--color-gray-500);">owner</span>';
         } else if (m.role !== 'moderator' || isOwner) {
-            action = `<button class="mod-remove-btn" onclick="removeCommunityMember('${esc(cid)}','${esc(m.id)}','${esc(m.label)}')">Remove</button>`;
+            action = `<button class="mod-remove-btn" onclick="removeCommunityMember('${esc(cid)}','${esc(m.id)}','${escJs(m.label)}')">Remove</button>`;
         }
 
         return `
@@ -566,7 +589,20 @@ async function revokeInviteFor(communityId, email) {
     await refreshCommunityMembers();
 }
 
-async function removeFeederFromCommunity(communityId, feederId, displayName) {
+/**
+ * Remove an approved feeder from a community.
+ *
+ * Takes the button element rather than three strings: the name used to be
+ * interpolated into the inline onclick, which broke on any apostrophe (see the
+ * comment at the call site). Reading it off data- attributes has no escaping
+ * hazard at all.
+ */
+async function removeFeederFromCommunity(el) {
+    const communityId = el?.dataset?.communityId;
+    const feederId    = el?.dataset?.feederId;
+    const displayName = el?.dataset?.feederName || 'this feeder';
+    if (!communityId || !feederId) return;
+
     if (!confirm(
         `Remove "${displayName}" from this community?\n\n` +
         'It stops publishing here and its sightings disappear for members. ' +
@@ -895,7 +931,7 @@ async function refreshCommunityAdminList() {
         // built-in public feed. The server enforces both; this keeps a button
         // that is guaranteed to fail off the screen.
         const action = (c.slug !== 'public' && c.feeder_count === 0)
-            ? `<button class="mod-remove-btn" onclick="deleteCommunityAsAdmin('${esc(c.id)}','${esc(c.name)}')">Delete</button>`
+            ? `<button class="mod-remove-btn" onclick="deleteCommunityAsAdmin('${esc(c.id)}','${escJs(c.name)}')">Delete</button>`
             : `<span style="font-size:0.75rem;color:var(--color-gray-500);">${
                    c.slug === 'public' ? 'built-in' : 'has feeders'}</span>`;
 
@@ -1018,4 +1054,97 @@ async function bulkInviteToCommunity() {
         document.getElementById('community-bulk-emails').value = '';
         await refreshCommunityMembers();
     }
+}
+
+// ── Reset a community ─────────────────────────────────────
+//
+// Owner only. community_owner_reset refuses a moderator, and the section is
+// hidden for one — but the server is the authority, not the hidden div.
+//
+// There is deliberately no delete. Removing a feeder from its only community
+// makes it invisible on the site; after a reset that's recoverable because the
+// community still exists and its owner can re-approve, and after a delete it
+// isn't. An owner who genuinely wants out asks support.
+
+function toggleCommunityReset() {
+    const box = document.getElementById('community-reset-box');
+    if (!box) return;
+    const show = box.style.display === 'none';
+    box.style.display = show ? '' : 'none';
+    if (!show) return;
+
+    // Prefill with what it is now, so "just rename it" doesn't mean retyping
+    // the address from memory — and getting it wrong changes the join code
+    // every feeder owner was given.
+    const id = document.getElementById('community-panel-select')?.value;
+    const c  = myCommunities.find(x => x.id === id);
+    if (c) {
+        document.getElementById('community-reset-name').value = c.name || '';
+        document.getElementById('community-reset-slug').value = c.slug || '';
+        const vis = document.getElementById('community-reset-visibility');
+        if (c.visibility) vis.value = c.visibility;
+    }
+    document.getElementById('community-reset-confirm').checked = false;
+    syncCommunityResetBtn();
+}
+
+/** The confirm checkbox gates the button — this is destructive to other people's feeders. */
+function syncCommunityResetBtn() {
+    const ok  = document.getElementById('community-reset-confirm')?.checked;
+    const btn = document.getElementById('community-reset-btn');
+    if (!btn) return;
+    btn.disabled = !ok;
+    btn.style.opacity = ok ? '1' : '0.5';
+}
+
+async function resetCommunity() {
+    const communityId = document.getElementById('community-panel-select')?.value;
+    const name   = document.getElementById('community-reset-name').value.trim();
+    const slug   = document.getElementById('community-reset-slug').value.trim().toLowerCase();
+    const vis    = document.getElementById('community-reset-visibility').value;
+    const status = document.getElementById('community-reset-status');
+    const btn    = document.getElementById('community-reset-btn');
+
+    const say = (msg, ok) => {
+        status.style.color = ok ? '#2eaa4f' : '#e74c3c';
+        status.textContent = msg;
+        status.style.display = 'block';
+    };
+
+    if (!communityId) { say('Pick a community first.', false); return; }
+    if (!name || !slug) { say('Name and web address are both required.', false); return; }
+
+    btn.disabled = true;
+    say('Resetting…', true);
+
+    const { data, error } = await sbRpc('community_owner_reset', {
+        p_community_id: communityId,
+        p_new_name:     name,
+        p_new_slug:     slug,
+        p_visibility:   vis,
+    }, true);
+
+    if (error) {
+        // A rejected address clears nothing server-side, so re-enabling is safe.
+        btn.disabled = false;
+        syncCommunityResetBtn();
+        say(error.message || 'Reset failed.', false);
+        return;
+    }
+
+    // Report what actually went, rather than a bare "done" — the owner needs to
+    // know how many people to tell.
+    const d = data || {};
+    say(`Reset. Removed ${d.feeders_removed ?? 0} feeder(s), `
+      + `${d.members_removed ?? 0} member(s), `
+      + `${d.invites_cleared ?? 0} invite(s). New address: ${d.slug ?? slug}`, true);
+
+    document.getElementById('community-reset-confirm').checked = false;
+    syncCommunityResetBtn();
+
+    // The name and slug changed, so the picker and the feed's scope filter are
+    // both stale.
+    await loadMyCommunities();
+    await loadCommunityFeederIndex(true);
+    await refreshCommunityPanel();
 }

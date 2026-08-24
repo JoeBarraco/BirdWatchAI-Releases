@@ -1960,7 +1960,7 @@ async function loadAndRenderLifeList(userId, isOwn) {
         <div class="life-list-item">
             <span class="species-name">${esc(item.species)}</span>
             <span class="first-seen">${new Date(item.first_seen).toLocaleDateString()}</span>
-            ${isOwn ? `<button class="life-list-remove" onclick="removeFromLifeListModal('${esc(item.species)}', this)" title="Remove">✕</button>` : ''}
+            ${isOwn ? `<button class="life-list-remove" onclick="removeFromLifeListModal('${escJs(item.species)}', this)" title="Remove">✕</button>` : ''}
         </div>
     `).join('')}</div>`;
 }

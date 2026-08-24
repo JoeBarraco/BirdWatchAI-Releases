@@ -125,7 +125,7 @@ function renderFeed() {
                     <span class="species-link" data-species="${esc(d.species)}" style="cursor:pointer;text-decoration:underline dotted;">${esc(d.species)}</span>${d.rarity
                         ? ` <span class="${rarityClass}">· ${esc(d.rarity)}</span>` : ''}${isFirst
                         ? ' <span class="badge-first-season">🌱 First of Season</span>' : ''}${currentUser
-                        ? `<button class="life-list-add-btn${onLifeList ? ' on-list' : ''}" onclick="toggleLifeListSpecies('${esc(d.species)}', '${d.id}', this)" title="${onLifeList ? 'Remove from life list' : 'Add to life list'}">${onLifeList ? '✓ Listed' : '+ Life List'}</button>` : ''}
+                        ? `<button class="life-list-add-btn${onLifeList ? ' on-list' : ''}" onclick="toggleLifeListSpecies('${escJs(d.species)}', '${d.id}', this)" title="${onLifeList ? 'Remove from life list' : 'Add to life list'}">${onLifeList ? '✓ Listed' : '+ Life List'}</button>` : ''}
                 </div>
                 <div class="card-meta">
                     🕐 ${fmtDetectedAt(d.detected_at)}${formatLocationChip(d)}${d.temperature != null
@@ -1701,7 +1701,11 @@ function renderTrendChart() {
         legendEl.innerHTML = allSpecies.map((sp, i) => {
             const color = PALETTE[i % PALETTE.length];
             const hidden = trendHiddenSp.has(sp);
-            return `<span onclick="toggleTrendSpecies('${esc(sp).replace(/'/g, "\\'")}')"
+            // escJs, not esc(...).replace(/'/g,…): esc turns the apostrophe into
+            // &#39; FIRST, so the replace finds nothing to escape, and the entity
+            // still decodes back to a bare ' that breaks the JS literal. The
+            // workaround was written for un-escaped input and quietly did nothing.
+            return `<span onclick="toggleTrendSpecies('${escJs(sp)}')"
                 style="display:inline-flex;align-items:center;gap:5px;margin-right:14px;font-size:0.8rem;cursor:pointer;${hidden ? 'opacity:0.3;text-decoration:line-through;' : ''}">
                 <span style="display:inline-block;width:18px;height:3px;background:${color};border-radius:2px;"></span>${esc(sp)}
             </span>`;

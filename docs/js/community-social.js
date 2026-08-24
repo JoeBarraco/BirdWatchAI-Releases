@@ -1199,6 +1199,38 @@ function esc(str) {
               .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
+/**
+ * Escape for a SINGLE-QUOTED JS STRING that lives inside a double-quoted HTML
+ * attribute — i.e. onclick="fn('...')".
+ *
+ * esc() is wrong there and fails silently. It turns ' into &#39;, the HTML
+ * parser decodes that back to ' when it parses the attribute, and the JS the
+ * browser then evaluates is  fn('Cooper's Hawk')  — a syntax error, so the
+ * handler never runs and the button looks dead with nothing in the UI to say
+ * why. That hit every bird whose name carries an apostrophe, which in North
+ * America is a lot of them: Cooper's Hawk, Brewer's Blackbird, Anna's
+ * Hummingbird, Bewick's Wren, Wilson's Warbler.
+ *
+ * So: backslash-escape the apostrophe for JS, and HTML-escape everything else.
+ * The apostrophe is deliberately NOT turned into an entity, and " becomes
+ * &quot; which decodes to a plain " that is harmless inside a '-quoted string.
+ * Order matters — backslashes first, or the escapes we add get re-escaped.
+ *
+ * Still XSS-safe: < > & are entity-escaped, and ' cannot terminate the literal.
+ * Where a handler is being written or edited, prefer data- attributes and
+ * fn(this) — no escaping question arises at all.
+ */
+function escJs(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'")
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
 // ── Push notifications for rare birds ────────────────────
 let notificationsEnabled = false;
 const seenRareIds = new Set(JSON.parse(localStorage.getItem('bwai-seen-rare') || '[]'));

@@ -773,6 +773,50 @@
             </div>
             <div id="community-bulk-status" style="font-size:0.8rem;margin-top:0.5rem;display:none;"></div>
         </div>
+
+        <!-- Reset. Owner only — community_owner_reset refuses a moderator. There is
+             deliberately no owner-facing DELETE: removing a feeder from its only
+             community makes it invisible on the site, and after a reset that's
+             recoverable (the community still exists, so its owner can re-request)
+             whereas after a delete it isn't. -->
+        <div id="community-reset-section" style="display:none;margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border);">
+            <button type="button" id="community-reset-toggle" onclick="toggleCommunityReset()"
+                    style="font-size:0.8rem;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:#e74c3c;cursor:pointer;font-family:inherit;font-weight:600;">
+                ↻ Start this community over…
+            </button>
+
+            <div id="community-reset-box" style="display:none;border:1px solid #e74c3c;border-radius:8px;padding:0.75rem;margin-top:0.5rem;">
+                <h4 style="font-size:0.9rem;margin:0 0 0.4rem;color:var(--color-gray-900);">Start over</h4>
+                <p style="font-size:0.78rem;color:var(--color-gray-500);margin:0 0 0.6rem;line-height:1.45;">
+                    Removes <strong>every feeder</strong> and <strong>every member except you</strong>,
+                    cancels outstanding invites, and lets you rename it. You keep the size you
+                    paid for.
+                </p>
+                <p style="font-size:0.75rem;color:var(--color-gray-500);margin:0 0 0.6rem;line-height:1.45;">
+                    Nothing is deleted: feeders and their photos are untouched, and their owners'
+                    servers keep running normally. But a feeder whose only community was this one
+                    stops appearing on the site until it joins somewhere again — so tell the
+                    people involved first.
+                </p>
+                <input id="community-reset-name" type="text" placeholder="New name"
+                       style="width:100%;margin-bottom:0.4rem;">
+                <input id="community-reset-slug" type="text" placeholder="New web address"
+                       autocomplete="off" spellcheck="false" style="width:100%;margin-bottom:0.4rem;">
+                <select id="community-reset-visibility" style="width:100%;margin-bottom:0.5rem;">
+                    <option value="private">Private — only people you invite can see it</option>
+                    <option value="public">Public — anyone can see it</option>
+                </select>
+                <label style="display:flex;gap:6px;align-items:flex-start;font-size:0.78rem;color:var(--color-gray-700);margin-bottom:0.5rem;cursor:pointer;">
+                    <input type="checkbox" id="community-reset-confirm" onchange="syncCommunityResetBtn()" style="margin-top:2px;">
+                    <span>I understand this removes all feeders and members from this community.</span>
+                </label>
+                <button type="button" id="community-reset-btn" onclick="resetCommunity()" disabled
+                        style="width:100%;padding:8px;border-radius:6px;border:none;background:#e74c3c;color:#fff;cursor:pointer;font-family:inherit;font-size:0.875rem;font-weight:600;opacity:0.5;">
+                    Start over
+                </button>
+                <div id="community-reset-status" style="display:none;margin-top:0.5rem;font-size:0.8rem;"></div>
+            </div>
+        </div>
         </div><!-- /#community-panel-manage — hidden until the user manages at least one community -->
 
         <div class="mod-btn-row" style="margin-top:1.25rem;">
@@ -931,8 +975,11 @@
      grew four badge columns. A stale copy would leave the new badges modal and
      community-badges.js loaded but never called, so the feature would silently
      not appear. -->
-<script src="js/community-views.js?v=2"></script>
-<script src="js/community-social.js"></script>
+<script src="js/community-views.js?v=3"></script>
+<!-- ?v=2: gained escJs(), which community-views / -auth / -communities now all
+     call. Every one of those must be re-fetched with it — a cached social.js
+     leaves escJs undefined and the handlers throw. -->
+<script src="js/community-social.js?v=2"></script>
 <!-- Clips tab. Must load before community-auth.js: the theater's key handler calls
      stopImmediatePropagation so the global single-key shortcuts registered there don't also fire
      while a clip is playing, and that only works if this listener is registered first. -->
@@ -945,14 +992,14 @@
 <!-- Canvas re-burn of the photo's caption strip, used by the moderator edit
      modal. Must load before community-auth.js, which calls into window.bwOverlay. -->
 <script src="js/community-overlay.js"></script>
-<script src="js/community-auth.js?v=4"></script>
+<script src="js/community-auth.js?v=5"></script>
 <!-- ?v=5: the panel gained the tier picker, the redeem form and the bulk
      roster paste. Markup,
      script and stylesheet all have to land together — new HTML against a cached
      script renders buttons wired to functions that don't exist, and against a
      cached stylesheet renders the tier rows as bare links. css/community.css is
      pinned to v=7 for the same reason. -->
-<script src="js/community-communities.js?v=5"></script>
+<script src="js/community-communities.js?v=6"></script>
 <!-- Interactive chart runtime: crosshair tooltips on the trend chart, per-species hover rows on
      the Activity / Calendar / Rarity Mix charts. No-op until a [data-bw-chart] element appears. -->
 <script src="js/community-charts.js"></script>
