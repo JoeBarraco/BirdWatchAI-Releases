@@ -107,6 +107,67 @@ const COMMUNITY_TIERS: Record<string, 'small' | 'medium' | 'large'> = {
   vdhkakw: 'large',
 };
 
+// Extra identifiers → tier, for values that can't be known until a real sale
+// arrives. Gumroad assigns products created after Jan 2023 an opaque
+// `product_id` that isn't derivable from the permalink, so if a ping ever
+// carries only that, it can be mapped here without a redeploy:
+//
+//   GUMROAD_COMMUNITY_IDS="abc123=small,def456=medium"
+const COMMUNITY_TIERS_EXTRA: Record<string, string> = Object.fromEntries(
+  (Deno.env.get('GUMROAD_COMMUNITY_IDS') ?? '')
+    .split(',').map(s => s.trim()).filter(Boolean)
+    .map(pair => {
+      const [k, v] = pair.split('=').map(x => x.trim());
+      return [normalizeProductRef(k), v];
+    })
+    .filter(([k, v]) => k && ['small', 'medium', 'large'].includes(v)),
+);
+
+/**
+ * Reduce a Gumroad product reference to something comparable.
+ *
+ * `product_permalink` arrives as a full URL more often than as a bare code
+ * ("https://birdbrainllc.gumroad.com/l/zrrzco"), so an exact-key lookup against
+ * bare permalinks silently misses — the ping falls through to the licence
+ * allowlist, gets logged as an unrelated product, and returns 200. Gumroad sees
+ * success and never retries, so the buyer pays and no code is ever minted.
+ * That is exactly what happened on the first real test purchase.
+ */
+function normalizeProductRef(raw: string): string {
+  let s = (raw ?? '').trim().toLowerCase();
+  if (!s) return '';
+  s = s.split(/[?#]/)[0];                    // drop query / fragment
+  s = s.replace(/\/+$/, '');                 // drop trailing slashes
+  const seg = s.split('/').filter(Boolean).pop() ?? s;
+  return seg;
+}
+
+/**
+ * Which community tier this sale is for, or undefined.
+ *
+ * Checks every identifier Gumroad might use, raw and normalized, against both
+ * the built-in map and the env override. Generous on purpose: a false negative
+ * costs a customer their purchase, whereas a false positive would require one
+ * of these fields to literally equal "zrrzco".
+ */
+function matchCommunityTier(
+  p: Record<string, string>, productId: string, permalink: string,
+): 'small' | 'medium' | 'large' | undefined {
+  const candidates = [
+    productId, permalink,
+    p['permalink'] ?? '', p['product_permalink'] ?? '',
+    p['short_url'] ?? '', p['product_name'] ?? '',
+  ];
+  for (const c of candidates) {
+    for (const key of [c?.trim(), normalizeProductRef(c)]) {
+      if (!key) continue;
+      const hit = COMMUNITY_TIERS[key] ?? COMMUNITY_TIERS_EXTRA[key];
+      if (hit) return hit as 'small' | 'medium' | 'large';
+    }
+  }
+  return undefined;
+}
+
 const COMMUNITY_FROM_EMAIL = Deno.env.get('COMMUNITY_FROM_EMAIL')
                           ?? LICENSE_FROM_EMAIL;
 
@@ -571,7 +632,7 @@ Deno.serve(async (req) => {
   // moving the licence webhook's ping too, on a path that is live and minting
   // real keys. This branch returns before touching any licence logic, so the
   // licence flow is unchanged unless a community product matches.
-  const communityTier = COMMUNITY_TIERS[productId] ?? COMMUNITY_TIERS[permalink];
+  const communityTier = matchCommunityTier(p, productId, permalink);
   if (communityTier) {
     return await handleCommunitySale({
       tier: communityTier, saleId, productId, permalink, email, name,
@@ -586,7 +647,28 @@ Deno.serve(async (req) => {
                  || PRODUCT_IDS.includes(permalink)
                  || PRODUCT_IDS.includes(p['permalink'] ?? '');
     if (!matches) {
-      console.log(`ignoring ping for unrelated product (product_id=${productId} permalink=${permalink})`);
+      // WARN, and dump every identifier the ping carried. This branch is where a
+      // paid sale goes to die quietly: it returns 200, so Gumroad marks the ping
+      // delivered and never retries, and the buyer is left with no code and no
+      // error anywhere. The first real community purchase landed here because
+      // product_permalink arrived as a full URL rather than a bare code, and the
+      // old log line didn't print enough to see that. If you are reading this
+      // because someone paid and got nothing, the fields below are the answer.
+      console.warn(
+        'IGNORED a sale — product matched neither the licence allowlist nor a community tier. '
+        + 'If this was a real purchase, the buyer has paid and received nothing.',
+        JSON.stringify({
+          sale_id:           saleId,
+          product_id:        productId,
+          product_permalink: p['product_permalink'] ?? null,
+          permalink:         p['permalink'] ?? null,
+          short_url:         p['short_url'] ?? null,
+          product_name:      p['product_name'] ?? null,
+          email:             email || null,
+          allowlist:         PRODUCT_IDS,
+          community_keys:    Object.keys(COMMUNITY_TIERS),
+        }),
+      );
       return new Response(JSON.stringify({ ignored: 'product not allowlisted' }), { status: 200 });
     }
   } else {
