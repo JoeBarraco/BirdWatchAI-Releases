@@ -268,9 +268,11 @@ async function scopeDropdownsToCommunity(fromCommunityChange) {
 function updateCommunityNavUI() {
     const btn = document.getElementById('navbar-communities-btn');
     if (!btn) return;
-    // Only owners and moderators have anything to do in the panel.
-    const canManage = myCommunities.some(c => c.role === 'owner' || c.role === 'moderator');
-    btn.style.display = canManage ? '' : 'none';
+    // Any signed-in user, not just owners and moderators. Someone who has just
+    // bought a community doesn't own one yet, so gating the button on already
+    // having one left them holding a code with nowhere to type it. The panel
+    // shows the redeem form when there is nothing to manage.
+    btn.style.display = hasAuthSession() ? '' : 'none';
 }
 
 // ── Owner / moderator panel ──────────────────────────────
@@ -290,8 +292,91 @@ function openCommunityPanel() {
         `<option value="${esc(c.id)}">${esc(c.name)} (${esc(c.role)})</option>`
     ).join('');
 
+    // With nothing to manage, the management controls are noise — show only the
+    // redeem form. With something to manage, keep the form collapsed behind a
+    // toggle so it doesn't push the roster down the modal.
+    const hasAny = manageable.length > 0;
+    const manageEls = document.getElementById('community-panel-manage');
+    if (manageEls) manageEls.style.display = hasAny ? '' : 'none';
+    const redeemBox = document.getElementById('community-redeem-box');
+    if (redeemBox) redeemBox.style.display = hasAny ? 'none' : '';
+    const redeemToggle = document.getElementById('community-redeem-toggle');
+    if (redeemToggle) redeemToggle.style.display = hasAny ? '' : 'none';
+    const empty = document.getElementById('community-panel-empty');
+    if (empty) empty.style.display = hasAny ? 'none' : '';
+
     modal.classList.add('open');
-    if (manageable.length) refreshCommunityPanel();
+    if (hasAny) refreshCommunityPanel();
+}
+
+/** Show the redeem form for an owner who already has a community (second purchase). */
+function toggleCommunityRedeem() {
+    const box = document.getElementById('community-redeem-box');
+    if (!box) return;
+    box.style.display = box.style.display === 'none' ? '' : 'none';
+}
+
+// ── Redeem an unlock code → create a community ────────────
+
+/**
+ * Turn a purchased unlock code into a community, with the buyer as owner.
+ *
+ * All the validation that matters lives in community_redeem_unlock_code: slug
+ * shape, reserved words, collisions, and the single-use claim are all checked
+ * server-side inside one transaction. The client checks nothing that the server
+ * doesn't re-check — a client-side gate here would only decide which error the
+ * user sees first, and a bad slug must never consume the code.
+ */
+async function redeemCommunityUnlockCode() {
+    const code       = document.getElementById('community-redeem-code').value.trim();
+    const name       = document.getElementById('community-redeem-name').value.trim();
+    const slug       = document.getElementById('community-redeem-slug').value.trim().toLowerCase();
+    const visibility = document.getElementById('community-redeem-visibility').value;
+    const status     = document.getElementById('community-redeem-status');
+    const btn        = document.getElementById('community-redeem-btn');
+
+    const say = (msg, ok) => {
+        status.style.color = ok ? '#2eaa4f' : '#e74c3c';
+        status.textContent = msg;
+        status.style.display = 'block';
+    };
+
+    if (!code || !name || !slug) {
+        say('Unlock code, name and web address are all required.', false);
+        return;
+    }
+
+    // Guard against a double-click spending the code twice. The server would
+    // refuse the second attempt anyway, but the user would see "already used"
+    // about their own successful purchase, which reads like a bug.
+    btn.disabled = true;
+    say('Creating…', true);
+
+    const { data, error } = await sbRpc('community_redeem_unlock_code', {
+        p_code:       code,
+        p_slug:       slug,
+        p_name:       name,
+        p_visibility: visibility,
+    }, true);
+
+    if (error) {
+        btn.disabled = false;
+        say(error.message || 'Could not create the community.', false);
+        return;
+    }
+
+    say(`Created "${name}". Feeder owners join with the code: ${slug}`, true);
+    document.getElementById('community-redeem-code').value = '';
+    document.getElementById('community-redeem-name').value = '';
+    document.getElementById('community-redeem-slug').value = '';
+
+    // Reload memberships so the panel switches from "no communities" to
+    // managing the new one, and the nav reflects it.
+    await loadMyCommunities();
+    updateCommunityNavUI();
+    closeCommunityPanel();
+    openCommunityPanel();
+    btn.disabled = false;
 }
 
 function closeCommunityPanel() {

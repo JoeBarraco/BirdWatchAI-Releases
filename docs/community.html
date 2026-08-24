@@ -625,6 +625,51 @@
 <div id="community-panel-modal" role="dialog" aria-modal="true">
     <div class="mod-admin-box">
         <h3>Manage Community</h3>
+
+        <!-- Shown when the signed-in user manages nothing yet. The nav button is
+             visible to any signed-in user so a fresh buyer can reach this form;
+             without that they'd hold an unlock code with nowhere to type it. -->
+        <p id="community-panel-empty" style="display:none;font-size:0.85rem;color:var(--color-gray-500);margin-bottom:0.75rem;">
+            You don't manage a community yet. If you've bought one, redeem the unlock
+            code below. Communities are available at
+            <a href="https://birdbrainllc.gumroad.com/l/zrrzco" target="_blank" rel="noopener">birdbrainllc.gumroad.com</a>.
+        </p>
+
+        <!-- Redeem an unlock code. Server-side, community_redeem_unlock_code
+             validates the slug and claims the code in one transaction, so a
+             rejected address never spends the purchase. -->
+        <button type="button" id="community-redeem-toggle" onclick="toggleCommunityRedeem()"
+                style="display:none;margin-bottom:0.75rem;font-size:0.8rem;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--color-primary);cursor:pointer;font-family:inherit;font-weight:600;">
+            + Create another community
+        </button>
+
+        <div id="community-redeem-box" style="display:none;border:1px solid var(--border);border-radius:8px;padding:0.75rem;margin-bottom:1rem;">
+            <h4 style="font-size:0.9rem;margin:0 0 0.5rem;color:var(--color-gray-900);">Create a community</h4>
+            <input id="community-redeem-code" type="text" placeholder="Unlock code (BWC-XXXX-XXXX-XXXX)"
+                   autocomplete="off" spellcheck="false"
+                   style="width:100%;margin-bottom:0.4rem;text-transform:uppercase;">
+            <input id="community-redeem-name" type="text" placeholder="Community name (e.g. Lincoln Elementary)"
+                   style="width:100%;margin-bottom:0.4rem;">
+            <input id="community-redeem-slug" type="text" placeholder="Web address (e.g. lincoln-elementary)"
+                   autocomplete="off" spellcheck="false"
+                   style="width:100%;margin-bottom:0.4rem;">
+            <select id="community-redeem-visibility" style="width:100%;margin-bottom:0.5rem;">
+                <option value="private">Private — only people you invite can see it</option>
+                <option value="public">Public — anyone can see it</option>
+            </select>
+            <p style="font-size:0.75rem;color:var(--color-gray-500);margin:0 0 0.5rem;">
+                The web address is also the code feeder owners use to request joining.
+                It can't be changed later. A feeder that's also in a public community
+                stays publicly visible — joining a private one doesn't hide it.
+            </p>
+            <button type="button" id="community-redeem-btn" onclick="redeemCommunityUnlockCode()"
+                    style="width:100%;padding:8px;border-radius:6px;border:none;background:var(--color-primary);color:#fff;cursor:pointer;font-family:inherit;font-size:0.875rem;font-weight:600;">
+                Create community
+            </button>
+            <div id="community-redeem-status" style="display:none;margin-top:0.5rem;font-size:0.8rem;"></div>
+        </div>
+
+        <div id="community-panel-manage">
         <select id="community-panel-select" onchange="refreshCommunityPanel()"
                 style="width:100%;margin-bottom:0.5rem;"></select>
 
@@ -663,6 +708,7 @@
             <button class="mod-remove-btn" onclick="revokeCommunityInvite()">Revoke</button>
         </div>
         <div id="community-invite-status" style="font-size:0.8rem;margin-top:0.5rem;display:none;"></div>
+        </div><!-- /#community-panel-manage — hidden until the user manages at least one community -->
 
         <div class="mod-btn-row" style="margin-top:1.25rem;">
             <button class="mod-btn-cancel" onclick="closeCommunityPanel()">Close</button>
@@ -835,7 +881,10 @@
      modal. Must load before community-auth.js, which calls into window.bwOverlay. -->
 <script src="js/community-overlay.js"></script>
 <script src="js/community-auth.js?v=4"></script>
-<script src="js/community-communities.js?v=2"></script>
+<!-- ?v=3: the panel gained the unlock-code redeem form, and the markup and the
+     script have to land together — new HTML against the cached v=2 script would
+     render a Create button wired to a function that doesn't exist. -->
+<script src="js/community-communities.js?v=3"></script>
 <!-- Interactive chart runtime: crosshair tooltips on the trend chart, per-species hover rows on
      the Activity / Calendar / Rarity Mix charts. No-op until a [data-bw-chart] element appears. -->
 <script src="js/community-charts.js"></script>
