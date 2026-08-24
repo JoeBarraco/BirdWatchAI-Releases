@@ -87,6 +87,46 @@ const LICENSE_PRODUCT_VERSION = Deno.env.get('LICENSE_PRODUCT_VERSION') ?? '';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
 
+// ── Paid communities ────────────────────────────────────────────────────────
+//
+// Gumroad permalink (or product id) → tier. Hard-coded rather than an env var
+// on purpose: an env var that silently loses an entry means a paid sale is
+// dropped as "unrelated product", and the failure looks like nothing happening.
+// A constant is reviewable in the diff and moves with the code.
+//
+// Prices are one-time. The tier decides the feeder cap; community_tier_limit()
+// in Postgres is the single source of truth for what each tier allows, so it is
+// NOT duplicated here — the redeem path reads it from the code row.
+//
+//   small   1–5    feeders   $20   zrrzco
+//   medium  6–25   feeders   $50   ppbud
+//   large   26–100 feeders   $150  vdhkakw
+const COMMUNITY_TIERS: Record<string, 'small' | 'medium' | 'large'> = {
+  zrrzco:  'small',
+  ppbud:   'medium',
+  vdhkakw: 'large',
+};
+
+const COMMUNITY_FROM_EMAIL = Deno.env.get('COMMUNITY_FROM_EMAIL')
+                          ?? LICENSE_FROM_EMAIL;
+
+/** Human-readable feeder allowance, for the email only. Postgres owns the real cap. */
+const TIER_FEEDERS: Record<string, number> = { small: 5, medium: 25, large: 100 };
+
+/**
+ * Unlock code, shaped to be read off a screen and typed without ambiguity:
+ * BWC-XXXX-XXXX-XXXX over an alphabet with no O/0, I/1, or similar look-alikes.
+ * ~10^18 combinations, and a wrong guess is indistinguishable from an unused
+ * code because community_redeem_unlock_code gives one error for every failure.
+ */
+function newUnlockCode(): string {
+  const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no I, O, 0, 1
+  const bytes = new Uint8Array(12);
+  crypto.getRandomValues(bytes);
+  const chars = Array.from(bytes, b => ALPHABET[b % ALPHABET.length]);
+  return `BWC-${chars.slice(0, 4).join('')}-${chars.slice(4, 8).join('')}-${chars.slice(8, 12).join('')}`;
+}
+
 // ── Small helpers ───────────────────────────────────────────────────────────
 
 /** Constant-time string compare, so the ping token can't be probed byte by byte. */
@@ -313,6 +353,174 @@ support@birdwatchai.com from this address and we will send it again.
   }
 }
 
+// ── Community sales ─────────────────────────────────────────────────────────
+
+/**
+ * Mint (or revoke) a community unlock code for one Gumroad sale.
+ *
+ * Idempotent on `gumroad_sale_id`, which is UNIQUE: Gumroad retries pings, and
+ * a retry must not hand the buyer a second code. A duplicate returns the code
+ * that already exists and re-sends the email, because "I never got it" is the
+ * common support case and re-sending is harmless.
+ */
+async function handleCommunitySale(s: {
+  tier: 'small' | 'medium' | 'large';
+  saleId: string; productId: string; permalink: string;
+  email: string; name: string;
+  isTest: boolean; isRefund: boolean; isDispute: boolean; disputeWon: boolean;
+}): Promise<Response> {
+  const log = (m: string) => console.log(`[community ${s.tier} ${s.saleId}] ${m}`);
+
+  // Refund / dispute: revoke rather than delete. The buyer may already have
+  // created a community whose member feeders belong to other people, so their
+  // detections are not ours to remove. Revoking stops the code being redeemed
+  // if it hasn't been; an already-created community is a support decision.
+  if (s.isRefund || s.isDispute) {
+    const reason = s.isRefund ? 'gumroad refund' : 'gumroad dispute';
+    const { data, error } = await supabase
+      .from('community_unlock_codes')
+      .update({ revoked_at: new Date().toISOString(), revoked_reason: reason })
+      .eq('gumroad_sale_id', s.saleId)
+      .is('revoked_at', null)
+      .select('code, community_id');
+    if (error) {
+      console.error('community revoke failed:', error.message);
+      return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    }
+    const stillLive = (data ?? []).filter(r => r.community_id).length;
+    log(`revoked ${data?.length ?? 0} code(s) (${reason})`
+        + (stillLive ? ` — ${stillLive} already created a community, needs a human` : ''));
+    return new Response(JSON.stringify({ revoked: data?.length ?? 0, needs_review: stillLive }), { status: 200 });
+  }
+
+  if (s.disputeWon) {
+    const { data, error } = await supabase
+      .from('community_unlock_codes')
+      .update({ revoked_at: null, revoked_reason: null })
+      .eq('gumroad_sale_id', s.saleId)
+      .eq('revoked_reason', 'gumroad dispute')
+      .select('code');
+    if (error) {
+      console.error('community un-revoke failed:', error.message);
+      return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    }
+    log(`un-revoked ${data?.length ?? 0} code(s) (dispute won)`);
+    return new Response(JSON.stringify({ unrevoked: data?.length ?? 0 }), { status: 200 });
+  }
+
+  if (!s.email) {
+    console.error('community sale without an email; cannot deliver a code');
+    return new Response(JSON.stringify({ error: 'no email' }), { status: 400 });
+  }
+
+  // Already minted for this sale? Hand back the same code.
+  const { data: existing } = await supabase
+    .from('community_unlock_codes')
+    .select('code, tier')
+    .eq('gumroad_sale_id', s.saleId)
+    .maybeSingle();
+
+  let code = existing?.code as string | undefined;
+
+  if (code) {
+    log('duplicate ping — re-sending the existing code');
+  } else {
+    // The DB owns the cap; mirror it in the row so a later tier-table change
+    // can't retroactively shrink somebody's purchase.
+    const feederLimit = TIER_FEEDERS[s.tier];
+    // Retry on the astronomically-unlikely code collision rather than 500.
+    for (let attempt = 0; attempt < 5 && !code; attempt++) {
+      const candidate = newUnlockCode();
+      const { error } = await supabase.from('community_unlock_codes').insert({
+        code: candidate,
+        tier: s.tier,
+        feeder_limit: feederLimit,
+        customer_email: s.email,
+        customer_name: s.name || null,
+        source: 'gumroad',
+        gumroad_sale_id: s.saleId,
+        gumroad_product_id: s.productId || s.permalink || null,
+        is_test: s.isTest,
+      });
+      if (!error) { code = candidate; break; }
+      // 23505 = unique violation. On `code` retry; on `gumroad_sale_id` a
+      // concurrent ping won the race, so read its code and use that.
+      if (error.code === '23505') {
+        const { data: raced } = await supabase
+          .from('community_unlock_codes')
+          .select('code').eq('gumroad_sale_id', s.saleId).maybeSingle();
+        if (raced?.code) { code = raced.code; log('concurrent ping won; reusing its code'); break; }
+        continue; // code collision — try another
+      }
+      console.error('community code insert failed:', error.message);
+      return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    }
+    if (!code) {
+      console.error('could not mint a unique community code after 5 attempts');
+      return new Response(JSON.stringify({ error: 'code generation failed' }), { status: 500 });
+    }
+    log('minted');
+  }
+
+  await sendCommunityCodeEmail(s.email, s.name, code, s.tier);
+  return new Response(JSON.stringify({ ok: true, tier: s.tier, code_sent: true }), { status: 200 });
+}
+
+async function sendCommunityCodeEmail(
+  email: string, name: string, code: string, tier: string,
+): Promise<void> {
+  if (!RESEND_API_KEY) {
+    console.warn(`RESEND_API_KEY unset — community code ${code} stored but NOT emailed to ${email}`);
+    return;
+  }
+  const feeders = TIER_FEEDERS[tier] ?? 5;
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: COMMUNITY_FROM_EMAIL,
+      to: [email],
+      subject: `Your BirdWatchAI community unlock code`,
+      text: `${name ? name + ',\n\n' : ''}Thanks for buying a BirdWatchAI community.
+
+Your unlock code is:
+
+    ${code}
+
+It creates one community with room for up to ${feeders} feeders, and you choose
+whether that community is public or private.
+
+To use it:
+
+  1. Sign in at https://www.birdwatchai.com/docs/community.html
+  2. Open Communities -> Create a community
+  3. Paste the code, pick a name and a web address, and choose public or private
+
+You become the owner, and you can invite others as moderators or viewers by
+email from the same screen.
+
+Two things worth knowing up front:
+
+  - Each feeder still needs its own BirdWatchAI Server license. The community
+    fee groups feeders and controls privacy; it isn't the software.
+  - It doesn't include cloud photo storage. Your feeders' own retention
+    settings still apply.
+
+The code can only be used once, so keep this email until you've redeemed it.
+If anything goes wrong, write to support@birdwatchai.com from this address.
+
+-- Bird Brain Solutions LLC
+`,
+    }),
+  });
+  if (!res.ok) {
+    console.error('Resend delivery failed (community code):', res.status, await res.text());
+  }
+}
+
 // ── Handler ─────────────────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
@@ -352,6 +560,23 @@ Deno.serve(async (req) => {
   if (!saleId) {
     console.error('ping without sale_id; ignoring');
     return new Response(JSON.stringify({ error: 'no sale_id' }), { status: 400 });
+  }
+
+  // (b2) Community-tier sales branch off HERE, before the licence allowlist —
+  // they are deliberately not in GUMROAD_PRODUCT_ID, so falling through would
+  // get them "ignored: product not allowlisted" and silently drop a paid sale.
+  //
+  // One function rather than a second edge function because Gumroad's Ping is a
+  // single account-level endpoint: pointing community sales elsewhere would mean
+  // moving the licence webhook's ping too, on a path that is live and minting
+  // real keys. This branch returns before touching any licence logic, so the
+  // licence flow is unchanged unless a community product matches.
+  const communityTier = COMMUNITY_TIERS[productId] ?? COMMUNITY_TIERS[permalink];
+  if (communityTier) {
+    return await handleCommunitySale({
+      tier: communityTier, saleId, productId, permalink, email, name,
+      isTest, isRefund, isDispute, disputeWon,
+    });
   }
 
   // (c) Product allowlist. Gumroad sends `product_id` for products created
