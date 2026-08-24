@@ -13,7 +13,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="BirdWatchAI">
-    <link rel="stylesheet" href="css/community.css?v=7">
+    <link rel="stylesheet" href="css/community.css?v=8">
 </head>
 <body>
 <!-- Top navbar with auth controls -->
@@ -708,30 +708,43 @@
         <select id="community-panel-select" onchange="refreshCommunityPanel()"
                 style="width:100%;margin-bottom:0.5rem;"></select>
 
+        <!-- At-a-glance state: tier and how much of the feeder allowance is used,
+             plus visibility and the join code. Filled by renderCommunityStats from
+             community_tier_status. This replaces three separate lines of prose and
+             is the thing an owner opens the panel to check. -->
+        <div id="community-stats-bar" class="community-stats"></div>
+
         <!-- The join code. It is only shown once at creation otherwise, and a
              private community cannot be joined without it. -->
         <div id="community-code-line" style="margin-bottom:0.75rem;font-size:0.85rem;"></div>
 
-        <h4 style="font-size:0.9rem;margin-bottom:0.5rem;color:var(--color-gray-900);">Feeders in this community</h4>
-        <p style="font-size:0.8rem;color:var(--color-gray-500);margin-bottom:0.5rem;">
-            Pending requests appear first. "🌐 also public" means that feeder still
-            publishes to the open feed — being in this community does not make it private;
-            its owner has to leave the Public Feed for that.
-        </p>
-        <ul id="community-pending-list" class="mod-user-list">
-            <li style="color:var(--color-gray-500)">Loading…</li>
-        </ul>
+        <!-- Two columns from 720px up, so feeders and people are visible together
+             instead of one scrolled past the other. -->
+        <div class="community-panel-cols">
+            <section>
+                <h4 class="community-panel-h">
+                    Feeders
+                    <span class="community-panel-hint"
+                          title="Pending requests appear first. &quot;🌐 also public&quot; means that feeder still publishes to the open feed — being in this community does not make it private; its owner has to leave the Public Feed for that.">ⓘ</span>
+                </h4>
+                <ul id="community-pending-list" class="mod-user-list">
+                    <li style="color:var(--color-gray-500)">Loading…</li>
+                </ul>
+            </section>
 
-        <h4 style="font-size:0.9rem;margin:1.25rem 0 0.5rem;color:var(--color-gray-900);">People with access</h4>
-        <ul id="community-member-list" class="mod-user-list">
-            <li style="color:var(--color-gray-500)">Loading…</li>
-        </ul>
+            <section>
+                <h4 class="community-panel-h">
+                    People with access
+                    <span class="community-panel-hint"
+                          title="No email is sent. An invite is held against the address and applied automatically the next time that person signs in with it — so there is nothing to forward and no link to leak.">ⓘ</span>
+                </h4>
+                <ul id="community-member-list" class="mod-user-list">
+                    <li style="color:var(--color-gray-500)">Loading…</li>
+                </ul>
+            </section>
+        </div>
 
-        <h4 style="font-size:0.9rem;margin:1.25rem 0 0.5rem;color:var(--color-gray-900);">Invite a person</h4>
-        <p style="font-size:0.8rem;color:var(--color-gray-500);margin-bottom:0.5rem;">
-            No email is sent. The invite is held against the address and applied automatically
-            the next time they sign in with it — so there is nothing to forward and no link to leak.
-        </p>
+        <h4 class="community-panel-h" style="margin-top:1rem;">Invite a person</h4>
         <div class="mod-add-form">
             <input type="email" id="community-invite-email" placeholder="Email address">
             <select id="community-invite-role">
@@ -999,7 +1012,7 @@
      script renders buttons wired to functions that don't exist, and against a
      cached stylesheet renders the tier rows as bare links. css/community.css is
      pinned to v=7 for the same reason. -->
-<script src="js/community-communities.js?v=6"></script>
+<script src="js/community-communities.js?v=7"></script>
 <!-- Interactive chart runtime: crosshair tooltips on the trend chart, per-species hover rows on
      the Activity / Calendar / Rarity Mix charts. No-op until a [data-bw-chart] element appears. -->
 <script src="js/community-charts.js"></script>

@@ -3338,3 +3338,120 @@
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   Manage Community panel — density
+
+   The panel had grown to four explanatory paragraphs and two stacked
+   lists inside a 480px box, so the thing an owner opens it to check —
+   how much of the feeder allowance is used — was several scrolls down.
+
+   Three changes: a stats strip at the top carrying tier / usage /
+   visibility, the prose moved into ⓘ tooltips, and feeders + people
+   side by side once there's room. Scoped to #community-panel-modal so
+   the moderator panel, which shares .mod-admin-box, is untouched.
+   ══════════════════════════════════════════════════════════════════════ */
+
+#community-panel-modal .mod-admin-box {
+    width: 720px;
+    padding: 1.5rem;
+}
+
+/* ── Stats strip ───────────────────────────────────────────────────── */
+.community-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
+    gap: 8px;
+    margin-bottom: 0.75rem;
+}
+
+.community-stat {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 7px 10px;
+    min-width: 0;
+}
+
+.community-stat-label {
+    display: block;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--color-gray-500);
+    margin-bottom: 1px;
+}
+
+.community-stat-value {
+    display: block;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--color-gray-900);
+    font-variant-numeric: tabular-nums;
+    /* Long values (a tier name, "private only") shouldn't widen the track. */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Feeder usage earns colour: at the cap, approving the next one fails, and
+   that should be visible before the owner tries. */
+.community-stat.is-full   .community-stat-value { color: #e74c3c; }
+.community-stat.is-nearly .community-stat-value { color: #d97706; }
+
+/* A thin usage bar under the count, cheaper to read than the fraction alone. */
+.community-stat-bar {
+    display: block;
+    height: 3px;
+    margin-top: 5px;
+    border-radius: 2px;
+    background: var(--border-strong, var(--border));
+    overflow: hidden;
+}
+
+.community-stat-bar > span {
+    display: block;
+    height: 100%;
+    border-radius: 2px;
+    background: var(--color-primary);
+}
+
+.community-stat.is-nearly .community-stat-bar > span { background: #d97706; }
+.community-stat.is-full   .community-stat-bar > span { background: #e74c3c; }
+
+/* ── Two-column body ──────────────────────────────────────────────── */
+.community-panel-cols {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem 1.25rem;
+}
+
+@media (min-width: 720px) {
+    .community-panel-cols {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+.community-panel-h {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.9rem;
+    margin: 0 0 0.4rem;
+    color: var(--color-gray-900);
+}
+
+/* The prose that used to sit under each heading. Kept reachable rather than
+   deleted — it explains the "🌐 also public" badge, which is genuinely
+   surprising and has no other home. */
+.community-panel-hint {
+    font-size: 0.8rem;
+    color: var(--color-gray-500);
+    cursor: help;
+    user-select: none;
+}
+
+.community-panel-hint:hover { color: var(--color-primary); }
+
+/* The lists no longer need trailing space; the grid gap handles it. */
+.community-panel-cols .mod-user-list { margin-bottom: 0; }

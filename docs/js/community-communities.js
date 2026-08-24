@@ -423,7 +423,8 @@ async function refreshCommunityPanel() {
     }
 
     renderCommunityCode(cid);
-    refreshCommunityMembers();   // independent list; let it load in parallel
+    renderCommunityStats(cid);   // independent; let it load in parallel
+    refreshCommunityMembers();   // ditto
 
     list.innerHTML = '<li>Loading…</li>';
     // The full roster, not just the approval queue — pending first. One list
@@ -923,14 +924,31 @@ async function refreshCommunityAdminList() {
     }
 
     list.innerHTML = data.map(c => {
-        const counts = `${c.feeder_count} feeder${c.feeder_count === 1 ? '' : 's'} · ` +
-                       `${c.member_count} member${c.member_count === 1 ? '' : 's'}`;
-        const meta = `${c.visibility === 'private' ? '🔒 private' : '🌐 public'} · code ${c.slug} · ${counts}`;
+        // Approved out of the tier's allowance, not the raw row count — the raw
+        // count includes pending and rejected and so disagreed with the cap.
+        // Falls back to the old field when the DB predates the extended RPC.
+        const used  = c.approved_count ?? c.feeder_count ?? 0;
+        const limit = c.feeder_limit;
+        const feeders = limit
+            ? `${used}/${limit} feeders`
+            : `${used} feeder${used === 1 ? '' : 's'}`;
+        const pending = c.pending_count ? ` (+${c.pending_count} pending)` : '';
+
+        const bits = [
+            c.visibility === 'private' ? '🔒 private' : '🌐 public',
+            c.tier ? `${c.tier} plan` : null,
+            feeders + pending,
+            `${c.member_count} member${c.member_count === 1 ? '' : 's'}`,
+            `code ${c.slug}`,
+            // The thing support requests actually need: who to reply to.
+            c.owner_email ? `owner ${c.owner_email}` : 'no owner',
+        ].filter(Boolean);
+        const meta = bits.join(' · ');
 
         // Delete is offered ONLY for an empty community, and never for the
         // built-in public feed. The server enforces both; this keeps a button
         // that is guaranteed to fail off the screen.
-        const action = (c.slug !== 'public' && c.feeder_count === 0)
+        const action = (c.slug !== 'public' && (c.feeder_count ?? 0) === 0)
             ? `<button class="mod-remove-btn" onclick="deleteCommunityAsAdmin('${esc(c.id)}','${escJs(c.name)}')">Delete</button>`
             : `<span style="font-size:0.75rem;color:var(--color-gray-500);">${
                    c.slug === 'public' ? 'built-in' : 'has feeders'}</span>`;
@@ -1147,4 +1165,70 @@ async function resetCommunity() {
     await loadMyCommunities();
     await loadCommunityFeederIndex(true);
     await refreshCommunityPanel();
+}
+
+// ── Panel stats strip ─────────────────────────────────────
+
+/**
+ * Tier, feeder usage and visibility, at the top of the manage panel.
+ *
+ * Reads community_tier_status rather than counting client-side: the cap that
+ * matters is the one Postgres enforces on approval, and a count derived from
+ * the rendered list would drift from it the moment a page went stale.
+ *
+ * Fails quiet. This is a summary of things shown in full below, so a failed
+ * request should leave the strip empty rather than replace the panel with an
+ * error the owner can't act on.
+ */
+async function renderCommunityStats(communityId) {
+    const bar = document.getElementById('community-stats-bar');
+    if (!bar) return;
+    bar.innerHTML = '';
+    if (!communityId) return;
+
+    const c = myCommunities.find(x => x.id === communityId);
+
+    const { data, error } = await sbRpc('community_tier_status',
+        { p_community_id: communityId }, true);
+    if (error) return;
+
+    // The RPC RETURNS TABLE, so PostgREST hands back an array of one row.
+    const s = Array.isArray(data) ? data[0] : data;
+    if (!s) return;
+
+    const used  = Number(s.approved_count) || 0;
+    const limit = Number(s.feeder_limit) || 0;
+    const pct   = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
+
+    // Warn before the owner hits a failed approval, not after.
+    const state = limit > 0 && used >= limit ? 'is-full'
+                : limit > 0 && used >= limit - 1 ? 'is-nearly'
+                : '';
+
+    const tierLabel = { small: 'Small', medium: 'Medium', large: 'Large' }[s.tier] || s.tier || '—';
+
+    const cell = (label, value, extra = '', cls = '') => `
+        <div class="community-stat ${cls}">
+            <span class="community-stat-label">${esc(label)}</span>
+            <span class="community-stat-value">${value}</span>
+            ${extra}
+        </div>`;
+
+    bar.innerHTML = [
+        cell('Feeders', `${used} / ${limit}`,
+             `<span class="community-stat-bar"><span style="width:${pct}%"></span></span>`, state),
+        cell('Pending', String(Number(s.pending_count) || 0)),
+        cell('Plan', tierLabel),
+        cell('Visibility', c?.visibility === 'private' ? '🔒 Private' : '🌐 Public'),
+    ].join('');
+
+    if (state === 'is-full') {
+        bar.insertAdjacentHTML('beforeend',
+            `<div class="community-stat is-full" style="grid-column:1/-1;">
+                <span class="community-stat-label">At capacity</span>
+                <span class="community-stat-value" style="white-space:normal;font-size:0.8rem;font-weight:500;">
+                    Remove a feeder to approve another, or buy a larger community.
+                </span>
+             </div>`);
+    }
 }

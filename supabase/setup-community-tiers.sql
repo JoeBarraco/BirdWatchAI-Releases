@@ -629,3 +629,61 @@ $$;
 revoke execute on function community_owner_reset(uuid, text, text, text) from public;
 revoke execute on function community_owner_reset(uuid, text, text, text) from anon;
 grant  execute on function community_owner_reset(uuid, text, text, text) to authenticated;
+
+
+-- ── 10. Admin overview: every community, with owner and tier ────────
+--
+-- community_admin_list already returned every community regardless of
+-- visibility, with feeder and member counts. Replaced here to add the two
+-- things the platform admin actually asks for and couldn't see: WHO owns each
+-- one, and which tier it's on against how much of it is used.
+--
+-- feeder_count previously counted every row in community_feeders including
+-- pending and rejected ones, which made it disagree with the cap (the cap
+-- counts approved only). Split into both, so neither number has to be
+-- explained.
+
+create or replace function community_admin_list(p_token text)
+returns json
+language plpgsql security definer
+set search_path = public, extensions
+as $$
+declare
+  admin_role text;
+  result     json;
+begin
+  admin_role := moderator_session_role(p_token);
+
+  if admin_role is null or admin_role <> 'admin' then
+    raise exception 'Admin access required';
+  end if;
+
+  select json_agg(row_to_json(t) order by t.name) into result
+  from (
+    select c.id, c.slug, c.name, c.visibility, c.created_at,
+           c.tier, c.feeder_limit,
+           -- Owner email, so a support request can be tied to a person. Comes
+           -- from auth.users because communities only stores the user id.
+           (select u.email from auth.users u where u.id = c.owner_user_id) as owner_email,
+           c.owner_user_id,
+           (select count(*) from community_feeders cf
+             where cf.community_id = c.id and cf.status = 'approved')      as approved_count,
+           (select count(*) from community_feeders cf
+             where cf.community_id = c.id and cf.status = 'pending')       as pending_count,
+           (select count(*) from community_feeders cf
+             where cf.community_id = c.id)                                as feeder_count,
+           (select count(*) from community_members m
+             where m.community_id = c.id)                                 as member_count,
+           -- Whether it came from a purchase, and which one. Null for the
+           -- communities that predate tiers and for admin-created ones.
+           c.unlock_code_id is not null                                    as from_purchase
+    from communities c
+  ) t;
+
+  return coalesce(result, '[]'::json);
+end;
+$$;
+
+-- Unchanged from the original: this is moderator-token authenticated rather
+-- than JWT, so it has to be reachable by anon. The body is the guard.
+grant execute on function community_admin_list(text) to anon;
