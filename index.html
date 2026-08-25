@@ -267,7 +267,7 @@
                 <div class="feature-card" role="listitem">
                     <div class="feature-icon">🔒</div>
                     <h3>100% Private</h3>
-                    <p>All processing happens locally on your computer. Your camera feed and data never leave your home.</p>
+                    <p>BirdWatchAI does all its processing on your own computer. It never uploads your camera feed or your data.</p>
                 </div>
             </div>
         </div>
@@ -870,7 +870,7 @@
                         <li><strong>Raspberry Pi:</strong> a Pi 4 or 5, 4 GB RAM, and an SD card or SSD</li>
                         <li><strong>Windows / macOS / Linux:</strong> Docker Desktop, 8 GB RAM, 20 GB free disk</li>
                         <li>Best on a machine that stays on — birds don't keep office hours</li>
-                        <li>Internet connection for notifications and community sharing</li>
+                        <li>Internet connection &mdash; for notifications, weather and community sharing, and because most Wi-Fi cameras stop streaming without one</li>
                         <li>You watch it in a browser, so any phone, tablet or laptop on your network is the screen</li>
                     </ul>
                 </div>
@@ -883,6 +883,7 @@
                         <li>Also works with <a href="https://www.amazon.com/dp/B0CH45HPZT" target="_blank" rel="noopener">Wyze</a>, Reolink, Amcrest</li>
                         <li>Position with clear view of feeder</li>
                         <li>Stable WiFi connection</li>
+                        <li>Internet access &mdash; Tapo cameras stop serving RTSP without it</li>
                     </ul>
                 </div>
                 
@@ -1008,6 +1009,7 @@ docker compose up -d</code></pre>
                     <h3>Is my video feed sent to the cloud?</h3>
                     <p><strong>No.</strong> Identification runs entirely on your own computer &mdash; your camera feed is never streamed anywhere, and there is no cloud service doing the recognition.</p>
                     <p>Two things do reach the internet, and we would rather be precise than sound better than we are. If you set a location, the app fetches the temperature for it. And if you switch on <strong>community sharing</strong> &mdash; which is off until you turn it on &mdash; the sightings you choose to share are published publicly, including photos and clips if you enable those separately. Everything else stays on your machine. The <a href="privacy.html">privacy policy</a> lists every outbound request.</p>
+                    <p>Your camera is a separate device with its own connection to whoever made it &mdash; Tapo models need theirs up or they stop streaming. What passes over that link is between you and the manufacturer. BirdWatchAI does not use it, and pulls its video straight off your own network.</p>
                 </div>
                 
                 <div class="faq-item">
@@ -1032,7 +1034,8 @@ docker compose up -d</code></pre>
                 
                 <div class="faq-item">
                     <h3>Do I need an internet connection?</h3>
-                    <p>Bird detection works offline! You only need internet for push notifications, email alerts, and weather data. The core functionality works completely locally.</p>
+                    <p><strong>In practice yes &mdash; because of the camera, not the software.</strong> BirdWatchAI identifies birds entirely on your own machine and keeps detecting with the internet unplugged. It only reaches out for push notifications, email alerts, weather, update checks, and community sharing if you turn it on.</p>
+                    <p>The camera is the catch. Most consumer Wi-Fi cameras &mdash; including the <strong>Tapo C113</strong> we recommend &mdash; hold a connection to the manufacturer's service and <strong>stop serving their RTSP stream when they lose internet</strong>. If your connection drops, video stops arriving and there is nothing for BirdWatchAI to look at. That is the camera's behavior, not ours. If a genuinely offline setup matters to you, a wired PoE camera that streams RTSP without a cloud account will keep running on a network with no internet at all.</p>
                 </div>
             </div>
         </div>

@@ -279,7 +279,7 @@ That's it — weather data, the AI models, and video tools are all built in and 
   <tr><td>Camera</td><td>Any camera that streams over <strong>RTSP</strong> on your local network (see <a href="#rtsp">Section 7</a>)</td></tr>
   <tr><td>Memory</td><td>~200–300&nbsp;MB RAM in use</td></tr>
   <tr><td>CPU</td><td>Under 5% when idle; roughly 10–20% briefly during a detection</td></tr>
-  <tr><td>Network</td><td>Camera and PC on the same local network; minimal internet (weather, optional sharing, updates)</td></tr>
+  <tr><td>Network</td><td>Camera and PC on the same local network. The app itself needs only minimal internet (weather, optional sharing, updates) — but most Wi-Fi cameras, the Tapo C113 included, stop serving RTSP when they lose their internet connection, so in practice the link has to stay up</td></tr>
   <tr><td>Disk</td><td>Grows with saved photos/videos — plan for a few GB if you keep lots of clips</td></tr>
 </table>
 <div class="note"><span class="lbl">Everything else is bundled</span>
@@ -1104,6 +1104,7 @@ use the <strong>🚩</strong> button on any detection.</p>
 <table>
   <tr><th>Symptom</th><th>Things to try</th></tr>
   <tr><td>Camera won't connect</td><td>Verify the RTSP URL, that the camera is powered and on the same network, and that you're using the <em>camera account</em> credentials (not the cloud login). Test the URL in VLC. Try <code>/stream2</code>.</td></tr>
+  <tr><td>Everything stops when your internet goes down, though camera and PC are still on the LAN</td><td>Expected, and the camera is doing it. Most consumer Wi-Fi cameras — the <strong>Tapo C113</strong> included — hold a connection to the manufacturer's service and stop serving RTSP without it, so the stream dies even though your own network is fine. BirdWatchAI needs no internet to detect; it just has no video. Confirm by opening the RTSP URL in VLC while the internet is down — it fails there too. Recovers on its own once the connection returns. Use a wired PoE camera that serves RTSP without a cloud account if detection has to survive outages.</td></tr>
   <tr><td>Connection keeps dropping</td><td>Improve Wi-Fi at the camera; reserve a static IP; reduce simultaneous streams (cloud/SD/NVR); enable periodic reconnect; set Tapo cloud credentials so the app can auto-reboot the camera.</td></tr>
   <tr><td>No detections at all</td><td>Make sure you clicked <span class="ui">Start Monitoring</span>; check you're within daylight hours (or disable that limit); lower the Motion Threshold; confirm Test Mode is off and the camera shows live video.</td></tr>
   <tr><td>Too many false detections</td><td>Raise the Motion Threshold, increase the Cooldown, keep the object detector on, and frame out swaying branches. Use the Telemetry viewer to find a good threshold.</td></tr>
@@ -1120,8 +1121,13 @@ use the <strong>🚩</strong> button on any detection.</p>
 <p>No — identification is fully local. Images only leave your PC if you turn on Community Sharing
 at Level 3 or higher, which is opt-in and off unless you enable it.</p>
 <h4>Do I need internet?</h4>
-<p>Not for monitoring or identification. Internet is only used for weather, optional community
-sharing, optional notifications, and update checks.</p>
+<p>The app doesn't — monitoring and identification run entirely on your PC, and internet is only
+used for weather, optional community sharing, optional notifications, and update checks.</p>
+<p>Your camera probably does. Most consumer Wi-Fi cameras, including the <strong>Tapo C113</strong>,
+keep a connection to the manufacturer's service and <strong>stop serving their RTSP stream when
+that connection drops</strong> — so when your internet goes down the video stops arriving and
+detection stops with it. If you need a setup that survives an outage, use a wired PoE camera that
+serves RTSP without a cloud account.</p>
 <h4>Can I watch more than one feeder?</h4>
 <p>Yes — install the app into separate folders, one per camera; each runs independently.</p>
 <h4>Does it run at night?</h4>

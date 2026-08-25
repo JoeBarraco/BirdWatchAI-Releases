@@ -138,6 +138,21 @@
                 </td>
             </tr>
             <tr>
+                <td>Everything stops the moment your internet goes down &mdash; even though
+                    camera and PC are both still on the LAN</td>
+                <td>
+                    Expected, and it is the camera doing it. Most consumer Wi-Fi cameras,
+                    the <strong>Tapo C113</strong> among them, hold a connection to the
+                    manufacturer's service and stop serving RTSP without it, so the stream
+                    dies even though nothing on your own network changed. BirdWatchAI needs
+                    no internet to detect &mdash; it simply has no video to work with.
+                    Confirm by opening the RTSP URL in <strong>VLC</strong> while the internet
+                    is down; it will fail there too. It recovers on its own once the
+                    connection is back. If you need detection to survive an outage, use a
+                    wired PoE camera that serves RTSP without a cloud account.
+                </td>
+            </tr>
+            <tr>
                 <td>Connection keeps dropping every few minutes</td>
                 <td>
                     Improve Wi-Fi at the camera; reserve a static IP
