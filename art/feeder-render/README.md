@@ -44,6 +44,30 @@ The garden background, the wooden post and the robin are lifted from the previou
 visual family — `compose.py` masks the old feeder out, rebuilds the post by mirror-tiling a
 clean slice of it, and diffuses the bokeh in behind. Only the feeder itself is CG.
 
+## Gumroad product tile
+
+`pipeline/tile.py` draws `images/product-feeder-outdoor.jpg` — the flat illustration used as
+the Gumroad product image. It is **not** a render; it is vector-style art that has to sit in
+the `product-*.jpg` family (green gradient plate, pale ring, circular scene, heavy dark
+outlines), so the palette is sampled from the existing tiles and hard-coded at the top.
+
+```bash
+python tile.py
+```
+
+The feeder in it is drawn to scale from the same numbers the render uses — `k` px per mm,
+`X(mm)` / `Y(mm_z)` map part coordinates to the canvas — so the flat elevation is honest:
+160 wide body, 174.4 roof clearing it by only ~7 mm a side, O62 port at z 55 with the
+teardrop notch, black tray below z 20.5. Editing the tile means editing those numbers, not
+nudging pixels.
+
+The blue jay is built by unioning its parts into one silhouette mask and taking the outline
+from that mask, because overlapping filled primitives with their own strokes always leave a
+seam where they meet.
+
+Note this file only updates the image in the repo. **Gumroad serves its own copy** — the
+listing has to be updated by uploading the new file in the Gumroad product editor.
+
 ## Known geometry note
 
 The teardrop print-support cut runs the full depth of the part, so it also removes the front
