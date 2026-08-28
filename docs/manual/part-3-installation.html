@@ -185,13 +185,16 @@
 
         <p><strong>Hardware</strong></p>
         <ul>
-            <li><strong>Raspberry Pi 4 (4 GB or 8 GB)</strong> or <strong>Pi 5</strong>. The
-                2 GB variants technically work but make ONNX classification slow.</li>
+            <li><strong>Any 64-bit Raspberry Pi</strong> — a 3B+ or newer. It's not fussy about
+                the model; more RAM and a newer board just mean quicker ONNX classification.
+                The smaller-memory boards work fine for a single feeder camera, they simply
+                take a little longer per identification.</li>
             <li><strong>microSD card, 32 GB+, class A2</strong> (e.g. SanDisk Extreme,
                 Samsung Pro Endurance). Cheap cards die fast under database write load — get
                 a decent one.</li>
-            <li><strong>Official USB-C power supply</strong> for the Pi 4 / 5. Underpowered
-                supplies cause random lockups under camera + AI load.</li>
+            <li><strong>The official power supply for your board</strong> (USB-C on the newer
+                models, micro-USB on the older ones). Underpowered supplies cause random
+                lockups under camera + AI load.</li>
             <li><strong>Network</strong>: Ethernet to your router, or Wi-Fi credentials. Wired
                 is more reliable for an always-on camera.</li>
             <li><strong>A camera</strong>: any RTSP-capable IP camera (Tapo, Reolink, Amcrest,
@@ -209,8 +212,7 @@
         <ol class="steps">
             <li>Plug the SD card into your PC.</li>
             <li>Open <strong>Raspberry Pi Imager</strong>.</li>
-            <li>Click <span class="ui">Choose Device</span> → pick the model you have (Pi 4 or
-                Pi 5).</li>
+            <li>Click <span class="ui">Choose Device</span> → pick the model you have.</li>
             <li>Click <span class="ui">Choose OS</span> → <strong>Raspberry Pi OS (other)</strong>
                 → <strong>Raspberry Pi OS Lite (64-bit)</strong>. "Lite" matters — the full
                 desktop OS wastes RAM the server could use.</li>
@@ -282,7 +284,7 @@
                 the Wi-Fi country code isn't set:</p>
             <pre><code>sudo raspi-config nonint do_wifi_country US   # or your country code
 sudo nmcli device wifi list                   # should now list networks</code></pre>
-            Pi 5 radios refuse to scan until a country code is registered.
+            Some Pi radios refuse to scan until a country code is registered.
         </div>
 
         <h3>4. Update the OS and install git</h3>
