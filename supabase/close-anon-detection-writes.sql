@@ -66,9 +66,55 @@
 -- The cutover. SELECT is untouched — the public feed must stay readable
 -- or the website goes dark.
 -- ────────────────────────────────────────────────────────────────────
-drop policy if exists "Anon can write detections"  on community_detections;
-drop policy if exists "Anon can update detections" on community_detections;
-drop policy if exists "Anon can delete detections" on community_detections;
+-- ⚠ Dropped BY DISCOVERY, not by name. The first version of this file named the
+-- three policies as setup-communities.sql declares them ("Anon can write
+-- detections" etc.). On the live database they are actually called
+-- anon_insert_detections / anon_update_detections / anon_delete_detections, so
+-- every `drop policy if exists` matched nothing, did nothing, and reported
+-- success. The hole stayed wide open and the run looked clean.
+--
+-- Their roles are also {public}, not {anon, authenticated} — so they applied to
+-- every role on the database, PUBLIC being one every role belongs to. Same trap
+-- as the function EXECUTE grants, one layer up.
+--
+-- Hence: enumerate and drop whatever write policies exist, whatever they are
+-- called. SELECT policies are left alone (the public feed must stay readable)
+-- and so is anything scoped to service_role.
+do $$
+declare
+  p record;
+  n int := 0;
+begin
+  for p in
+    select policyname, cmd
+      from pg_policies
+     where schemaname = 'public'
+       and tablename  = 'community_detections'
+       and cmd in ('INSERT', 'UPDATE', 'DELETE')
+       and not ('service_role' = any(roles))
+  loop
+    execute format('drop policy if exists %I on public.community_detections', p.policyname);
+    raise notice 'dropped % policy %', p.cmd, p.policyname;
+    n := n + 1;
+  end loop;
+
+  if n = 0 then
+    raise notice 'no anon write policies found — already closed, or they are ALL-command policies (see below)';
+  end if;
+
+  -- An ALL-command policy for a non-service role would also carry SELECT, so
+  -- dropping it blindly would take the public feed down with it. Report instead.
+  for p in
+    select policyname
+      from pg_policies
+     where schemaname = 'public'
+       and tablename  = 'community_detections'
+       and cmd = 'ALL'
+       and not ('service_role' = any(roles))
+  loop
+    raise warning 'ALL-command policy % still grants writes — review by hand, dropping it would also remove SELECT', p.policyname;
+  end loop;
+end $$;
 
 -- Belt and braces: re-assert the service_role policy so a maintenance
 -- session and the moderator edge functions keep full access whatever
@@ -96,7 +142,10 @@ create policy "Service role full access detections" on community_detections
 -- 3. The RPC path must still work. From a real feeder holding its write
 --    token, share a sighting and confirm it lands.
 --
--- ROLLBACK, if a client you forgot about turns out to matter:
+-- ROLLBACK, if a client you forgot about turns out to matter. Note these
+-- recreate the policies scoped to anon+authenticated rather than to
+-- PUBLIC as the originals were — same effect through PostgREST, which
+-- only ever reaches those two roles, and narrower everywhere else:
 --
 --   create policy "Anon can write detections" on community_detections
 --     for insert to anon, authenticated with check (true);
