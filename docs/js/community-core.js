@@ -219,8 +219,10 @@ function periodToISO(period) {
         return new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
     }
     if (period === 'week') {
+        // Weeks start on Monday. getDay() is 0=Sun…6=Sat, so shift Sunday to 6
+        // and every other day back one — Monday lands on 0.
         const d = new Date(now);
-        d.setDate(d.getDate() - d.getDay());
+        d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
         d.setHours(0, 0, 0, 0);
         return d.toISOString();
     }
