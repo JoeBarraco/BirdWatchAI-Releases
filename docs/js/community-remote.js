@@ -146,14 +146,32 @@ set CH=${channel}
 set PORT=${ssh}
 set DASH=${dash}
 set TUNNEL_DIR=%USERPROFILE%\\Documents\\GitHub\\birdwatchai-server\\tools\\BirdWatch.Tunnel
+set RF=%TEMP%\\bw_ready_%PORT%
+del "%RF%" 2>nul
+set BW_TUNNEL_READY_FILE=%RF%
 
 echo Starting tunnel to ${safeName} ...
 start "birdwatch tunnel - ${safeName}" cmd /c dotnet run --project "%TUNNEL_DIR%" -- attach --channel %CH% --port %PORT%
 
-rem Give the tunnel a few seconds to join, then open the dashboard once SSH forwards it.
-start "" cmd /c "timeout /t 10 >nul & start "" http://localhost:%DASH%"
+echo Waiting for ${safeName} to come online (the feeder checks in every ~20 seconds) ...
+set /a TRIES=0
+:waitready
+if exist "%RF%" goto ready
+set /a TRIES+=1
+if %TRIES% gtr 60 goto timedout
+timeout /t 2 >nul
+goto waitready
 
-echo Opening SSH + dashboard forward. Close this window to end the connection.
+:timedout
+echo.
+echo Gave up after ~2 minutes. Is the feeder online, and is the session still open in the web panel?
+pause
+exit /b 1
+
+:ready
+rem Feeder is connected. Open the dashboard a few seconds after SSH brings up the forward.
+start "" cmd /c "timeout /t 3 >nul & start "" http://localhost:%DASH%"
+echo Opening the dashboard at http://localhost:%DASH% and an SSH session. Close this window to disconnect.
 ssh -o UserKnownHostsFile="%TEMP%\\${kh}" -o StrictHostKeyChecking=accept-new -p %PORT% -L %DASH%:localhost:8080 pi@localhost
 `;
     }
@@ -176,7 +194,7 @@ ssh -o UserKnownHostsFile="%TEMP%\\${kh}" -o StrictHostKeyChecking=accept-new -p
                 <div style="margin-bottom:.4rem">Session open until <strong>${rsTime(expires)}</strong>. On your PC:</div>
                 <a class="mod-remove-btn" style="background:#2eaa4f;color:#fff;text-decoration:none;display:inline-block"
                    href="${blobUrl}" download="${rsEsc(fname)}">⬇ Download connect script (.cmd)</a>
-                <span style="color:var(--color-gray-500)"> — double-click it, your browser opens to the dashboard.</span>
+                <span style="color:var(--color-gray-500)"> — double-click it; it waits for the feeder, then opens the dashboard.</span>
                 <details style="margin-top:.5rem">
                     <summary style="cursor:pointer">Prefer to type it? / Mac or Linux</summary>
                     <pre style="white-space:pre-wrap;word-break:break-all;margin:.4rem 0 0">${rsEsc(manual)}</pre>
