@@ -72,17 +72,17 @@
                     : `<span class="mod-role-tag" style="opacity:.6">last seen ${rsRel(f.last_poll_at)}</span>`;
 
             const actions = open
-                ? `<button class="mod-remove-btn" style="background:#2eaa4f" onclick="rsGetScript('${fid}','${name}')">Connect</button>
+                ? `<button class="mod-remove-btn" style="background:#2eaa4f;color:#fff" onclick="rsGetScript('${fid}','${name}')">Connect</button>
                    <button class="mod-remove-btn" onclick="rsCloseSession('${rsEsc(f.session_id)}','${name}')">Close</button>`
                 : reachable
-                    ? `<button class="mod-remove-btn" style="background:#2eaa4f" onclick="rsOpenSession('${fid}','${name}')">Open &amp; connect</button>`
+                    ? `<button class="mod-remove-btn" style="background:#2eaa4f;color:#fff" onclick="rsOpenSession('${fid}','${name}')">Open &amp; connect</button>`
                     : '';
 
             return `
                 <li data-rs-feeder="${fid}" style="flex-wrap:wrap">
                     <div class="mod-user-info">
                         <strong>${name}</strong> ${status}
-                        <span style="font-size:.72rem;color:var(--color-gray-500)">v${ver} · seen ${rsRel(f.last_poll_at)}</span>
+                        <span style="font-size:.72rem;color:var(--color-gray-500)">id ${rsEsc(String(f.feeder_id).slice(0,8))} · v${ver} · seen ${rsRel(f.last_poll_at)}</span>
                     </div>
                     <div style="display:flex;gap:.4rem">${actions}</div>
                     <div class="rs-connect" data-rs-connect="${fid}" style="flex-basis:100%;display:none;margin-top:.5rem"></div>
@@ -174,7 +174,7 @@ ssh -o UserKnownHostsFile="%TEMP%\\${kh}" -o StrictHostKeyChecking=accept-new -p
         box.innerHTML = `
             <div style="background:var(--color-gray-100,#f3f4f6);border-radius:8px;padding:.6rem .7rem;font-size:.8rem">
                 <div style="margin-bottom:.4rem">Session open until <strong>${rsTime(expires)}</strong>. On your PC:</div>
-                <a class="mod-remove-btn" style="background:#2eaa4f;text-decoration:none;display:inline-block"
+                <a class="mod-remove-btn" style="background:#2eaa4f;color:#fff;text-decoration:none;display:inline-block"
                    href="${blobUrl}" download="${rsEsc(fname)}">⬇ Download connect script (.cmd)</a>
                 <span style="color:var(--color-gray-500)"> — double-click it, your browser opens to the dashboard.</span>
                 <details style="margin-top:.5rem">
