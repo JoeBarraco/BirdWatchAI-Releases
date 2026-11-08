@@ -153,7 +153,12 @@ begin
              'last_poll_at',   r.last_poll_at,
              'app_version',    r.app_version,
              'session_until',  (select max(rs.expires_at) from remote_support_sessions rs
-                                 where rs.feeder_id = f.id and rs.closed_at is null and rs.expires_at > now())
+                                 where rs.feeder_id = f.id and rs.closed_at is null and rs.expires_at > now()),
+             -- The open session's id, so an admin can close it from the web panel. Not the channel
+             -- (that's the bearer secret and is never returned by a list RPC).
+             'session_id',     (select rs.id from remote_support_sessions rs
+                                 where rs.feeder_id = f.id and rs.closed_at is null and rs.expires_at > now()
+                                 order by rs.opened_at desc limit 1)
            ) order by f.display_name)
       from remote_support_feeders r
       join feeders f on f.id = r.feeder_id

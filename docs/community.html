@@ -615,6 +615,17 @@
             <li style="color:var(--color-gray-500)">Loading…</li>
         </ul>
 
+        <h4 style="font-size:0.9rem;margin:1.5rem 0 0.5rem;color:var(--color-gray-900);">Remote Support</h4>
+        <p style="font-size:0.8rem;color:var(--color-gray-500);margin-bottom:0.5rem;">
+            Open a session to a feeder that's checking in, then run the one-click script on your PC to
+            reach its dashboard and SSH. The session reaches only the feeder's own SSH server, a banner
+            shows on the feeder's dashboard while it's open, and every session is logged. Close it here
+            when you're done (it also expires on its own).
+        </p>
+        <ul id="remote-support-list" class="mod-user-list">
+            <li style="color:var(--color-gray-500)">Loading…</li>
+        </ul>
+
         <div class="mod-btn-row" style="margin-top:1.25rem;">
             <button class="mod-btn-cancel" onclick="closeAdminPanel()">Close</button>
         </div>
@@ -1006,6 +1017,7 @@
      modal. Must load before community-auth.js, which calls into window.bwOverlay. -->
 <script src="js/community-overlay.js"></script>
 <script src="js/community-auth.js?v=5"></script>
+<script src="js/community-remote.js?v=1"></script>
 <!-- ?v=5: the panel gained the tier picker, the redeem form and the bulk
      roster paste. Markup,
      script and stylesheet all have to land together — new HTML against a cached
