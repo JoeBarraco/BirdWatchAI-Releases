@@ -1,4 +1,4 @@
-// BirdWatchAI Screensaver — Launcher stub
+// BirdWatchAI Community Feed — Launcher stub
 // This tiny .scr lives in System32 so it appears in the Screen Saver dropdown.
 // It reads the real Electron screensaver path from the registry and launches it,
 // forwarding all command-line arguments (/s, /c, /p:HWND, etc.).
@@ -11,12 +11,12 @@ using System.Diagnostics;
 using System.Reflection;
 using Microsoft.Win32;
 
-[assembly: AssemblyTitle("BirdWatchAI Screensaver")]
-[assembly: AssemblyDescription("BirdWatchAI Community Bird Gallery Screensaver")]
+[assembly: AssemblyTitle("BirdWatchAI Community Feed")]
+[assembly: AssemblyDescription("BirdWatchAI Community Feed - community bird gallery screensaver")]
 [assembly: AssemblyCompany("BirdWatchAI")]
-[assembly: AssemblyProduct("BirdWatchAI Screensaver")]
-[assembly: AssemblyVersion("1.0.0.0")]
-[assembly: AssemblyFileVersion("1.0.0.0")]
+[assembly: AssemblyProduct("BirdWatchAI Community Feed")]
+[assembly: AssemblyVersion("1.1.0.0")]
+[assembly: AssemblyFileVersion("1.1.0.0")]
 
 class BirdWatchAIScreensaverLauncher
 {

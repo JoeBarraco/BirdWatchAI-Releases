@@ -2,6 +2,10 @@
 // The `dir` target produces dist/win-unpacked/ with the real Electron exe + supporting
 // DLLs/resources.  Renaming the exe to .scr is all Windows needs to treat it as a
 // screensaver — it's the same PE format.
+//
+// The target is whatever electron-builder named after `build.productName`, so this
+// keeps working when the product is renamed. It used to match on the literal string
+// "screensaver", which silently failed the build the moment the name changed.
 
 const fs   = require('fs');
 const path = require('path');
@@ -13,26 +17,26 @@ if (!fs.existsSync(unpackedDir)) {
     process.exit(1);
 }
 
+const pkg = JSON.parse(
+    fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf-8')
+);
+const productName = (pkg.build && pkg.build.productName) || pkg.name;
+
 const files = fs.readdirSync(unpackedDir);
-let renamed = false;
 
-for (const file of files) {
-    if (file.endsWith('.exe') && file.toLowerCase().includes('screensaver')) {
-        const oldPath = path.join(unpackedDir, file);
-        const newName = file.replace(/\.exe$/i, '.scr');
-        const newPath = path.join(unpackedDir, newName);
+// Electron ships several .exe files in the unpacked output (the app, plus
+// crash handlers and helpers). Only the one named after the product is ours.
+const target = files.find(f => f.toLowerCase() === `${productName.toLowerCase()}.exe`);
 
-        fs.renameSync(oldPath, newPath);
-        console.log(`Renamed: ${file} -> ${newName}`);
-        renamed = true;
-    }
-}
-
-if (!renamed) {
-    console.log('No screensaver .exe found in dist/win-unpacked/. Files:');
+if (!target) {
+    console.log(`No "${productName}.exe" found in dist/win-unpacked/. Files:`);
     files.forEach(f => console.log(`  ${f}`));
     process.exit(1);
 }
+
+const newName = target.replace(/\.exe$/i, '.scr');
+fs.renameSync(path.join(unpackedDir, target), path.join(unpackedDir, newName));
+console.log(`Renamed: ${target} -> ${newName}`);
 
 console.log('');
 console.log('Build complete!  Next steps:');

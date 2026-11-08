@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BirdWatchAI Screensaver</title>
+    <title>BirdWatchAI Community Feed</title>
     <link rel="stylesheet" href="slideshow.css">
 </head>
 <body>
@@ -17,6 +17,9 @@
         <!-- Caption overlay (species name + feeder) -->
         <div id="slideshow-chrome" class="slideshow-chrome">
             <span id="slideshow-caption" class="slideshow-caption"></span>
+            <!-- Set when the chosen photo age was empty and the feed fell
+                 back to an older day/week/month, so the screen says which. -->
+            <span id="slideshow-note" class="slideshow-note"></span>
             <span id="slideshow-counter" class="slideshow-counter"></span>
         </div>
 

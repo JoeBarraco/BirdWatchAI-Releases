@@ -1,13 +1,13 @@
 {
   "name": "birdwatchai-screensaver",
-  "version": "1.0.0",
-  "description": "BirdWatchAI community gallery screensaver for Windows with multi-monitor support",
+  "version": "1.1.0",
+  "description": "BirdWatchAI Community Feed screensaver for Windows with multi-monitor support",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
     "start:screensaver": "electron . /s",
     "start:config": "electron . /c",
-    "start:preview": "electron . /p",
+    "start:preview": "electron . --preview",
     "build": "npx electron-builder --win",
     "postbuild": "node scripts/rename-to-scr.js"
   },
@@ -19,7 +19,7 @@
   },
   "build": {
     "appId": "com.birdwatchai.screensaver",
-    "productName": "BirdWatchAI Screensaver",
+    "productName": "BirdWatchAI Community Feed",
     "win": {
       "target": [
         {
@@ -33,6 +33,7 @@
     "files": [
       "main.js",
       "preload.js",
+      "lib/**/*",
       "slideshow.html",
       "slideshow.css",
       "slideshow.js",

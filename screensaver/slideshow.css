@@ -119,6 +119,22 @@ body {
     letter-spacing: 0.01em;
 }
 
+/* Photo-age fallback notice — "No photos today, showing Thursday 6 November".
+   Quieter than the caption: it explains the feed, it isn't the subject. */
+.slideshow-note {
+    color: rgba(255,255,255,0.65);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 0.95rem;
+    font-style: italic;
+    margin-left: 1rem;
+    white-space: nowrap;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+}
+
+.slideshow-note:empty {
+    display: none;
+}
+
 .slideshow-counter {
     color: rgba(255,255,255,0.6);
     font-size: 0.9rem;

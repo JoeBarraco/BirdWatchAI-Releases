@@ -1,10 +1,19 @@
-// BirdWatchAI Screensaver — Electron main process
+// BirdWatchAI Community Feed — Electron main process
 // Handles Windows screensaver protocols: /s (run), /c (configure), /p (preview)
 // Spawns one fullscreen window per monitor for multi-display support.
+//
+// The feed itself lives in the main process (lib/feed.js). Renderers used to
+// fetch for themselves, which meant a three-monitor setup made three of every
+// request; now one fetch is broadcast to every window, and the access token
+// and the image cache have exactly one home.
 
 const { app, BrowserWindow, screen, ipcMain } = require('electron');
 const path = require('path');
 const fs   = require('fs');
+
+const auth  = require('./lib/auth');
+const feed  = require('./lib/feed');
+const cache = require('./lib/imagecache');
 
 // ── Parse screensaver command-line args ────────────────────
 // Windows passes: /s (show), /c:<hwnd> (configure), /p:<hwnd> (preview)
@@ -15,7 +24,10 @@ function parseMode() {
     for (const arg of args) {
         if (arg.startsWith('/s') || arg === '--screensaver') return 'screensaver';
         if (arg.startsWith('/c') || arg === '--config')      return 'config';
-        if (arg.startsWith('/p') || arg === '--preview')     return 'preview';
+        // --preview is the development flag and opens a real window. Windows'
+        // own /p:<hwnd> is a different thing entirely — see launchPreview().
+        if (arg === '--preview') return 'dev-preview';
+        if (arg.startsWith('/p')) return 'preview';
     }
     // Default to config mode when launched without args (matches Windows convention
     // for double-clicking a .scr file)
@@ -23,7 +35,7 @@ function parseMode() {
 }
 
 // ── Settings persistence ───────────────────────────────────
-const SETTINGS_PATH = path.join(app.getPath('userData'), 'screensaver-settings.json');
+let SETTINGS_PATH = null;
 
 const DEFAULT_SETTINGS = {
     transition: 'random',   // fade | slide | kenburns | blur | random
@@ -33,6 +45,8 @@ const DEFAULT_SETTINGS = {
     feeders:    [],         // [] = all feeders; otherwise array of feeder display names
     showCaption: true,
     showProgress: true,
+    cacheMB:     512,       // on-disk photo cache budget
+    refreshMinutes: 5,      // how often to look for new detections
 };
 
 function loadSettings() {
@@ -52,8 +66,43 @@ function saveSettings(settings) {
 ipcMain.handle('get-settings', () => loadSettings());
 ipcMain.handle('save-settings', (_e, settings) => {
     saveSettings(settings);
+    cache.setBudget(settings.cacheMB);
     return true;
 });
+
+// Account. Signing in is what makes private-community feeders visible: the
+// same queries, carrying the member's JWT, pass RLS for every feeder they
+// belong to.
+ipcMain.handle('auth-status',  () => auth.status());
+ipcMain.handle('auth-request', async (_e, email) => {
+    await auth.requestCode(email);
+    return true;
+});
+ipcMain.handle('auth-verify',  (_e, email, code) => auth.verify(email, code));
+ipcMain.handle('auth-signout', async () => {
+    const res = await auth.signOut();
+    // Private photos were cached to disk while signed in. On a shared machine,
+    // leaving them readable after sign-out is exactly what private communities
+    // exist to prevent.
+    await cache.clear();
+    return res;
+});
+
+// Feeders that currently have photos, as this account sees them.
+ipcMain.handle('list-feeders', async () => {
+    const { SUPABASE_URL } = require('./lib/supabase');
+    const url = `${SUPABASE_URL}/rest/v1/community_detections` +
+        `?select=feeders(display_name)&image_url=not.is.null` +
+        `&order=detected_at.desc&limit=2000`;
+    const res = await fetch(url, { headers: await auth.headers() });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const rows = await res.json();
+    return [...new Set(rows.map(r => r.feeders && r.feeders.display_name).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b));
+});
+
+ipcMain.handle('cache-stats', () => cache.stats());
+ipcMain.handle('cache-clear', () => cache.clear());
 
 // ── Screensaver mode ───────────────────────────────────────
 function launchScreensaver() {
@@ -61,6 +110,13 @@ function launchScreensaver() {
     const settings = loadSettings();
     const windows  = [];
     let   armed    = false; // Don't react to input until the grace period ends
+    let   refreshTimer = null;
+
+    // webContents.send before a window has finished loading goes nowhere, and
+    // the first feed load races window startup. Track which windows are ready
+    // and hand a late-loading one the result it missed.
+    const ready = new WeakSet();
+    let latestResult = null;
 
     for (const display of displays) {
         const win = new BrowserWindow({
@@ -91,6 +147,8 @@ function launchScreensaver() {
 
         win.webContents.on('did-finish-load', () => {
             win.webContents.send('init-settings', { ...settings, staggerDelay });
+            ready.add(win);
+            if (latestResult) win.webContents.send('feed-update', latestResult);
         });
 
         win.once('ready-to-show', () => {
@@ -105,6 +163,34 @@ function launchScreensaver() {
 
         windows.push(win);
     }
+
+    // One fetch for every monitor. Each window shuffles its own copy, so they
+    // still show different photos at any given moment.
+    function broadcast(result) {
+        latestResult = result;
+        for (const w of windows) {
+            if (!w.isDestroyed() && ready.has(w)) {
+                w.webContents.send('feed-update', result);
+            }
+        }
+    }
+
+    async function refreshFeed(initial) {
+        try {
+            const result = await feed.load(loadSettings());
+            result.initial = !!initial;
+            broadcast(result);
+            // Warm the cache behind the slideshow so the next launch — or the
+            // next time the network is down — has these photos on disk.
+            feed.warmCache(result.photos, 120).catch(() => {});
+        } catch (err) {
+            console.error('[feed] load failed:', err.message);
+        }
+    }
+
+    refreshFeed(true);
+    const everyMs = Math.max(1, settings.refreshMinutes || 5) * 60 * 1000;
+    refreshTimer = setInterval(() => refreshFeed(false), everyMs);
 
     // Grace period: ignore all input for the first 2 seconds while windows
     // are being created and fullscreened. Mouse jitter and OS-generated
@@ -129,6 +215,7 @@ function launchScreensaver() {
 
     function quitAll() {
         armed = false;
+        clearInterval(refreshTimer);
         for (const w of windows) {
             if (!w.isDestroyed()) w.close();
         }
@@ -144,11 +231,11 @@ function launchScreensaver() {
 // ── Configuration mode ─────────────────────────────────────
 function launchConfig() {
     const win = new BrowserWindow({
-        width: 480,
-        height: 700,
-        resizable: false,
+        width: 520,
+        height: 820,
+        resizable: true,
         frame: true,
-        title: 'BirdWatchAI Screensaver Settings',
+        title: 'BirdWatchAI Community Feed Settings',
         backgroundColor: '#1a1a2e',
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
@@ -172,8 +259,51 @@ function launchPreview() {
     app.quit();
 }
 
+// ── Developer preview ──────────────────────────────────────
+// The real slideshow in an ordinary window, so a change can be checked without
+// blacking out every monitor and quitting on the first mouse twitch. Reachable
+// only via `npm run start:preview`; Windows never passes this flag.
+function launchDevPreview() {
+    const settings = loadSettings();
+
+    const win = new BrowserWindow({
+        width: 1100,
+        height: 700,
+        title: 'BirdWatchAI Community Feed — Preview',
+        backgroundColor: '#000000',
+        webPreferences: {
+            preload: path.join(__dirname, 'preload.js'),
+            contextIsolation: true,
+            nodeIntegration: false,
+        },
+    });
+
+    win.setMenuBarVisibility(false);
+    win.loadFile('slideshow.html');
+
+    win.webContents.on('did-finish-load', async () => {
+        win.webContents.send('init-settings', settings);
+        const result = await feed.load(settings);
+        console.log(`[preview] ${result.photos.length} photos` +
+            (result.fallback ? ` (fell back to ${result.fallback.label})` : '') +
+            (result.offline ? ' [offline — from cache]' : ''));
+        win.webContents.send('feed-update', { ...result, initial: true });
+        feed.warmCache(result.photos, 40).catch(() => {});
+    });
+
+    win.on('closed', () => app.quit());
+}
+
 // ── App lifecycle ──────────────────────────────────────────
 app.whenReady().then(() => {
+    const userData = app.getPath('userData');
+    SETTINGS_PATH = path.join(userData, 'screensaver-settings.json');
+
+    const settings = loadSettings();
+    auth.init(userData);
+    feed.init(userData);
+    cache.init(userData, settings.cacheMB);
+
     const mode = parseMode();
 
     switch (mode) {
@@ -182,6 +312,9 @@ app.whenReady().then(() => {
             break;
         case 'preview':
             launchPreview();
+            break;
+        case 'dev-preview':
+            launchDevPreview();
             break;
         case 'screensaver':
         default:

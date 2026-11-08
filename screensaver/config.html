@@ -3,13 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BirdWatchAI Screensaver Settings</title>
+    <title>BirdWatchAI Community Feed Settings</title>
     <link rel="stylesheet" href="config.css">
 </head>
 <body>
     <div class="config-container">
-        <h1>BirdWatchAI Screensaver</h1>
+        <h1>BirdWatchAI Community Feed</h1>
         <p class="subtitle">Community bird gallery screensaver settings</p>
+
+        <!-- Community account.
+             Signing in is what makes private-community feeders appear: the
+             feed queries carry the account's token, and the server widens
+             them to every feeder that account can see. -->
+        <div class="form-group account-group">
+            <label>Community Account</label>
+            <p id="account-status" class="account-status">Checking…</p>
+
+            <div id="account-signed-out" hidden>
+                <div class="account-row">
+                    <input type="email" id="account-email" placeholder="you@example.com" autocomplete="email">
+                    <button id="btn-send-code" class="btn btn-secondary">Email me a code</button>
+                </div>
+                <div class="account-row" id="account-code-row" hidden>
+                    <input type="text" id="account-code" placeholder="6-digit code — or paste the link">
+                    <button id="btn-verify" class="btn btn-primary">Sign in</button>
+                </div>
+                <p class="field-hint">
+                    Sign in with your birdwatchai.com community account to include
+                    feeders from your private communities. We'll email you a code —
+                    if the email only has a button, paste the link here instead.
+                </p>
+            </div>
+
+            <div id="account-signed-in" hidden>
+                <button id="btn-signout" class="btn btn-secondary">Sign out</button>
+                <p class="field-hint">
+                    Signing out also clears cached photos, so private ones don't
+                    stay readable on a shared machine.
+                </p>
+            </div>
+
+            <p id="account-msg" class="account-msg"></p>
+        </div>
 
         <div class="form-group">
             <label for="transition">Transition Effect</label>
@@ -55,6 +90,11 @@
                 <option value="month">This month</option>
                 <option value="year">This year</option>
             </select>
+            <p class="field-hint">
+                If nothing matches, the most recent day, week, month or year that
+                does have photos is shown instead — the screensaver never goes blank
+                just because the birds had a quiet morning.
+            </p>
         </div>
 
         <div class="form-group">
@@ -76,6 +116,33 @@
                 <input type="checkbox" id="showProgress" checked>
                 Show progress bar
             </label>
+        </div>
+
+        <div class="form-group">
+            <label for="refreshMinutes">Check For New Photos</label>
+            <select id="refreshMinutes">
+                <option value="2">Every 2 minutes</option>
+                <option value="5" selected>Every 5 minutes</option>
+                <option value="15">Every 15 minutes</option>
+                <option value="30">Every 30 minutes</option>
+                <option value="60">Every hour</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="cacheMB">Photo Cache</label>
+            <select id="cacheMB">
+                <option value="128">128 MB</option>
+                <option value="256">256 MB</option>
+                <option value="512" selected>512 MB</option>
+                <option value="1024">1 GB</option>
+                <option value="2048">2 GB</option>
+            </select>
+            <p class="field-hint">
+                Photos are saved on this computer so they load instantly and keep
+                playing if the connection drops. <span id="cache-stats"></span>
+            </p>
+            <button id="btn-clear-cache" class="btn btn-secondary btn-small">Clear cached photos</button>
         </div>
 
         <div class="button-row">

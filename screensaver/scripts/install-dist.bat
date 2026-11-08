@@ -1,12 +1,12 @@
 @echo off
-REM BirdWatchAI Screensaver — End-user Installer
+REM BirdWatchAI Community Feed — End-user Installer
 REM For use from the distributed ZIP package.
 REM Requires: Administrator
 
 setlocal enabledelayedexpansion
 
 echo.
-echo  BirdWatchAI Screensaver Installer
+echo  BirdWatchAI Community Feed Installer
 echo  ==================================
 echo.
 
@@ -37,15 +37,20 @@ set "BUILD_DIR=%CD%"
 popd
 
 set "SCRIPT_DIR=%~dp0"
-set "INSTALL_DIR=%ProgramFiles%\BirdWatchAI Screensaver"
+set "INSTALL_DIR=%ProgramFiles%\BirdWatchAI Community Feed"
 set "LAUNCHER_NAME=BirdWatchAI.scr"
 
 REM ── Step 1: Clean up old entries ─────────────────────────────
 echo [1/5] Cleaning up old installations...
 taskkill /f /im "%LAUNCHER_NAME%" >nul 2>&1
+taskkill /f /im "BirdWatchAI Community Feed.scr" >nul 2>&1
+taskkill /f /im "BirdWatchAI Community Feed.exe" >nul 2>&1
+REM ...and the pre-1.1 names, so upgrading from "BirdWatchAI Screensaver"
+REM doesn't leave a second copy installed alongside this one.
 taskkill /f /im "BirdWatchAI Screensaver.scr" >nul 2>&1
 taskkill /f /im "BirdWatchAI Screensaver.exe" >nul 2>&1
 ping -n 2 127.0.0.1 >nul
+if exist "%ProgramFiles%\BirdWatchAI Screensaver" rmdir /s /q "%ProgramFiles%\BirdWatchAI Screensaver" >nul 2>&1
 del /q "%SystemRoot%\System32\BirdWatchAI*Screensaver*.scr" >nul 2>&1
 del /q "%SystemRoot%\System32\PBirdWatchAI*Screensaver*.scr" >nul 2>&1
 del /q "%SystemRoot%\System32\%LAUNCHER_NAME%" >nul 2>&1
@@ -126,7 +131,7 @@ reg add "HKLM\Software\BirdWatchAI\Screensaver" /v Path /t REG_SZ /d "%SCR_PATH%
 echo       Done.
 echo.
 echo  ============================================
-echo   BirdWatchAI Screensaver installed!
+echo   BirdWatchAI Community Feed installed!
 echo  ============================================
 echo.
 echo   Location: %INSTALL_DIR%

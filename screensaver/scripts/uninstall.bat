@@ -1,16 +1,16 @@
 @echo off
-REM BirdWatchAI Screensaver — Uninstaller
+REM BirdWatchAI Community Feed — Uninstaller
 REM Removes the launcher from System32, cleans up registry, and deletes installed files.
 REM Requires: Administrator (to remove from System32)
 
 setlocal
 
 echo.
-echo  BirdWatchAI Screensaver Uninstaller
+echo  BirdWatchAI Community Feed Uninstaller
 echo  ====================================
 echo.
 
-set "INSTALL_DIR=%ProgramFiles%\BirdWatchAI Screensaver"
+set "INSTALL_DIR=%ProgramFiles%\BirdWatchAI Community Feed"
 set "LAUNCHER_NAME=BirdWatchAI.scr"
 
 REM ── Remove launcher from System32 ────────────────────────────
@@ -44,7 +44,13 @@ if exist "%INSTALL_DIR%" (
     echo       Install directory not found — skipped.
 )
 
+REM Pre-1.1 installs lived under the old product name.
+if exist "%ProgramFiles%\BirdWatchAI Screensaver" (
+    rmdir /s /q "%ProgramFiles%\BirdWatchAI Screensaver" >nul 2>&1
+    echo       Removed %ProgramFiles%\BirdWatchAI Screensaver
+)
+
 echo.
-echo  BirdWatchAI Screensaver has been uninstalled.
+echo  BirdWatchAI Community Feed has been uninstalled.
 echo.
 pause

@@ -1,10 +1,9 @@
-// BirdWatchAI Screensaver — Slideshow renderer
-// Fetches bird photos from Supabase and displays them with transitions.
-// Adapted from community-social.js gallery slideshow.
-
-// ── Supabase config (read-only, public anon key) ───────────
-const SUPABASE_URL = 'https://lsamggztfizmkyljdgwq.supabase.co';
-const ANON_KEY     = 'sb_publishable_-80LQjkx2s82XnURj2DfQQ_d7ARz3js';
+// BirdWatchAI Community Feed — Slideshow renderer
+//
+// This file used to query Supabase itself, once per monitor. It no longer
+// talks to the network at all: the main process loads the feed (lib/feed.js)
+// and pushes finished photo records here, already resolved to local cache
+// files where we have them. The renderer's job is ordering and transitions.
 
 // ── Transition definitions ─────────────────────────────────
 const TRANSITIONS = [
@@ -14,57 +13,13 @@ const TRANSITIONS = [
     { id: 'blur',     label: 'Blur'      },
 ];
 
-// ── Query helpers ──────────────────────────────────────────
-// Convert a photo-age setting into an ISO cutoff (or null for "all time").
-// Mirrors periodToISO() from the community gallery so filtering is consistent.
-function periodToISO(period) {
-    const now = new Date();
-    switch (period) {
-        case 'today':
-            return new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-        case 'week': {
-            const d = new Date(now);
-            d.setDate(d.getDate() - d.getDay());
-            d.setHours(0, 0, 0, 0);
-            return d.toISOString();
-        }
-        case 'month':
-            return new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-        case 'year':
-            return new Date(now.getFullYear(), 0, 1).toISOString();
-        default:
-            return null;
-    }
-}
-
-// Build the Supabase REST URL, applying the photo-age cutoff when set.
-function buildPhotosUrl() {
-    let url = `${SUPABASE_URL}/rest/v1/community_detections` +
-        `?select=id,species,image_url,detected_at,feeders(display_name)` +
-        `&image_url=not.is.null` +
-        `&order=detected_at.desc` +
-        `&limit=500`;
-
-    const since = periodToISO(settings.photoAge);
-    if (since) url += `&detected_at=gte.${encodeURIComponent(since)}`;
-
-    return url;
-}
-
-// True if a detection's feeder is allowed by the current feeder filter.
-// An empty/unset feeders list means "all feeders".
-function feederAllowed(detection) {
-    if (!settings.feeders || settings.feeders.length === 0) return true;
-    const name = detection.feeders?.display_name || '';
-    return settings.feeders.includes(name);
-}
-
 // ── DOM refs ───────────────────────────────────────────────
 const slideshowEl     = document.getElementById('slideshow');
 const slideA          = document.getElementById('slide-a');
 const slideB          = document.getElementById('slide-b');
 const captionEl       = document.getElementById('slideshow-caption');
 const counterEl       = document.getElementById('slideshow-counter');
+const noteEl          = document.getElementById('slideshow-note');
 const progressFill    = document.getElementById('slideshow-progress-fill');
 const loadingEl       = document.getElementById('slideshow-loading');
 const emptyEl         = document.getElementById('slideshow-empty');
@@ -79,14 +34,15 @@ let timer        = null;
 let progressRAF  = null;
 let slideStart   = 0;
 let idleTimer    = null;
+let playing      = false;
 
 // Settings (overridden by main process)
 let settings = {
     transition:   'random',
     interval:     6000,
     sortMode:     'random',
-    photoAge:     'all',     // all | today | week | month | year
-    feeders:      [],        // [] = all feeders; otherwise array of display names
+    photoAge:     'all',
+    feeders:      [],
     showCaption:  true,
     showProgress: true,
 };
@@ -105,116 +61,99 @@ window.screensaverAPI.onSettings((s) => {
         settings.showCaption ? '' : 'none';
     document.getElementById('slideshow-bar').style.display =
         settings.showProgress ? '' : 'none';
-
-    // Start loading photos
-    loadPhotos();
 });
+
+// ── Receive the feed from main ─────────────────────────────
+window.screensaverAPI.onFeed((result) => {
+    const incoming = Array.isArray(result.photos) ? result.photos : [];
+
+    // Say which window we actually landed on when the chosen photo-age had
+    // nothing in it. "Today" quietly showing last Tuesday is worse than
+    // showing last Tuesday and saying so.
+    if (noteEl) {
+        noteEl.textContent = result.fallback
+            ? `No photos ${periodPhrase(result.fallback.period)} — showing ${result.fallback.label}`
+            : '';
+    }
+
+    if (!incoming.length) {
+        if (!playing) {
+            showEmptyState(emptyMessage(result));
+        }
+        return;   // a failed refresh never interrupts a running slideshow
+    }
+
+    if (!playing) {
+        photos = orderFor(incoming);
+        hideEmptyState();
+        loadingEl.classList.add('hidden');
+        const delay = settings.staggerDelay || 0;
+        if (delay > 0) setTimeout(startPlayback, delay);
+        else           startPlayback();
+        return;
+    }
+
+    mergeRefresh(incoming);
+});
+
+// Each monitor shuffles its own copy, so a multi-display wall is not showing
+// the same bird four times.
+function orderFor(list) {
+    const copy = list.slice();
+    if (!settings.sortMode || settings.sortMode === 'random') shuffle(copy);
+    return copy;
+}
+
+// Fold a refresh into a running slideshow: refresh the URLs we already hold
+// (a signed URL for private media only lives a couple of hours, and photos
+// cached since the last pass now have a local path), then queue what's new.
+function mergeRefresh(incoming) {
+    const byId = new Map(incoming.map(p => [p.id, p]));
+
+    for (const p of photos) {
+        const fresh = byId.get(p.id);
+        if (fresh && fresh.url && fresh.url !== p.url) p.url = fresh.url;
+    }
+
+    const have = new Set(photos.map(p => p.id));
+    const added = incoming.filter(p => !have.has(p.id));
+    if (!added.length) return;
+
+    shuffle(added);
+    photos.splice(photoIdx + 1, 0, ...added);
+}
+
+function periodPhrase(period) {
+    switch (period) {
+        case 'today': return 'today';
+        case 'week':  return 'this week';
+        case 'month': return 'this month';
+        case 'year':  return 'this year';
+        default:      return 'in that range';
+    }
+}
+
+function emptyMessage(result) {
+    if (result.offline) {
+        return 'No connection, and no photos saved yet — check back soon.';
+    }
+    const filtered = (settings.feeders && settings.feeders.length) ||
+        (settings.photoAge && settings.photoAge !== 'all');
+    return filtered
+        ? 'No photos match your feeder settings.'
+        : 'No photos available yet — check back soon.';
+}
 
 // ── Signal mouse clicks to main process to exit ────────────
 document.addEventListener('mousedown', () => {
     window.screensaverAPI.signalActivity();
 });
 
-// ── Fetch photos from Supabase ─────────────────────────────
-async function loadPhotos() {
-    try {
-        const url = buildPhotosUrl();
-
-        const res = await fetch(url, {
-            headers: {
-                apikey: ANON_KEY,
-                Authorization: `Bearer ${ANON_KEY}`,
-            },
-        });
-
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-        const detections = await res.json();
-
-        // Group by species (mirrors buildGalleryData from community-social.js)
-        const speciesMap = {};
-        for (const d of detections) {
-            if (!d.species || !d.image_url) continue;
-            if (!feederAllowed(d)) continue;
-            if (!speciesMap[d.species]) {
-                speciesMap[d.species] = {
-                    species: d.species,
-                    photos: [],
-                    lastSeen: d.detected_at,
-                };
-            }
-            const entry = speciesMap[d.species];
-            entry.photos.push({
-                id: d.id,
-                url: d.image_url,
-                date: d.detected_at,
-                species: d.species,
-                feeder: d.feeders?.display_name || '',
-            });
-            if (d.detected_at > entry.lastSeen) entry.lastSeen = d.detected_at;
-        }
-
-        const speciesList = Object.values(speciesMap).filter(s => s.photos.length > 0);
-
-        // Sort species groups based on settings
-        switch (settings.sortMode) {
-            case 'count':
-                speciesList.sort((a, b) => b.photos.length - a.photos.length);
-                break;
-            case 'alpha':
-                speciesList.sort((a, b) => a.species.localeCompare(b.species));
-                break;
-            case 'recent':
-                speciesList.sort((a, b) => (b.lastSeen || '').localeCompare(a.lastSeen || ''));
-                break;
-            case 'random':
-            default:
-                shuffleArray(speciesList);
-                break;
-        }
-
-        // Flatten to photo list
-        photos = [];
-        for (const s of speciesList) {
-            for (const p of s.photos) {
-                photos.push(p);
-            }
-        }
-
-        // Extra shuffle for random mode
-        if (settings.sortMode === 'random') {
-            shuffleArray(photos);
-        }
-
-        if (!photos.length) {
-            const filtered = (settings.feeders && settings.feeders.length) ||
-                (settings.photoAge && settings.photoAge !== 'all');
-            showEmptyState(filtered
-                ? 'No photos match your feeder and photo-age settings.'
-                : 'No photos available yet — check back soon.');
-            return;
-        }
-
-        // Hide loading, start playback (after optional stagger delay for multi-monitor)
-        hideEmptyState();
-        loadingEl.classList.add('hidden');
-        const delay = settings.staggerDelay || 0;
-        if (delay > 0) {
-            setTimeout(() => startPlayback(), delay);
-        } else {
-            startPlayback();
-        }
-
-    } catch (err) {
-        console.error('Failed to load photos:', err);
-        showEmptyState('Unable to load photos. Check your internet connection.');
-    }
-}
-
 // ── Playback ───────────────────────────────────────────────
 function startPlayback() {
     photoIdx = 0;
     activeSlot = 0;
+    playing = true;
 
     // Reset both slides
     [slideA, slideB].forEach(el => {
@@ -273,19 +212,31 @@ function showSlide(direction) {
         activeSlot = 1 - activeSlot;
     };
 
-    // Preload before swapping
+    // Preload before swapping. A cached photo is a local file, so this is
+    // usually instant; the remote fallback is what the safety net is for.
+    const src = photo.url;
     const pre = new Image();
     let done = false;
     const finish = () => {
         if (done) return;
         done = true;
         if (myToken !== slideToken) return;
-        nextImg.src = photo.url;
+        nextImg.src = src;
         requestAnimationFrame(commit);
     };
     pre.onload  = finish;
-    pre.onerror = finish;
-    pre.src     = photo.url;
+    pre.onerror = () => {
+        // A local cache file that has been pruned, or a signed URL that died
+        // mid-slideshow. Fall back to the remote copy once before giving up.
+        if (!done && photo.remote && src !== photo.remote) {
+            photo.url = photo.remote;
+            pre.onerror = finish;
+            pre.src = photo.remote;
+            return;
+        }
+        finish();
+    };
+    pre.src = src;
     setTimeout(finish, 2000); // safety net
 }
 
@@ -318,56 +269,6 @@ function bumpIdle() {
     }, 4000);
 }
 
-// ── Periodic refresh — pull new photos every 5 minutes ─────
-setInterval(async () => {
-    try {
-        const url = buildPhotosUrl();
-
-        const res = await fetch(url, {
-            headers: {
-                apikey: ANON_KEY,
-                Authorization: `Bearer ${ANON_KEY}`,
-            },
-        });
-        if (!res.ok) return;
-
-        const detections = await res.json();
-        const wasEmpty = photos.length === 0;
-        const existingIds = new Set(photos.map(p => p.id));
-        const newPhotos = [];
-
-        for (const d of detections) {
-            if (!d.species || !d.image_url) continue;
-            if (!feederAllowed(d)) continue;
-            if (existingIds.has(d.id)) continue;
-            newPhotos.push({
-                id: d.id,
-                url: d.image_url,
-                date: d.detected_at,
-                species: d.species,
-                feeder: d.feeders?.display_name || '',
-            });
-        }
-
-        if (newPhotos.length) {
-            shuffleArray(newPhotos);
-            if (wasEmpty) {
-                // We were showing the empty-state logo; photos now match, so
-                // dismiss it and begin playback.
-                photos = newPhotos;
-                hideEmptyState();
-                loadingEl.classList.add('hidden');
-                startPlayback();
-            } else {
-                // Insert after current position so they appear naturally
-                photos.splice(photoIdx + 1, 0, ...newPhotos);
-            }
-        }
-    } catch {
-        // Silently ignore refresh failures
-    }
-}, 5 * 60 * 1000);
-
 // ── Empty state (floating logo) ────────────────────────────
 function showEmptyState(message) {
     loadingEl.classList.add('hidden');
@@ -380,7 +281,7 @@ function hideEmptyState() {
 }
 
 // ── Utilities ──────────────────────────────────────────────
-function shuffleArray(arr) {
+function shuffle(arr) {
     for (let i = arr.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [arr[i], arr[j]] = [arr[j], arr[i]];

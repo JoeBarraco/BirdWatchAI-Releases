@@ -1,12 +1,12 @@
 @echo off
-REM BirdWatchAI Screensaver — Package for distribution
+REM BirdWatchAI Community Feed — Package for distribution
 REM Creates a ZIP file ready for upload to GitHub Releases.
 REM Requires: npm run build to have been run first.
 
 setlocal
 
 echo.
-echo  BirdWatchAI Screensaver Packager
+echo  BirdWatchAI Community Feed Packager
 echo  =================================
 echo.
 
@@ -22,25 +22,25 @@ popd
 
 set "SCRIPT_DIR=%~dp0"
 set "DIST_DIR=%~dp0..\dist"
-set "PKG_DIR=%TEMP%\BirdWatchAI-Screensaver-Package"
-set "ZIP_NAME=BirdWatchAI_Screensaver_1.0.0.zip"
+set "PKG_DIR=%TEMP%\BirdWatchAI-Community-Feed-Package"
+set "ZIP_NAME=BirdWatchAI_Community_Feed_1.1.0.zip"
 
 REM ── Clean up previous package ────────────────────────────────
 if exist "%PKG_DIR%" rmdir /s /q "%PKG_DIR%"
-mkdir "%PKG_DIR%\BirdWatchAI Screensaver"
+mkdir "%PKG_DIR%\BirdWatchAI Community Feed"
 
 echo [1/3] Copying build files...
-xcopy "%BUILD_DIR%" "%PKG_DIR%\BirdWatchAI Screensaver\app\" /s /e /i /q /y >nul
+xcopy "%BUILD_DIR%" "%PKG_DIR%\BirdWatchAI Community Feed\app\" /s /e /i /q /y >nul
 echo       Done.
 
 echo [2/3] Copying installer scripts...
-copy /y "%SCRIPT_DIR%Launcher.cs" "%PKG_DIR%\BirdWatchAI Screensaver\" >nul
-copy /y "%SCRIPT_DIR%install-dist.bat" "%PKG_DIR%\BirdWatchAI Screensaver\install.bat" >nul
-copy /y "%SCRIPT_DIR%uninstall.bat" "%PKG_DIR%\BirdWatchAI Screensaver\uninstall.bat" >nul
+copy /y "%SCRIPT_DIR%Launcher.cs" "%PKG_DIR%\BirdWatchAI Community Feed\" >nul
+copy /y "%SCRIPT_DIR%install-dist.bat" "%PKG_DIR%\BirdWatchAI Community Feed\install.bat" >nul
+copy /y "%SCRIPT_DIR%uninstall.bat" "%PKG_DIR%\BirdWatchAI Community Feed\uninstall.bat" >nul
 
 REM Create a simple readme for end users
 (
-echo BirdWatchAI Screensaver
+echo BirdWatchAI Community Feed
 echo =======================
 echo.
 echo A Windows screensaver that displays the BirdWatchAI community bird
@@ -57,14 +57,14 @@ echo   After installing, open Screen Saver Settings and click "Settings..."
 echo   Or: Settings ^> Personalization ^> Lock screen ^> Screen saver settings
 echo.
 echo Requires Windows 10/11 ^(64-bit^)
-) > "%PKG_DIR%\BirdWatchAI Screensaver\README.txt"
+) > "%PKG_DIR%\BirdWatchAI Community Feed\README.txt"
 
 echo       Done.
 
 echo [3/3] Creating ZIP...
 
 REM Use PowerShell to create the ZIP (available on Windows 10+)
-powershell -NoProfile -Command "Compress-Archive -Path '%PKG_DIR%\BirdWatchAI Screensaver' -DestinationPath '%DIST_DIR%\%ZIP_NAME%' -Force"
+powershell -NoProfile -Command "Compress-Archive -Path '%PKG_DIR%\BirdWatchAI Community Feed' -DestinationPath '%DIST_DIR%\%ZIP_NAME%' -Force"
 if errorlevel 1 (
     echo  ERROR: Failed to create ZIP.
     pause

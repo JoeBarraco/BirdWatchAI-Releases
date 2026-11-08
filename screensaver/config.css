@@ -1,4 +1,4 @@
-/* BirdWatchAI Screensaver — Configuration window styles */
+/* BirdWatchAI Community Feed — Configuration window styles */
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -165,4 +165,85 @@ h1 {
     color: #5aab72;
     min-height: 1.2em;
     transition: opacity 0.3s;
+}
+
+/* ── Community account ──────────────────────────────────── */
+
+.account-group {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 22px;
+}
+
+.account-status {
+    font-size: 0.88rem;
+    color: rgba(255,255,255,0.55);
+    margin-bottom: 10px;
+}
+
+.account-status.signed-in {
+    color: #5aab72;
+    font-weight: 600;
+}
+
+.account-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+/* A class rule with `display` outranks the browser's [hidden] style, so the
+   code row would otherwise show before a code has been sent. */
+[hidden] {
+    display: none !important;
+}
+
+.account-row input {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 12px;
+    background: #16213e;
+    color: #e0e0e0;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.15s;
+}
+
+.account-row input:focus {
+    border-color: #5aab72;
+}
+
+/* .btn is flex:1 for the Save/Cancel row; inline buttons size to content. */
+.account-row .btn,
+.btn-small {
+    flex: 0 0 auto;
+    padding: 8px 14px;
+    white-space: nowrap;
+}
+
+.btn-small {
+    margin-top: 8px;
+    font-size: 0.82rem;
+}
+
+.account-msg {
+    font-size: 0.82rem;
+    min-height: 1.2em;
+    color: rgba(255,255,255,0.55);
+}
+
+.account-msg.success { color: #5aab72; }
+.account-msg.error   { color: #e07a5f; }
+
+/* Explanatory text under a field. */
+.field-hint {
+    font-size: 0.78rem;
+    line-height: 1.45;
+    color: rgba(255,255,255,0.4);
+    margin-top: 6px;
 }
