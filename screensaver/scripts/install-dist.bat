@@ -81,11 +81,21 @@ if errorlevel 1 (
 )
 echo       Done.
 
-REM ── Step 4: Compile launcher stub ────────────────────────────
-echo [4/5] Compiling launcher for System32...
+REM ── Step 4: Install launcher stub ────────────────────────────
+echo [4/5] Installing launcher for System32...
 
 set "SCR_PATH=%INSTALL_DIR%\%SCR_NAME%"
 set "CSC="
+
+REM Prefer the launcher built and signed when this package was made. One
+REM compiled here on the user's machine can never carry our signature, so
+REM compiling is only the fallback for packages that shipped without one.
+if exist "%SCRIPT_DIR%%LAUNCHER_NAME%" (
+    echo       Using the signed launcher from this package.
+    copy /y "%SCRIPT_DIR%%LAUNCHER_NAME%" "%SystemRoot%\System32\%LAUNCHER_NAME%" >nul
+    if not errorlevel 1 goto :verifylauncher
+    echo  WARNING: Could not copy it to System32; trying to compile instead.
+)
 
 for /f "delims=" %%c in ('dir /s /b "%SystemRoot%\Microsoft.NET\Framework64\csc.exe" 2^>nul') do set "CSC=%%c"
 if not defined CSC (
@@ -115,6 +125,7 @@ if errorlevel 1 (
 )
 del /q "%LAUNCHER_OUT%" >nul 2>&1
 
+:verifylauncher
 if not exist "%SystemRoot%\System32\%LAUNCHER_NAME%" (
     echo  WARNING: Launcher not found in System32 after copy.
     echo  Windows Defender may have quarantined it.

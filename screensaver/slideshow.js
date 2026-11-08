@@ -3,7 +3,7 @@
 // This file used to query Supabase itself, once per monitor. It no longer
 // talks to the network at all: the main process loads the feed (lib/feed.js)
 // and pushes finished photo records here, already resolved to local cache
-// files where we have them. The renderer's job is ordering and transitions.
+// files where we have them. The renderer's job is ordering and playback.
 
 // ── Transition definitions ─────────────────────────────────
 const TRANSITIONS = [
@@ -17,6 +17,7 @@ const TRANSITIONS = [
 const slideshowEl     = document.getElementById('slideshow');
 const slideA          = document.getElementById('slide-a');
 const slideB          = document.getElementById('slide-b');
+const videoEl         = document.getElementById('slide-video');
 const captionEl       = document.getElementById('slideshow-caption');
 const counterEl       = document.getElementById('slideshow-counter');
 const noteEl          = document.getElementById('slideshow-note');
@@ -24,6 +25,11 @@ const progressFill    = document.getElementById('slideshow-progress-fill');
 const loadingEl       = document.getElementById('slideshow-loading');
 const emptyEl         = document.getElementById('slideshow-empty');
 const emptyMsgEl      = document.getElementById('slideshow-empty-msg');
+const cornerEl        = document.getElementById('slideshow-corner');
+const cornerTimeEl    = document.getElementById('corner-time');
+const cornerDateEl    = document.getElementById('corner-date');
+const cornerTempEl    = document.getElementById('corner-temp');
+const cornerUpdateEl  = document.getElementById('corner-update');
 
 // ── State ──────────────────────────────────────────────────
 let photos       = [];
@@ -33,8 +39,11 @@ let slideToken   = 0;      // prevents stale transitions from committing
 let timer        = null;
 let progressRAF  = null;
 let slideStart   = 0;
+let slideSpan    = 0;      // ms the current item is on screen
 let idleTimer    = null;
 let playing      = false;
+let shownCount   = 0;      // items shown, for "a clip every N photos"
+let updateInfo   = null;
 
 // Settings (overridden by main process)
 let settings = {
@@ -45,6 +54,10 @@ let settings = {
     feeders:      [],
     showCaption:  true,
     showProgress: true,
+    showClock:    true,
+    playClips:    true,
+    clipEvery:    5,
+    clipSeconds:  12,
 };
 
 // ── Receive settings from main process ─────────────────────
@@ -61,6 +74,8 @@ window.screensaverAPI.onSettings((s) => {
         settings.showCaption ? '' : 'none';
     document.getElementById('slideshow-bar').style.display =
         settings.showProgress ? '' : 'none';
+
+    startClock();
 });
 
 // ── Receive the feed from main ─────────────────────────────
@@ -77,9 +92,7 @@ window.screensaverAPI.onFeed((result) => {
     }
 
     if (!incoming.length) {
-        if (!playing) {
-            showEmptyState(emptyMessage(result));
-        }
+        if (!playing) showEmptyState(emptyMessage(result));
         return;   // a failed refresh never interrupts a running slideshow
     }
 
@@ -94,6 +107,14 @@ window.screensaverAPI.onFeed((result) => {
     }
 
     mergeRefresh(incoming);
+});
+
+// ── A newer release exists ─────────────────────────────────
+window.screensaverAPI.onUpdate((info) => {
+    if (!info || !info.available) return;
+    updateInfo = info;
+    cornerUpdateEl.textContent = `Version ${info.version} available`;
+    cornerEl.classList.add('visible');
 });
 
 // Each monitor shuffles its own copy, so a multi-display wall is not showing
@@ -112,7 +133,9 @@ function mergeRefresh(incoming) {
 
     for (const p of photos) {
         const fresh = byId.get(p.id);
-        if (fresh && fresh.url && fresh.url !== p.url) p.url = fresh.url;
+        if (!fresh) continue;
+        if (fresh.url && fresh.url !== p.url) p.url = fresh.url;
+        if (fresh.video !== undefined) p.video = fresh.video;
     }
 
     const have = new Set(photos.map(p => p.id));
@@ -149,11 +172,45 @@ document.addEventListener('mousedown', () => {
     window.screensaverAPI.signalActivity();
 });
 
+// ── Clock / conditions corner ──────────────────────────────
+//
+// Lower right, and not hidden by the idle fade: a clock you cannot see is not
+// a clock. The other three corners all carry something the server burns into
+// the photo itself — timestamp, watermark, species caption — so this is the
+// only one free.
+function startClock() {
+    if (!settings.showClock) {
+        if (!updateInfo) cornerEl.classList.remove('visible');
+        return;
+    }
+    cornerEl.classList.add('visible');
+    tickClock();
+    setInterval(tickClock, 10000);
+}
+
+function tickClock() {
+    const now = new Date();
+    cornerTimeEl.textContent = now.toLocaleTimeString(undefined,
+        { hour: 'numeric', minute: '2-digit' });
+    cornerDateEl.textContent = now.toLocaleDateString(undefined,
+        { weekday: 'long', month: 'long', day: 'numeric' });
+}
+
+// Conditions come from the detection on screen — the temperature recorded when
+// that bird was seen. For the live feed that is a few minutes old at most; on
+// a fallback day it is deliberately that day's reading, not today's.
+function showConditions(photo) {
+    if (!settings.showClock) return;
+    cornerTempEl.textContent =
+        photo && typeof photo.temp === 'number' ? `${Math.round(photo.temp)}°F` : '';
+}
+
 // ── Playback ───────────────────────────────────────────────
 function startPlayback() {
     photoIdx = 0;
     activeSlot = 0;
     playing = true;
+    shownCount = 0;
 
     // Reset both slides
     [slideA, slideB].forEach(el => {
@@ -162,8 +219,53 @@ function startPlayback() {
     });
 
     showSlide(0);
-    startTimer();
+    startTimer(settings.interval);
     bumpIdle();
+}
+
+// Move on: usually the next still, but every clipEvery-th item looks for a
+// video to play instead.
+function advance() {
+    if (!photos.length) return;
+
+    photoIdx = (photoIdx + 1) % photos.length;
+    shownCount++;
+
+    const wantClip = settings.playClips &&
+        settings.clipEvery > 0 &&
+        shownCount % settings.clipEvery === 0;
+
+    if (wantClip) {
+        const idx = findClip(photoIdx);
+        if (idx >= 0) {
+            photoIdx = idx;
+            playClip(photos[idx]);
+            return;
+        }
+    }
+
+    showSlide(1);
+    startTimer(settings.interval);
+}
+
+// Nearest upcoming detection that has a clip. Most do not, so this scans
+// rather than assuming the one we landed on will do.
+function findClip(from) {
+    for (let i = 0; i < photos.length; i++) {
+        const idx = (from + i) % photos.length;
+        if (photos[idx].video) return idx;
+    }
+    return -1;
+}
+
+function setCaption(photo) {
+    if (settings.showCaption) {
+        let caption = photo.species || '';
+        if (photo.feeder) caption += ` — ${photo.feeder}`;
+        captionEl.textContent = caption;
+    }
+    counterEl.textContent = `${photoIdx + 1} / ${photos.length}`;
+    showConditions(photo);
 }
 
 function showSlide(direction) {
@@ -178,13 +280,7 @@ function showSlide(direction) {
         slideshowEl.dataset.transition = pick.id;
     }
 
-    // Update caption
-    if (settings.showCaption) {
-        let caption = photo.species || '';
-        if (photo.feeder) caption += ` — ${photo.feeder}`;
-        captionEl.textContent = caption;
-    }
-    counterEl.textContent = `${photoIdx + 1} / ${photos.length}`;
+    setCaption(photo);
 
     const transition = slideshowEl.dataset.transition || 'fade';
     const slots      = [slideA, slideB];
@@ -240,24 +336,82 @@ function showSlide(direction) {
     setTimeout(finish, 2000); // safety net
 }
 
-function startTimer() {
+// ── Clips ──────────────────────────────────────────────────
+//
+// Clips are streamed rather than cached, so anything can go wrong at any
+// moment: a dead signed URL, a codec the build will not decode, a feeder that
+// uploaded a truncated file. Every failure path lands on the same `done`,
+// which returns to the stills rather than leaving a black stage.
+function playClip(photo) {
+    const myToken = ++slideToken;   // invalidate any in-flight image preload
+
     clearTimeout(timer);
     cancelAnimationFrame(progressRAF);
+    setCaption(photo);
+    console.log(`clip: ${photo.species} (${photo.id})`);
+
+    let finished = false;
+    const done = () => {
+        if (finished) return;
+        finished = true;
+        clearTimeout(cap);
+        videoEl.classList.remove('active');
+        videoEl.onended = videoEl.onerror = null;
+        try {
+            videoEl.pause();
+            videoEl.removeAttribute('src');
+            videoEl.load();     // actually stops the download
+        } catch { /* nothing to stop */ }
+
+        if (myToken !== slideToken) return;   // something else took over
+        advance();
+    };
+
+    const cap = setTimeout(done, Math.max(3, settings.clipSeconds || 12) * 1000);
+
+    videoEl.onended = done;
+    videoEl.onerror = done;
+
+    try {
+        videoEl.muted = true;      // belt and braces; also set in the markup
+        videoEl.src = photo.video;
+        const p = videoEl.play();
+        if (p && typeof p.catch === 'function') p.catch(done);
+
+        videoEl.classList.add('active');
+
+        // Run the progress bar over the clip's real length once known, so it
+        // means the same thing it does for a still.
+        videoEl.onloadedmetadata = () => {
+            const secs = isFinite(videoEl.duration) && videoEl.duration > 0
+                ? Math.min(videoEl.duration, settings.clipSeconds || 12)
+                : (settings.clipSeconds || 12);
+            runProgress(secs * 1000);
+        };
+        runProgress(Math.max(3, settings.clipSeconds || 12) * 1000);
+    } catch {
+        done();
+    }
+}
+
+// ── Timing ─────────────────────────────────────────────────
+function runProgress(ms) {
+    cancelAnimationFrame(progressRAF);
     slideStart = performance.now();
+    slideSpan  = ms;
 
     function tick() {
-        const elapsed = performance.now() - slideStart;
-        const pct = Math.min(100, (elapsed / settings.interval) * 100);
+        const pct = Math.min(100, ((performance.now() - slideStart) / slideSpan) * 100);
         progressFill.style.width = pct + '%';
         if (pct < 100) progressRAF = requestAnimationFrame(tick);
     }
     tick();
+}
 
-    timer = setTimeout(() => {
-        photoIdx = (photoIdx + 1) % photos.length;
-        showSlide(1);
-        startTimer();
-    }, settings.interval);
+function startTimer(ms) {
+    clearTimeout(timer);
+    runProgress(ms);
+    timer = setTimeout(advance, ms);
 }
 
 // ── Idle overlay fade ──────────────────────────────────────

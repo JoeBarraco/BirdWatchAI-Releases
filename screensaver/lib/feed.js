@@ -88,7 +88,7 @@ function labelDay(d, short) {
 
 // ── Queries ────────────────────────────────────────────────
 
-const SELECT = 'id,species,image_url,detected_at,feeders(display_name)';
+const SELECT = 'id,species,image_url,video_url,detected_at,temperature,rarity,feeders(display_name)';
 
 // Resolve the saved feeder display names to ids. Filtering server-side on uuid
 // keeps the fallback query honest: with a client-side name filter, a 500-row
@@ -138,19 +138,28 @@ async function queryDetections({ since, until, feederIds }) {
 //
 // Only markers we have not already cached need signing — a private photo
 // already on disk is served from there, signed URL or not.
-async function signPrivate(rows) {
+async function signPrivate(rows, wantVideo) {
     const needed = new Map();   // bucket -> [{ marker, path }]
+    const seen   = new Set();
 
-    for (const r of rows) {
-        const marker = r.image_url;
-        if (typeof marker !== 'string' || !marker.startsWith(PRIVATE_PREFIX)) continue;
-        if (cache.cachedUrl(marker)) continue;           // already on disk
+    const want = (marker, isVideo) => {
+        if (typeof marker !== 'string' || !marker.startsWith(PRIVATE_PREFIX)) return;
+        if (seen.has(marker)) return;
+        // A cached still needs no signature. Clips are streamed rather than
+        // cached, so they always do.
+        if (!isVideo && cache.cachedUrl(marker)) return;
+        seen.add(marker);
         const rest  = marker.slice(PRIVATE_PREFIX.length);
         const slash = rest.indexOf('/');
-        if (slash < 1) continue;
+        if (slash < 1) return;
         const bucket = rest.slice(0, slash);
         if (!needed.has(bucket)) needed.set(bucket, []);
         needed.get(bucket).push({ marker, path: rest.slice(slash + 1) });
+    };
+
+    for (const r of rows) {
+        want(r.image_url, false);
+        if (wantVideo) want(r.video_url, true);
     }
 
     const signed = new Map();
@@ -192,13 +201,13 @@ function isPrivate(u) {
 
 // Turn detection rows into photos the renderer can display. `key` is the
 // photo's stable identity for caching; `url` is what to load right now.
-function toPhotos(rows, signed) {
+function toPhotos(rows, signed, wantVideo) {
     const photos = [];
     for (const r of rows) {
         if (!r.species || !r.image_url) continue;
 
         const key = r.image_url;                 // stable across URL rotation
-        let url = cache.cachedUrl(key);          // disk first
+        const url = cache.cachedUrl(key);        // disk first
         let remote = null;
 
         if (isPrivate(key)) {
@@ -208,15 +217,27 @@ function toPhotos(rows, signed) {
             remote = key;
         }
 
+        // Clips are streamed, not cached: a few seconds of 1080p dwarfs a
+        // still, and caching them would evict every photo in the budget.
+        let video = null;
+        if (wantVideo && r.video_url) {
+            video = isPrivate(r.video_url)
+                ? (signed.get(r.video_url) || null)
+                : r.video_url;
+        }
+
         photos.push({
             id:      r.id,
             key,
             url:     url || remote,
             remote,
             cached:  !!url,
+            video,
             species: r.species,
             feeder:  (r.feeders && r.feeders.display_name) || '',
             date:    r.detected_at,
+            temp:    typeof r.temperature === 'number' ? r.temperature : null,
+            rarity:  r.rarity || null,
         });
     }
     return photos;
@@ -303,8 +324,9 @@ async function load(settings) {
             }
         }
 
-        const signed = await signPrivate(rows);
-        const photos = groupAndSort(toPhotos(rows, signed), settings.sortMode);
+        const wantVideo = !!settings.playClips;
+        const signed = await signPrivate(rows, wantVideo);
+        const photos = groupAndSort(toPhotos(rows, signed, wantVideo), settings.sortMode);
 
         if (photos.length) saveCache(rows);
         return { photos, fallback, offline: false };
@@ -332,6 +354,8 @@ function saveCache(rows) {
             species: r.species,
             image_url: r.image_url,
             detected_at: r.detected_at,
+            temperature: r.temperature,
+            rarity: r.rarity,
             feeder: (r.feeders && r.feeders.display_name) || '',
         }));
         fs.writeFileSync(FEED_PATH, JSON.stringify({ savedAt: Date.now(), rows: slim }));
@@ -365,9 +389,12 @@ function loadFromCache(settings) {
             url,
             remote: null,
             cached: true,
+            video: null,            // clips are streamed; offline means stills
             species: r.species,
             feeder: r.feeder,
             date: r.detected_at,
+            temp: typeof r.temperature === 'number' ? r.temperature : null,
+            rarity: r.rarity || null,
         });
     }
     return groupAndSort(photos, settings.sortMode);

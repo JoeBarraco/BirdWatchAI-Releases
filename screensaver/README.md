@@ -18,9 +18,14 @@ it finds one, and your existing settings carry over.)
   to the most recent day/week/month that does, and says which
 - **Offline-tolerant** — photos are cached on disk, so a dropped connection or a
   cold boot still has something to show
+- **Video clips** — mixes the detection clips in with the stills, always silent
+- **Clock & conditions** — current time, date and the temperature recorded with the
+  photo on screen, in the one corner the burned-in overlays leave free
+- **Update check** — notices when a newer release exists instead of going stale
 - **Auto-refresh** — silently picks up new bird detections (every 5 minutes by default)
 - **Configurable** — photo duration, transition style, sort order, caption visibility
-- **Standard `.scr`** — installs like any Windows screensaver via Personalization settings
+- **Standard `.scr`** — installs like any Windows screensaver via Personalization settings,
+  with a live preview in the settings dialog's monitor thumbnail
 
 ## Prerequisites
 
@@ -51,13 +56,24 @@ npm run start:preview
 |------|------|-------------|
 | `/s` | Screensaver | Run fullscreen slideshow |
 | `/c` | Configure | Open settings window (default when double-clicked) |
-| `/p` | Preview | Windows' settings-dialog thumbnail; exits immediately (see below) |
+| `/p:<hwnd>` | Preview | Live thumbnail inside Screen Saver Settings |
 | `--preview` | Dev preview | The slideshow in a normal 1100×700 window |
 
 Windows passes `/p:<hwnd>` to draw a live preview inside the tiny monitor graphic
-in Screen Saver Settings. Embedding there needs Win32 `SetParent`, which Electron
-does not expose, so that mode exits cleanly rather than opening a stray window.
-`--preview` is the developer equivalent and is never passed by Windows.
+in Screen Saver Settings. Rendering there means making our window a Win32 *child*
+of a HWND we did not create, which Electron has no API for — `setParentWindow()`
+only accepts another `BrowserWindow`. `lib/winpreview.js` does it through koffi:
+`SetParent`, then swapping `WS_POPUP` for `WS_CHILD` so the window clips to and
+moves with the host, then `MoveWindow` to fill it.
+
+If any step fails — koffi missing, a bad handle, a refused reparent — the app
+quits cleanly instead of showing the window. A dead thumbnail is a cosmetic
+disappointment; a stray fullscreen window pinned over the settings dialog is a
+bug. The preview also polls `IsWindow` on the host, because the dialog never says
+"stop", it just destroys the window.
+
+`--preview` is the developer equivalent, never passed by Windows, and it forwards
+the renderer's console to the terminal.
 
 ## Building
 
@@ -66,7 +82,8 @@ npm run build
 ```
 
 This produces an unpacked Electron build in `dist/win-unpacked/`, then renames the
-`.exe` to `.scr`.
+`.exe` to `.scr`. Build settings live in `electron-builder.config.js` rather than
+package.json's `build` field, because signing has to be conditional — see below.
 
 ```bash
 scripts\package.bat
@@ -76,6 +93,40 @@ Wraps that build plus the installer scripts into
 `dist\BirdWatchAI_Community_Feed_<version>.zip`, ready to upload to GitHub Releases.
 Keep the version in `package.json`, `scripts\package.bat` and `scripts\Launcher.cs`
 in step.
+
+Packaging also compiles the System32 launcher stub from `Launcher.cs` and ships the
+binary. It used to be compiled on the user's machine at install time, which meant it
+could never carry a signature; `install.bat` still compiles one as a fallback if the
+package does not contain it.
+
+## Code signing
+
+Neither the `.scr` nor the launcher is signed by default, so Windows SmartScreen
+will warn on first run. Signing is opt-in through the environment — set one of
+these and both `npm run build` and `scripts\package.bat` will sign:
+
+| Variable | Use |
+|----------|-----|
+| `CSC_LINK` + `CSC_KEY_PASSWORD` | Path to a `.pfx` and its password |
+| `BWAI_CERT_SHA1` | Thumbprint of a certificate in the Windows store |
+| `BWAI_CERT_SUBJECT` | Subject name of a certificate in the Windows store |
+| `BWAI_TIMESTAMP_URL` | Timestamp server (defaults to DigiCert's) |
+
+The two store options exist for an EV certificate on a hardware token, whose
+private key cannot be exported to a `.pfx` file.
+
+```bash
+set CSC_LINK=C:\certs\birdwatchai.pfx
+set CSC_KEY_PASSWORD=...
+npm run build && scripts\package.bat
+```
+
+With none of them set the build prints `no certificate configured` and produces
+exactly what it produced before — this is wiring, not a certificate. An OV
+certificate needs a few days of vetting; an EV one builds SmartScreen reputation
+immediately but needs a hardware token. `signAndEditExecutable` is tied to the
+same switch, because with no certificate there is nothing to sign and rcedit's
+resource editing needs a toolchain not worth requiring locally.
 
 ## Installation
 
@@ -116,7 +167,10 @@ screensaver/
 │   │                 # token refresh, credential storage
 │   ├── feed.js       # Query building, photo-age fallback, private-media
 │   │                 # signing, feed disk cache
-│   └── imagecache.js # LRU on-disk photo cache
+│   ├── imagecache.js # LRU on-disk photo cache
+│   ├── update.js     # Once-a-day check for a newer *-screensaver release
+│   └── winpreview.js # Win32 reparenting for the settings-dialog thumbnail
+├── electron-builder.config.js  # Build + conditional code signing
 ├── slideshow.html    # Slideshow renderer page
 ├── slideshow.js      # Ordering and transitions only — no network access
 ├── slideshow.css     # Slideshow styles (adapted from community.css)
@@ -129,6 +183,7 @@ screensaver/
 │   ├── install-dist.bat   # Installer (shipped inside the ZIP as install.bat)
 │   ├── uninstall.bat      # Uninstaller
 │   ├── package.bat        # Builds the distributable ZIP
+│   ├── sign.ps1           # Authenticode signing for the launcher stub
 │   └── Launcher.cs        # System32 stub that forwards args to the real .scr
 └── package.json
 ```
@@ -186,6 +241,11 @@ Settings are stored in `%APPDATA%/birdwatchai-screensaver/screensaver-settings.j
 | `showProgress` | `true` | Show progress bar at bottom |
 | `refreshMinutes` | `5` | How often to look for new detections |
 | `cacheMB` | `512` | On-disk photo cache budget |
+| `showClock` | `true` | Clock, date and conditions panel (lower right) |
+| `playClips` | `true` | Mix video clips in with the stills |
+| `clipEvery` | `5` | Play a clip after every N photos (0 = never) |
+| `clipSeconds` | `12` | Give up on a clip after this long |
+| `checkUpdates` | `true` | Check once a day for a newer release |
 
 The session for a signed-in community account is kept separately in `auth.json`
 in the same folder, and the photo cache in `image-cache/`. The refresh token is
@@ -208,3 +268,41 @@ the same size that does have photos, and the caption bar says so:
 > *No photos today — showing Saturday, November 7*
 
 Weeks start on Monday, matching "This Week" on the community site.
+
+## Clips
+
+Detections carry a `video_url` as well as a still, and most of them have one. A
+clip plays after every `clipEvery` photos — the next upcoming detection that
+actually has one, since the list is shuffled and most positions will not.
+
+Clips are **streamed, not cached**. A few seconds of 1080p dwarfs a still, and
+caching them would evict every photo in the budget; it also means clips are the
+one thing that does not work offline. They are always muted, in markup and again
+in code: a screensaver that starts making noise at 2am is a bug, not a feature.
+
+Every failure path — a dead signed URL, an undecodable file, a truncated upload,
+a clip that simply runs long — lands on the same handler, which returns to the
+stills. The maximum length is a cap, not a target.
+
+## Clock and conditions
+
+Lower right, and not subject to the idle fade that hides the caption bar: a clock
+you cannot see is not a clock. That corner is the only one free — the server
+burns a timestamp into the top left of every photo, a watermark into the top
+right, and the species caption into the bottom left.
+
+It is labelled "Current Time" because the photo underneath carries its own
+timestamp, and two unlabelled clocks on one screen invites reading the wrong one.
+The temperature is the reading recorded **with that detection**, not the weather
+now; on a fallback day it is deliberately that day's reading.
+
+## Updates
+
+`lib/update.js` asks GitHub once a day for the newest release whose tag ends in
+`-screensaver`, which is how the server app and the Finder releases in the same
+repository are ignored. When one is newer than the running build, the slideshow
+says so in the corner panel and Settings offers a download link.
+
+The answer is cached for 24 hours because the unauthenticated GitHub API allows
+60 requests an hour per IP and a screensaver can start many times a day. A failed
+check keeps the previous answer rather than claiming "up to date".

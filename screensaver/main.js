@@ -7,31 +7,43 @@
 // request; now one fetch is broadcast to every window, and the access token
 // and the image cache have exactly one home.
 
-const { app, BrowserWindow, screen, ipcMain } = require('electron');
+const { app, BrowserWindow, screen, ipcMain, shell } = require('electron');
 const path = require('path');
 const fs   = require('fs');
 
-const auth  = require('./lib/auth');
-const feed  = require('./lib/feed');
-const cache = require('./lib/imagecache');
+const auth    = require('./lib/auth');
+const feed    = require('./lib/feed');
+const cache   = require('./lib/imagecache');
+const updates = require('./lib/update');
+const winpreview = require('./lib/winpreview');
+
+const APP_VERSION = require('./package.json').version;
 
 // ── Parse screensaver command-line args ────────────────────
 // Windows passes: /s (show), /c:<hwnd> (configure), /p:<hwnd> (preview)
 // The :HWND suffix is a parent window handle — we match with startsWith.
 // We also accept bare flags for development: --screensaver, --config, --preview
+// Returns { mode, hwnd }. Windows writes the preview host handle either as
+// /p:1234 or as /p 1234 depending on the shell path taken, so both are read.
 function parseMode() {
     const args = process.argv.slice(1).map(a => a.toLowerCase());
-    for (const arg of args) {
-        if (arg.startsWith('/s') || arg === '--screensaver') return 'screensaver';
-        if (arg.startsWith('/c') || arg === '--config')      return 'config';
+    for (let i = 0; i < args.length; i++) {
+        const arg = args[i];
+        if (arg.startsWith('/s') || arg === '--screensaver') return { mode: 'screensaver' };
+        if (arg.startsWith('/c') || arg === '--config')      return { mode: 'config' };
         // --preview is the development flag and opens a real window. Windows'
         // own /p:<hwnd> is a different thing entirely — see launchPreview().
-        if (arg === '--preview') return 'dev-preview';
-        if (arg.startsWith('/p')) return 'preview';
+        if (arg === '--preview') return { mode: 'dev-preview' };
+        if (arg.startsWith('/p')) {
+            const inline = arg.slice(2).replace(/^[:=]/, '');
+            const raw = inline || args[i + 1] || '';
+            const hwnd = /^\d+$/.test(raw) ? BigInt(raw) : null;
+            return { mode: 'preview', hwnd };
+        }
     }
     // Default to config mode when launched without args (matches Windows convention
     // for double-clicking a .scr file)
-    return 'config';
+    return { mode: 'config' };
 }
 
 // ── Settings persistence ───────────────────────────────────
@@ -47,6 +59,11 @@ const DEFAULT_SETTINGS = {
     showProgress: true,
     cacheMB:     512,       // on-disk photo cache budget
     refreshMinutes: 5,      // how often to look for new detections
+    showClock:   true,      // clock + conditions corner
+    playClips:   true,      // mix video clips in with the stills
+    clipEvery:   5,         // play a clip after every N photos (0 = never)
+    clipSeconds: 12,        // give up on a clip after this long
+    checkUpdates: true,     // look for a newer release once a day
 };
 
 function loadSettings() {
@@ -103,6 +120,15 @@ ipcMain.handle('list-feeders', async () => {
 
 ipcMain.handle('cache-stats', () => cache.stats());
 ipcMain.handle('cache-clear', () => cache.clear());
+
+ipcMain.handle('check-update', (_e, force) => updates.check(force));
+ipcMain.handle('app-version', () => APP_VERSION);
+
+// Only ever used for the releases page. Anything else arriving here would be a
+// renderer handing the OS a URL of its choosing, so the scheme is checked.
+ipcMain.handle('open-external', (_e, url) => {
+    if (typeof url === 'string' && /^https:\/\//i.test(url)) shell.openExternal(url);
+});
 
 // ── Screensaver mode ───────────────────────────────────────
 function launchScreensaver() {
@@ -192,6 +218,19 @@ function launchScreensaver() {
     const everyMs = Math.max(1, settings.refreshMinutes || 5) * 60 * 1000;
     refreshTimer = setInterval(() => refreshFeed(false), everyMs);
 
+    // A screensaver's settings dialog is rarely opened, so the only place an
+    // update notice will actually be seen is on the slideshow itself.
+    if (settings.checkUpdates !== false) {
+        updates.check().then(info => {
+            if (!info.available) return;
+            for (const w of windows) {
+                if (!w.isDestroyed() && ready.has(w)) {
+                    w.webContents.send('update-info', info);
+                }
+            }
+        }).catch(() => {});
+    }
+
     // Grace period: ignore all input for the first 2 seconds while windows
     // are being created and fullscreened. Mouse jitter and OS-generated
     // events during this phase would otherwise exit immediately.
@@ -255,8 +294,67 @@ function launchConfig() {
 // graphic in the Screen Saver Settings dialog. True embedding requires
 // Win32 SetParent which isn't available in Electron. We simply exit
 // cleanly so we don't open a confusing standalone window.
-function launchPreview() {
-    app.quit();
+function launchPreview(parentHwnd) {
+    if (parentHwnd === null || parentHwnd === undefined || !winpreview.available()) {
+        app.quit();
+        return;
+    }
+
+    const size = winpreview.clientSize(parentHwnd);
+    if (!size) { app.quit(); return; }
+
+    const settings = loadSettings();
+
+    const win = new BrowserWindow({
+        width: size.width,
+        height: size.height,
+        frame: false,
+        show: false,
+        resizable: false,
+        skipTaskbar: true,
+        backgroundColor: '#000000',
+        webPreferences: {
+            preload: path.join(__dirname, 'preload.js'),
+            contextIsolation: true,
+            nodeIntegration: false,
+        },
+    });
+
+    win.loadFile('slideshow.html');
+
+    win.webContents.on('did-finish-load', async () => {
+        // The host thumbnail is around 150×110. Captions, the progress bar and
+        // the clock are illegible at that size, and clips would have the
+        // settings dialog decoding video for as long as it is open.
+        win.webContents.send('init-settings', {
+            ...settings,
+            compact: true,
+            showCaption: false,
+            showProgress: false,
+            showClock: false,
+            playClips: false,
+            interval: Math.max(settings.interval || 6000, 4000),
+        });
+
+        try {
+            const result = await feed.load({ ...settings, playClips: false });
+            win.webContents.send('feed-update', { ...result, initial: true });
+        } catch { /* the preview simply stays black */ }
+    });
+
+    win.once('ready-to-show', () => {
+        const handle = win.getNativeWindowHandle();
+        if (!winpreview.embed(handle, parentHwnd, size)) {
+            // Reparenting failed. Showing the window now would drop a black
+            // rectangle on top of the settings dialog, so bow out instead.
+            app.quit();
+            return;
+        }
+        win.showInactive();
+    });
+
+    // The dialog never says "stop" — it just destroys the host window.
+    winpreview.watchParent(parentHwnd, () => app.quit());
 }
 
 // ── Developer preview ──────────────────────────────────────
@@ -281,6 +379,12 @@ function launchDevPreview() {
     win.setMenuBarVisibility(false);
     win.loadFile('slideshow.html');
 
+    // Surface renderer logs on the terminal — the whole point of this mode is
+    // watching what the slideshow does.
+    win.webContents.on('console-message', (_e, _level, message) => {
+        console.log(`[renderer] ${message}`);
+    });
+
     win.webContents.on('did-finish-load', async () => {
         win.webContents.send('init-settings', settings);
         const result = await feed.load(settings);
@@ -303,15 +407,16 @@ app.whenReady().then(() => {
     auth.init(userData);
     feed.init(userData);
     cache.init(userData, settings.cacheMB);
+    updates.init(userData, APP_VERSION);
 
-    const mode = parseMode();
+    const { mode, hwnd } = parseMode();
 
     switch (mode) {
         case 'config':
             launchConfig();
             break;
         case 'preview':
-            launchPreview();
+            launchPreview(hwnd);
             break;
         case 'dev-preview':
             launchDevPreview();

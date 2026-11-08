@@ -22,16 +22,21 @@
             <div id="account-signed-out" hidden>
                 <div class="account-row">
                     <input type="email" id="account-email" placeholder="you@example.com" autocomplete="email">
-                    <button id="btn-send-code" class="btn btn-secondary">Email me a code</button>
+                    <button id="btn-send-code" class="btn btn-secondary">Email me a link</button>
                 </div>
                 <div class="account-row" id="account-code-row" hidden>
-                    <input type="text" id="account-code" placeholder="6-digit code — or paste the link">
+                    <input type="text" id="account-code" placeholder="Paste the link from the email">
                     <button id="btn-verify" class="btn btn-primary">Sign in</button>
                 </div>
                 <p class="field-hint">
                     Sign in with your birdwatchai.com community account to include
-                    feeders from your private communities. We'll email you a code —
-                    if the email only has a button, paste the link here instead.
+                    feeders from your private communities.
+                </p>
+                <p class="field-hint">
+                    <strong>Don't click the link in the email</strong> — right-click
+                    it, copy the address, and paste it above. Clicking it uses the
+                    link up, and you'd need a new one. If your email shows a
+                    6-digit code, you can type that instead.
                 </p>
             </div>
 
@@ -118,6 +123,46 @@
             </label>
         </div>
 
+        <div class="form-group checkbox-group">
+            <label>
+                <input type="checkbox" id="showClock" checked>
+                Show clock &amp; conditions
+            </label>
+            <p class="field-hint">
+                Shown in the lower right — the only corner the photo's own
+                overlays leave free. The temperature is the one recorded when
+                that bird was seen, not the weather right now.
+            </p>
+        </div>
+
+        <div class="form-group checkbox-group">
+            <label>
+                <input type="checkbox" id="playClips" checked>
+                Play video clips
+            </label>
+            <p class="field-hint">Clips are streamed, not cached, and always silent.</p>
+        </div>
+
+        <div class="form-group">
+            <label for="clipEvery">Clip Frequency</label>
+            <select id="clipEvery">
+                <option value="3">After every 3 photos</option>
+                <option value="5" selected>After every 5 photos</option>
+                <option value="10">After every 10 photos</option>
+                <option value="20">After every 20 photos</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="clipSeconds">Maximum Clip Length</label>
+            <select id="clipSeconds">
+                <option value="6">6 seconds</option>
+                <option value="12" selected>12 seconds</option>
+                <option value="20">20 seconds</option>
+                <option value="45">45 seconds</option>
+            </select>
+        </div>
+
         <div class="form-group">
             <label for="refreshMinutes">Check For New Photos</label>
             <select id="refreshMinutes">
@@ -143,6 +188,21 @@
                 playing if the connection drops. <span id="cache-stats"></span>
             </p>
             <button id="btn-clear-cache" class="btn btn-secondary btn-small">Clear cached photos</button>
+        </div>
+
+        <div class="form-group">
+            <label>Updates</label>
+            <div class="checkbox-group">
+                <label>
+                    <input type="checkbox" id="checkUpdates" checked>
+                    Tell me when a new version is available
+                </label>
+            </div>
+            <p class="field-hint">
+                <span id="version-line"></span>
+                <span id="update-line"></span>
+            </p>
+            <button id="btn-check-update" class="btn btn-secondary btn-small">Check now</button>
         </div>
 
         <div class="button-row">

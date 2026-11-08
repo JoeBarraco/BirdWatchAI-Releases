@@ -25,3 +25,6 @@ license_private_key*
 # OS / editor noise
 .DS_Store
 Thumbs.db
+# Office owner files. Opening a .md in Word leaves one of these behind and
+# holds an exclusive lock on the original until Word is closed.
+~$*

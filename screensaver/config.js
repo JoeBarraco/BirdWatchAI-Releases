@@ -14,6 +14,13 @@ const refreshEl      = document.getElementById('refreshMinutes');
 const cacheMBEl      = document.getElementById('cacheMB');
 const cacheStatsEl   = document.getElementById('cache-stats');
 const statusMsg      = document.getElementById('status-msg');
+const showClockEl    = document.getElementById('showClock');
+const playClipsEl    = document.getElementById('playClips');
+const clipEveryEl    = document.getElementById('clipEvery');
+const clipSecondsEl  = document.getElementById('clipSeconds');
+const checkUpdatesEl = document.getElementById('checkUpdates');
+const versionLineEl  = document.getElementById('version-line');
+const updateLineEl   = document.getElementById('update-line');
 
 const accountStatusEl = document.getElementById('account-status');
 const accountOutEl    = document.getElementById('account-signed-out');
@@ -60,7 +67,7 @@ document.getElementById('btn-send-code').addEventListener('click', async () => {
         await window.screensaverAPI.authRequest(email);
         accountCodeRow.hidden = false;
         accountCodeEl.focus();
-        setAccountMsg('Check your email, then enter the code (or paste the link).', 'success');
+        setAccountMsg('Check your email — copy the link without clicking it, then paste it above.', 'success');
     } catch (err) {
         setAccountMsg(cleanError(err), 'error');
     }
@@ -72,7 +79,7 @@ accountCodeEl.addEventListener('keydown', e => { if (e.key === 'Enter') doVerify
 async function doVerify() {
     const email = accountEmailEl.value.trim();
     const code  = accountCodeEl.value.trim();
-    if (!code) { setAccountMsg('Enter the code or paste the link from the email.', 'error'); return; }
+    if (!code) { setAccountMsg('Paste the link from the email (or type the code).', 'error'); return; }
 
     setAccountMsg('Signing in…');
     try {
@@ -204,6 +211,44 @@ document.getElementById('btn-clear-cache').addEventListener('click', async () =>
     await showCacheStats();
 });
 
+// ── Updates ────────────────────────────────────────────────
+
+async function showVersion() {
+    try {
+        const v = await window.screensaverAPI.appVersion();
+        versionLineEl.textContent = `You have version ${v}. `;
+    } catch {
+        versionLineEl.textContent = '';
+    }
+}
+
+// `force` skips the once-a-day cache, for the "Check now" button.
+async function showUpdate(force) {
+    updateLineEl.textContent = force ? 'Checking…' : '';
+    try {
+        const info = await window.screensaverAPI.checkUpdate(!!force);
+        if (info && info.available) {
+            updateLineEl.textContent = '';
+            const a = document.createElement('a');
+            a.href = '#';
+            a.className = 'update-link';
+            a.textContent = `Version ${info.version} is available — download it`;
+            a.addEventListener('click', (e) => {
+                e.preventDefault();
+                window.screensaverAPI.openExternal(info.url);
+            });
+            updateLineEl.appendChild(a);
+        } else {
+            updateLineEl.textContent = force ? 'That is the latest version.' : '';
+        }
+    } catch {
+        updateLineEl.textContent = force ? 'Could not reach GitHub.' : '';
+    }
+}
+
+document.getElementById('btn-check-update')
+    .addEventListener('click', () => showUpdate(true));
+
 // ── Load / save ────────────────────────────────────────────
 
 async function loadSettings() {
@@ -217,10 +262,18 @@ async function loadSettings() {
     cacheMBEl.value     = String(settings.cacheMB || 512);
     showCaptionEl.checked  = settings.showCaption  !== false;
     showProgressEl.checked = settings.showProgress !== false;
+    showClockEl.checked    = settings.showClock    !== false;
+    playClipsEl.checked    = settings.playClips    !== false;
+    checkUpdatesEl.checked = settings.checkUpdates !== false;
+    clipEveryEl.value      = String(settings.clipEvery   || 5);
+    clipSecondsEl.value    = String(settings.clipSeconds || 12);
 
     selectedFeeders = Array.isArray(settings.feeders) ? settings.feeders : [];
 
-    await Promise.all([refreshAccount(), loadFeeders(), showCacheStats()]);
+    await Promise.all([
+        refreshAccount(), loadFeeders(), showCacheStats(),
+        showVersion(), showUpdate(false),
+    ]);
 }
 
 document.getElementById('btn-save').addEventListener('click', async () => {
@@ -232,6 +285,11 @@ document.getElementById('btn-save').addEventListener('click', async () => {
         feeders:        collectFeeders(),
         showCaption:    showCaptionEl.checked,
         showProgress:   showProgressEl.checked,
+        showClock:      showClockEl.checked,
+        playClips:      playClipsEl.checked,
+        clipEvery:      parseInt(clipEveryEl.value, 10),
+        clipSeconds:    parseInt(clipSecondsEl.value, 10),
+        checkUpdates:   checkUpdatesEl.checked,
         refreshMinutes: parseInt(refreshEl.value, 10),
         cacheMB:        parseInt(cacheMBEl.value, 10),
     };

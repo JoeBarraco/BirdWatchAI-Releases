@@ -3,8 +3,8 @@
 // DLLs/resources.  Renaming the exe to .scr is all Windows needs to treat it as a
 // screensaver — it's the same PE format.
 //
-// The target is whatever electron-builder named after `build.productName`, so this
-// keeps working when the product is renamed. It used to match on the literal string
+// The target is whatever electron-builder named after `productName`, so this keeps
+// working when the product is renamed. It used to match on the literal string
 // "screensaver", which silently failed the build the moment the name changed.
 
 const fs   = require('fs');
@@ -17,10 +17,11 @@ if (!fs.existsSync(unpackedDir)) {
     process.exit(1);
 }
 
+const builderConfig = require('../electron-builder.config.js');
 const pkg = JSON.parse(
     fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf-8')
 );
-const productName = (pkg.build && pkg.build.productName) || pkg.name;
+const productName = builderConfig.productName || pkg.name;
 
 const files = fs.readdirSync(unpackedDir);
 

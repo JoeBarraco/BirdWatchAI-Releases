@@ -18,6 +18,11 @@ contextBridge.exposeInMainWorld('screensaverAPI', {
         ipcRenderer.on('feed-update', (_event, result) => callback(result));
     },
 
+    // Receive an "a newer release exists" notice
+    onUpdate: (callback) => {
+        ipcRenderer.on('update-info', (_event, info) => callback(info));
+    },
+
     // Signal user activity (mouse click) to main so it can quit
     signalActivity: () => {
         ipcRenderer.send('user-activity');
@@ -37,4 +42,9 @@ contextBridge.exposeInMainWorld('screensaverAPI', {
     listFeeders: () => ipcRenderer.invoke('list-feeders'),
     cacheStats:  () => ipcRenderer.invoke('cache-stats'),
     clearCache:  () => ipcRenderer.invoke('cache-clear'),
+
+    // Config window: version and updates
+    appVersion:   () => ipcRenderer.invoke('app-version'),
+    checkUpdate:  (force) => ipcRenderer.invoke('check-update', force),
+    openExternal: (url) => ipcRenderer.invoke('open-external', url),
 });

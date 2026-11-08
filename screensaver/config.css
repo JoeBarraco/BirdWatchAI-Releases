@@ -240,6 +240,17 @@ h1 {
 .account-msg.success { color: #5aab72; }
 .account-msg.error   { color: #e07a5f; }
 
+.update-link {
+    color: #5aab72;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.update-link:hover {
+    text-decoration: underline;
+}
+
 /* Explanatory text under a field. */
 .field-hint {
     font-size: 0.78rem;

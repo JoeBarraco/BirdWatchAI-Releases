@@ -12,6 +12,27 @@
         <div class="slideshow-stage">
             <img id="slide-a" class="slideshow-slide" alt="" draggable="false">
             <img id="slide-b" class="slideshow-slide" alt="" draggable="false">
+            <!-- Clips share the stage with the stills. Always muted: a
+                 screensaver that starts making noise at 2am is a bug. -->
+            <video id="slide-video" class="slideshow-video" muted playsinline
+                   disablepictureinpicture preload="auto"></video>
+        </div>
+
+        <!-- Clock / conditions corner. Deliberately not hidden by the idle
+             fade — a clock you cannot see is not a clock. It alternates
+             between two corners instead, so it does not burn into a panel
+             that may show this for years. -->
+        <div id="slideshow-corner" class="slideshow-corner">
+            <!-- Labelled, because every photo has its own detection timestamp
+                 burned into it and two unlabelled clocks on one screen is a
+                 recipe for reading the wrong one. -->
+            <div class="corner-label">Current Time</div>
+            <div id="corner-time" class="corner-time"></div>
+            <div class="corner-meta">
+                <span id="corner-date" class="corner-date"></span>
+                <span id="corner-temp" class="corner-temp"></span>
+            </div>
+            <div id="corner-update" class="corner-update"></div>
         </div>
 
         <!-- Caption overlay (species name + feeder) -->
