@@ -79,13 +79,15 @@
                     : '';
 
             return `
-                <li data-rs-feeder="${fid}" style="flex-wrap:wrap">
-                    <div class="mod-user-info">
-                        <strong>${name}</strong> ${status}
-                        <span style="font-size:.72rem;color:var(--color-gray-500)">id ${rsEsc(String(f.feeder_id).slice(0,8))} · v${ver} · seen ${rsRel(f.last_poll_at)}</span>
+                <li data-rs-feeder="${fid}" style="display:grid;grid-template-columns:1fr auto;align-items:center;gap:.35rem .75rem">
+                    <div style="min-width:0">
+                        <div style="font-weight:600">${name}</div>
+                        <div style="font-size:.72rem;color:var(--color-gray-500);display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;margin-top:.15rem">
+                            ${status}<span>id ${rsEsc(String(f.feeder_id).slice(0,8))} · v${ver} · seen ${rsRel(f.last_poll_at)}</span>
+                        </div>
                     </div>
-                    <div style="display:flex;gap:.4rem">${actions}</div>
-                    <div class="rs-connect" data-rs-connect="${fid}" style="flex-basis:100%;display:none;margin-top:.5rem"></div>
+                    <div style="display:flex;gap:.4rem;justify-self:end">${actions}</div>
+                    <div class="rs-connect" data-rs-connect="${fid}" style="grid-column:1 / -1;display:none;margin-top:.5rem"></div>
                 </li>`;
         }).join('');
     }
