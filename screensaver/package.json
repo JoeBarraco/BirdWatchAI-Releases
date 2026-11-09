@@ -1,6 +1,6 @@
 {
   "name": "birdwatchai-screensaver",
-  "version": "1.3.1",
+  "version": "1.3.2",
   "description": "BirdWatchAI Community Feed screensaver for Windows with multi-monitor support",
   "main": "main.js",
   "scripts": {
