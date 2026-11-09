@@ -411,14 +411,69 @@
         .card.new { background: #f0fff4; }
         [data-theme="dark"] .card.new { background: #1e3a2a; }
 
-        .card img {
-            width: 120px;
-            height: 90px;
-            object-fit: cover;
-            object-position: center top;
+        /* Two columns: the detection on the left, what you can do with it on the
+           right. The left column is the wider of the two and flexes; the rail is
+           fixed, because a column of buttons that changes width card to card
+           reads as misalignment down the feed. */
+        .card-main {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+
+        .card-side {
+            flex: 0 0 152px;
+            width: 152px;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 6px;
+        }
+
+        /* The detection photo. Deliberately `.card .card-photo` rather than the
+           `.card img` this replaces: a bare element selector caught every image
+           inside a card, which is what forced `object-fit: cover` and a fixed
+           120x90 onto the feeder logo and cropped it. Scoping to a class means
+           a new image in a card is styled on purpose or not at all.
+
+           It now fills the column instead of sitting at a fixed 120px with text
+           beside it — that arrangement left dead space under the thumbnail,
+           because the text column is always the taller of the two.
+
+           No aspect-ratio and no object-fit: the camera burns the species,
+           confidence, time and temperature into the bottom-left of every frame,
+           and any fixed ratio crops 16:9 source and cuts that caption off. The
+           image keeps its own proportions and is bounded by max-width alone. */
+        .card .card-photo {
+            display: block;
+            width: 100%;
+            max-width: 300px;
+            height: auto;
             border-radius: 6px;
-            flex-shrink: 0;
             cursor: zoom-in;
+            margin-bottom: 8px;
+        }
+
+        /* The rail's controls stretch to its width so their left edges line up.
+           Several are styled elsewhere as inline-block with their own margins,
+           which is what would otherwise stagger them. */
+        .card-side > a,
+        .card-side > button,
+        .card-side .card-reactions,
+        .card-side .mod-actions {
+            margin: 0;
+            width: 100%;
+            text-align: left;
+            justify-content: flex-start;
+        }
+
+        .card-side .mod-actions {
+            display: flex;
+            margin-top: 2px;
+        }
+
+        .card-side .mod-actions button {
+            flex: 1 1 auto;
+            text-align: center;
         }
 
         /* ── Lightbox ───────────────────────────────────── */
@@ -490,8 +545,6 @@
         }
         #video-modal-close:hover { opacity: 1; }
 
-        .card-body { flex: 1; min-width: 0; }
-
         .card-title {
             font-family: 'Fraunces', serif;
             font-size: 1.1rem;
@@ -509,18 +562,20 @@
             font-size: 0.8rem;
             color: #aaa;
             margin-top: 2px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
 
-        /* Selector note: `.card img` above sets width/height/object-fit for the
-           detection thumbnail and, at (0,1,1), outranks a lone `.card-feeder-logo`
-           class. That is what cropped the logo — it inherited `object-fit: cover`
-           and a fixed 120x90 (80x60 on narrow screens). These selectors are
-           (0,2,0) so they win wherever the logo appears, and every property that
-           rule sets is restated here rather than left to chance.
-
-           Sizing is max-only with width and height auto, so the image keeps its
+        /* Sizing is max-only with width and height auto, so the image keeps its
            own aspect ratio and is never cropped: a square 1024x1024 mark and a
-           wide wordmark both fit inside the box, just at different widths. */
+           wide wordmark both fit inside the box, just at different widths.
+
+           These were once (0,2,0) to outrank a blanket `.card img` rule that
+           imposed `object-fit: cover` on anything in a card and cropped the
+           logo. That rule is now `.card .card-photo`, so the conflict is gone —
+           the specificity here is no longer load-bearing, but the explicit
+           properties still are. */
         .card .card-feeder-logo,
         .detail-feeder-logo,
         .stats-feeder-logo {
@@ -531,15 +586,15 @@
             cursor: default;
         }
 
-        /* On a card the logo sits on its own line above the feeder name — it is
-           the feeder's identity, not a bullet in front of the text. */
+        /* Beside the name, like the modal and the leaderboard. It was a block on
+           its own line only because the old side-by-side card had no room for
+           it; with the card in columns, one treatment serves everywhere. */
         .card .card-feeder-logo {
             display: block;
             width: auto;
             height: auto;
-            max-width: 110px;
-            max-height: 38px;
-            margin: 3px 0 4px;
+            max-width: 80px;
+            max-height: 26px;
         }
 
         /* In the detail modal and the stats leaderboard the logo shares a line
@@ -632,7 +687,21 @@
 
         @media (max-width: 640px) {
             h1 { font-size: 1.75rem; }
-            .card img { width: 80px; height: 60px; }
+            /* One column is too narrow for a 152px rail beside the photo, so the
+               card stacks and the rail becomes a wrapping row of controls. */
+            .card { flex-direction: column; }
+            .card .card-photo { max-width: 100%; }
+            .card-side {
+                flex: 1 1 auto;
+                width: 100%;
+                flex-direction: row;
+                flex-wrap: wrap;
+                align-items: center;
+            }
+            .card-side > a,
+            .card-side > button,
+            .card-side .card-reactions,
+            .card-side .mod-actions { width: auto; }
             .filter-bar { gap: 0.75rem; }
             .period-btns { flex-wrap: wrap; }
             #map { height: 360px; }

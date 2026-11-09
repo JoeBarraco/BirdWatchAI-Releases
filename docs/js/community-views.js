@@ -179,37 +179,46 @@ function renderFeed() {
         const feederId = d.feeder_id || d.feeders?.id;
         const isFollowing = feederId && userFollowedFeeders.includes(feederId);
 
+        // Layout: the left column is the detection — the photo, then the facts
+        // about it — and the right rail is everything you can do with it. That
+        // split is why `+ Life List` and `☆ Follow` are no longer inline in the
+        // text: they sat there for historical reasons, and buttons on both
+        // sides made the card read as neither one thing nor the other.
+        const lifeListBtn = currentUser
+            ? `<button class="life-list-add-btn${onLifeList ? ' on-list' : ''}" onclick="toggleLifeListSpecies('${escJs(d.species)}', '${d.id}', this)" title="${onLifeList ? 'Remove from life list' : 'Add to life list'}">${onLifeList ? '✓ Listed' : '+ Life List'}</button>`
+            : '';
+        const followBtn = currentUser && feederId
+            ? `<button class="follow-feeder-btn${isFollowing ? ' following' : ''}" onclick="toggleFollowFeeder('${feederId}', this)">${isFollowing ? '★ Following' : '☆ Follow'}</button>`
+            : '';
+        const likeCount = reactions['❤️'] || 0;
+        const reacted   = isReacted(d.id, '❤️');
+
         return `
         <div class="card${isNew ? ' new' : ''}" data-id="${d.id}">
-            ${d.image_url ? `<img src="${d.image_url}" alt="${esc(d.species)}" loading="lazy" data-carousel-species="${esc(d.species)}">` : ''}
-            <div class="card-body">
+            <div class="card-main">
+                ${d.image_url ? `<img class="card-photo" src="${d.image_url}" alt="${esc(d.species)}" loading="lazy" data-carousel-species="${esc(d.species)}">` : ''}
                 <div class="card-title">
                     <span class="species-link" data-species="${esc(d.species)}" style="cursor:pointer;text-decoration:underline dotted;">${esc(d.species)}</span>${d.rarity
                         ? ` <span class="${rarityClass}">· ${esc(d.rarity)}</span>` : ''}${isFirst
-                        ? ' <span class="badge-first-season">🌱 First of Season</span>' : ''}${currentUser
-                        ? `<button class="life-list-add-btn${onLifeList ? ' on-list' : ''}" onclick="toggleLifeListSpecies('${escJs(d.species)}', '${d.id}', this)" title="${onLifeList ? 'Remove from life list' : 'Add to life list'}">${onLifeList ? '✓ Listed' : '+ Life List'}</button>` : ''}
+                        ? ' <span class="badge-first-season">🌱 First of Season</span>' : ''}
                 </div>
                 <div class="card-meta">
                     🕐 ${fmtDetectedAt(d.detected_at)}${formatLocationChip(d)}${d.temperature != null
                         ? ` · 🌡️ ${d.temperature}°F` : ''}
                 </div>
-                ${d.feeders?.display_name ? `<div class="card-feeder">${feederMark(d.feeders)} ${esc(d.feeders.display_name)}${currentUser && feederId ? `<button class="follow-feeder-btn${isFollowing ? ' following' : ''}" onclick="toggleFollowFeeder('${feederId}', this)">${isFollowing ? '★ Following' : '☆ Follow'}</button>` : ''}</div>` : ''}
+                ${d.feeders?.display_name ? `<div class="card-feeder">${feederMark(d.feeders)} ${esc(d.feeders.display_name)}</div>` : ''}
+            </div>
+            <div class="card-side">
+                ${lifeListBtn}
+                ${followBtn}
                 <div class="card-reactions">
-                    ${(() => {
-                        const count = reactions['❤️'] || 0;
-                        const reacted = isReacted(d.id, '❤️');
-                        return `<button class="reaction-btn${reacted ? ' reacted' : ''}" data-reaction-id="${d.id}" data-emoji="❤️">❤️${count ? ' ' + count : ''}</button>${count ? `<button class="likers-btn" onclick="showLikers('${d.id}', this.parentElement)" title="See who liked">Liked by…</button>` : ''}`;
-                    })()}
+                    <button class="reaction-btn${reacted ? ' reacted' : ''}" data-reaction-id="${d.id}" data-emoji="❤️">❤️${likeCount ? ' ' + likeCount : ''}</button>${likeCount ? `<button class="likers-btn" onclick="showLikers('${d.id}', this.parentElement)" title="See who liked">Liked by…</button>` : ''}
                 </div>
-                <div style="display:flex;align-items:center;flex-wrap:wrap;gap:0;">
-                    ${d.video_url
-                        ? `<a class="card-video" href="${d.video_url}" data-video-play="${d.video_url}" target="_blank" rel="noopener">🎬 Watch video</a>`
-                        : ''}
-                    <button class="card-ai" data-ai-species="${esc(d.species)}" title="Species info and links">🌐 Web</button>
-                    <button class="card-share" data-share-id="${d.id}" title="Copy link to this detection">🔗 Share</button>
-                    <button class="card-comment-btn" onclick="openComments('${d.id}')" title="Comments">💬${cCount ? ' ' + cCount : ''}</button>
-                    <button class="card-flag-btn" onclick="openFlag('${d.id}')" title="Report this detection">🚩</button>
-                </div>
+                ${d.video_url ? `<a class="card-video" href="${d.video_url}" data-video-play="${d.video_url}" target="_blank" rel="noopener">🎬 Watch video</a>` : ''}
+                <button class="card-ai" data-ai-species="${esc(d.species)}" title="Species info and links">🌐 Web</button>
+                <button class="card-share" data-share-id="${d.id}" title="Copy link to this detection">🔗 Share</button>
+                <button class="card-comment-btn" onclick="openComments('${d.id}')" title="Comments">💬${cCount ? ' ' + cCount : ''}</button>
+                <button class="card-flag-btn" onclick="openFlag('${d.id}')" title="Report this detection">🚩</button>
                 ${isModLoggedIn() ? `<div class="mod-actions">
                     <button onclick="openModEdit('${d.id}')">✏️ Edit</button>
                     <button class="mod-delete-btn" onclick="confirmModDelete('${d.id}')">🗑️ Delete</button>
