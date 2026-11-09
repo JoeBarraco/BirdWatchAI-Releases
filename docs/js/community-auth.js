@@ -55,7 +55,7 @@ async function handleSharedId() {
     // 3. Not in the current batch — fetch just this one record
     try {
         const res = await fetch(
-            `${SUPABASE_URL}/rest/v1/community_detections?select=*,feeders(display_name)&id=eq.${encodeURIComponent(id)}`,
+            `${SUPABASE_URL}/rest/v1/community_detections?select=*,feeders(${feederEmbedCols()})&id=eq.${encodeURIComponent(id)}`,
             { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` } }
         );
         const rows = await res.json();
@@ -270,7 +270,7 @@ function openDetailModal(id) {
         : (d.zip_code ? `<span>📍 ZIP ${esc(d.zip_code)}</span>` : '');
     const metaRows = [
         `<span>🕐 ${time}</span>`,
-        d.feeders?.display_name ? `<span><svg viewBox="0 0 24 24" width="1em" height="1em" aria-hidden="true" style="vertical-align:-.15em;flex-shrink:0"><rect x="5" y="11" width="14" height="10" fill="#f5b945"/><path d="M2 11L12 3L22 11Z" fill="#e68a1a"/><circle cx="12" cy="15" r="2.2" fill="#3d2a0d"/><rect x="11" y="17" width="2" height="2.5" fill="#8b5a2b"/></svg> ${esc(d.feeders.display_name)}</span>` : '',
+        d.feeders?.display_name ? `<span>${feederMark(d.feeders, 'inline')} ${esc(d.feeders.display_name)}</span>` : '',
         locHtml,
         d.temperature != null   ? `<span>🌡️ ${d.temperature}°F</span>` : '',
     ].filter(Boolean).join('');
@@ -2358,7 +2358,7 @@ function viewDetectionFromHistory(detectionId) {
     }
     // Otherwise fetch just that row, add it to allDetections, then open.
     fetch(
-        `${SUPABASE_URL}/rest/v1/community_detections?select=*,feeders(display_name)&id=eq.${encodeURIComponent(detectionId)}`,
+        `${SUPABASE_URL}/rest/v1/community_detections?select=*,feeders(${feederEmbedCols()})&id=eq.${encodeURIComponent(detectionId)}`,
         { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` } }
     )
         .then(r => r.json())

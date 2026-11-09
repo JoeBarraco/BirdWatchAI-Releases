@@ -69,12 +69,50 @@ const FEEDER_GLYPH =
     '<circle cx="12" cy="15" r="2.2" fill="#3d2a0d"/>' +
     '<rect x="11" y="17" width="2" height="2.5" fill="#8b5a2b"/></svg>';
 
-function feederMark(feeder) {
+// `variant` picks the presentation, which differs by where it lands:
+//   'card'   — a block above the feeder name, the feeder's identity on its row
+//   'inline' — sits in a line of text, capped to the line box (detail modal,
+//              stats leaderboard), where a block would break the layout
+function feederMark(feeder, variant) {
     const logo = feeder && feeder.logo_url;
     if (!logo || typeof logo !== 'string' || !/^https:\/\//i.test(logo)) return FEEDER_GLYPH;
-    return `<img class="card-feeder-logo" src="${esc(logo)}" alt="" loading="lazy" ` +
+    const cls = variant === 'inline' ? 'detail-feeder-logo' : 'card-feeder-logo';
+    return `<img class="${cls}" src="${esc(logo)}" alt="" loading="lazy" ` +
            `onerror="this.replaceWith(Object.assign(document.createElement('span'),` +
            `{innerHTML:${JSON.stringify(FEEDER_GLYPH).replace(/"/g, '&quot;')}}))">`;
+}
+
+// Views that only know a feeder by name — the stats leaderboard groups by
+// display_name — still need its logo. The loaded detections already carry it on
+// the embedded feeder, so derive the lookup from those rather than issuing
+// another query. Rebuilt only when the row count changes; renderStats runs on
+// every filter change and this would otherwise walk thousands of rows each time.
+let _feederLogoMap = null;
+let _feederLogoMapFor = -1;
+
+function feederLogoMap() {
+    const rows = (typeof allDetections !== 'undefined' && Array.isArray(allDetections))
+        ? allDetections : [];
+    if (_feederLogoMap && _feederLogoMapFor === rows.length) return _feederLogoMap;
+    const m = new Map();
+    for (const d of rows) {
+        const name = d.feeders?.display_name;
+        const url  = d.feeders?.logo_url;
+        if (name && url && !m.has(name)) m.set(name, url);
+    }
+    _feederLogoMap = m;
+    _feederLogoMapFor = rows.length;
+    return m;
+}
+
+// Inline mark for a feeder known only by name. Falls back to nothing rather
+// than the birdhouse glyph: the leaderboard is a dense table and a glyph on
+// every row would be noise where a logo is a useful distinction.
+function feederMarkByName(name) {
+    const url = feederLogoMap().get(name);
+    if (!url) return '';
+    return `<img class="stats-feeder-logo" src="${esc(url)}" alt="" loading="lazy" ` +
+           `onerror="this.remove()"> `;
 }
 
 // Haversine distance in miles between two lat/lng pairs
@@ -806,7 +844,7 @@ function renderFeeders() {
         <div class="feeder-card ${stateClass}">
             <div class="feeder-card-header">
                 <span class="feeder-status-dot ${stateClass}" aria-hidden="true"></span>
-                <h3 class="feeder-name">${esc(f.display_name || 'Unnamed feeder')}</h3>
+                <h3 class="feeder-name">${feederMarkByName(f.display_name)}${esc(f.display_name || 'Unnamed feeder')}</h3>
                 <span class="feeder-state-pill ${stateClass}">${stateLabel}</span>
             </div>
             <dl class="feeder-meta">
@@ -1625,7 +1663,7 @@ function renderStats() {
             <tbody>${leaderboard.map((f, i) => `
                 <tr>
                     <td class="stats-rank">${medals[i] ?? i + 1}</td>
-                    <td class="stats-species-name">${esc(f.name)}</td>
+                    <td class="stats-species-name">${feederMarkByName(f.name)}${esc(f.name)}</td>
                     <td class="stats-count">${f.count.toLocaleString()}</td>
                     <td class="stats-pct">
                         <span class="pct-bar-wrap"><span class="pct-bar" style="width:${(f.count/maxFeeder*100).toFixed(1)}%"></span></span>

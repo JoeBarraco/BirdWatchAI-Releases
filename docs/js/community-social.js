@@ -975,7 +975,7 @@ function likesRowHtml(r, rank) {
         <td class="stats-rank likes-rank">${rank}</td>
         <td class="stats-species-name" style="white-space:nowrap;">${esc(r.d.species || 'Unknown')}${r.d.rarity
             ? ` <span class="rarity-badge ${rarityClass}">${esc(r.d.rarity)}</span>` : ''}</td>
-        <td style="white-space:nowrap;">${r.d.feeders?.display_name ? esc(r.d.feeders.display_name) : ''}</td>
+        <td style="white-space:nowrap;">${r.d.feeders?.display_name ? feederMarkByName(r.d.feeders.display_name) + esc(r.d.feeders.display_name) : ''}</td>
         <td>${r.d.zip_code ? esc(r.d.zip_code) : ''}</td>
         <td style="white-space:nowrap;">${fmtDetectedAt(r.d.detected_at)}</td>
         <td style="text-align:center;">${rxBtn('❤️', r.liked)}</td>

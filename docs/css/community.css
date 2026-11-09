@@ -511,19 +511,48 @@
             margin-top: 2px;
         }
 
-        /* Stands in for the generic birdhouse glyph, so it is capped near that
-           glyph's size: a feeder's logo identifies the row, it does not get to
-           set the row's height. Width is capped separately because a wordmark
-           can be far wider than it is tall. */
-        .card-feeder-logo {
-            height: 1.5em;
-            max-width: 4em;
-            width: auto;
+        /* Selector note: `.card img` above sets width/height/object-fit for the
+           detection thumbnail and, at (0,1,1), outranks a lone `.card-feeder-logo`
+           class. That is what cropped the logo — it inherited `object-fit: cover`
+           and a fixed 120x90 (80x60 on narrow screens). These selectors are
+           (0,2,0) so they win wherever the logo appears, and every property that
+           rule sets is restated here rather than left to chance.
+
+           Sizing is max-only with width and height auto, so the image keeps its
+           own aspect ratio and is never cropped: a square 1024x1024 mark and a
+           wide wordmark both fit inside the box, just at different widths. */
+        .card .card-feeder-logo,
+        .detail-feeder-logo,
+        .stats-feeder-logo {
             object-fit: contain;
             object-position: left center;
-            vertical-align: -.4em;
-            border-radius: 3px;
+            border-radius: 4px;
             flex-shrink: 0;
+            cursor: default;
+        }
+
+        /* On a card the logo sits on its own line above the feeder name — it is
+           the feeder's identity, not a bullet in front of the text. */
+        .card .card-feeder-logo {
+            display: block;
+            width: auto;
+            height: auto;
+            max-width: 110px;
+            max-height: 38px;
+            margin: 3px 0 4px;
+        }
+
+        /* In the detail modal and the stats leaderboard the logo shares a line
+           with text, so it is capped to roughly the line box instead. */
+        .detail-feeder-logo,
+        .stats-feeder-logo {
+            display: inline-block;
+            width: auto;
+            height: auto;
+            max-width: 64px;
+            max-height: 1.6em;
+            vertical-align: -.45em;
+            margin-right: .15em;
         }
 
         .card-video {

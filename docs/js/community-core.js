@@ -364,6 +364,14 @@ function serverFilterParams() {
 // first time the backend says it does not know it. See maybeRetryWithoutLogo().
 let feederEmbedHasLogo = true;
 
+// The embedded feeder columns for callers that fetch a single detection rather
+// than the feed (the detail modal). Same flag, so once the feed has learned the
+// backend has no logo_url, these stop asking for it too.
+function feederEmbedCols(extra) {
+    const base = extra ? `display_name,${extra}` : 'display_name';
+    return feederEmbedHasLogo ? `${base},logo_url` : base;
+}
+
 function detectionSelect(feederScoped) {
     const cols = feederEmbedHasLogo
         ? 'display_name,zip_code,logo_url'
