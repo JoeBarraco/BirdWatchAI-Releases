@@ -146,11 +146,15 @@
         <div class="form-group">
             <label for="clipEvery">Clip Frequency</label>
             <select id="clipEvery">
+                <option value="0">Only video clips — no photos</option>
+                <option value="1">After every photo</option>
+                <option value="2">After every 2 photos</option>
                 <option value="3">After every 3 photos</option>
                 <option value="5" selected>After every 5 photos</option>
                 <option value="10">After every 10 photos</option>
                 <option value="20">After every 20 photos</option>
             </select>
+            <p class="hint">Clips are streamed rather than cached, so a clip-heavy setting needs a steady connection — and "only video clips" falls back to photos while the chosen period has no clips in it.</p>
         </div>
 
         <div class="form-group">

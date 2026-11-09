@@ -43,6 +43,7 @@ let slideSpan    = 0;      // ms the current item is on screen
 let idleTimer    = null;
 let playing      = false;
 let shownCount   = 0;      // items shown, for "a clip every N photos"
+let clipFailStreak = 0;  // consecutive clips that ended too fast to have played
 let updateInfo   = null;
 
 // Settings (overridden by main process)
@@ -227,15 +228,29 @@ function startPlayback() {
 
 // Move on: usually the next still, but every clipEvery-th item looks for a
 // video to play instead.
+// clipEvery === 0 means "only clips, no stills". It is a distinct mode rather
+// than a frequency, so it gets a name: `clipEvery > 0` elsewhere still reads as
+// "every Nth photo", and switching clips off entirely is the playClips box.
+const CLIPS_ONLY = 0;
+
 function advance() {
     if (!photos.length) return;
 
     photoIdx = (photoIdx + 1) % photos.length;
     shownCount++;
 
-    const wantClip = settings.playClips &&
-        settings.clipEvery > 0 &&
-        shownCount % settings.clipEvery === 0;
+    const clipsOnly = settings.playClips && settings.clipEvery === CLIPS_ONLY;
+
+    // A clip that ends almost instantly did not play — a dead signed URL, an
+    // undecodable file, a truncated upload. In clips-only mode there is no
+    // still between attempts to pace things, so a feed whose only clip is
+    // broken would spin through playClip as fast as the network can fail.
+    // After a few of those in a row, show a still instead and let the timer
+    // put a gap in. One good clip resets it.
+    const clipLoopSuspected = clipFailStreak >= 3;
+
+    const wantClip = settings.playClips && !clipLoopSuspected &&
+        (clipsOnly || (settings.clipEvery > 0 && shownCount % settings.clipEvery === 0));
 
     if (wantClip) {
         const idx = findClip(photoIdx);
@@ -244,7 +259,12 @@ function advance() {
             playClip(photos[idx]);
             return;
         }
+        // Nothing in the whole feed has a clip. Fall through to stills rather
+        // than leaving the screen dead — the chosen photo age may simply be a
+        // day nobody recorded video on.
     }
+
+    if (clipLoopSuspected) clipFailStreak = 0;
 
     showSlide(1);
     startTimer(settings.interval);
@@ -374,10 +394,14 @@ function playClip(photo) {
     setCaption(photo);
     console.log(`clip: ${photo.species} (${photo.id})`);
 
+    const startedAt = Date.now();
     let finished = false;
     const done = () => {
         if (finished) return;
         finished = true;
+        // Anything this short never rendered a frame. See advance().
+        if (Date.now() - startedAt < 1200) clipFailStreak++;
+        else clipFailStreak = 0;
         clearTimeout(cap);
         videoEl.classList.remove('active');
         videoEl.onended = videoEl.onerror = null;

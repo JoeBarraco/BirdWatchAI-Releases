@@ -265,7 +265,9 @@ async function loadSettings() {
     showClockEl.checked    = settings.showClock    !== false;
     playClipsEl.checked    = settings.playClips    !== false;
     checkUpdatesEl.checked = settings.checkUpdates !== false;
-    clipEveryEl.value      = String(settings.clipEvery   || 5);
+    // Not `|| 5`: 0 is "only video clips", and falsy, so it would round-trip
+    // back to "every 5 photos" the moment Settings was reopened.
+    clipEveryEl.value      = String(Number.isFinite(settings.clipEvery) ? settings.clipEvery : 5);
     clipSecondsEl.value    = String(settings.clipSeconds || 12);
 
     selectedFeeders = Array.isArray(settings.feeders) ? settings.feeders : [];

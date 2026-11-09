@@ -266,7 +266,7 @@ Settings are stored in `%APPDATA%/birdwatchai-screensaver/screensaver-settings.j
 | `cacheMB` | `512` | On-disk photo cache budget |
 | `showClock` | `true` | Clock and date panel (lower right) |
 | `playClips` | `true` | Mix video clips in with the stills |
-| `clipEvery` | `5` | Play a clip after every N photos (0 = never) |
+| `clipEvery` | `5` | Play a clip after every N photos; `0` = clips only, no stills |
 | `clipSeconds` | `12` | Give up on a clip after this long |
 | `checkUpdates` | `true` | Check once a day for a newer release |
 
@@ -298,6 +298,12 @@ Detections carry a `video_url` as well as a still, and most of them have one. A
 clip plays after every `clipEvery` photos — the next upcoming detection that
 actually has one, since the list is shuffled and most positions will not.
 
+`clipEvery = 0` is not "never" but **clips only**: every item is a clip and the
+stills are skipped entirely. Switching clips off is the `playClips` box, so the
+value was free to mean something more useful. Clips-only still falls back to
+stills when the chosen photo age contains no video at all — a day nobody
+recorded on should look like a slideshow, not a blank screen.
+
 Clips are **streamed, not cached**. A few seconds of 1080p dwarfs a still, and
 caching them would evict every photo in the budget; it also means clips are the
 one thing that does not work offline. They are always muted, in markup and again
@@ -306,6 +312,13 @@ in code: a screensaver that starts making noise at 2am is a bug, not a feature.
 Every failure path — a dead signed URL, an undecodable file, a truncated upload,
 a clip that simply runs long — lands on the same handler, which returns to the
 stills. The maximum length is a cap, not a target.
+
+There is one extra guard for clips-only. Normally a failed clip is followed by a
+still, and the slide timer puts a gap in; with stills skipped there is no such
+gap, so a feed whose only clip is broken would retry as fast as the network
+could fail. A clip that ends in under 1.2 s never rendered a frame, so three of
+those in a row forces one still through and the timer paces it. A clip that
+actually plays resets the count.
 
 ## Clock
 
