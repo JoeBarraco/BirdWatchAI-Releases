@@ -19,8 +19,8 @@ it finds one, and your existing settings carry over.)
 - **Offline-tolerant** — photos are cached on disk, so a dropped connection or a
   cold boot still has something to show
 - **Video clips** — mixes the detection clips in with the stills, always silent
-- **Clock & conditions** — current time, date and the temperature recorded with the
-  photo on screen, in the one corner the burned-in overlays leave free
+- **Clock** — current time and date, in the one corner the burned-in overlays
+  leave free
 - **Update check** — notices when a newer release exists instead of going stale
 - **Auto-refresh** — silently picks up new bird detections (every 5 minutes by default)
 - **Configurable** — photo duration, transition style, sort order, caption visibility
@@ -241,7 +241,7 @@ Settings are stored in `%APPDATA%/birdwatchai-screensaver/screensaver-settings.j
 | `showProgress` | `true` | Show progress bar at bottom |
 | `refreshMinutes` | `5` | How often to look for new detections |
 | `cacheMB` | `512` | On-disk photo cache budget |
-| `showClock` | `true` | Clock, date and conditions panel (lower right) |
+| `showClock` | `true` | Clock and date panel (lower right) |
 | `playClips` | `true` | Mix video clips in with the stills |
 | `clipEvery` | `5` | Play a clip after every N photos (0 = never) |
 | `clipSeconds` | `12` | Give up on a clip after this long |
@@ -284,7 +284,7 @@ Every failure path — a dead signed URL, an undecodable file, a truncated uploa
 a clip that simply runs long — lands on the same handler, which returns to the
 stills. The maximum length is a cap, not a target.
 
-## Clock and conditions
+## Clock
 
 Lower right, and not subject to the idle fade that hides the caption bar: a clock
 you cannot see is not a clock. That corner is the only one free — the server
@@ -293,8 +293,14 @@ right, and the species caption into the bottom left.
 
 It is labelled "Current Time" because the photo underneath carries its own
 timestamp, and two unlabelled clocks on one screen invites reading the wrong one.
-The temperature is the reading recorded **with that detection**, not the weather
-now; on a fallback day it is deliberately that day's reading.
+
+Nothing about the detection goes in this panel. The temperature recorded with
+the photo used to, which placed a reading from hours or days earlier directly
+under the words "Current Time" — exactly the confusion the label is there to
+prevent. It is gone rather than moved: the server already burns it into the
+photo, bottom left, next to the confidence, the detection time and the rarity.
+Drawing it again added nothing and only created a number that could be read as
+the current conditions.
 
 ## Updates
 

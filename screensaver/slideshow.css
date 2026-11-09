@@ -212,12 +212,6 @@ body {
     justify-content: flex-end;
 }
 
-.corner-temp:not(:empty)::before {
-    content: '·';
-    margin-right: 0.6rem;
-    color: rgba(255,255,255,0.45);
-}
-
 .corner-update {
     margin-top: 10px;
     font-size: 0.8rem;

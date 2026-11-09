@@ -1,0 +1,11 @@
+# Windows script hosts want CRLF, and these particular files ship to end users
+# inside the screensaver zip and run on their machines. Pin the endings so a
+# checkout on a machine without core.autocrlf still packages working scripts.
+#
+# Deliberately no blanket `* text=auto` here: this repository has years of
+# history checked out with core.autocrlf=true, and adding it would renormalise
+# large numbers of unrelated files on the next checkout.
+*.bat    text eol=crlf
+*.cmd    text eol=crlf
+*.ps1    text eol=crlf
+*.cs     text eol=crlf

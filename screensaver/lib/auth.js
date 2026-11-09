@@ -11,13 +11,14 @@
 // A desktop settings dialog cannot receive a browser redirect, so sign-in
 // here is the one-time-code half of the same GoTrue flow:
 //
-//   1. POST /auth/v1/otp    { email }           -> Supabase emails the user
-//   2. POST /auth/v1/verify { email, token }    -> access + refresh tokens
+//   1. POST /auth/v1/otp    { email }      -> Supabase emails the user
+//   2. POST /auth/v1/verify { token_hash } -> access + refresh tokens
 //
 // Step 2 accepts either the 6-digit code from the email or the sign-in link
 // pasted whole, because whether the email shows a code depends on the
 // project's email template. Handling both means this works without anyone
-// having to touch the Supabase dashboard first.
+// having to touch the Supabase dashboard first. See parseSignInUrl for why
+// those two inputs do not go into the same field.
 //
 // Tokens live in auth.json beside the settings file. A refresh token is a real
 // credential and it is long-lived, so it is encrypted with Electron's
@@ -116,14 +117,46 @@ async function requestCode(email) {
     return true;
 }
 
-// Pull whatever GoTrue material is hiding in a pasted sign-in link. Three
-// shapes exist in the wild, depending on template and GoTrue version:
-//   ...#access_token=...&refresh_token=...   already-redeemed landing URL
-//   ...?token_hash=...&type=magiclink        current templates
-//   ...?token=...&type=magiclink             older templates
+// Mail systems rewrite links before they reach the reader. Unwrap the common
+// scanners so the real URL is what gets parsed, rather than the wrapper's own
+// query string — which has no token in it and would look like garbage input.
+function unwrap(text) {
+    let s = String(text || '').trim()
+        .replace(/^[<("']+/, '')
+        .replace(/[>)"'.,]+$/, '');
+    for (let i = 0; i < 3; i++) {
+        let url;
+        try { url = new URL(s); } catch { return s; }
+        const host  = url.hostname.toLowerCase();
+        const inner =
+            host.endsWith('safelinks.protection.outlook.com') ? url.searchParams.get('url')  :
+            host.endsWith('urldefense.com')                   ? null                         :
+            host === 'www.google.com' && url.pathname === '/url' ? url.searchParams.get('q') :
+            null;
+        if (!inner) return s;
+        s = inner;
+    }
+    return s;
+}
+
+// Pull whatever GoTrue material is hiding in a pasted sign-in link.
+//
+// The important subtlety is the `token` query parameter. GoTrue's
+// {{ .ConfirmationURL }} renders as
+//
+//     /auth/v1/verify?token={{ .TokenHash }}&type=magiclink&redirect_to=...
+//
+// so despite the name, the value in the link is the *hash* (sha224 hex, 56
+// chars) — never the raw one-time code. GET /verify looks a hash up directly;
+// POST /verify hashes whatever arrives in its `token` field before looking it
+// up. Forwarding a link's `token` as POST `token` therefore hashes an already
+// hashed value and the lookup misses, which GoTrue reports as "Token has
+// expired or is invalid" — indistinguishable from a genuinely dead link.
+// Anything lifted out of a URL is a hash and goes in `token_hash`. Only a code
+// the user typed from the email body belongs in `token`.
 function parseSignInUrl(text) {
     let url;
-    try { url = new URL(text.trim()); } catch { return null; }
+    try { url = new URL(text); } catch { return null; }
 
     const hash = new URLSearchParams((url.hash || '').replace(/^#/, ''));
     if (hash.get('access_token')) {
@@ -139,14 +172,14 @@ function parseSignInUrl(text) {
 
     const q    = url.searchParams;
     const type = q.get('type') || 'magiclink';
-    if (q.get('token_hash')) return { kind: 'token_hash', token_hash: q.get('token_hash'), type };
-    if (q.get('token'))      return { kind: 'token',      token: q.get('token'),           type };
+    const hv   = q.get('token_hash') || q.get('token');
+    if (hv) return { kind: 'token_hash', token_hash: hv, type };
     return null;
 }
 
 // Finish sign-in with either the emailed code or the emailed link.
 async function verify(email, input) {
-    const text = String(input || '').trim();
+    const text = unwrap(input);
     if (!text) throw new Error('Enter the code or paste the link from the email.');
 
     const parsed = text.includes('://') ? parseSignInUrl(text) : null;
@@ -159,20 +192,23 @@ async function verify(email, input) {
         return status();
     }
 
-    let body;
-    if (parsed && parsed.kind === 'token_hash') {
+    let body, typed = false;
+    if (parsed) {
         body = { type: parsed.type, token_hash: parsed.token_hash };
-    } else if (parsed && parsed.kind === 'token') {
-        body = { type: parsed.type, token: parsed.token, email };
+    } else if (/^[0-9a-f]{56}$/i.test(text)) {
+        // Just the token lifted out of a link, without the rest of the URL.
+        body = { type: 'magiclink', token_hash: text };
     } else if (/^\d{6,8}$/.test(text)) {
-        // A bare numeric code from the email body.
+        // A code typed from the email body. This one really is a raw token, so
+        // it needs the address alongside it: GoTrue hashes the pair.
+        if (!email) throw new Error('Enter the email address you requested the code for.');
         body = { type: 'email', token: text, email };
+        typed = true;
+    } else if (text.includes('://')) {
+        throw new Error('That link has no sign-in token in it. Copy the address of the ' +
+            'button or link in the email itself, not the one in the address bar.');
     } else {
         throw new Error('That does not look like a sign-in code or link.');
-    }
-
-    if (body.token && !body.email) {
-        throw new Error('Enter the email address you requested the code for.');
     }
 
     const res = await fetch(`${SUPABASE_URL}/auth/v1/verify`, {
@@ -182,8 +218,17 @@ async function verify(email, input) {
     });
     if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.msg || err.error_description ||
-            'That code or link was not accepted. It may have expired.');
+        const msg = err.msg || err.error_description || '';
+        // GoTrue says the same thing for spent, mistyped and timed-out links, so
+        // point at the one remedy that covers all three rather than repeating it.
+        if (!msg || /expired|invalid/i.test(msg)) {
+            throw new Error(typed
+                ? 'That code was not accepted. Check it against the email, or send a ' +
+                  'new one — codes are good for an hour and only once.'
+                : 'That link is no longer good — it may have been opened already, or it ' +
+                  'timed out. Send a new one and paste it without clicking.');
+        }
+        throw new Error(msg);
     }
 
     const s = adopt(await res.json(), email);
@@ -266,4 +311,5 @@ function isSignedIn() { return !!session; }
 module.exports = {
     init, requestCode, verify, getAccessToken, headers,
     signOut, status, isSignedIn,
+    _internal: { unwrap, parseSignInUrl },
 };

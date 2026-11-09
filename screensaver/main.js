@@ -59,7 +59,7 @@ const DEFAULT_SETTINGS = {
     showProgress: true,
     cacheMB:     512,       // on-disk photo cache budget
     refreshMinutes: 5,      // how often to look for new detections
-    showClock:   true,      // clock + conditions corner
+    showClock:   true,      // clock corner (lower right)
     playClips:   true,      // mix video clips in with the stills
     clipEvery:   5,         // play a clip after every N photos (0 = never)
     clipSeconds: 12,        // give up on a clip after this long

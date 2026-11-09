@@ -28,7 +28,6 @@ const emptyMsgEl      = document.getElementById('slideshow-empty-msg');
 const cornerEl        = document.getElementById('slideshow-corner');
 const cornerTimeEl    = document.getElementById('corner-time');
 const cornerDateEl    = document.getElementById('corner-date');
-const cornerTempEl    = document.getElementById('corner-temp');
 const cornerUpdateEl  = document.getElementById('corner-update');
 
 // ── State ──────────────────────────────────────────────────
@@ -172,12 +171,20 @@ document.addEventListener('mousedown', () => {
     window.screensaverAPI.signalActivity();
 });
 
-// ── Clock / conditions corner ──────────────────────────────
+// ── Clock corner ───────────────────────────────────────────
 //
 // Lower right, and not hidden by the idle fade: a clock you cannot see is not
 // a clock. The other three corners all carry something the server burns into
 // the photo itself — timestamp, watermark, species caption — so this is the
 // only one free.
+//
+// Strictly the wall clock. The detection's temperature used to sit here too,
+// which put a reading from hours or days ago under a heading that says
+// "Current Time" — the very confusion the label exists to prevent. It is not
+// shown anywhere else either, because it never needed to be: the server burns
+// it into the photo itself, bottom left, alongside the confidence, the
+// detection time and the rarity. We were drawing a second copy of a number
+// that was already on screen, in the one place guaranteed to misread it.
 function startClock() {
     if (!settings.showClock) {
         if (!updateInfo) cornerEl.classList.remove('visible');
@@ -194,15 +201,6 @@ function tickClock() {
         { hour: 'numeric', minute: '2-digit' });
     cornerDateEl.textContent = now.toLocaleDateString(undefined,
         { weekday: 'long', month: 'long', day: 'numeric' });
-}
-
-// Conditions come from the detection on screen — the temperature recorded when
-// that bird was seen. For the live feed that is a few minutes old at most; on
-// a fallback day it is deliberately that day's reading, not today's.
-function showConditions(photo) {
-    if (!settings.showClock) return;
-    cornerTempEl.textContent =
-        photo && typeof photo.temp === 'number' ? `${Math.round(photo.temp)}°F` : '';
 }
 
 // ── Playback ───────────────────────────────────────────────
@@ -265,7 +263,6 @@ function setCaption(photo) {
         captionEl.textContent = caption;
     }
     counterEl.textContent = `${photoIdx + 1} / ${photos.length}`;
-    showConditions(photo);
 }
 
 function showSlide(direction) {
