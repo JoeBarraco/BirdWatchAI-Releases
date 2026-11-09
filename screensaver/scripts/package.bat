@@ -29,7 +29,7 @@ set "SCRIPT_DIR=%~dp0"
 set "DIST_DIR=%~dp0..\dist"
 set "PKG_DIR=%TEMP%\BirdWatchAI-Community-Feed-Package"
 set "PKG_ROOT=%PKG_DIR%\BirdWatchAI Community Feed"
-set "ZIP_NAME=BirdWatchAI_Community_Feed_1.3.0.zip"
+set "ZIP_NAME=BirdWatchAI_Community_Feed_1.3.1.zip"
 set "LAUNCHER_NAME=BirdWatchAI.scr"
 
 REM ── Clean up previous package ────────────────────────────────
