@@ -24,10 +24,15 @@
              top left and a watermark into the top right, and the caption sits
              bottom left. -->
         <div id="slideshow-corner" class="slideshow-corner">
-            <!-- The feeder's logo, when it has one. Above the label rather
-                 than beside the clock so a wide logo cannot squeeze the time,
-                 which is the one thing in this panel that must stay legible. -->
-            <img id="corner-logo" class="corner-logo" alt="" draggable="false" hidden>
+            <!-- Whose feeder the bird on screen is at: logo and name together,
+                 since a logo alone identifies a feeder only to someone who
+                 already knows it. Separated from the clock by a rule, because
+                 the two halves answer different questions and a single column
+                 of right-aligned lines read as one list. -->
+            <div id="corner-feeder" class="corner-feeder" hidden>
+                <img id="corner-logo" class="corner-logo" alt="" draggable="false" hidden>
+                <span id="corner-feeder-name" class="corner-feeder-name"></span>
+            </div>
             <!-- Labelled, because every photo has its own detection timestamp
                  burned into it and two unlabelled clocks on one screen is a
                  recipe for reading the wrong one. -->

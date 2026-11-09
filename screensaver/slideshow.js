@@ -30,6 +30,8 @@ const cornerTimeEl    = document.getElementById('corner-time');
 const cornerDateEl    = document.getElementById('corner-date');
 const cornerUpdateEl  = document.getElementById('corner-update');
 const cornerLogoEl    = document.getElementById('corner-logo');
+const cornerFeederEl     = document.getElementById('corner-feeder');
+const cornerFeederNameEl = document.getElementById('corner-feeder-name');
 
 // ── State ──────────────────────────────────────────────────
 let photos       = [];
@@ -118,12 +120,32 @@ window.screensaverAPI.onUpdate((info) => {
     cornerEl.classList.add('visible');
 });
 
-// Each monitor shuffles its own copy, so a multi-display wall is not showing
-// the same bird four times.
+// Deal the feed out across the monitors instead of giving every window the
+// whole list.
+//
+// Each window used to shuffle its own copy, on the theory that independent
+// shuffles would keep a wall from showing the same bird everywhere. They do
+// not: two windows land on the same photo whenever their orders happen to
+// agree at that moment, and with a short feed — "today" can be four photos —
+// that is most of the time.
+//
+// So the order is now settled once, in the main process, and each window takes
+// every Nth item from it. Those index sets are disjoint by construction, so
+// the same photo cannot be on two screens at once no matter how the windows
+// drift apart in time, and between them the monitors still cover the feed.
+function mine(list) {
+    const count = Math.max(1, settings.monitorCount || 1);
+    const index = Math.min(Math.max(0, settings.monitorIndex || 0), count - 1);
+    if (count === 1) return list.slice();
+
+    const out = list.filter((_, i) => i % count === index);
+    // Fewer photos than monitors. Showing a repeat beats leaving a screen
+    // empty, so in that case everyone gets everything.
+    return out.length ? out : list.slice();
+}
+
 function orderFor(list) {
-    const copy = list.slice();
-    if (!settings.sortMode || settings.sortMode === 'random') shuffle(copy);
-    return copy;
+    return mine(list);
 }
 
 // Fold a refresh into a running slideshow: refresh the URLs we already hold
@@ -142,11 +164,16 @@ function mergeRefresh(incoming) {
         if (fresh.logo !== undefined) p.logo = fresh.logo;
     }
 
+    // New arrivals go through the same deal as the initial list, or a refresh
+    // would hand every monitor every new photo and undo the split. Note the
+    // lookup above still uses the full `incoming`: this window's photos are a
+    // subset of it, and their URLs need refreshing either way.
     const have = new Set(photos.map(p => p.id));
-    const added = incoming.filter(p => !have.has(p.id));
+    const added = mine(incoming).filter(p => !have.has(p.id));
     if (!added.length) return;
 
-    shuffle(added);
+    // Left in the order the main process settled, which is already random for
+    // the default sort — reshuffling here would only scramble the deal.
     photos.splice(photoIdx + 1, 0, ...added);
 }
 
@@ -297,9 +324,17 @@ function setCaption(photo) {
 //
 // A logo that fails to load is hidden rather than left as a broken-image box:
 // this runs unattended for months and a feeder can delete its own logo object
-// out from under a cached feed at any time.
+// out from under a cached feed at any time. The name survives that — it is the
+// part that actually identifies the feeder — so the two are hidden separately.
 function setCornerLogo(photo) {
-    const src = (photo && photo.logo) || '';
+    const name = (photo && photo.feeder) || '';
+    const src  = (photo && photo.logo) || '';
+
+    cornerFeederNameEl.textContent = name;
+    // The whole block goes when there is nothing to put in it, so the rule
+    // above the clock does not hang there on its own.
+    cornerFeederEl.hidden = !name && !src;
+
     if (!src) {
         cornerLogoEl.hidden = true;
         cornerLogoEl.removeAttribute('src');
@@ -480,13 +515,4 @@ function showEmptyState(message) {
 
 function hideEmptyState() {
     emptyEl.classList.remove('visible');
-}
-
-// ── Utilities ──────────────────────────────────────────────
-function shuffle(arr) {
-    for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
-    return arr;
 }

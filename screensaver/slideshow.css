@@ -203,19 +203,40 @@ body {
     letter-spacing: 0.01em;
 }
 
+/* Logo and name on one line, right-aligned with the rest of the panel but
+   reading left-to-right, then a rule separating them from the clock. The name
+   is allowed to wrap to two lines; the logo never shrinks to make room for it,
+   because a logo squeezed to nothing is worse than a name that wraps. */
+.corner-feeder {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+}
+
 /* Bounded in both directions: feeders upload whatever they have, and a tall
    crest or a wide wordmark must both land in the same small panel without
-   pushing the clock around. object-fit keeps the aspect ratio inside that box. */
+   pushing the clock around. object-fit keeps the aspect ratio inside that box,
+   so nothing is cropped. */
 .corner-logo {
-    display: block;
-    margin: 0 0 10px auto;
-    max-width: 150px;
-    max-height: 52px;
+    flex: 0 0 auto;
+    max-width: 56px;
+    max-height: 44px;
     width: auto;
     height: auto;
     object-fit: contain;
-    object-position: right center;
     border-radius: 6px;
+}
+
+.corner-feeder-name {
+    font-size: 0.95rem;
+    font-weight: 600;
+    line-height: 1.2;
+    text-align: right;
+    color: rgba(255, 255, 255, 0.92);
 }
 
 .corner-meta {

@@ -171,8 +171,16 @@ function launchScreensaver() {
             ? Math.floor(Math.random() * settings.interval * 0.4)
             : 0;
 
+        // Which slice of the feed this window owns. The renderer takes every
+        // monitorCount-th photo starting at monitorIndex, so the windows hold
+        // disjoint sets and a wall never shows the same bird twice at once.
+        const monitorIndex = windows.length;
+        const monitorCount = displays.length;
+
         win.webContents.on('did-finish-load', () => {
-            win.webContents.send('init-settings', { ...settings, staggerDelay });
+            win.webContents.send('init-settings', {
+                ...settings, staggerDelay, monitorIndex, monitorCount,
+            });
             ready.add(win);
             if (latestResult) win.webContents.send('feed-update', latestResult);
         });
@@ -190,8 +198,10 @@ function launchScreensaver() {
         windows.push(win);
     }
 
-    // One fetch for every monitor. Each window shuffles its own copy, so they
-    // still show different photos at any given moment.
+    // One fetch for every monitor. The order is settled here (lib/feed.js
+    // shuffles once) and each window takes a disjoint slice of it, so the same
+    // list can be broadcast to all of them without any screen repeating
+    // another.
     function broadcast(result) {
         latestResult = result;
         for (const w of windows) {

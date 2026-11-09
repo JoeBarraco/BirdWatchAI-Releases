@@ -221,9 +221,24 @@ screensaver/
 When launched in screensaver mode (`/s`), the app:
 1. Queries `screen.getAllDisplays()` to discover all connected monitors
 2. Creates one frameless, fullscreen `BrowserWindow` per display
-3. Loads the feed once and sends it to every window; each window shuffles its own
-   copy, so a video wall isn't showing the same bird four times
+3. Loads the feed once and sends it to every window, telling each one which
+   `monitorIndex` of `monitorCount` it is
 4. Mouse movement beyond 15px or any keyboard input exits all windows
+
+The feed is dealt out rather than duplicated. The order is settled once in the
+main process (`lib/feed.js` shuffles), and each window takes every
+`monitorCount`-th photo starting at its own index, so the windows hold disjoint
+sets: the same bird cannot be on two screens at once however far the windows
+drift apart in time, and between them they still cover the whole feed.
+
+Each window used to shuffle its own copy instead, on the theory that
+independent shuffles would keep a wall varied. They don't — two windows collide
+whenever their orders agree at that moment, and on a short feed ("today" can be
+four photos) that is most of the time. Striding by index is the fix because it
+cannot collide, rather than being unlikely to.
+
+With fewer photos than monitors every window shows everything, since a repeat
+beats a blank screen.
 
 ## Private communities
 
@@ -330,12 +345,19 @@ right, and the species caption into the bottom left.
 It is labelled "Current Time" because the photo underneath carries its own
 timestamp, and two unlabelled clocks on one screen invites reading the wrong one.
 
-A feeder that has uploaded a logo gets it at the top of this panel, above the
-label. It is bounded in both directions (150×52 px) because feeders upload
-whatever they have and the clock underneath has to stay the same size whether
-the logo is a wide wordmark or a tall crest. A logo that fails to load is
-hidden rather than left as a broken image — this runs unattended for months,
-and a feeder can replace or delete its logo at any time.
+Above the clock, separated by a rule, is whose feeder the bird on screen is at:
+the feeder's logo and its name on one line. The name matters — a logo alone
+identifies a feeder only to someone who already knows it — so the name shows
+even when there is no logo, and the logo shows without the name if the feed
+somehow has one and not the other. When there is neither, the whole block is
+hidden so the rule doesn't hang there on its own.
+
+The logo is bounded in both directions (56×44 px) because feeders upload
+whatever they have and the clock below has to stay the same size whether the
+logo is a wide wordmark or a tall crest; `object-fit: contain` means it is
+never cropped. A logo that fails to load is hidden rather than left as a
+broken image, and the name stays — this runs unattended for months, and a
+feeder can replace or delete its logo at any time.
 
 Nothing else about the detection goes in this panel. The temperature recorded with
 the photo used to, which placed a reading from hours or days earlier directly
