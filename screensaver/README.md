@@ -85,6 +85,29 @@ This produces an unpacked Electron build in `dist/win-unpacked/`, then renames t
 `.exe` to `.scr`. Build settings live in `electron-builder.config.js` rather than
 package.json's `build` field, because signing has to be conditional — see below.
 
+> **Never edit `scripts/*.bat` with MSYS/Git-Bash `sed -i`.** It rewrites the file
+> with LF-only line endings, and `cmd.exe` then mis-parses it in a way that looks
+> like anything but a line-ending problem: the first few `set` statements take, the
+> rest come back **empty**, and you get `Invalid drive specification`, `Access is
+> denied`, and finally `Compress-Archive -Path '' -DestinationPath '\'`. The script
+> appears to run — it prints `[1/5] … Done.` — while writing nothing.
+>
+> It is doubly confusing to diagnose, because Git-Bash's own `od`, `grep` and `file`
+> translate line endings as they read, so they will happily tell you a CRLF file is
+> LF and vice versa. Check and repair from PowerShell, which sees the real bytes:
+>
+> ```powershell
+> # inspect
+> (Get-Content -Raw -Encoding Byte scripts\package.bat)[0..9]
+> # repair: add CR before any bare LF
+> $p='scripts\package.bat'; $i=[IO.File]::ReadAllBytes($p); $o=[Collections.Generic.List[byte]]::new()
+> for($n=0;$n -lt $i.Length;$n++){ if($i[$n] -eq 10 -and ($n -eq 0 -or $i[$n-1] -ne 13)){$o.Add(13)}; $o.Add($i[$n]) }
+> [IO.File]::WriteAllBytes($p,$o.ToArray())
+> ```
+>
+> `.gitattributes` pins `eol=crlf` for `.bat`/`.cmd`/`.ps1`/`.cs`, which fixes what a
+> *checkout* produces — it cannot stop a local tool from rewriting the file in place.
+
 ```bash
 scripts\package.bat
 ```
