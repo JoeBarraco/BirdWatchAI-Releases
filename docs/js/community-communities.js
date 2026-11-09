@@ -737,6 +737,10 @@ async function signPrivateMedia(detections) {
     for (const d of detections) {
         if (isPrivateMedia(d.image_url)) wanted.add(d.image_url);
         if (isPrivateMedia(d.video_url)) wanted.add(d.video_url);
+        // A private feeder's logo is a marker like its photos. Many rows share
+        // one feeder, so this is a handful of distinct markers however long the
+        // feed is, and the Set collapses them to one signing request.
+        if (isPrivateMedia(d.feeders?.logo_url)) wanted.add(d.feeders.logo_url);
     }
     if (!wanted.size) return;
 
@@ -747,6 +751,7 @@ async function signPrivateMedia(detections) {
         for (const d of detections) {
             if (isPrivateMedia(d.image_url)) d.image_url = null;
             if (isPrivateMedia(d.video_url)) d.video_url = null;
+            if (isPrivateMedia(d.feeders?.logo_url)) d.feeders.logo_url = null;
         }
         return;
     }
@@ -808,6 +813,10 @@ async function signPrivateMedia(detections) {
         if (isPrivateMedia(d.video_url)) {
             const hit = signedUrlCache.get(d.video_url);
             d.video_url = hit && hit.expiresAt > now ? hit.url : null;
+        }
+        if (isPrivateMedia(d.feeders?.logo_url)) {
+            const hit = signedUrlCache.get(d.feeders.logo_url);
+            d.feeders.logo_url = hit && hit.expiresAt > now ? hit.url : null;
         }
     }
 }

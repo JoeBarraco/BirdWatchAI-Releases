@@ -88,7 +88,20 @@ function labelDay(d, short) {
 
 // ── Queries ────────────────────────────────────────────────
 
-const SELECT = 'id,species,image_url,video_url,detected_at,temperature,rarity,feeders(display_name)';
+const BASE_SELECT = 'id,species,image_url,video_url,detected_at,temperature,rarity';
+
+// feeders.logo_url is newer than some backends this build will meet. An
+// installed screensaver updates on its own schedule and the community backend
+// on another, so asking for a column that does not exist yet must not be fatal:
+// PostgREST answers the whole query with 400 / 42703, which would take the
+// entire feed down to add a decoration. Ask once, remember the answer for the
+// process, and fall back to the select that has always worked.
+let feederSelect = 'feeders(display_name,logo_url)';
+const FEEDER_SELECT_FALLBACK = 'feeders(display_name)';
+
+function currentSelect() {
+    return `${BASE_SELECT},${feederSelect}`;
+}
 
 // Resolve the saved feeder display names to ids. Filtering server-side on uuid
 // keeps the fallback query honest: with a client-side name filter, a 500-row
@@ -114,17 +127,33 @@ async function resolveFeederIds(names) {
 }
 
 async function queryDetections({ since, until, feederIds }) {
-    let url = `${SUPABASE_URL}/rest/v1/community_detections` +
-        `?select=${SELECT}` +
-        `&image_url=not.is.null` +
-        `&order=detected_at.desc` +
-        `&limit=${ROW_LIMIT}`;
+    const build = (select) => {
+        let url = `${SUPABASE_URL}/rest/v1/community_detections` +
+            `?select=${select}` +
+            `&image_url=not.is.null` +
+            `&order=detected_at.desc` +
+            `&limit=${ROW_LIMIT}`;
 
-    if (since) url += `&detected_at=gte.${encodeURIComponent(since.toISOString())}`;
-    if (until) url += `&detected_at=lt.${encodeURIComponent(until.toISOString())}`;
-    if (feederIds) url += `&feeder_id=in.(${feederIds.join(',')})`;
+        if (since) url += `&detected_at=gte.${encodeURIComponent(since.toISOString())}`;
+        if (until) url += `&detected_at=lt.${encodeURIComponent(until.toISOString())}`;
+        if (feederIds) url += `&feeder_id=in.(${feederIds.join(',')})`;
+        return url;
+    };
 
-    const res = await fetch(url, { headers: await auth.headers() });
+    const headers = await auth.headers();
+    let res = await fetch(build(currentSelect()), { headers });
+
+    // 42703 is "column does not exist". Only that specific failure is worth a
+    // retry — anything else (auth, network, a real query error) should surface.
+    if (res.status === 400 && feederSelect !== FEEDER_SELECT_FALLBACK) {
+        const body = await res.clone().json().catch(() => null);
+        if (body && body.code === '42703') {
+            console.warn('[feed] backend has no feeders.logo_url; continuing without logos.');
+            feederSelect = FEEDER_SELECT_FALLBACK;
+            res = await fetch(build(currentSelect()), { headers });
+        }
+    }
+
     if (!res.ok) throw new Error(`Feed query failed (HTTP ${res.status})`);
     return res.json();
 }
@@ -160,6 +189,11 @@ async function signPrivate(rows, wantVideo) {
     for (const r of rows) {
         want(r.image_url, false);
         if (wantVideo) want(r.video_url, true);
+        // Logos are small and repeat on every row from the same feeder, so
+        // they cache like stills: once one is on disk it needs no signature,
+        // and `seen` keeps a 500-row page from asking for the same handful of
+        // markers hundreds of times.
+        if (r.feeders && r.feeders.logo_url) want(r.feeders.logo_url, false);
     }
 
     const signed = new Map();
@@ -226,6 +260,16 @@ function toPhotos(rows, signed, wantVideo) {
                 : r.video_url;
         }
 
+        // The feeder's logo, resolved the same way as the still. A logo that
+        // is private and unsigned simply goes missing rather than dropping
+        // the photo — the bird is the point, the badge is decoration.
+        const logoKey = (r.feeders && r.feeders.logo_url) || null;
+        let logo = null, logoRemote = null;
+        if (logoKey) {
+            logo = cache.cachedUrl(logoKey);
+            logoRemote = isPrivate(logoKey) ? (signed.get(logoKey) || null) : logoKey;
+        }
+
         photos.push({
             id:      r.id,
             key,
@@ -233,6 +277,10 @@ function toPhotos(rows, signed, wantVideo) {
             remote,
             cached:  !!url,
             video,
+            logo:       logo || logoRemote,
+            logoKey,
+            logoRemote,
+            logoCached: !!logo,
             species: r.species,
             feeder:  (r.feeders && r.feeders.display_name) || '',
             date:    r.detected_at,
@@ -407,6 +455,21 @@ async function warmCache(photos, limit) {
     for (const p of todo) {
         await cache.fetchLocalUrl(p.key, p.remote, await auth.headers());
     }
+
+    // Logos first-come-first-served and deduplicated: there are only ever a
+    // handful across the whole feed, they are tiny, and one on disk serves
+    // every photo from that feeder for as long as the cache holds it. Not
+    // counted against `limit`, which exists to bound photo downloads.
+    const logos = new Map();
+    for (const p of photos) {
+        if (p.logoKey && !p.logoCached && p.logoRemote && !logos.has(p.logoKey)) {
+            logos.set(p.logoKey, p.logoRemote);
+        }
+    }
+    for (const [key, remote] of logos) {
+        await cache.fetchLocalUrl(key, remote, await auth.headers());
+    }
+
     await cache.prune();
 }
 

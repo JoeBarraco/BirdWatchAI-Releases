@@ -203,6 +203,21 @@ body {
     letter-spacing: 0.01em;
 }
 
+/* Bounded in both directions: feeders upload whatever they have, and a tall
+   crest or a wide wordmark must both land in the same small panel without
+   pushing the clock around. object-fit keeps the aspect ratio inside that box. */
+.corner-logo {
+    display: block;
+    margin: 0 0 10px auto;
+    max-width: 150px;
+    max-height: 52px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    object-position: right center;
+    border-radius: 6px;
+}
+
 .corner-meta {
     margin-top: 6px;
     font-size: 0.95rem;

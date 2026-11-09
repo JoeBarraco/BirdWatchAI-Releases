@@ -511,6 +511,21 @@
             margin-top: 2px;
         }
 
+        /* Stands in for the generic birdhouse glyph, so it is capped near that
+           glyph's size: a feeder's logo identifies the row, it does not get to
+           set the row's height. Width is capped separately because a wordmark
+           can be far wider than it is tall. */
+        .card-feeder-logo {
+            height: 1.5em;
+            max-width: 4em;
+            width: auto;
+            object-fit: contain;
+            object-position: left center;
+            vertical-align: -.4em;
+            border-radius: 3px;
+            flex-shrink: 0;
+        }
+
         .card-video {
             display: inline-block;
             margin-top: 6px;

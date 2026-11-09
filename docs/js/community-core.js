@@ -357,10 +357,32 @@ function serverFilterParams() {
 // join so `feeders.display_name=eq.…` can be evaluated server-side — but only
 // when a feeder is actually selected: inner-joining unconditionally would
 // silently drop any detection whose feeder row is missing.
+// feeders.logo_url arrived later than the rest of this embed, and the site is
+// deployed independently of the database. Asking for a column the backend does
+// not have yet fails the WHOLE query with 400 / 42703 — a blank dashboard to
+// gain a small image — so the column is dropped for the rest of the session the
+// first time the backend says it does not know it. See maybeRetryWithoutLogo().
+let feederEmbedHasLogo = true;
+
 function detectionSelect(feederScoped) {
+    const cols = feederEmbedHasLogo
+        ? 'display_name,zip_code,logo_url'
+        : 'display_name,zip_code';
     return feederScoped
-        ? 'select=*,feeders!inner(display_name,zip_code)'
-        : 'select=*,feeders(display_name,zip_code)';
+        ? `select=*,feeders!inner(${cols})`
+        : `select=*,feeders(${cols})`;
+}
+
+// Call with a failed Response. Returns true when the failure was specifically
+// "no such column" and the caller should rebuild its URL and try once more.
+async function maybeRetryWithoutLogo(res) {
+    if (!res || res.status !== 400 || !feederEmbedHasLogo) return false;
+    let body = null;
+    try { body = await res.clone().json(); } catch { return false; }
+    if (!body || body.code !== '42703') return false;
+    console.warn('Community: backend has no feeders.logo_url yet; continuing without feeder logos.');
+    feederEmbedHasLogo = false;
+    return true;
 }
 
 // Filters that can only be decided in the browser, and so still require the
@@ -403,7 +425,14 @@ function foldFeederZip(rows) {
 async function fetchDetectionPage(offset, limit, wantCount) {
     const headers = sbHeaders(sbAuthed());
     if (wantCount) headers['Prefer'] = 'count=exact';
-    const res = await fetch(detectionsUrl(offset, limit), { headers });
+    let res = await fetch(detectionsUrl(offset, limit), { headers });
+    // The URL is rebuilt, not reused: maybeRetryWithoutLogo() flips the flag
+    // that detectionSelect() reads, so the second attempt asks for one column
+    // fewer. This is the first query the page runs, so one retry here settles
+    // it for every later query in the session.
+    if (await maybeRetryWithoutLogo(res)) {
+        res = await fetch(detectionsUrl(offset, limit), { headers });
+    }
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const rows = foldFeederZip(await res.json());
     let total = null;
@@ -666,10 +695,21 @@ async function refreshFeed() {
         // see — and falls back to a full reload when the arithmetic disagrees.
         const countHeaders = sbHeaders(sbAuthed());
         countHeaders['Prefer'] = 'count=exact';
-        const [newRes, countRes] = await Promise.all([
+        let [newRes, countRes] = await Promise.all([
             fetch(newUrl, { headers: sbHeaders(sbAuthed()) }),
             fetch(detectionsUrl(0, 1), { headers: countHeaders }),
         ]);
+        // Reachable only if the poll is the very first query to touch the
+        // column — normally fetchDetectionPage has already settled it.
+        if (await maybeRetryWithoutLogo(newRes)) {
+            const retryUrl = `${SUPABASE_URL}/rest/v1/community_detections?${detectionSelect(feederScoped)}`
+                           + `&limit=${PAGE_SIZE}&order=detected_at.desc${params}`
+                           + `&detected_at=gt.${encodeURIComponent(newest)}`;
+            [newRes, countRes] = await Promise.all([
+                fetch(retryUrl, { headers: sbHeaders(sbAuthed()) }),
+                fetch(detectionsUrl(0, 1), { headers: countHeaders }),
+            ]);
+        }
         if (!newRes.ok) throw new Error(`HTTP ${newRes.status}`);
         const fresh = foldFeederZip(await newRes.json());
 

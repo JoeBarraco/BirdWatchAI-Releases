@@ -53,6 +53,30 @@ function formatLocationChip(o) {
     return '';
 }
 
+// The little mark that sits before a feeder's name. A feeder that has
+// uploaded a logo gets it here, in place of the generic birdhouse — same slot,
+// same size, so a card with a logo and one without still line up.
+//
+// By this point a private feeder's marker has already been exchanged for a
+// signed URL (signPrivateMedia), or blanked if that failed, so anything left
+// is safe to put in a src. The onerror fallback matters anyway: a signed URL
+// outlives its token, and a feeder can delete its logo object at any time.
+const FEEDER_GLYPH =
+    '<svg viewBox="0 0 24 24" width="1em" height="1em" aria-hidden="true" ' +
+    'style="vertical-align:-.15em;flex-shrink:0">' +
+    '<rect x="5" y="11" width="14" height="10" fill="#f5b945"/>' +
+    '<path d="M2 11L12 3L22 11Z" fill="#e68a1a"/>' +
+    '<circle cx="12" cy="15" r="2.2" fill="#3d2a0d"/>' +
+    '<rect x="11" y="17" width="2" height="2.5" fill="#8b5a2b"/></svg>';
+
+function feederMark(feeder) {
+    const logo = feeder && feeder.logo_url;
+    if (!logo || typeof logo !== 'string' || !/^https:\/\//i.test(logo)) return FEEDER_GLYPH;
+    return `<img class="card-feeder-logo" src="${esc(logo)}" alt="" loading="lazy" ` +
+           `onerror="this.replaceWith(Object.assign(document.createElement('span'),` +
+           `{innerHTML:${JSON.stringify(FEEDER_GLYPH).replace(/"/g, '&quot;')}}))">`;
+}
+
 // Haversine distance in miles between two lat/lng pairs
 function haversineMiles(lat1, lng1, lat2, lng2) {
     const R = 3958.7613; // Earth radius in miles
@@ -131,7 +155,7 @@ function renderFeed() {
                     🕐 ${fmtDetectedAt(d.detected_at)}${formatLocationChip(d)}${d.temperature != null
                         ? ` · 🌡️ ${d.temperature}°F` : ''}
                 </div>
-                ${d.feeders?.display_name ? `<div class="card-feeder"><svg viewBox="0 0 24 24" width="1em" height="1em" aria-hidden="true" style="vertical-align:-.15em;flex-shrink:0"><rect x="5" y="11" width="14" height="10" fill="#f5b945"/><path d="M2 11L12 3L22 11Z" fill="#e68a1a"/><circle cx="12" cy="15" r="2.2" fill="#3d2a0d"/><rect x="11" y="17" width="2" height="2.5" fill="#8b5a2b"/></svg> ${esc(d.feeders.display_name)}${currentUser && feederId ? `<button class="follow-feeder-btn${isFollowing ? ' following' : ''}" onclick="toggleFollowFeeder('${feederId}', this)">${isFollowing ? '★ Following' : '☆ Follow'}</button>` : ''}</div>` : ''}
+                ${d.feeders?.display_name ? `<div class="card-feeder">${feederMark(d.feeders)} ${esc(d.feeders.display_name)}${currentUser && feederId ? `<button class="follow-feeder-btn${isFollowing ? ' following' : ''}" onclick="toggleFollowFeeder('${feederId}', this)">${isFollowing ? '★ Following' : '☆ Follow'}</button>` : ''}</div>` : ''}
                 <div class="card-reactions">
                     ${(() => {
                         const count = reactions['❤️'] || 0;

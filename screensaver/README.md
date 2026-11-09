@@ -20,7 +20,7 @@ it finds one, and your existing settings carry over.)
   cold boot still has something to show
 - **Video clips** — mixes the detection clips in with the stills, always silent
 - **Clock** — current time and date, in the one corner the burned-in overlays
-  leave free
+  leave free, with the feeder's logo above it when it has one
 - **Update check** — notices when a newer release exists instead of going stale
 - **Auto-refresh** — silently picks up new bird detections (every 5 minutes by default)
 - **Configurable** — photo duration, transition style, sort order, caption visibility
@@ -294,7 +294,14 @@ right, and the species caption into the bottom left.
 It is labelled "Current Time" because the photo underneath carries its own
 timestamp, and two unlabelled clocks on one screen invites reading the wrong one.
 
-Nothing about the detection goes in this panel. The temperature recorded with
+A feeder that has uploaded a logo gets it at the top of this panel, above the
+label. It is bounded in both directions (150×52 px) because feeders upload
+whatever they have and the clock underneath has to stay the same size whether
+the logo is a wide wordmark or a tall crest. A logo that fails to load is
+hidden rather than left as a broken image — this runs unattended for months,
+and a feeder can replace or delete its logo at any time.
+
+Nothing else about the detection goes in this panel. The temperature recorded with
 the photo used to, which placed a reading from hours or days earlier directly
 under the words "Current Time" — exactly the confusion the label is there to
 prevent. It is gone rather than moved: the server already burns it into the

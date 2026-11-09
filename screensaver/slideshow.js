@@ -29,6 +29,7 @@ const cornerEl        = document.getElementById('slideshow-corner');
 const cornerTimeEl    = document.getElementById('corner-time');
 const cornerDateEl    = document.getElementById('corner-date');
 const cornerUpdateEl  = document.getElementById('corner-update');
+const cornerLogoEl    = document.getElementById('corner-logo');
 
 // ── State ──────────────────────────────────────────────────
 let photos       = [];
@@ -135,6 +136,9 @@ function mergeRefresh(incoming) {
         if (!fresh) continue;
         if (fresh.url && fresh.url !== p.url) p.url = fresh.url;
         if (fresh.video !== undefined) p.video = fresh.video;
+        // A signed logo URL expires on the same clock as the photo's, and a
+        // refresh is the only thing that mints a new one.
+        if (fresh.logo !== undefined) p.logo = fresh.logo;
     }
 
     const have = new Set(photos.map(p => p.id));
@@ -263,6 +267,29 @@ function setCaption(photo) {
         captionEl.textContent = caption;
     }
     counterEl.textContent = `${photoIdx + 1} / ${photos.length}`;
+    setCornerLogo(photo);
+}
+
+// The logo belongs to the feeder whose bird is on screen, so it changes with
+// the slide. It lives in the corner panel, which means it is visible only when
+// that panel is — with the clock switched off and no update to announce there
+// is no panel to put it in.
+//
+// A logo that fails to load is hidden rather than left as a broken-image box:
+// this runs unattended for months and a feeder can delete its own logo object
+// out from under a cached feed at any time.
+function setCornerLogo(photo) {
+    const src = (photo && photo.logo) || '';
+    if (!src) {
+        cornerLogoEl.hidden = true;
+        cornerLogoEl.removeAttribute('src');
+        return;
+    }
+    if (cornerLogoEl.getAttribute('src') === src) return;
+    cornerLogoEl.onerror = () => { cornerLogoEl.hidden = true; };
+    cornerLogoEl.onload  = () => { cornerLogoEl.hidden = false; };
+    cornerLogoEl.hidden = true;
+    cornerLogoEl.src = src;
 }
 
 function showSlide(direction) {
