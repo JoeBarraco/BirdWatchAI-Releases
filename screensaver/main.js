@@ -58,6 +58,7 @@ const DEFAULT_SETTINGS = {
     showCaption: true,
     showProgress: true,
     cacheMB:     512,       // on-disk photo cache budget
+    clipCacheMB: 2048,      // on-disk clip cache budget, kept separate from photos
     refreshMinutes: 5,      // how often to look for new detections
     showClock:   true,      // clock corner (lower right)
     playClips:   true,      // mix video clips in with the stills
@@ -83,7 +84,7 @@ function saveSettings(settings) {
 ipcMain.handle('get-settings', () => loadSettings());
 ipcMain.handle('save-settings', (_e, settings) => {
     saveSettings(settings);
-    cache.setBudget(settings.cacheMB);
+    cache.setBudget(settings.cacheMB, settings.clipCacheMB);
     return true;
 });
 
@@ -218,7 +219,7 @@ function launchScreensaver() {
             broadcast(result);
             // Warm the cache behind the slideshow so the next launch — or the
             // next time the network is down — has these photos on disk.
-            feed.warmCache(result.photos, 120).catch(() => {});
+            feed.warmCache(result.photos, 120, 25).catch(() => {});
         } catch (err) {
             console.error('[feed] load failed:', err.message);
         }
@@ -402,7 +403,7 @@ function launchDevPreview() {
             (result.fallback ? ` (fell back to ${result.fallback.label})` : '') +
             (result.offline ? ' [offline — from cache]' : ''));
         win.webContents.send('feed-update', { ...result, initial: true });
-        feed.warmCache(result.photos, 40).catch(() => {});
+        feed.warmCache(result.photos, 40, 5).catch(() => {});
     });
 
     win.on('closed', () => app.quit());
@@ -416,7 +417,7 @@ app.whenReady().then(() => {
     const settings = loadSettings();
     auth.init(userData);
     feed.init(userData);
-    cache.init(userData, settings.cacheMB);
+    cache.init(userData, settings.cacheMB, settings.clipCacheMB);
     updates.init(userData, APP_VERSION);
 
     const { mode, hwnd } = parseMode();

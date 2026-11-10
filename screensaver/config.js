@@ -12,6 +12,7 @@ const showCaptionEl  = document.getElementById('showCaption');
 const showProgressEl = document.getElementById('showProgress');
 const refreshEl      = document.getElementById('refreshMinutes');
 const cacheMBEl      = document.getElementById('cacheMB');
+const clipCacheMBEl  = document.getElementById('clipCacheMB');
 const cacheStatsEl   = document.getElementById('cache-stats');
 const statusMsg      = document.getElementById('status-msg');
 const showClockEl    = document.getElementById('showClock');
@@ -197,9 +198,16 @@ function formatBytes(n) {
 
 async function showCacheStats() {
     try {
-        const { files, bytes } = await window.screensaverAPI.cacheStats();
-        cacheStatsEl.textContent = files
-            ? `Currently holding ${files} photo${files === 1 ? '' : 's'} (${formatBytes(bytes)}).`
+        const { photos, clips } = await window.screensaverAPI.cacheStats();
+        const parts = [];
+        if (photos && photos.files) {
+            parts.push(`${photos.files} photo${photos.files === 1 ? '' : 's'} (${formatBytes(photos.bytes)})`);
+        }
+        if (clips && clips.files) {
+            parts.push(`${clips.files} clip${clips.files === 1 ? '' : 's'} (${formatBytes(clips.bytes)})`);
+        }
+        cacheStatsEl.textContent = parts.length
+            ? `Currently holding ${parts.join(' and ')}.`
             : 'Nothing cached yet.';
     } catch {
         cacheStatsEl.textContent = '';
@@ -260,6 +268,10 @@ async function loadSettings() {
     photoAgeEl.value    = settings.photoAge    || 'all';
     refreshEl.value     = String(settings.refreshMinutes || 5);
     cacheMBEl.value     = String(settings.cacheMB || 512);
+    // Not `|| 2048`: 0 is "don't save clips", and falsy, so it would
+    // round-trip back to 2 GB the moment Settings was reopened.
+    clipCacheMBEl.value = String(
+        settings.clipCacheMB === 0 ? 0 : (settings.clipCacheMB || 2048));
     showCaptionEl.checked  = settings.showCaption  !== false;
     showProgressEl.checked = settings.showProgress !== false;
     showClockEl.checked    = settings.showClock    !== false;
@@ -294,6 +306,7 @@ document.getElementById('btn-save').addEventListener('click', async () => {
         checkUpdates:   checkUpdatesEl.checked,
         refreshMinutes: parseInt(refreshEl.value, 10),
         cacheMB:        parseInt(cacheMBEl.value, 10),
+        clipCacheMB:    parseInt(clipCacheMBEl.value, 10),
     };
 
     await window.screensaverAPI.saveSettings(settings);

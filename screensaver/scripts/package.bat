@@ -29,7 +29,18 @@ set "SCRIPT_DIR=%~dp0"
 set "DIST_DIR=%~dp0..\dist"
 set "PKG_DIR=%TEMP%\BirdWatchAI-Community-Feed-Package"
 set "PKG_ROOT=%PKG_DIR%\BirdWatchAI Community Feed"
-set "ZIP_NAME=BirdWatchAI_Community_Feed_1.3.2.zip"
+REM The version comes from package.json so the zip can never disagree with
+REM the build it contains. Read from the app directory with a relative path:
+REM an absolute Windows path inside a JS string would treat its backslashes
+REM as escapes, and backquotes keep the inner single quotes out of cmd's way.
+pushd "%~dp0.."
+for /f "usebackq delims=" %%v in (`node -p "require('./package.json').version"`) do set "APP_VER=%%v"
+popd
+if not defined APP_VER (
+    echo  ERROR: could not read version from package.json
+    exit /b 1
+)
+set "ZIP_NAME=BirdWatchAI_Community_Feed_%APP_VER%.zip"
 set "LAUNCHER_NAME=BirdWatchAI.scr"
 
 REM ── Clean up previous package ────────────────────────────────
