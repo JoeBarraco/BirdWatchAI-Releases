@@ -260,6 +260,33 @@ function startPlayback() {
 // "every Nth photo", and switching clips off entirely is the playClips box.
 const CLIPS_ONLY = 0;
 
+// "A clip every N photos" counts the whole wall, not one screen.
+//
+// Every window still plays a clip every clipEvery slides of its own — N
+// windows doing that is already one clip per clipEvery slides across the wall,
+// which is the rate asked for. What was missing is *phase*: every window
+// counted from zero, so all of them reached their clip on the same slide and
+// the wall showed N clips at once, then none for a while.
+//
+// Each window now starts its count at a different offset, so the clips
+// interleave instead of landing together.
+//
+// The offset cannot simply be the window's index into a global slide number
+// (`globalSlide % clipEvery`). Global slide numbers for window i are all
+// congruent to i modulo the monitor count, so whenever the monitor count and
+// clipEvery share a factor the multiples of clipEvery all land on the same
+// few windows: two monitors with clipEvery 4 would put every clip on monitor
+// zero and never play one on monitor one. Spreading the phase across the
+// cycle instead has no such blind spot — every window gets a distinct turn
+// for any combination of the two numbers.
+function clipPhase() {
+    const monitors = Math.max(1, settings.monitorCount || 1);
+    const index    = Math.min(Math.max(0, settings.monitorIndex || 0), monitors - 1);
+    const every    = settings.clipEvery;
+    if (!(every > 0)) return 0;
+    return Math.round(index * every / monitors) % every;
+}
+
 function advance() {
     if (!photos.length) return;
 
@@ -277,7 +304,8 @@ function advance() {
     const clipLoopSuspected = clipFailStreak >= 3;
 
     const wantClip = settings.playClips && !clipLoopSuspected &&
-        (clipsOnly || (settings.clipEvery > 0 && shownCount % settings.clipEvery === 0));
+        (clipsOnly || (settings.clipEvery > 0 &&
+            shownCount % settings.clipEvery === clipPhase()));
 
     if (wantClip) {
         const idx = findClip(photoIdx);
