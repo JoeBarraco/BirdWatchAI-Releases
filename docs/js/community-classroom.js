@@ -1732,9 +1732,20 @@ function startClassroomLobby() {
 }
 
 function classroomJoinUrl() {
-    // Same origin as the page the teacher is on, so this works on the live
-    // site, on a staging copy and on localhost without a build-time constant.
-    return location.origin + location.pathname.replace(/[^/]*$/, '') + 'join.html';
+    // Derived from the current page, so this works on the live site, on a
+    // staging copy and on localhost without a build-time constant.
+    const base = location.pathname.replace(/[^/]*$/, '');
+
+    // GitHub Pages serves this repository from its root, so the published
+    // site sits under /docs/ and this page is /docs/community.html. Sending a
+    // class to "birdwatchai.com/docs/join.html" is asking for six-year-olds
+    // to mistype it; /join/index.html redirects there for exactly this
+    // reason, so show the short form whenever we are on that layout.
+    if (/\/docs\/$/.test(base)) {
+        return location.origin + base.replace(/docs\/$/, '') + 'join';
+    }
+
+    return location.origin + base + 'join.html';
 }
 
 function renderClassroomLobby() {
