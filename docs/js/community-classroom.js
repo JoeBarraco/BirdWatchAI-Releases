@@ -36,6 +36,10 @@ let classroomCommunityId = '';     // community currently selected in the panel
 let classroomList        = [];     // classrooms in that community
 let classroomFeederOpts  = [];     // [{id, display_name}] approved feeders there
 let classroomEditingId   = null;   // classroom being edited, or null for "new"
+// Staff who may be given a classroom: owner, moderator, teacher. Only loaded
+// when the signed-in user is an owner or moderator, because only they can
+// reassign one — and community_members_list refuses anybody else anyway.
+let classroomStaff       = [];
 
 // The running session. Null when the stage is closed.
 let classroomSession = null;       // {id, room, questions, index, revealed, asked, correct}
@@ -66,6 +70,22 @@ function classroomCommunities() {
     if (typeof myCommunities === 'undefined') return [];
     return myCommunities.filter(c =>
         c.role === 'owner' || c.role === 'moderator' || c.role === 'teacher');
+}
+
+// My role in the community the panel is currently showing.
+function classroomMyRole() {
+    if (typeof myCommunities === 'undefined') return null;
+    const c = myCommunities.find(x => x.id === classroomCommunityId);
+    return c ? c.role : null;
+}
+
+function classroomCanAssign() {
+    const r = classroomMyRole();
+    return r === 'owner' || r === 'moderator';
+}
+
+function classroomMyUserId() {
+    return (typeof currentUser !== 'undefined' && currentUser) ? currentUser.id : null;
 }
 
 function updateClassroomNavUI() {
@@ -978,6 +998,7 @@ async function refreshClassroomPanel() {
     list.innerHTML = '<div class="classroom-muted">Loading…</div>';
 
     await loadClassroomFeederOptions();
+    await loadClassroomStaff();
 
     // Purge nicknames and tokens left behind by a session nobody closed —
     // the lid went down, the tab was shut. §8 says student data goes at the
@@ -1026,6 +1047,27 @@ async function loadClassroomFeederOptions() {
     } catch {
         classroomFeederOpts = [];
     }
+}
+
+/**
+ * The people a classroom may be handed to.
+ *
+ * Owners and moderators only — classroom_update refuses a reassignment from
+ * anybody else, so a teacher is never shown a picker that would only produce
+ * an error. Invites are filtered out too: an address that has never signed in
+ * has no user id to assign a classroom to, and it would sit in the list
+ * looking like a choice.
+ */
+async function loadClassroomStaff() {
+    classroomStaff = [];
+    if (!classroomCanAssign()) return;
+
+    const { data, error } = await sbRpc('community_members_list',
+        { p_community_id: classroomCommunityId }, true);
+    if (error || !Array.isArray(data)) return;
+
+    classroomStaff = data.filter(m =>
+        m.kind === 'member' && ['owner', 'moderator', 'teacher'].includes(m.role));
 }
 
 function renderClassroomList() {
@@ -1087,6 +1129,27 @@ function renderClassroomForm() {
         `<option value="${esc(f.id)}"${f.id === selected ? ' selected' : ''}>${esc(f.display_name || 'Feeder')}</option>`
     ).join('');
 
+    // Who the classroom belongs to. A teacher gets no picker — they can only
+    // ever create their own — so for them this is a plain line of text saying
+    // so, rather than a disabled control that invites a support question.
+    const me       = classroomMyUserId();
+    const assigned = editing ? editing.teacher_user_id : me;
+    // A classroom whose teacher has since left the community has an assigned
+    // id that is no longer in the staff list. Without an option for them the
+    // <select> would quietly fall to its first entry, and saving an unrelated
+    // edit would hand somebody else's class away. Keep the departed holder as
+    // an explicit, selected choice instead.
+    const orphan = editing && assigned && !classroomStaff.some(m => m.id === assigned);
+    const teacherOpts = classroomCanAssign() && classroomStaff.length
+        ? (orphan
+            ? `<option value="${esc(assigned)}" selected>${esc(editing.teacher_label || 'Current teacher')}` +
+              ` — no longer in this community</option>`
+            : '')
+          + classroomStaff.map(m =>
+              `<option value="${esc(m.id)}"${!orphan && m.id === assigned ? ' selected' : ''}>` +
+              `${esc(m.label)}${m.id === me ? ' (you)' : ''} — ${esc(m.role)}</option>`).join('')
+        : null;
+
     box.innerHTML = `
         <h4 class="classroom-h">${editing ? 'Edit classroom' : 'New classroom'}</h4>
         ${classroomFeederOpts.length ? '' :
@@ -1101,6 +1164,9 @@ function renderClassroomForm() {
                     ${feederOpts(editing?.home_feeder_id)}
                 </select>
             </label>
+            ${teacherOpts ? `<label>Taught by
+                <select id="classroom-teacher">${teacherOpts}</select>
+            </label>` : ''}
             <label>Grade band
                 <select id="classroom-grade-band">
                     <option value="k-2"${editing?.grade_band === 'k-2' ? ' selected' : ''}>K–2 — pictures and counting</option>
@@ -1190,13 +1256,19 @@ async function saveClassroom() {
         .map(el => el.value)
         .filter(id => id !== home);
 
+    // Null when there is no picker (a teacher), which leaves the classroom
+    // with whoever it already belongs to.
+    const teacherEl = document.getElementById('classroom-teacher');
+    const teacher   = teacherEl ? teacherEl.value : null;
+
     let roomId = classroomEditingId;
     if (roomId) {
         const { error } = await sbRpc('classroom_update', {
-            p_classroom_id:   roomId,
-            p_name:           name,
-            p_home_feeder_id: home,
-            p_grade_band:     band,
+            p_classroom_id:    roomId,
+            p_name:            name,
+            p_home_feeder_id:  home,
+            p_grade_band:      band,
+            p_teacher_user_id: teacher || null,
         }, true);
         if (error) { say(error.message || 'Could not save.', false); return; }
     } else {
@@ -1209,6 +1281,27 @@ async function saveClassroom() {
         }, true);
         if (error) { say(error.message || 'Could not create.', false); return; }
         roomId = data && data.id;
+
+        // classroom_create always makes the CREATOR the teacher — it takes no
+        // teacher argument, deliberately, so that a teacher cannot mint a
+        // classroom in a colleague's name. A moderator setting one up for
+        // somebody else therefore hands it over immediately afterwards.
+        //
+        // Reported rather than swallowed if it fails: the classroom exists
+        // either way, and a moderator who thinks she assigned it and did not
+        // would find out when the teacher says their panel is empty.
+        if (roomId && teacher && teacher !== classroomMyUserId()) {
+            const { error: aerr } = await sbRpc('classroom_update', {
+                p_classroom_id:    roomId,
+                p_teacher_user_id: teacher,
+            }, true);
+            if (aerr) {
+                say('Classroom created, but it is still assigned to you — '
+                  + (aerr.message || 'the handover failed') + '. Use Edit to try again.', false);
+                await refreshClassroomPanel();
+                return;
+            }
+        }
     }
 
     if (roomId) {

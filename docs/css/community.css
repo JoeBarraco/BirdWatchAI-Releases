@@ -3669,8 +3669,10 @@
 .classroom-form input[type="text"] { width: 100%; margin-bottom: 0.5rem; }
 
 .classroom-form-row { display: grid; gap: 0.5rem; margin-bottom: 0.5rem; }
+/* Two fields for a teacher, three for a moderator (who also gets the
+   "Taught by" picker), so the track count is not hardcoded. */
 @media (min-width: 560px) {
-    .classroom-form-row { grid-template-columns: 1fr 1fr; }
+    .classroom-form-row { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
 }
 .classroom-form-row label {
     display: block; font-size: 0.78rem; color: var(--color-gray-500);
