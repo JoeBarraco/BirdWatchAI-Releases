@@ -2351,13 +2351,15 @@
 
         /* Admin panel modal */
         #mod-admin-modal,
-        #community-panel-modal {
+        #community-panel-modal,
+        #classroom-panel-modal {
             display: none; position: fixed; inset: 0;
             background: rgba(0,0,0,0.5); z-index: 9550;
             justify-content: center; align-items: center;
         }
         #mod-admin-modal.open,
-        #community-panel-modal.open { display: flex; }
+        #community-panel-modal.open,
+        #classroom-panel-modal.open { display: flex; }
         .mod-admin-box {
             background: var(--bg-card); border-radius: 12px;
             padding: 2rem; width: 480px; max-width: 90vw;
@@ -3568,3 +3570,391 @@
 
 /* The lists no longer need trailing space; the grid gap handles it. */
 .community-panel-cols .mod-user-list { margin-bottom: 0; }
+
+/* ════════════════════════════════════════════════════════════════════
+   Classroom mode (phase 1) — design notes §7, §8, §9A, §14 step 1.
+
+   Two surfaces with opposite jobs:
+
+     .classroom-* inside #classroom-panel-modal is ordinary admin UI at
+     ordinary admin sizes — the teacher reads it on their own laptop.
+
+     #classroom-stage is read by thirty children from the back of a
+     classroom, projected, often onto a screen washed out by daylight.
+     Everything there is sized in vmin rather than rem so it fills
+     whatever it is thrown onto, and the contrast is deliberately
+     heavier than the rest of the site.
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ── Panel ─────────────────────────────────────────────── */
+
+.classroom-muted  { font-size: 0.8rem; color: var(--color-gray-500); line-height: 1.5; }
+.classroom-error  { font-size: 0.85rem; color: #e74c3c; }
+.classroom-warn   { font-size: 0.8rem; color: #c97a00; }
+.classroom-status { font-size: 0.8rem; margin-top: 0.5rem; min-height: 1em; }
+
+.classroom-h {
+    font-size: 0.9rem; margin: 0 0 0.5rem;
+    color: var(--color-gray-900);
+}
+
+.classroom-card {
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 0.7rem; margin-bottom: 0.6rem; background: var(--bg-card);
+}
+
+.classroom-card-head {
+    display: flex; justify-content: space-between;
+    align-items: flex-start; gap: 8px; flex-wrap: wrap;
+}
+
+.classroom-card-head strong { color: var(--color-gray-900); font-size: 0.95rem; }
+
+.classroom-card-actions { display: flex; gap: 5px; flex-wrap: wrap; }
+
+.classroom-card-meta {
+    font-size: 0.78rem; color: var(--color-gray-500);
+    margin-top: 0.4rem; line-height: 1.5;
+}
+
+.classroom-pill {
+    display: inline-block; font-size: 0.7rem; font-weight: 600;
+    padding: 1px 8px; border-radius: 9px; margin-left: 6px;
+    background: var(--border); color: var(--color-gray-700);
+    vertical-align: middle;
+}
+
+/* A question drawn from somebody else's feeder is marked wherever it
+   appears. Design notes §5: the fallback has to be labelled, not
+   silent — a class told "our feeder" about data from across town has
+   been taught something false. */
+.classroom-pill.partner { background: #c97a00; color: #fff; }
+
+.classroom-dot {
+    display: inline-block; width: 7px; height: 7px;
+    border-radius: 50%; margin-right: 5px; vertical-align: middle;
+}
+.classroom-dot.on  { background: #2eaa4f; }
+.classroom-dot.off { background: var(--color-gray-500); }
+
+.classroom-btn,
+.classroom-btn-primary,
+.classroom-btn-danger {
+    font-family: inherit; font-size: 0.78rem; font-weight: 600;
+    padding: 4px 11px; border-radius: 6px; cursor: pointer;
+    border: 1px solid var(--border); background: var(--bg-card);
+    color: var(--color-gray-700);
+}
+.classroom-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.classroom-btn-primary {
+    background: var(--color-primary); border-color: var(--color-primary); color: #fff;
+}
+.classroom-btn-primary[disabled] { opacity: 0.45; cursor: not-allowed; }
+.classroom-btn-danger:hover { border-color: #e74c3c; color: #e74c3c; }
+
+.classroom-pending:not(:empty) { margin-top: 0.5rem; }
+.classroom-pending-row {
+    font-size: 0.78rem; line-height: 1.5; padding: 5px 8px;
+    border-radius: 6px; margin-top: 4px; background: var(--bg-page);
+}
+.classroom-pending-row.ok   { border-left: 3px solid #2eaa4f; }
+.classroom-pending-row.miss { border-left: 3px solid #e74c3c; }
+
+/* ── Classroom form ────────────────────────────────────── */
+
+.classroom-form {
+    border-top: 1px solid var(--border);
+    margin-top: 1rem; padding-top: 0.9rem;
+}
+.classroom-form input[type="text"] { width: 100%; margin-bottom: 0.5rem; }
+
+.classroom-form-row { display: grid; gap: 0.5rem; margin-bottom: 0.5rem; }
+@media (min-width: 560px) {
+    .classroom-form-row { grid-template-columns: 1fr 1fr; }
+}
+.classroom-form-row label {
+    display: block; font-size: 0.78rem; color: var(--color-gray-500);
+}
+.classroom-form-row select { width: 100%; margin-top: 3px; }
+
+.classroom-details { margin: 0.4rem 0 0.7rem; }
+.classroom-details summary {
+    cursor: pointer; font-size: 0.82rem; font-weight: 600;
+    color: var(--color-primary);
+}
+.classroom-checks {
+    display: flex; flex-wrap: wrap; gap: 8px; margin-top: 0.4rem;
+}
+.classroom-check {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 0.8rem; color: var(--color-gray-700);
+}
+
+.classroom-form-actions { display: flex; gap: 6px; margin-top: 0.3rem; }
+
+/* ── Results ───────────────────────────────────────────── */
+
+.classroom-history {
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 0.7rem; margin-bottom: 0.6rem; background: var(--bg-page);
+}
+.classroom-history-session { margin-bottom: 0.7rem; font-size: 0.83rem; }
+.classroom-history-qs { list-style: none; margin: 0.3rem 0 0; padding: 0; }
+.classroom-history-qs li {
+    font-size: 0.78rem; color: var(--color-gray-500);
+    padding: 2px 0; line-height: 1.45;
+}
+
+/* ── The projector stage ───────────────────────────────── */
+
+#classroom-stage {
+    position: fixed; inset: 0; z-index: 9700;
+    background: var(--bg-page);
+    flex-direction: column;
+    /* No `display: flex` here: the element stays hidden until a session
+       starts, and the JS sets display when it does. */
+}
+
+.classroom-stage-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 1rem; flex-wrap: wrap;
+    padding: 0.8rem 1.2rem; border-bottom: 1px solid var(--border);
+    font-size: clamp(0.8rem, 1.6vmin, 1.05rem);
+    color: var(--color-gray-700); background: var(--bg-card);
+}
+.classroom-stage-bar strong { color: var(--color-gray-900); }
+.classroom-stage-bar-right { display: flex; align-items: center; gap: 1rem; }
+.classroom-score {
+    font-weight: 700; color: var(--color-primary);
+    font-variant-numeric: tabular-nums;
+}
+
+.classroom-stage-body {
+    flex: 1; overflow-y: auto;
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 2.2vmin;
+    padding: 3vmin 4vmin;
+}
+
+/* The site's global h1 rule carries a 3px green underline and a 1rem
+   pad — fine on a page heading, wrong under a question on a projector,
+   where it reads as a divider between the question and its answers.
+   Reset on every h1 the stage uses. */
+.classroom-prompt,
+.classroom-stage-loading h1,
+.classroom-stage-loading h2 {
+    border-bottom: none; padding-bottom: 0;
+}
+
+.classroom-prompt {
+    font-family: 'Fraunces', serif;
+    font-size: clamp(1.5rem, 5vmin, 3.4rem);
+    line-height: 1.2; text-align: center; margin: 0;
+    color: var(--color-gray-900); max-width: 24ch;
+}
+
+/* The photo is the question in an identification round, so it gets the
+   room it needs — but capped, because a portrait-ish snapshot would
+   otherwise push the choices off the bottom of a 16:9 projector. */
+.classroom-shot:empty { display: none; }
+
+.classroom-shot img {
+    max-height: 38vh; max-width: 82vw;
+    border-radius: 12px; display: block;
+    box-shadow: 0 6px 28px rgba(0,0,0,0.25);
+}
+
+.classroom-choices {
+    display: grid; gap: 1.6vmin; width: min(100%, 1100px);
+    grid-template-columns: 1fr;
+}
+@media (min-width: 700px) {
+    .classroom-choices       { grid-template-columns: repeat(3, 1fr); }
+    .classroom-choices.four  { grid-template-columns: repeat(2, 1fr); }
+}
+
+.classroom-choice {
+    display: flex; align-items: center; gap: 1.4vmin;
+    font-family: inherit; text-align: left; cursor: pointer;
+    padding: 2.2vmin 2.4vmin; border-radius: 14px;
+    border: 3px solid var(--border); background: var(--bg-card);
+    color: var(--color-gray-900);
+    font-size: clamp(1rem, 2.6vmin, 1.9rem); font-weight: 600;
+    transition: border-color 0.12s, transform 0.12s;
+}
+.classroom-choice:hover:not([disabled]) {
+    border-color: var(--color-primary); transform: translateY(-2px);
+}
+.classroom-choice[disabled] { cursor: default; }
+
+/* The letter is also the number key that picks it — a presenter remote
+   sends digits, and a teacher at the back of the room is not going to
+   walk to the laptop to tap a button. */
+.classroom-choice-key {
+    flex: 0 0 auto; display: grid; place-items: center;
+    width: 1.8em; height: 1.8em; border-radius: 50%;
+    background: var(--border); color: var(--color-gray-700);
+    font-size: 0.72em;
+}
+.classroom-choice-label { flex: 1; }
+
+.classroom-choice.correct {
+    border-color: #2eaa4f; background: rgba(46,170,79,0.12);
+}
+.classroom-choice.chosen {
+    border-color: #2eaa4f; background: rgba(46,170,79,0.2);
+}
+.classroom-choice.chosen-wrong {
+    border-color: #e74c3c; background: rgba(231,76,60,0.12);
+}
+
+.classroom-reveal {
+    width: min(100%, 1100px); text-align: center;
+    border-top: 1px solid var(--border); padding-top: 1.8vmin;
+}
+.classroom-reveal-head {
+    font-size: clamp(1.05rem, 2.8vmin, 2rem); font-weight: 700;
+}
+.classroom-reveal-head.ok      { color: #2eaa4f; }
+.classroom-reveal-head.miss    { color: #e74c3c; }
+.classroom-reveal-head.pending { color: #c97a00; }
+.classroom-reveal-body {
+    font-size: clamp(0.9rem, 2vmin, 1.4rem);
+    color: var(--color-gray-700); margin-top: 0.6vmin; line-height: 1.5;
+}
+.classroom-fact {
+    font-size: clamp(0.85rem, 1.9vmin, 1.3rem);
+    color: var(--color-gray-700); margin-top: 1.2vmin;
+    line-height: 1.5; max-width: 60ch; margin-inline: auto;
+}
+
+.classroom-stage-foot {
+    display: flex; justify-content: center; align-items: center;
+    gap: 1rem; flex-wrap: wrap;
+    padding: 1rem 1.2rem; border-top: 1px solid var(--border);
+    background: var(--bg-card);
+}
+.classroom-btn-primary.big {
+    font-size: clamp(0.95rem, 2.2vmin, 1.4rem); padding: 0.8vmin 2.4vmin;
+    border-radius: 10px;
+}
+
+.classroom-stage-loading {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 1rem;
+    text-align: center; padding: 4vmin;
+    color: var(--color-gray-700);
+}
+.classroom-stage-loading h1 {
+    font-family: 'Fraunces', serif;
+    font-size: clamp(2rem, 9vmin, 6rem); color: var(--color-primary); margin: 0;
+}
+.classroom-stage-loading h2 {
+    font-family: 'Fraunces', serif;
+    font-size: clamp(1.3rem, 4vmin, 2.4rem); color: var(--color-gray-900); margin: 0;
+}
+
+/* Role picker in the community roster. Narrow on purpose — it sits in a
+   flex row beside Remove and must not push that off the line. */
+.community-role-select {
+    font-family: inherit; font-size: 0.75rem;
+    padding: 2px 6px; margin-right: 6px;
+    border-radius: 5px; border: 1px solid var(--border);
+    background: var(--bg-card); color: var(--color-gray-700);
+}
+
+/* ── Classroom phase 2: join-code mode (design notes §9B) ──────────── */
+
+/* The lobby. One job: be readable from the back of the room while the
+   class types a six-digit code off it. */
+.classroom-lobby { text-align: center; }
+
+.classroom-lobby-step {
+    font-size: clamp(0.9rem, 2vmin, 1.3rem);
+    color: var(--color-gray-500); margin: 0.6vmin 0;
+}
+
+.classroom-lobby-url {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: clamp(1.1rem, 3.4vmin, 2.4rem);
+    color: var(--color-gray-900); margin: 0.4vmin 0 1.6vmin;
+    word-break: break-all;
+}
+
+/* Tabular figures so the digits sit in even columns — a proportional 1
+   next to a 0 is genuinely harder to copy across a room. */
+.classroom-code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: clamp(3rem, 16vmin, 11rem);
+    font-weight: 700; letter-spacing: 0.1em;
+    color: var(--color-primary); margin: 0 0 1.4vmin; line-height: 1;
+}
+
+.classroom-code-sm {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-variant-numeric: tabular-nums; font-weight: 700;
+    color: var(--color-primary); letter-spacing: 0.08em;
+}
+
+.classroom-nicknames {
+    display: flex; flex-wrap: wrap; justify-content: center;
+    gap: 1vmin; width: min(100%, 1100px); margin-top: 1.5vmin;
+}
+
+.classroom-nick {
+    font-size: clamp(0.85rem, 2vmin, 1.3rem); font-weight: 600;
+    padding: 0.6vmin 1.6vmin; border-radius: 999px;
+    background: var(--bg-card); border: 2px solid var(--border);
+    color: var(--color-gray-900);
+    animation: classroom-pop 0.25s ease-out;
+}
+
+/* A name appearing is the feedback that the code works — worth a beat of
+   motion, and only a beat. */
+@keyframes classroom-pop {
+    from { transform: scale(0.85); opacity: 0; }
+    to   { transform: scale(1);    opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .classroom-nick { animation: none; }
+}
+
+/* ── Live vote bars ────────────────────────────────────────────────── */
+
+/* The bar fills the choice button itself rather than sitting in a chart
+   of its own: the room is already looking at the options, and a separate
+   chart would split their attention across the screen. */
+.classroom-choice { position: relative; overflow: hidden; }
+
+.classroom-bar {
+    position: absolute; inset: 0 auto 0 0;
+    background: var(--color-primary); opacity: 0.18;
+    transition: width 0.35s ease-out;
+    pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+    .classroom-bar { transition: none; }
+}
+
+/* Everything else in the button has to sit above the bar. */
+.classroom-choice-key,
+.classroom-choice-label,
+.classroom-votes { position: relative; z-index: 1; }
+
+.classroom-votes {
+    flex: 0 0 auto; font-variant-numeric: tabular-nums;
+    font-weight: 700; color: var(--color-primary);
+    min-width: 1.6em; text-align: right;
+}
+
+/* A tie, or a room that did not vote: the buttons come back to life so
+   the teacher can make the call, and they have to look clickable again
+   after a question's worth of being inert. */
+.classroom-choice.pickable {
+    cursor: pointer; border-style: dashed;
+}
+.classroom-choice.pickable:hover {
+    border-style: solid; border-color: var(--color-primary);
+    transform: translateY(-2px);
+}

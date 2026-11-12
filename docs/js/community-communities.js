@@ -273,6 +273,11 @@ function updateCommunityNavUI() {
     // having one left them holding a code with nowhere to type it. The panel
     // shows the redeem form when there is nothing to manage.
     btn.style.display = hasAuthSession() ? '' : 'none';
+
+    // Classroom mode rides on the same lifecycle: it needs a real auth session
+    // and a community the user teaches in, and both change at exactly the
+    // moments this function is already called.
+    if (typeof updateClassroomNavUI === 'function') updateClassroomNavUI();
 }
 
 // ── Owner / moderator panel ──────────────────────────────
@@ -548,7 +553,21 @@ async function refreshCommunityMembers() {
         } else if (m.role === 'owner') {
             action = '<span style="font-size:0.75rem;color:var(--color-gray-500);">owner</span>';
         } else if (m.role !== 'moderator' || isOwner) {
-            action = `<button class="mod-remove-btn" onclick="removeCommunityMember('${esc(cid)}','${esc(m.id)}','${escJs(m.label)}')">Remove</button>`;
+            // Role picker + Remove. Promoting somebody who has already signed in
+            // used to be impossible — the only way to set a role was to invite
+            // the address with it — which left a school that added its staff
+            // first with no way to say which of them teach.
+            //
+            // 'moderator' is offered to the owner alone, matching the server:
+            // community_set_member_role refuses it from a moderator, and an
+            // option that always errors is worse than no option.
+            const opts = ['viewer', 'teacher']
+                .concat(isOwner ? ['moderator'] : [])
+                .map(r => `<option value="${r}"${r === m.role ? ' selected' : ''}>${r}</option>`)
+                .join('');
+            action = `<select class="community-role-select" title="Change role"
+                              onchange="setCommunityMemberRole('${esc(cid)}','${esc(m.id)}',this)">${opts}</select>`
+                   + `<button class="mod-remove-btn" onclick="removeCommunityMember('${esc(cid)}','${esc(m.id)}','${escJs(m.label)}')">Remove</button>`;
         }
 
         return `
@@ -560,6 +579,29 @@ async function refreshCommunityMembers() {
                 <span>${action}</span>
             </li>`;
     }).join('');
+}
+
+/**
+ * Change an existing member's role.
+ *
+ * Takes the <select> element so the previous value is to hand: on failure the
+ * picker has to be put back, or it sits there claiming a role the server
+ * refused to grant.
+ */
+async function setCommunityMemberRole(communityId, userId, el) {
+    const role = el.value;
+    const { error } = await sbRpc('community_set_member_role', {
+        p_community_id: communityId,
+        p_user_id:      userId,
+        p_role:         role,
+    }, true);
+    if (error) {
+        showToast('Error: ' + (error.message || 'could not change role'));
+        await refreshCommunityMembers();
+        return;
+    }
+    showToast(`Role set to ${role}.`);
+    await refreshCommunityMembers();
 }
 
 async function removeCommunityMember(communityId, userId, label) {
@@ -703,6 +745,10 @@ function clearCommunityState() {
     renderCommunityFilter();
     updateCommunityNavUI();
     closeCommunityPanel();
+    // A classroom session outlives a sign-out otherwise: the stage is a
+    // full-screen element, not a modal, so nothing else here would take it
+    // down — and it would keep writing answers with a token that has gone.
+    if (typeof clearClassroomState === 'function') clearClassroomState();
 }
 
 // ── Private media ────────────────────────────────────────

@@ -13,7 +13,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="BirdWatchAI">
-    <link rel="stylesheet" href="css/community.css?v=8">
+    <link rel="stylesheet" href="css/community.css?v=10">
 </head>
 <body>
 <!-- Top navbar with auth controls -->
@@ -39,6 +39,7 @@
         <button id="navbar-changepw-btn" class="navbar-btn" onclick="showChangePassword()" title="Change password" style="display:none;">🔑 Password</button>
         <button id="navbar-admin-btn" class="navbar-btn" onclick="openAdminPanel()" title="Manage moderators" style="display:none;">👥 Moderators</button>
         <button id="navbar-communities-btn" class="navbar-btn" onclick="openCommunityPanel()" title="Manage your communities" style="display:none;">🏫 Communities</button>
+        <button id="navbar-classroom-btn" class="navbar-btn" onclick="openClassroomPanel()" title="Run a class on the feeder" style="display:none;">🎓 Classroom</button>
         <button id="navbar-flags-btn" class="navbar-btn" onclick="openFlagQueue()" title="Review flagged detections" style="display:none;">🚩 Flags</button>
         <button id="navbar-comments-history-btn" class="navbar-btn" onclick="openCommentsHistory()" title="Review comments across all detections" style="display:none;">💬 Comments</button>
     </div>
@@ -760,6 +761,7 @@
             <input type="email" id="community-invite-email" placeholder="Email address">
             <select id="community-invite-role">
                 <option value="viewer">Viewer</option>
+                <option value="teacher">Teacher</option>
                 <option value="moderator">Moderator</option>
             </select>
             <button onclick="inviteToCommunity()">+ Invite</button>
@@ -788,6 +790,7 @@
             <div style="display:flex;gap:8px;align-items:center;">
                 <select id="community-bulk-role" style="flex:1;">
                     <option value="viewer">Invite all as Viewer</option>
+                    <option value="teacher">Invite all as Teacher</option>
                     <option value="moderator">Invite all as Moderator</option>
                 </select>
                 <button type="button" id="community-bulk-btn" onclick="bulkInviteToCommunity()"
@@ -848,6 +851,48 @@
         </div>
     </div>
 </div>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     Classroom mode (phase 1) — design notes §7, §8, §9A, §14 step 1.
+
+     Two pieces: the teacher's panel (create classrooms, start a class,
+     look back at results) and the projector stage, which is a separate
+     full-screen element rather than a modal because it is the only thing
+     on the screen for the length of a class period.
+     ══════════════════════════════════════════════════════════════════ -->
+<div id="classroom-panel-modal" role="dialog" aria-modal="true">
+    <div class="mod-admin-box">
+        <h3>Classroom</h3>
+
+        <p id="classroom-panel-empty" style="display:none;font-size:0.85rem;color:var(--color-gray-500);">
+            You aren't a teacher in any community yet. A community moderator can make you
+            one from the Communities panel — a teacher can run classes on the community's
+            feeders, and nothing else.
+        </p>
+
+        <div id="classroom-panel-body">
+            <p class="classroom-muted" style="margin-bottom:0.75rem;">
+                Put a question about your feeder on the projector, poll the room, and tap
+                what the class decided. No student logins and no student devices — nothing
+                about a child is stored.
+            </p>
+
+            <select id="classroom-community-select" onchange="onClassroomCommunityChange()"
+                    style="width:100%;margin-bottom:0.75rem;"></select>
+
+            <div id="classroom-list"></div>
+            <div id="classroom-history" class="classroom-history" style="display:none;"></div>
+            <div id="classroom-form" class="classroom-form"></div>
+        </div>
+
+        <div class="mod-btn-row" style="margin-top:1.25rem;">
+            <button class="mod-btn-cancel" onclick="closeClassroomPanel()">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- The projector stage. Hidden until a session starts; display:flex when it does. -->
+<div id="classroom-stage" style="display:none;"></div>
 
 <!-- Moderator edit detection modal -->
 <div id="mod-edit-modal" role="dialog" aria-modal="true">
@@ -1025,6 +1070,10 @@
      cached stylesheet renders the tier rows as bare links. css/community.css is
      pinned to v=7 for the same reason. -->
 <script src="js/community-communities.js?v=7"></script>
+<!-- Classroom mode (phase 1): classrooms, teacher-led sessions, question
+     templates. Loads after community-communities.js because it reads
+     myCommunities and hasAuthSession from it. -->
+<script src="js/community-classroom.js?v=2"></script>
 <!-- Interactive chart runtime: crosshair tooltips on the trend chart, per-species hover rows on
      the Activity / Calendar / Rarity Mix charts. No-op until a [data-bw-chart] element appears. -->
 <script src="js/community-charts.js"></script>

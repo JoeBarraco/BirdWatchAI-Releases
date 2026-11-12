@@ -383,7 +383,9 @@ grant  execute on function community_tier_status(uuid) to authenticated;
 -- Same rules as community_invite, deliberately: same role guard, same
 -- owner-only restriction on inviting moderators, same upsert that reopens a
 -- revoked or expired address. Divergence between the two would mean a bulk
--- paste could grant something the single-invite form refuses.
+-- paste could grant something the single-invite form refuses. That includes
+-- the classroom-mode 'teacher' role added in setup-classrooms.sql — a school
+-- pasting its staff list is the case it exists for.
 
 /**
  * Invite many addresses at once. Returns one row per input so the UI can show
@@ -419,8 +421,8 @@ begin
                                  array['owner', 'moderator']);
 
   my_role := community_role(p_community_id, auth.uid());
-  if p_role not in ('viewer', 'moderator') then
-    raise exception 'Role must be viewer or moderator';
+  if p_role not in ('viewer', 'teacher', 'moderator') then
+    raise exception 'Role must be viewer, teacher or moderator';
   end if;
   if p_role = 'moderator' and my_role <> 'owner' then
     raise exception 'Only the community owner can invite moderators';

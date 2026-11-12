@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Join a Class — BirdWatchAI</title>
+
+<!--
+  Classroom mode phase 2 — the student device (design notes §9B, §15).
+
+  STANDALONE ON PURPOSE. This page does not load community.html's bundle:
+  that is ~600KB of feed, map, gallery, charts, Leaflet and auth, none of
+  which a child tapping four buttons needs. §15 asks that student devices
+  carry question text and answer buttons only; the cheapest way to keep that
+  promise is to have nothing else on the page. Everything here is inline and
+  the whole document is a few KB.
+
+  WHAT THIS PAGE NEVER RECEIVES
+  classroom_poll returns a prompt, the choices, and whether the question has
+  a picture. It does not return the correct answer, the photo, the feeder,
+  the classroom, the community, or anything about any other participant —
+  so there is nothing on this device worth opening devtools for, and the
+  answer key cannot leak to the back row.
+
+  WHAT IT STORES
+  One token in sessionStorage, so a child who locks their phone mid-lesson
+  comes back to the same question instead of having to rejoin. sessionStorage
+  rather than localStorage: it dies with the tab, which is roughly when the
+  lesson ends. The token is meaningless once the teacher finishes the class —
+  the row it points at is deleted.
+-->
+
+<style>
+    :root {
+        --bg:     #faf8f5;
+        --card:   #ffffff;
+        --ink:    #2a2825;
+        --muted:  #7a756d;
+        --line:   #e8e4de;
+        --green:  #2d5a3d;
+        --accent: #2eaa4f;
+    }
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --bg: #1a1a18; --card: #242420; --ink: #f0ede8;
+            --muted: #9a9590; --line: #3a3a34; --green: #5aab72;
+        }
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+        background: var(--bg); color: var(--ink);
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        min-height: 100svh;
+        display: flex; flex-direction: column;
+        /* Phones in cases, held at an angle, in a room with a projector on:
+           everything is large and high contrast. */
+        font-size: 17px; line-height: 1.5;
+        padding: env(safe-area-inset-top) 16px env(safe-area-inset-bottom);
+    }
+
+    header {
+        padding: 18px 0 10px; display: flex;
+        align-items: baseline; justify-content: space-between; gap: 10px;
+    }
+    header .brand { font-weight: 700; color: var(--green); font-size: 1rem; }
+    header .who   { color: var(--muted); font-size: 0.85rem; }
+
+    main { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 16px; }
+
+    h1 { font-size: 1.5rem; margin: 0 0 4px; line-height: 1.25; }
+    p.sub { color: var(--muted); margin: 0 0 14px; font-size: 0.95rem; }
+
+    label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 5px; }
+
+    input {
+        width: 100%; font: inherit; color: var(--ink);
+        background: var(--card); border: 2px solid var(--line);
+        border-radius: 12px; padding: 14px; margin-bottom: 14px;
+    }
+    input:focus { outline: none; border-color: var(--green); }
+    /* A numeric keypad for the code, and no autocorrect mangling a nickname. */
+    #code { font-size: 2rem; letter-spacing: 0.3em; text-align: center; font-weight: 700; }
+
+    button {
+        width: 100%; font: inherit; font-weight: 700;
+        padding: 16px; border-radius: 12px; border: none;
+        background: var(--green); color: #fff; cursor: pointer;
+    }
+    button[disabled] { opacity: 0.5; }
+
+    /* Answer buttons. Tall, well separated, and impossible to hit two of:
+       a mis-tap in a vote that cannot be changed would be a small tragedy,
+       so they are also changeable until the teacher closes voting. */
+    .choices { display: flex; flex-direction: column; gap: 12px; }
+    .choice {
+        display: flex; align-items: center; gap: 14px;
+        text-align: left; background: var(--card); color: var(--ink);
+        border: 2px solid var(--line); padding: 18px 16px; font-weight: 600;
+    }
+    .choice .key {
+        flex: 0 0 auto; display: grid; place-items: center;
+        width: 34px; height: 34px; border-radius: 50%;
+        background: var(--line); color: var(--muted); font-size: 0.9rem;
+    }
+    .choice.picked { border-color: var(--accent); background: rgba(46,170,79,0.12); }
+    .choice.picked .key { background: var(--accent); color: #fff; }
+
+    .note   { color: var(--muted); font-size: 0.85rem; text-align: center; }
+    .err    { color: #e74c3c; font-size: 0.9rem; margin-bottom: 10px; }
+    .board  {
+        background: var(--card); border: 2px dashed var(--line);
+        border-radius: 12px; padding: 16px; text-align: center; color: var(--muted);
+    }
+    footer { padding: 14px 0; text-align: center; color: var(--muted); font-size: 0.75rem; }
+    .hide { display: none !important; }
+</style>
+</head>
+<body>
+
+<header>
+    <span class="brand">🐦 BirdWatchAI</span>
+    <span class="who" id="who"></span>
+</header>
+
+<main>
+    <!-- Step 1: join -->
+    <section id="join-view">
+        <h1>Join your class</h1>
+        <p class="sub">Type the code on the board and pick a nickname.</p>
+        <div class="err hide" id="join-err"></div>
+
+        <label for="code">Class code</label>
+        <input id="code" inputmode="numeric" pattern="[0-9]*" maxlength="6"
+               autocomplete="off" placeholder="000000">
+
+        <label for="nick">Your nickname</label>
+        <input id="nick" maxlength="20" autocomplete="off" autocapitalize="words"
+               autocorrect="off" spellcheck="false" placeholder="Pick any name">
+
+        <button id="join-btn">Join the class</button>
+        <p class="note" style="margin-top:14px;">
+            No password and no account. Your nickname is deleted when the lesson ends.
+        </p>
+    </section>
+
+    <!-- Step 2: waiting / question / closed -->
+    <section id="play-view" class="hide">
+        <div id="state-waiting">
+            <h1>You're in!</h1>
+            <p class="sub">Look at the board. The first question is coming.</p>
+        </div>
+
+        <div id="state-question" class="hide">
+            <h1 id="prompt"></h1>
+            <div class="board hide" id="look-up">📷 The picture is on the board — have a look.</div>
+            <div class="choices" id="choices"></div>
+            <p class="note" id="vote-note" style="margin-top:14px;"></p>
+        </div>
+
+        <div id="state-closed" class="hide">
+            <h1>Pencils down</h1>
+            <p class="sub">Voting is closed. The answer is on the board.</p>
+        </div>
+
+        <div id="state-ended" class="hide">
+            <h1>That's the lesson</h1>
+            <p class="sub">Thanks for playing. Your nickname has been deleted.</p>
+        </div>
+    </section>
+</main>
+
+<footer>BirdWatchAI Classroom</footer>
+
+<script>
+(function () {
+    'use strict';
+
+    // Same project as the main site. The publishable key is public by design;
+    // the three functions this page calls are the only ones reachable with it,
+    // and each re-checks the token server-side.
+    var SUPABASE_URL = 'https://lsamggztfizmkyljdgwq.supabase.co';
+    var ANON_KEY     = 'sb_publishable_-80LQjkx2s82XnURj2DfQQ_d7ARz3js';
+    var POLL_MS      = 1500;
+
+    var token    = null;
+    var answerId = null;
+    var myVote   = null;
+    var timer    = null;
+    var lastKey  = '';       // what is on screen, so we only redraw on change
+
+    function $(id) { return document.getElementById(id); }
+    function show(el, on) { el.classList.toggle('hide', !on); }
+    function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+    }
+
+    function rpc(fn, params) {
+        return fetch(SUPABASE_URL + '/rest/v1/rpc/' + fn, {
+            method: 'POST',
+            headers: {
+                apikey: ANON_KEY,
+                Authorization: 'Bearer ' + ANON_KEY,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(params)
+        }).then(function (res) {
+            return res.json().catch(function () { return null; }).then(function (body) {
+                if (!res.ok) throw new Error((body && (body.message || body.hint)) || 'Something went wrong.');
+                return body;
+            });
+        });
+    }
+
+    // ── Joining ──────────────────────────────────────────
+
+    function joinError(msg) {
+        var el = $('join-err');
+        el.textContent = msg;
+        show(el, !!msg);
+    }
+
+    function doJoin() {
+        var code = $('code').value.replace(/\D/g, '');
+        var nick = $('nick').value.trim();
+        if (code.length !== 6) { joinError('The code is six digits.'); return; }
+        if (!nick)             { joinError('Pick a nickname first.');  return; }
+
+        $('join-btn').disabled = true;
+        joinError('');
+
+        rpc('classroom_join', { p_code: code, p_nickname: nick })
+            .then(function (data) {
+                token = data.token;
+                try { sessionStorage.setItem('bwai-class-token', token); } catch (e) {}
+                $('who').textContent = data.nickname;
+                show($('join-view'), false);
+                show($('play-view'), true);
+                startPolling();
+            })
+            .catch(function (err) {
+                $('join-btn').disabled = false;
+                joinError(err.message || 'Could not join.');
+            });
+    }
+
+    $('join-btn').addEventListener('click', doJoin);
+    $('nick').addEventListener('keydown', function (e) { if (e.key === 'Enter') doJoin(); });
+    // Six digits typed means the code is done; move on without hunting for the
+    // next field, which on a phone means dismissing the keypad first.
+    $('code').addEventListener('input', function () {
+        this.value = this.value.replace(/\D/g, '');
+        if (this.value.length === 6) $('nick').focus();
+    });
+
+    // ── Playing ──────────────────────────────────────────
+
+    function renderQuestion(st) {
+        // Redraw only when something actually changed. Rebuilding the buttons
+        // every 1.5s would eat a tap that landed mid-poll.
+        var key = st.state + '|' + st.answer_id + '|' + st.my_vote;
+        if (key === lastKey) return;
+        lastKey = key;
+
+        show($('state-waiting'),  st.state === 'waiting');
+        show($('state-question'), st.state === 'question');
+        show($('state-closed'),   st.state === 'closed');
+        show($('state-ended'),    st.state === 'ended' || st.state === 'gone');
+
+        if (st.state !== 'question') return;
+
+        answerId = st.answer_id;
+        myVote   = (st.my_vote == null) ? null : st.my_vote;
+
+        $('prompt').textContent = st.prompt || '';
+        show($('look-up'), !!st.has_image);
+
+        var choices = Array.isArray(st.choices) ? st.choices : [];
+        $('choices').innerHTML = choices.map(function (c, i) {
+            return '<button class="choice' + (myVote === i ? ' picked' : '') + '" data-i="' + i + '">'
+                 +   '<span class="key">' + String.fromCharCode(65 + i) + '</span>'
+                 +   '<span>' + esc(c.label) + '</span>'
+                 + '</button>';
+        }).join('');
+
+        $('vote-note').textContent = myVote == null
+            ? 'Tap your answer.'
+            : 'Answer sent. You can change it until the teacher closes voting.';
+    }
+
+    $('choices').addEventListener('click', function (e) {
+        var btn = e.target.closest('.choice');
+        if (!btn || answerId == null) return;
+        var i = parseInt(btn.getAttribute('data-i'), 10);
+
+        // Paint the tap immediately. The round-trip is fast but not instant,
+        // and a button that does nothing for 200ms gets tapped again.
+        [].forEach.call($('choices').children, function (el, idx) {
+            el.classList.toggle('picked', idx === i);
+        });
+        myVote = i;
+        lastKey = '';
+        $('vote-note').textContent = 'Answer sent. You can change it until the teacher closes voting.';
+
+        rpc('classroom_vote', { p_token: token, p_answer_id: answerId, p_choice_index: i })
+            .catch(function (err) {
+                $('vote-note').textContent = err.message || 'That did not send — try again.';
+            });
+    });
+
+    function poll() {
+        if (!token) return;
+        rpc('classroom_poll', { p_token: token })
+            .then(function (st) {
+                if (!st) return;
+                renderQuestion(st);
+                if (st.state === 'ended' || st.state === 'gone') {
+                    clearInterval(timer);
+                    try { sessionStorage.removeItem('bwai-class-token'); } catch (e) {}
+                }
+            })
+            // A failed poll is almost always school wifi. Say nothing and try
+            // again in 1.5s; the next success repaints whatever is current.
+            .catch(function () {});
+    }
+
+    function startPolling() {
+        poll();
+        timer = setInterval(poll, POLL_MS);
+    }
+
+    // Phones aggressively throttle timers in background tabs. Poll once on
+    // the way back so a child who looked at the board returns to the right
+    // question instead of the one before it.
+    document.addEventListener('visibilitychange', function () {
+        if (!document.hidden && token) poll();
+    });
+
+    // Resume a lesson across a lock screen or an accidental reload.
+    try {
+        var saved = sessionStorage.getItem('bwai-class-token');
+        if (saved) {
+            token = saved;
+            show($('join-view'), false);
+            show($('play-view'), true);
+            startPolling();
+        }
+    } catch (e) { /* private mode: just show the join form */ }
+})();
+</script>
+</body>
+</html>

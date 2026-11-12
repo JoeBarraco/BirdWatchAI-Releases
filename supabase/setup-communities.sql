@@ -75,8 +75,11 @@ create table if not exists community_members (
   id           uuid primary key default gen_random_uuid(),
   community_id uuid not null references communities(id) on delete cascade,
   user_id      uuid not null,
+  -- 'teacher' is added by setup-classrooms.sql, which also re-shapes this
+  -- constraint on databases created before classroom mode existed. Listed
+  -- here so a fresh install and an upgraded one end up identical.
   role         text not null default 'viewer'
-                 check (role in ('owner', 'moderator', 'viewer')),
+                 check (role in ('owner', 'moderator', 'teacher', 'viewer')),
   created_at   timestamptz not null default now(),
   unique (community_id, user_id)
 );
@@ -95,7 +98,7 @@ create table if not exists community_invites (
   community_id uuid not null references communities(id) on delete cascade,
   email        text not null,
   role         text not null default 'viewer'
-                 check (role in ('moderator', 'viewer')),
+                 check (role in ('moderator', 'teacher', 'viewer')),
   token        text unique not null default encode(gen_random_bytes(18), 'hex'),
   expires_at   timestamptz not null default (now() + interval '30 days'),
   redeemed_at  timestamptz,
@@ -1151,7 +1154,10 @@ begin
            coalesce(nullif(p.display_name, ''), u.email, 'Member') as label,
            u.email                                 as email,
            m.created_at                            as at,
-           case m.role when 'owner' then 0 when 'moderator' then 1 else 2 end as sort_rank
+           case m.role when 'owner'     then 0
+                       when 'moderator' then 1
+                       when 'teacher'   then 2
+                       else 3 end                      as sort_rank
     from community_members m
     left join user_profiles p on p.id = m.user_id
     left join auth.users    u on u.id = m.user_id
@@ -1159,7 +1165,7 @@ begin
 
     union all
 
-    select 'invite'::text, i.email, i.role, i.email, i.email, i.created_at, 3
+    select 'invite'::text, i.email, i.role, i.email, i.email, i.created_at, 4
     from community_invites i
     where i.community_id = p_community_id
       and i.redeemed_at is null
@@ -1170,9 +1176,12 @@ begin
 end;
 $$;
 
--- Invite a person by email. Moderators may only invite viewers; letting
--- them mint moderators would make a compromised teacher account an
--- escalation path.
+-- Invite a person by email. Moderators may invite viewers and teachers;
+-- only the owner may mint moderators, because letting a moderator do it
+-- would make one compromised staff account an escalation path to all of
+-- them. 'teacher' is the classroom-mode role (see setup-classrooms.sql):
+-- it can run classrooms and nothing else, so a moderator handing it out
+-- grants no access the moderator did not already have.
 create or replace function community_invite(
   p_community_id uuid,
   p_email        text,
@@ -1189,8 +1198,8 @@ begin
                                  array['owner', 'moderator']);
 
   my_role := community_role(p_community_id, auth.uid());
-  if p_role not in ('viewer', 'moderator') then
-    raise exception 'Role must be viewer or moderator';
+  if p_role not in ('viewer', 'teacher', 'moderator') then
+    raise exception 'Role must be viewer, teacher or moderator';
   end if;
   if p_role = 'moderator' and my_role <> 'owner' then
     raise exception 'Only the community owner can invite moderators';
