@@ -122,6 +122,20 @@ function card(r: Row, communityName: string, classroomName: string, author: stri
   // same words and not the same information.
   const where = [communityName, classroomName].filter(Boolean).join(' · ');
   const tag = [r.kind, r.reason].filter(Boolean).join('/') || 'feedback';
+
+  // Two shapes arrive in this table and they put the words in different
+  // columns. A flag about an existing question (classroom_flag_question) has
+  // the remark in `comment` and the question it is about in `prompt`. A
+  // standalone idea (classroom_suggest_question) has no comment at all — the
+  // idea itself IS the prompt, which it stores with reason 'idea'.
+  //
+  // Rendering both the same way read as "(no comment left)" above the actual
+  // suggestion, demoted into the quiet context block. So the lead is
+  // whichever column actually holds what the person wrote.
+  const isIdea = !r.comment && (r.reason === 'idea' || r.template_id === 'suggestion');
+  const lead = isIdea ? (r.prompt || '') : (r.comment || '');
+  const context = isIdea ? '' : (r.prompt || '');
+
   return `
   <div style="border:1px solid #e8e4de;border-radius:8px;padding:0.9rem 1rem;margin:0 0 0.8rem;">
     <p style="margin:0 0 0.5rem;font-size:0.78rem;color:#7a756d;">
@@ -129,13 +143,14 @@ function card(r: Row, communityName: string, classroomName: string, author: stri
       &middot; ${esc(tag)} &middot; ${esc(when(r.created_at))}
     </p>
     <p style="margin:0 0 0.35rem;font-size:1rem;color:#1a1a1a;">
-      ${r.comment ? esc(r.comment) : '<em style="color:#7a756d;">(no comment left)</em>'}
+      ${lead ? esc(String(lead).replace(/\n/g, ' / '))
+             : '<em style="color:#7a756d;">(nothing written)</em>'}
     </p>
     <p style="margin:0 0 0.6rem;font-size:0.82rem;color:#4a4640;">
-      &mdash; ${esc(author)}
+      &mdash; ${esc(author)}${isIdea ? ' &middot; a new question they would like' : ''}
     </p>
-    ${r.prompt ? `<p style="margin:0 0 0.6rem;font-size:0.82rem;color:#4a4640;border-left:3px solid #e8e4de;padding-left:0.7rem;">
-      ${esc(String(r.prompt).replace(/\n/g, ' / '))}</p>` : ''}
+    ${context ? `<p style="margin:0 0 0.6rem;font-size:0.82rem;color:#4a4640;border-left:3px solid #e8e4de;padding-left:0.7rem;">
+      ${esc(String(context).replace(/\n/g, ' / '))}</p>` : ''}
     ${r.classroom_id ? `<p style="margin:0;font-size:0.78rem;">
       <a href="${reviewLink(r.classroom_id)}" style="color:#2eaa4f;">Review ${esc(classroomName || 'this class')}</a></p>` : ''}
   </div>`;
