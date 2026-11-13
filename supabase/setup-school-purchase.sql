@@ -298,17 +298,38 @@ commit;
 
 
 -- ════════════════════════════════════════════════════════════════════
---  AFTERWARDS — run this by hand, once, with your admin token.
+--  AFTERWARDS — convert the grandfathered perpetual schools
 --
---  setup-school-subscription.sql grandfathered every school that
---  already existed to perpetual. To give one a real twelve-month term
---  starting today instead:
+--  An earlier version of setup-school-subscription.sql grandfathered
+--  every existing school to perpetual. The backfill grants twelve
+--  months now, but it will not touch a row already marked perpetual —
+--  a migration that silently un-perpetuals somebody is exactly the
+--  surprise that guard exists to prevent. So those rows are converted
+--  by hand, once.
 --
---    select community_set_school_term('<your admin token>', '<slug>', 12);
---
---  The slug is the address in the community's URL. To see which
---  communities are currently perpetual:
+--  First, see which they are:
 --
 --    select slug, name, kind, school_perpetual, school_expires_at
+--      from communities where kind = 'school';
+--
+--  Then, IN THIS SQL EDITOR, where you are the database owner and no
+--  token is involved:
+--
+--    update communities
+--       set school_perpetual  = false,
+--           school_expires_at = now() + interval '12 months'
+--     where slug = '<slug>'
+--    returning slug, name, school_perpetual, school_expires_at;
+--
+--  community_set_school_term above does the same thing and more, but
+--  it is guarded by moderator_session_role, which wants a live Mod
+--  login session token that expires after eight hours. That is the
+--  right shape for doing this FROM THE APP, and the wrong shape for a
+--  one-line correction in a SQL editor you already have open. Use the
+--  function when you are comping a school later; use the update now.
+--
+--  Check it landed — the state should read 'active':
+--
+--    select slug, community_school_state(id) as state, school_expires_at
 --      from communities where kind = 'school';
 -- ════════════════════════════════════════════════════════════════════
