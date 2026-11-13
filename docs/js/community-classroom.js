@@ -4353,6 +4353,779 @@ const CLASSROOM_TEMPLATES = [
         };
     },
 },
+
+// ── Science ──────────────────────────────────────────────────────
+//
+// Most of these carry `needsData: false`: they are about birds rather than
+// about this feeder's numbers, so they work on a week when nothing came. At
+// a new feeder that is every week, which is the whole point.
+
+{
+    id: 'sci-what-birds-need',
+    category: 'science',
+    title: 'What living things need',
+    bands: ['k-2'],
+    needsData: false,
+    build({ rng }) {
+        const built = cmChoices('Food, water and a safe place',
+            ['Only food', 'Only water', 'Toys to play with'], rng);
+        if (!built) return null;
+        return {
+            prompt: 'Every living thing needs the same few things to stay alive. '
+                  + 'What do the birds at our feeder need?',
+            ...built,
+            explain: 'Food, water, and somewhere safe to shelter and raise young. '
+                   + 'A feeder gives one of the three — which is why a bush or '
+                   + 'a tree nearby matters just as much as the seed.',
+        };
+    },
+},
+
+{
+    id: 'sci-feathers',
+    category: 'science',
+    title: 'Body coverings',
+    bands: ['k-2'],
+    needsData: false,
+    build({ rng }) {
+        const built = cmChoices('Feathers', ['Fur', 'Scales', 'Shells'], rng);
+        if (!built) return null;
+        return {
+            prompt: 'Cats have fur and fish have scales. What covers a bird?',
+            ...built,
+            explain: 'Feathers — and ONLY birds have them. Nothing else alive '
+                   + 'grows a feather, so a feather on the ground is always a bird.',
+        };
+    },
+},
+
+{
+    id: 'sci-baby-bird',
+    category: 'science',
+    title: 'Animal young',
+    bands: ['k-2'],
+    needsData: false,
+    build({ rng }) {
+        const built = cmChoices('A chick', ['A puppy', 'A kitten', 'A calf'], rng);
+        if (!built) return null;
+        return {
+            prompt: 'A baby dog is a puppy. What is a baby bird called?',
+            ...built,
+            explain: 'A chick. A very young one still in the nest is a nestling, '
+                   + 'and one that has just left it is a fledgling.',
+        };
+    },
+},
+
+{
+    id: 'sci-beak-shape',
+    category: 'science',
+    title: 'Adaptation',
+    bands: ['3-5'],
+    needsData: false,
+    build({ rng }) {
+        const built = cmChoices('Cracking seeds',
+            ['Catching fish', 'Tearing meat', 'Sipping nectar'], rng);
+        if (!built) return null;
+        return {
+            prompt: 'A cardinal has a short, thick, cone-shaped beak. What is a '
+                  + 'beak that shape FOR?',
+            ...built,
+            explain: 'Cracking seeds. A beak is a tool, and its shape tells you '
+                   + 'what the bird eats: long and thin for nectar, hooked for '
+                   + 'meat, spear-shaped for fish.',
+            fact: 'This is why a feeder full of sunflower seed attracts cardinals '
+                + 'and finches but not herons.',
+        };
+    },
+},
+
+{
+    id: 'sci-life-cycle',
+    category: 'science',
+    title: 'Life cycles',
+    bands: ['3-5'],
+    needsData: false,
+    build({ rng }) {
+        const built = cmChoices('Egg, nestling, fledgling, adult',
+            ['Nestling, egg, adult, fledgling',
+             'Egg, fledgling, nestling, adult',
+             'Fledgling, egg, nestling, adult'], rng);
+        if (!built) return null;
+        return {
+            prompt: 'Put a bird’s life in the right order.',
+            ...built,
+            explain: 'Egg → nestling (helpless, in the nest) → fledgling '
+                   + '(out of the nest, still being fed) → adult. A fledgling '
+                   + 'hopping on the ground has usually NOT been abandoned.',
+        };
+    },
+},
+
+{
+    id: 'sci-why-migrate',
+    category: 'science',
+    title: 'Migration',
+    bands: ['3-5'],
+    needsData: false,
+    build({ rng }) {
+        const built = cmChoices('The food they eat runs out',
+            ['They get too cold', 'They get bored', 'The days get shorter'], rng);
+        if (!built) return null;
+        return {
+            prompt: 'Many birds fly thousands of miles south for winter. What is '
+                  + 'the main reason they go?',
+            ...built,
+            explain: 'Food. A bird in a good coat of feathers handles cold far '
+                   + 'better than it handles a winter with no insects. Birds that '
+                   + 'eat seeds, like cardinals and chickadees, mostly stay put.',
+        };
+    },
+},
+
+{
+    id: 'sci-camouflage',
+    category: 'science',
+    title: 'Camouflage',
+    bands: ['3-5'],
+    needsData: false,
+    build({ rng }) {
+        const built = cmChoices('She sits on the nest and must not be seen',
+            ['She is younger than the male',
+             'She cannot make bright colours',
+             'Brown feathers are warmer'], rng);
+        if (!built) return null;
+        return {
+            prompt: 'In many birds the male is brightly coloured and the female is '
+                  + 'plain brown. Why would being dull be an ADVANTAGE?',
+            ...built,
+            explain: 'The female does most of the sitting on the nest, where being '
+                   + 'invisible to a hawk matters more than being noticed by a '
+                   + 'mate. Two jobs, two sets of feathers.',
+        };
+    },
+},
+
+{
+    id: 'sci-food-chain',
+    category: 'science',
+    title: 'Food chains',
+    bands: ['3-5'],
+    needsData: false,
+    build({ rng }) {
+        const built = cmChoices('Sunflower → sparrow → hawk',
+            ['Hawk → sparrow → sunflower',
+             'Sparrow → sunflower → hawk',
+             'Sunflower → hawk → sparrow'], rng);
+        if (!built) return null;
+        return {
+            prompt: 'Which food chain runs the right way?',
+            ...built,
+            explain: 'The arrow means "is eaten by", so it always points the way '
+                   + 'the ENERGY travels: from the plant, which made it from '
+                   + 'sunlight, to whatever eats the thing before it.',
+            fact: 'A hawk near a feeder is not a disaster — it is the food chain '
+                + 'the feeder created, working.',
+        };
+    },
+},
+
+{
+    id: 'sci-trophic-level',
+    category: 'science',
+    title: 'Energy in ecosystems',
+    bands: ['6-8'],
+    needsData: false,
+    build({ rng }) {
+        const built = cmChoices('About 10%',
+            ['About 1%', 'About 50%', 'About 90%'], rng);
+        if (!built) return null;
+        return {
+            prompt: 'When a sparrow eats seeds, only some of that energy becomes '
+                  + 'sparrow. Roughly how much passes up to the next level?',
+            ...built,
+            explain: 'About 10%. The rest is spent staying warm, moving and '
+                   + 'breathing. It is why food chains are short and why there are '
+                   + 'always far fewer hawks than sparrows.',
+        };
+    },
+},
+
+{
+    id: 'sci-natural-selection',
+    category: 'science',
+    title: 'Natural selection',
+    bands: ['6-8'],
+    needsData: false,
+    build({ rng }) {
+        const built = cmChoices('Birds with thicker beaks survived and had chicks',
+            ['Birds grew thicker beaks to cope',
+             'Birds decided to eat different seeds',
+             'The seeds became softer over time'], rng);
+        if (!built) return null;
+        return {
+            prompt: 'After a drought left only tough, hard seeds, the finches on one '
+                  + 'island had thicker beaks within a few years. What actually '
+                  + 'happened?',
+            ...built,
+            explain: 'The beaks did not change — the BIRDS did. Thin-beaked '
+                   + 'finches could not crack the hard seeds and died; thick-beaked '
+                   + 'ones ate, bred, and passed it on. Selection acts on a '
+                   + 'population, never on an individual.',
+            fact: 'This was measured in real time on Daphne Major in the Galápagos, '
+                + 'over a single drought.',
+        };
+    },
+},
+
+{
+    id: 'sci-introduced-species',
+    category: 'science',
+    title: 'Introduced species',
+    bands: ['6-8'],
+    needsData: false,
+    build({ rng }) {
+        const built = cmChoices('They were brought here by people',
+            ['They flew here from Europe',
+             'They evolved here recently',
+             'They were blown off course in a storm'], rng);
+        if (!built) return null;
+        return {
+            prompt: 'House Sparrows and European Starlings are two of the commonest '
+                  + 'birds in North America, but neither is native. How did they '
+                  + 'get here?',
+            ...built,
+            explain: 'People released them deliberately in the 1800s. Both spread '
+                   + 'across the continent in decades and now compete with native '
+                   + 'birds for the holes they nest in.',
+        };
+    },
+},
+
+{
+    id: 'sci-variable',
+    category: 'science',
+    title: 'Designing an experiment',
+    bands: ['6-8'],
+    needsData: false,
+    build({ rng }) {
+        const built = cmChoices('The temperature',
+            ['The number of visits', 'The kind of seed', 'The time of day'], rng);
+        if (!built) return null;
+        return {
+            prompt: 'We want to find out whether cold weather changes how many '
+                  + 'birds visit. Which is the INDEPENDENT variable — the thing '
+                  + 'we are testing the effect of?',
+            ...built,
+            explain: 'Temperature is the independent variable; the number of visits '
+                   + 'is the dependent one, because it is what we measure. Keeping '
+                   + 'the seed and the time of day the same is what makes the test '
+                   + 'fair.',
+        };
+    },
+},
+
+// ── Geography ────────────────────────────────────────────────────
+
+{
+    id: 'geo-cardinal-range',
+    category: 'geography',
+    title: 'Where a bird lives',
+    bands: ['3-5', '6-8'],
+    needsData: false,
+    build({ s, rng }) {
+        const built = cmChoices('Oregon', ['Ohio', 'Georgia', 'Missouri'], rng);
+        if (!built) return null;
+        return {
+            prompt: 'Northern Cardinals live across the eastern and central United '
+                  + 'States, but not in the far west. In which of these states '
+                  + 'would you NOT expect to find one?',
+            ...built,
+            image: cmShotFor(s, 'Northern Cardinal') || cmWonderPhoto('Northern Cardinal'),
+            map: {
+                highlight: ['me', 'nh', 'vt', 'ma', 'ri', 'ct', 'ny', 'nj', 'pa',
+                            'de', 'md', 'va', 'wv', 'nc', 'sc', 'ga', 'fl', 'oh',
+                            'in', 'il', 'mi', 'wi', 'ky', 'tn', 'al', 'ms', 'ar',
+                            'la', 'mo', 'ia', 'ks', 'ne', 'ok', 'tx', 'sd'],
+                caption: 'Roughly where Northern Cardinals live',
+            },
+            // The answer is a STATE, so the automatic rule finds no bird.
+            // The question is still about the cardinal.
+            about_bird: 'Northern Cardinal',
+            explain: 'Oregon. The cardinal’s range stops around the Great Plains '
+                   + '— it is a bird of the east, which is why seven eastern '
+                   + 'states claim it and no western one does.',
+        };
+    },
+},
+
+{
+    id: 'geo-hemisphere',
+    category: 'geography',
+    title: 'Hemispheres and seasons',
+    bands: ['6-8'],
+    needsData: false,
+    build({ rng }) {
+        const built = cmChoices('It is summer there',
+            ['It is winter there too',
+             'The days are shorter there',
+             'There is no winter at the equator'], rng);
+        if (!built) return null;
+        return {
+            prompt: 'Arctic Terns leave the Arctic in autumn and fly to Antarctica. '
+                  + 'Why is that worth a 22,000-mile trip?',
+            ...built,
+            explain: 'The seasons are flipped in the southern hemisphere, so the '
+                   + 'tern arrives in the Antarctic summer. It chases daylight, and '
+                   + 'sees more of it in a year than any other animal.',
+        };
+    },
+},
+
+{
+    id: 'geo-continents',
+    category: 'geography',
+    title: 'Continents',
+    bands: ['3-5'],
+    needsData: false,
+    build({ rng }) {
+        const picks = [
+            { bird: 'Emperor Penguin', place: 'Antarctica', others: ['Africa', 'Europe', 'Asia'] },
+            { bird: 'Superb Lyrebird', place: 'Australia',  others: ['South America', 'Africa', 'Europe'] },
+            { bird: 'Bar-headed Goose', place: 'Asia',      others: ['Antarctica', 'Australia', 'North America'] },
+        ];
+        const pick = cmShuffle(picks, rng)[0];
+        const built = cmChoices(pick.place, pick.others, rng);
+        if (!built) return null;
+        return {
+            template_id: 'geo-continent-' + pick.place.toLowerCase().replace(/\s+/g, '-'),
+            prompt: `On which continent would you find a wild ${pick.bird}?`,
+            ...built,
+            image: cmWonderPhoto(pick.bird),
+            about_bird: pick.bird,
+            explain: `The ${pick.bird} lives in ${pick.place}.`,
+        };
+    },
+},
+
+{
+    id: 'geo-flyway',
+    category: 'geography',
+    title: 'Migration routes',
+    bands: ['6-8'],
+    needsData: false,
+    build({ rng }) {
+        const built = cmChoices('They follow coastlines, rivers and mountain ranges',
+            ['They follow roads and cities',
+             'They each pick their own way',
+             'They follow the warmest air'], rng);
+        if (!built) return null;
+        return {
+            prompt: 'Millions of migrating birds funnel along the same few routes '
+                  + 'every year, called flyways. What are they following?',
+            ...built,
+            explain: 'Coastlines, river valleys and mountain ranges — landscape '
+                   + 'features that run the right way and offer food and shelter on '
+                   + 'the journey. North America has four main flyways.',
+        };
+    },
+},
+
+// ── History ──────────────────────────────────────────────────────
+
+{
+    id: 'hist-passenger-pigeon',
+    category: 'history',
+    title: 'Extinction',
+    bands: ['6-8'],
+    needsData: false,
+    build({ rng }) {
+        const built = cmChoices('It was the commonest bird in North America',
+            ['It was always rare',
+             'It only lived on one island',
+             'It could not fly'], rng);
+        if (!built) return null;
+        return {
+            prompt: 'The last Passenger Pigeon died in 1914. What is most surprising '
+                  + 'about that?',
+            ...built,
+            explain: 'Flocks of billions once darkened the sky for hours. Hunting '
+                   + 'and forest clearing took it from the commonest bird on the '
+                   + 'continent to extinct in about fifty years — which is why '
+                   + '"there are plenty of them" is not the same as "they are safe".',
+        };
+    },
+},
+
+{
+    id: 'hist-feather-trade',
+    category: 'history',
+    title: 'Conservation',
+    bands: ['6-8'],
+    needsData: false,
+    build({ rng }) {
+        const built = cmChoices('To decorate hats',
+            ['To stuff pillows', 'To make paintbrushes', 'To write with'], rng);
+        if (!built) return null;
+        return {
+            prompt: 'Around 1900, egrets and herons were hunted almost to extinction '
+                  + 'in America. What were their feathers used for?',
+            ...built,
+            explain: 'Fashionable hats. The outcry led to some of the first bird '
+                   + 'protection laws and to the founding of the Audubon societies '
+                   + '— conservation in the United States effectively started '
+                   + 'with this argument.',
+        };
+    },
+},
+
+// ── Language arts ────────────────────────────────────────────────
+//
+// Bird names turn out to be a good supply of exactly the things a primary
+// language curriculum drills: syllables, compound words, alphabetical order,
+// adjectives, and a pile of idioms nobody has explained to a nine-year-old.
+
+{
+    id: 'lang-syllables',
+    category: 'language',
+    title: 'Syllables',
+    bands: ['k-2', '3-5'],
+    build({ s, band, rng }) {
+        // Counted from the written name, so only names where the count is
+        // not arguable are used.
+        const KNOWN = { 'Blue Jay': 2, 'Cardinal': 3, 'Chickadee': 3, 'Wren': 1,
+                        'Robin': 2, 'Sparrow': 2, 'Titmouse': 2, 'Nuthatch': 2,
+                        'Goldfinch': 2, 'Woodpecker': 3, 'Mockingbird': 3,
+                        'Starling': 2, 'Junco': 2, 'Dove': 1 };
+        const here = s.species.map(x => cmShortName(x.species).charAt(0)
+                                      + cmShortName(x.species).slice(1).toLowerCase());
+        const usable = Object.keys(KNOWN).filter(w =>
+            here.some(h => h.toLowerCase() === w.toLowerCase().split(' ').pop()));
+        const pool = usable.length ? usable : Object.keys(KNOWN);
+
+        const word = cmShuffle(pool, rng)[0];
+        const n = KNOWN[word];
+        const built = cmChoices(String(n),
+            cmShuffle([1, 2, 3, 4].filter(x => x !== n), rng).slice(0, 3).map(String), rng);
+        if (!built) return null;
+        return {
+            template_id: 'lang-syllables-' + word.toLowerCase().replace(/\s+/g, '-'),
+            prompt: `Clap it out. How many syllables are in ${word.toUpperCase()}?`,
+            ...built,
+            explain: `${word} has ${n} — one clap for each beat you say.`,
+        };
+    },
+},
+
+{
+    id: 'lang-compound-word',
+    category: 'language',
+    title: 'Compound words',
+    bands: ['k-2', '3-5'],
+    needsData: false,
+    build({ rng }) {
+        const picks = [
+            { word: 'GOLDFINCH', parts: 'gold + finch', others: ['CARDINAL', 'SPARROW', 'JUNCO'] },
+            { word: 'WOODPECKER', parts: 'wood + pecker', others: ['ROBIN', 'TITMOUSE', 'WREN'] },
+            { word: 'MOCKINGBIRD', parts: 'mocking + bird', others: ['STARLING', 'CARDINAL', 'DOVE'] },
+            { word: 'BLUEBIRD', parts: 'blue + bird', others: ['SPARROW', 'JUNCO', 'FINCH'] },
+        ];
+        const pick = cmShuffle(picks, rng)[0];
+        const built = cmChoices(pick.word, pick.others, rng);
+        if (!built) return null;
+        return {
+            template_id: 'lang-compound-' + pick.word.toLowerCase(),
+            prompt: 'A compound word is two smaller words stuck together. Which of '
+                  + 'these bird names is a compound word?',
+            ...built,
+            explain: `${pick.word} = ${pick.parts}.`,
+        };
+    },
+},
+
+{
+    id: 'lang-alphabetical',
+    category: 'language',
+    title: 'Alphabetical order',
+    bands: ['k-2', '3-5'],
+    build({ s, band, rng }) {
+        if (s.species.length < 3) return null;
+        const names = cmShuffle(s.species.map(x => x.species), rng).slice(0, 4);
+        if (names.length < 3) return null;
+        const first = names.slice().sort((a, b) => a.localeCompare(b))[0];
+        const built = cmChoices(first, names.filter(n => n !== first), rng);
+        if (!built) return null;
+        return {
+            prompt: 'If you put these birds in alphabetical order, which one comes '
+                  + 'FIRST?',
+            ...built,
+            explain: `${first}. Compare the first letters; if those match, move on `
+                   + 'to the second.',
+        };
+    },
+},
+
+{
+    id: 'lang-adjective',
+    category: 'language',
+    title: 'Adjectives',
+    bands: ['3-5'],
+    build({ s, band, rng }) {
+        const two = s.species
+            .map(x => x.species)
+            .filter(n => n.split(' ').length === 2
+                      && /^(Northern|Eastern|Western|Southern|Blue|Red|White|American|Carolina|House|Mourning|Downy|Tufted)\b/.test(n));
+        if (!two.length) return null;
+        const name = cmShuffle(two, rng)[0];
+        const [adj, noun] = name.split(' ');
+        const built = cmChoices(adj, [noun, 'bird', 'feeder'], rng);
+        if (!built) return null;
+        return {
+            prompt: `In the name "${name}", which word is the adjective — the `
+                  + 'word that DESCRIBES?',
+            ...built,
+            explain: `"${adj}" describes which kind of ${noun} it is. Bird names `
+                   + 'nearly all work this way: a describing word, then the family.',
+        };
+    },
+},
+
+{
+    id: 'lang-idiom',
+    category: 'language',
+    title: 'Idioms',
+    bands: ['3-5', '6-8'],
+    needsData: false,
+    build({ rng }) {
+        const picks = [
+            { idiom: 'a night owl',        means: 'Someone who stays up late',
+              others: ['Someone who is very wise', 'Someone who is hard to find', 'Someone who eats little'] },
+            { idiom: 'to eat like a bird', means: 'To eat very little',
+              others: ['To eat very fast', 'To eat standing up', 'To eat only seeds'] },
+            { idiom: 'a little bird told me', means: 'I heard it from someone I will not name',
+              others: ['I guessed it', 'I read it somewhere', 'I made it up'] },
+            { idiom: 'the early bird gets the worm', means: 'Whoever starts first does best',
+              others: ['Mornings are difficult', 'Worms wake up early', 'Patience is rewarded'] },
+        ];
+        const pick = cmShuffle(picks, rng)[0];
+        const built = cmChoices(pick.means, pick.others, rng);
+        if (!built) return null;
+        return {
+            template_id: 'lang-idiom-' + pick.idiom.replace(/\W+/g, '-'),
+            prompt: `What does it mean to call someone "${pick.idiom}"?`,
+            ...built,
+            explain: 'An idiom means something the words alone do not say — which '
+                   + 'is why they are hard for anyone learning the language.',
+            fact: 'Ironically, birds eat an enormous amount for their size: a '
+                + 'chickadee can eat a third of its body weight in a day.',
+        };
+    },
+},
+
+{
+    id: 'lang-onomatopoeia',
+    category: 'language',
+    title: 'Onomatopoeia',
+    bands: ['3-5'],
+    needsData: false,
+    build({ rng }) {
+        const built = cmChoices('Chickadee', ['Cardinal', 'Starling', 'Junco'], rng);
+        if (!built) return null;
+        return {
+            prompt: 'An onomatopoeia is a word that sounds like the thing it names, '
+                  + 'like BUZZ or SPLASH. Which of these birds is named after the '
+                  + 'sound it makes?',
+            ...built,
+            explain: 'The chickadee says "chick-a-dee-dee-dee" and was named for it. '
+                   + 'So were the killdeer, the whip-poor-will and the cuckoo.',
+            about_bird: 'Carolina Chickadee',
+        };
+    },
+},
+
+{
+    id: 'lang-prefix',
+    category: 'language',
+    title: 'Prefixes and roots',
+    bands: ['6-8'],
+    needsData: false,
+    build({ rng }) {
+        const built = cmChoices('The study of birds',
+            ['The study of eggs', 'The study of flight', 'The study of feathers'], rng);
+        if (!built) return null;
+        return {
+            prompt: 'ORNITHOLOGY comes from the Greek "ornis", meaning bird, and '
+                  + '"-ology", meaning the study of. What is ornithology?',
+            ...built,
+            explain: 'The study of birds. "-ology" gives you biology, geology and '
+                   + 'hundreds more — learn the ending and you can take a guess '
+                   + 'at any of them.',
+        };
+    },
+},
+
+// ── Art ──────────────────────────────────────────────────────────
+
+{
+    id: 'art-symmetry',
+    category: 'art',
+    title: 'Symmetry',
+    bands: ['k-2', '3-5'],
+    needsData: false,
+    build({ rng }) {
+        const built = cmChoices('Down the middle, head to tail',
+            ['Across the middle, side to side',
+             'Corner to corner',
+             'A bird has no line of symmetry'], rng);
+        if (!built) return null;
+        return {
+            prompt: 'A bird seen from the front is symmetrical. Where is its line '
+                  + 'of symmetry?',
+            ...built,
+            explain: 'Straight down the middle: one wing, one eye and one foot on '
+                   + 'each side, mirrored. Almost every animal is built this way, '
+                   + 'which is why a drawing looks wrong the moment it is not.',
+        };
+    },
+},
+
+{
+    id: 'art-pattern',
+    category: 'art',
+    title: 'Pattern',
+    bands: ['k-2', '3-5'],
+    build({ s, band, rng }) {
+        const pool = s.species
+            .map(x => ({ species: x.species, look: speciesLook(x.species) }))
+            .filter(x => x.look && /stripe|zebra|spot|bar|cap|necklace/i.test(x.look.feature));
+        if (!pool.length) return null;
+        const pick = cmShuffle(pool, rng)[0];
+        const built = cmChoices(pick.species,
+            cmShuffle(s.species.map(x => x.species).filter(n => n !== pick.species), rng)
+                .slice(0, 3), rng);
+        if (!built) return null;
+        return {
+            prompt: `Artists look for pattern: stripes, spots, bars. Which of our `
+                  + `birds has ${pick.look.feature}?`,
+            ...built,
+            image: cmShotFor(s, pick.species),
+            explain: `The ${pick.species} — look for ${pick.look.feature}.`,
+            about_bird: pick.species,
+        };
+    },
+},
+
+{
+    id: 'art-scale',
+    category: 'art',
+    title: 'Scale and proportion',
+    bands: ['3-5', '6-8'],
+    needsData: false,
+    build({ rng }) {
+        const built = cmChoices('Draw the head about as wide as the body is deep',
+            ['Draw the head the same size as the body',
+             'Draw the head twice the size of the body',
+             'Size does not matter in a drawing'], rng);
+        if (!built) return null;
+        return {
+            prompt: 'A drawing of a bird looks wrong when the proportions are off. '
+                  + 'What is the usual rule of thumb for a songbird’s head?',
+            ...built,
+            explain: 'Roughly a third of the body length, and about as wide as the '
+                   + 'body is deep. Artists block in simple shapes at the right '
+                   + 'sizes first, then add feathers — proportion before detail.',
+        };
+    },
+},
+
+{
+    id: 'art-complementary',
+    category: 'art',
+    title: 'Complementary colours',
+    bands: ['6-8'],
+    needsData: false,
+    build({ rng }) {
+        const built = cmChoices('Green', ['Blue', 'Orange', 'Yellow'], rng);
+        if (!built) return null;
+        return {
+            prompt: 'On the colour wheel, complementary colours sit opposite each '
+                  + 'other and make each other look brighter. A cardinal is red — '
+                  + 'which colour is its complement?',
+            ...built,
+            explain: 'Green. It is exactly why a cardinal looks so startling against '
+                   + 'summer leaves, and why photographers wait for that background.',
+            about_bird: 'Northern Cardinal',
+        };
+    },
+},
+
+// ── Music ────────────────────────────────────────────────────────
+
+{
+    id: 'music-pitch',
+    category: 'music',
+    title: 'High and low',
+    bands: ['k-2', '3-5'],
+    needsData: false,
+    build({ rng }) {
+        const built = cmChoices('The small bird',
+            ['The big bird', 'They sound the same', 'It depends on the weather'], rng);
+        if (!built) return null;
+        return {
+            prompt: 'A tiny chickadee and a big crow are both calling. Which one '
+                  + 'makes the HIGHER sound?',
+            ...built,
+            explain: 'The small one. Smaller instruments make higher notes — a '
+                   + 'piccolo against a tuba, a violin against a cello — and '
+                   + 'birds are no different.',
+        };
+    },
+},
+
+{
+    id: 'music-rhythm',
+    category: 'music',
+    title: 'Rhythm',
+    bands: ['3-5'],
+    needsData: false,
+    build({ rng }) {
+        const built = cmChoices('Short-short-LONG',
+            ['LONG-LONG-LONG', 'Short-LONG-short', 'All the same length'], rng);
+        if (!built) return null;
+        return {
+            prompt: 'The Eastern Towhee sings "drink your TEEEEA". Clap that rhythm. '
+                  + 'What pattern is it?',
+            ...built,
+            explain: 'Two short beats and one long one. Writing a birdsong down as '
+                   + 'a rhythm is how birders remember them, and it is the same '
+                   + 'skill as reading a bar of music.',
+            about_bird: 'Eastern Towhee',
+        };
+    },
+},
+
+{
+    id: 'music-dawn-chorus',
+    category: 'music',
+    title: 'Why birds sing',
+    bands: ['3-5', '6-8'],
+    needsData: false,
+    build({ rng }) {
+        const built = cmChoices('To claim a territory and attract a mate',
+            ['Because they are happy',
+             'To warn about the weather',
+             'To call their chicks to feed'], rng);
+        if (!built) return null;
+        return {
+            prompt: 'Birds sing loudest at dawn, before they eat. What is a song '
+                  + 'actually FOR?',
+            ...built,
+            explain: 'Two jobs at once: "this patch is mine" and "I am healthy, nest '
+                   + 'with me". Dawn air is still and sound carries furthest, so a '
+                   + 'song costs least and reaches most just after first light.',
+        };
+    },
+},
 ];
 
 /**
