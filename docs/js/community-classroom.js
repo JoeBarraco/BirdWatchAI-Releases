@@ -589,7 +589,16 @@ const DOTS_MAX_ROWS  = 7;      // a week
  */
 function cmChart(caption, series, opts) {
     const o = opts || {};
-    const trimmed = series.filter(s => s && isFinite(s.value)).slice(0, CHART_MAX_BARS);
+    // Species names are long and collide past eight; hour labels are three
+    // characters and fit far more. The cap exists for legibility, so it
+    // belongs with the caller who knows what the labels look like.
+    //
+    // This is not cosmetic. Truncation takes the FIRST n, so on a chart whose
+    // bars ARE the answer options — "which hour was busiest" — a late peak
+    // could be cut out of its own chart, leaving the class hunting for a bar
+    // that was never drawn.
+    const trimmed = series.filter(s => s && isFinite(s.value))
+                          .slice(0, o.maxBars || CHART_MAX_BARS);
     if (trimmed.length < 2) return null;
 
     const max = Math.max(...trimmed.map(s => s.value));
@@ -605,8 +614,26 @@ function cmChart(caption, series, opts) {
 
 // The week as one bar per day, oldest first — the shape every "per day"
 // question wants, and the one the class sees often enough to get used to.
+/**
+ * Axis labels for a run of days.
+ *
+ * NOT cmDayLabel. That one says "today" and "yesterday", which read well in a
+ * sentence and are actively confusing on an axis: Friday, Saturday, Sunday,
+ * Monday, Tuesday, yesterday, today gives a reader no way to tell the order,
+ * because two of the seven are relative and the rest are not. A weekday name
+ * alone is ambiguous over a fortnight's window too — there are two Fridays.
+ *
+ * "Fri 7" fixes both: every label has the same shape, and the number climbs
+ * left to right, so the direction of time is readable without being told.
+ */
+function cmDayAxisLabel(dayKey) {
+    const dt = cmDayStart(dayKey);
+    const wd = dt.toLocaleDateString(undefined, { weekday: 'short' });
+    return wd + ' ' + dt.getDate();
+}
+
 function cmDaySeries(s) {
-    return s.days.map(d => ({ label: cmDayLabel(d.day), value: d.n, key: d.day }));
+    return s.days.map(d => ({ label: cmDayAxisLabel(d.day), value: d.n, key: d.day }));
 }
 
 /**
@@ -795,7 +822,7 @@ const CLASSROOM_TEMPLATES = [
     id: 'id-snapshot',
     category: 'identification',
     title: 'Which bird is this?',
-    bands: ['k-2', '3-5', '6-8'],
+    bands: ['k-2', '3-5'],
     build({ s, band, rng, feeder }) {
         // Confidence floor: a misidentified snapshot teaches the wrong bird,
         // and the model is the only thing standing behind the "right" answer.
@@ -842,7 +869,7 @@ const CLASSROOM_TEMPLATES = [
     id: 'most-common-week',
     category: 'counting',
     title: 'Which bird visited most?',
-    bands: ['k-2', '3-5', '6-8'],
+    bands: ['k-2', '3-5'],
     build({ s, band, rng, feeder }) {
         if (s.species.length < 2) return null;
         const top = s.species[0];
@@ -871,7 +898,7 @@ const CLASSROOM_TEMPLATES = [
     id: 'total-visits',
     category: 'counting',
     title: 'How many visits?',
-    bands: ['k-2', '3-5', '6-8'],
+    bands: ['k-2', '3-5'],
     build({ s, band, rng, feeder }) {
         // K–2 counts a day, not a week: a number a class can actually tally
         // with marks on the board is the point of the exercise (§11).
@@ -910,7 +937,7 @@ const CLASSROOM_TEMPLATES = [
     id: 'species-variety',
     category: 'counting',
     title: 'How many kinds of bird?',
-    bands: ['3-5', '6-8'],
+    bands: ['3-5'],
     build({ s, band, rng, feeder }) {
         if (s.distinct < 2) return null;
         const built = cmChoices(String(s.distinct),
@@ -957,7 +984,7 @@ const CLASSROOM_TEMPLATES = [
     id: 'how-many-more',
     category: 'comparison',
     title: 'How many more?',
-    bands: ['3-5', '6-8'],
+    bands: ['3-5'],
     build({ s, band, rng }) {
         if (s.species.length < 2) return null;
         const [a, b] = s.species;
@@ -981,7 +1008,7 @@ const CLASSROOM_TEMPLATES = [
     id: 'week-over-week',
     category: 'comparison',
     title: 'Busier than last week?',
-    bands: ['3-5', '6-8'],
+    bands: ['6-8'],
     build({ s, s14, band, rng, feeder }) {
         // Needs a genuine previous week, not a feeder that only started
         // logging on Tuesday.
@@ -1012,7 +1039,7 @@ const CLASSROOM_TEMPLATES = [
     id: 'busiest-day',
     category: 'time',
     title: 'Which day was busiest?',
-    bands: ['k-2', '3-5', '6-8'],
+    bands: ['k-2', '3-5'],
     build({ s, band, rng, feeder }) {
         if (s.days.length < 3) return null;
         const sorted = s.days.slice().sort((a, b) => b.n - a.n);
@@ -1061,7 +1088,7 @@ const CLASSROOM_TEMPLATES = [
     id: 'peak-hour',
     category: 'time',
     title: 'What hour was busiest?',
-    bands: ['3-5', '6-8'],
+    bands: ['3-5'],
     build({ s, band, rng, feeder }) {
         if (s.total < 12) return null;
         const ranked = s.byHour
@@ -1080,7 +1107,7 @@ const CLASSROOM_TEMPLATES = [
             // first and turn reading the chart into reading its ordering.
             chart: cmChart('Visits by hour this week',
                            s.byHour.map((n, h) => ({ label: cmHourLabel(h), value: n, key: h }))
-                                   .filter(x => x.value > 0), { band }),
+                                   .filter(x => x.value > 0), { band, maxBars: 14 }),
             explain: pick.map(x => `${cmHourLabel(x.h)}: ${x.n}`).join(' · '),
         };
     },
@@ -1151,7 +1178,7 @@ const CLASSROOM_TEMPLATES = [
     id: 'visits-per-day',
     category: 'math',
     title: 'Average visits per day',
-    bands: ['3-5', '6-8'],
+    bands: ['3-5'],
     build({ s, band, rng, feeder }) {
         if (s.days.length < 4 || s.total < 12) return null;
         const avg = Math.round(s.total / s.days.length);
@@ -1198,7 +1225,7 @@ const CLASSROOM_TEMPLATES = [
             // class has to put the two variables together themselves.
             chart: cmChart('Visits each day, with that day\u2019s temperature',
                            days.slice().sort((x, y) => x.day.localeCompare(y.day))
-                               .map(d => ({ label: `${cmDayLabel(d.day)} ${Math.round(d.temp)}\u00b0`,
+                               .map(d => ({ label: `${cmDayAxisLabel(d.day)} ${Math.round(d.temp)}\u00b0`,
                                             value: d.n, key: d.day })), { band }),
             explain: `Colder half averaged ${coldAvg.toFixed(1)} visits/day `
                    + `(${cold[0].temp.toFixed(0)}–${cold[cold.length - 1].temp.toFixed(0)}°); `
@@ -1217,7 +1244,7 @@ const CLASSROOM_TEMPLATES = [
     id: 'predict-tomorrow',
     category: 'prediction',
     title: 'More or fewer tomorrow?',
-    bands: ['k-2', '3-5', '6-8'],
+    bands: ['k-2', '3-5'],
     build({ s, band, rng, feeder, source }) {
         const todayKey = cmDayKey(new Date());
         const todayN   = s.byDay.get(todayKey) || 0;
@@ -1293,6 +1320,232 @@ const CLASSROOM_TEMPLATES = [
                 buckets: opts.map(b => ({ lo: b.lo, hi: b.hi })),
             },
             resolve_after: to.toISOString(),
+        };
+    },
+},
+
+// ── Added to pull the bands apart ────────────────────────────────
+//
+// Before these, 3–5 and 6–8 shared eleven of their twelve templates: the
+// older class was sitting the younger one's lesson with the wording changed.
+// The design notes are specific about what 6–8 is for — weekday against
+// weekend, mean against median, rates, probability, weather against visits —
+// and almost none of it existed. These are that, plus one each for the other
+// two bands so neither runs short once the sharing stops.
+
+{
+    id: 'count-one-species',
+    category: 'counting',
+    title: 'How many of one bird?',
+    bands: ['k-2'],
+    build({ s, band, rng }) {
+        // A single species, small enough to count as dots. The whole question
+        // for a five-year-old is "point at that bird's row and count it".
+        const pick = s.species.find(x => x.n >= 3 && x.n <= 20);
+        if (!pick || s.species.length < 2) return null;
+
+        const built = cmChoices(String(pick.n),
+                                cmNumberDistractors(pick.n, rng, 2).map(String), rng);
+        if (!built) return null;
+        return {
+            prompt: `How many ${pick.species}s came this week?`,
+            ...built,
+            chart: cmChart('Visits by species this week',
+                           cmSpeciesSeries(s), { band, highlight: pick.species }),
+            explain: `${pick.species}: ${pick.n} visits this week.`,
+            fact: speciesFact(pick.species, band),
+        };
+    },
+},
+
+{
+    id: 'day-difference',
+    category: 'comparison',
+    title: 'Difference between two days',
+    bands: ['3-5'],
+    build({ s, band, rng }) {
+        // Read two bars off the chart and subtract. Not the busiest and the
+        // quietest — those are findable without reading values — but two
+        // middling days, so the only route is the axis.
+        if (s.days.length < 4) return null;
+        const sorted = s.days.slice().sort((a, b) => b.n - a.n);
+        const a = sorted[1], b = sorted[sorted.length - 2];
+        if (!a || !b || a.n - b.n < 2) return null;
+
+        const diff = a.n - b.n;
+        const built = cmChoices(String(diff),
+                                cmNumberDistractors(diff, rng, 3).map(String), rng);
+        if (!built) return null;
+        return {
+            prompt: `How many more visits were there on ${cmDayAxisLabel(a.day)} `
+                  + `than on ${cmDayAxisLabel(b.day)}?`,
+            ...built,
+            chart: cmChart('Visits each day this week', cmDaySeries(s), { band }),
+            explain: `${a.n} − ${b.n} = ${diff}.`,
+        };
+    },
+},
+
+{
+    id: 'weekday-weekend',
+    category: 'analysis',
+    title: 'Weekdays or the weekend?',
+    bands: ['6-8'],
+    build({ s, band, rng, feeder }) {
+        // Design notes §2, the 6–8 list, almost word for word. The chart shows
+        // every day UNGROUPED, so the class has to sort them itself — which is
+        // the entire exercise.
+        const week = [], end = [];
+        for (const d of s.days) {
+            const dow = cmDayStart(d.day).getDay();
+            (dow === 0 || dow === 6 ? end : week).push(d.n);
+        }
+        if (week.length < 3 || end.length < 2) return null;
+
+        const avg = arr => arr.reduce((x, y) => x + y, 0) / arr.length;
+        const wAvg = avg(week), eAvg = avg(end);
+        // A difference smaller than half a visit a day is noise, and asking
+        // the class to call it is teaching them to over-read a chart.
+        if (Math.abs(wAvg - eAvg) < 0.5) return null;
+
+        const answer = wAvg > eAvg ? 'Weekdays' : 'The weekend';
+        const opts = cmShuffle(['Weekdays', 'The weekend', 'About the same'], rng);
+        return {
+            prompt: `Did ${feeder} average more visits per day on weekdays or at the weekend?`,
+            choices: opts.map(l => ({ label: l })),
+            correct_index: opts.indexOf(answer),
+            chart: cmChart('Visits each day this week', cmDaySeries(s), { band }),
+            explain: `Weekdays averaged ${wAvg.toFixed(1)} visits a day across ${week.length} days; `
+                   + `the weekend averaged ${eAvg.toFixed(1)} across ${end.length}.`,
+        };
+    },
+},
+
+{
+    id: 'median-daily',
+    category: 'math',
+    title: 'Median visits per day',
+    bands: ['6-8'],
+    build({ s, band, rng }) {
+        if (s.days.length < 5) return null;
+        const vals = s.days.map(d => d.n).sort((a, b) => a - b);
+        const mid = Math.floor(vals.length / 2);
+        const median = vals.length % 2 ? vals[mid] : Math.round((vals[mid - 1] + vals[mid]) / 2);
+        const mean = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+
+        // Only worth asking when the two differ: the point of the question is
+        // that they are not the same thing, and the mean sits in the choices
+        // as the obvious wrong answer.
+        if (median === mean) return null;
+
+        const built = cmChoices(String(median),
+            [String(mean)].concat(cmNumberDistractors(median, rng, 2).map(String)), rng);
+        if (!built) return null;
+        return {
+            prompt: 'What is the median number of visits per day this week?',
+            ...built,
+            chart: cmChart('Visits each day this week', cmDaySeries(s), { band }),
+            explain: `Sorted: ${vals.join(', ')}. The middle value is ${median}. `
+                   + `The mean is ${mean} — close, but not the same thing.`,
+        };
+    },
+},
+
+{
+    id: 'visits-rate',
+    category: 'math',
+    title: 'Visits per hour',
+    bands: ['6-8'],
+    build({ s, band, rng, feeder }) {
+        // A rate rather than a total (design notes §11). Daylight hours only,
+        // because dividing by 24 when the feeder is dark for half of them is
+        // the kind of answer that is arithmetically right and meaningless.
+        const FROM = 7, TO = 18;
+        const inDay = s.byHour.slice(FROM, TO).reduce((a, b) => a + b, 0);
+        const hours = (TO - FROM) * s.days.length;
+        if (inDay < 25 || s.days.length < 4) return null;
+
+        const rate = Math.round((inDay / hours) * 10) / 10;
+        if (rate < 0.2) return null;
+
+        const dist = [rate * 2, rate / 2, rate + 0.5, rate - 0.3]
+            .map(v => Math.round(v * 10) / 10)
+            .filter(v => v > 0 && v !== rate);
+        const built = cmChoices(rate.toFixed(1), [...new Set(dist)].map(v => v.toFixed(1)), rng);
+        if (!built) return null;
+        return {
+            prompt: `${feeder} recorded ${inDay} visits between 7am and 6pm over `
+                  + `${s.days.length} days. About how many visits per hour is that?`,
+            ...built,
+            // Only the hours the question counts. Showing every active hour
+            // put a 6am bar on screen that the stated total excluded, so a
+            // class adding the bars got a different number from the one in
+            // the prompt — which is a fast way to lose them.
+            chart: cmChart(`Visits by hour, 7am to 6pm`,
+                           s.byHour.map((n, h) => ({ label: cmHourLabel(h), value: n, key: h }))
+                                   .filter(x => x.key >= FROM && x.key < TO),
+                           { band, maxBars: TO - FROM }),
+            explain: `${inDay} visits ÷ (${TO - FROM} hours × ${s.days.length} days) `
+                   + `= ${inDay} ÷ ${hours} ≈ ${rate} per hour.`,
+        };
+    },
+},
+
+{
+    id: 'probability-next',
+    category: 'math',
+    title: 'Chance of two in a row',
+    bands: ['6-8'],
+    build({ s, band, rng }) {
+        // Compound probability from relative frequency (design notes §11).
+        // Deliberately TWO birds: one is just the percentage question again,
+        // and squaring is the step that separates the bands.
+        if (s.total < 25 || s.species.length < 2) return null;
+        const top = s.species[0];
+        const p = top.n / s.total;
+        // Outside this range the squared answer is either near-certain or so
+        // small that the distractors stop being distinguishable.
+        if (p < 0.35 || p > 0.8) return null;
+
+        const pct = Math.round(p * p * 100);
+        const naive = Math.round(p * 100);          // the classic wrong answer
+        if (Math.abs(pct - naive) < 8) return null;
+
+        const built = cmChoices(`${pct}%`,
+            [`${naive}%`, `${Math.round(p * 200)}%`, `${Math.max(1, Math.round(pct / 2))}%`], rng);
+        if (!built) return null;
+        return {
+            prompt: `${top.species} made ${top.n} of this week's ${s.total} visits. `
+                  + 'If the next two birds are independent, what is the chance BOTH are '
+                  + `${top.species}?`,
+            ...built,
+            chart: cmChart('Visits by species this week',
+                           cmSpeciesSeries(s), { band, highlight: top.species }),
+            explain: `${top.n} ÷ ${s.total} = ${p.toFixed(2)}. `
+                   + `Both: ${p.toFixed(2)} × ${p.toFixed(2)} ≈ ${pct}%.`,
+        };
+    },
+},
+
+{
+    id: 'day-range',
+    category: 'math',
+    title: 'Range across the week',
+    bands: ['6-8'],
+    build({ s, band, rng }) {
+        if (s.days.length < 4) return null;
+        const vals = s.days.map(d => d.n);
+        const range = Math.max(...vals) - Math.min(...vals);
+        if (range < 3) return null;
+
+        const built = cmChoices(String(range),
+                                cmNumberDistractors(range, rng, 3).map(String), rng);
+        if (!built) return null;
+        return {
+            prompt: 'What is the range of daily visits this week — the busiest day minus the quietest?',
+            ...built,
+            chart: cmChart('Visits each day this week', cmDaySeries(s), { band }),
+            explain: `${Math.max(...vals)} − ${Math.min(...vals)} = ${range}.`,
         };
     },
 },
