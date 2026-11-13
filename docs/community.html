@@ -13,7 +13,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="BirdWatchAI">
-    <link rel="stylesheet" href="css/community.css?v=74d39fed">
+    <link rel="stylesheet" href="css/community.css?v=8d707019">
 </head>
 <body>
 <!-- Top navbar with auth controls -->
@@ -892,15 +892,32 @@
             <select id="classroom-community-select" onchange="onClassroomCommunityChange()"
                     style="width:100%;margin-bottom:0.75rem;"></select>
 
-            <!-- Owner/moderator only, shown from refreshClassroomPanel. A
-                 teacher files feedback; reading the pile and deciding what to
-                 do about it belongs to whoever runs the community. -->
-            <!-- Any teacher. The people running lessons see what the question
-                 set is missing long before whoever writes templates does. -->
-            <button type="button" class="classroom-btn"
-                    onclick="openClassroomSuggest()">💡 Suggest a question</button>
-            <button type="button" id="classroom-feedback-btn" style="display:none;"
-                    class="classroom-btn" onclick="showClassroomFeedback()">💬 Question feedback</button>
+            <!-- Between lessons.
+                 Reviewing next week's questions and reading last week's
+                 results are not things you do while starting a class, and
+                 giving each classroom its own copy of both meant scrolling
+                 the whole list to reach the one you wanted. They pick a class
+                 here instead. Feedback is owner/moderator only, shown from
+                 refreshClassroomPanel: a teacher files it, but reading the
+                 pile and deciding what to do about it belongs to whoever runs
+                 the community. -->
+            <div class="classroom-toolbar">
+                <!-- Acts on the class named here. -->
+                <div class="classroom-toolbar-row">
+                    <select id="classroom-pick" aria-label="Which class"></select>
+                    <button type="button" class="classroom-btn"
+                            onclick="reviewClassroomQuestions(classroomPicked())">🔍 Review</button>
+                    <button type="button" class="classroom-btn"
+                            onclick="showClassroomHistory(classroomPicked())">📊 Results</button>
+                </div>
+                <!-- Acts on the whole question set, not on one class. -->
+                <div class="classroom-toolbar-row">
+                    <button type="button" class="classroom-btn"
+                            onclick="openClassroomSuggest()">💡 Suggest a question</button>
+                    <button type="button" id="classroom-feedback-btn" style="display:none;"
+                            class="classroom-btn" onclick="showClassroomFeedback()">💬 Question feedback</button>
+                </div>
+            </div>
 
             <div id="classroom-list"></div>
             <div id="classroom-review" class="classroom-history" style="display:none;"></div>
@@ -1096,11 +1113,14 @@
 <!-- QR encoder for the classroom lobby's join code. Same-origin on purpose:
      the lobby is the screen that must work when a lesson starts, and a CDN
      blocked by school wifi at that moment ends the lesson. -->
-<script src="js/community-qr.js?v=30a02adb"></script>
+<!-- community-qr.js is NOT loaded: the encoder it contains produces
+     symbols that do not scan. See the header of that file. classroomJoinQrHtml
+     already returns nothing when bwQr is absent, so the lobby falls back to
+     the address and the class code, which work. -->
 <!-- Classroom mode (phase 1): classrooms, teacher-led sessions, question
      templates. Loads after community-communities.js because it reads
      myCommunities and hasAuthSession from it. -->
-<script src="js/community-classroom.js?v=c11666f8"></script>
+<script src="js/community-classroom.js?v=828c7d9d"></script>
 <!-- Interactive chart runtime: crosshair tooltips on the trend chart, per-species hover rows on
      the Activity / Calendar / Rarity Mix charts. No-op until a [data-bw-chart] element appears. -->
 <script src="js/community-charts.js?v=2b12e881"></script>

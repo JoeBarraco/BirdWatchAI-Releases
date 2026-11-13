@@ -1,3 +1,22 @@
+// ⚠ NOT IN USE - THIS ENCODER IS BROKEN.
+//
+// community.html deliberately does not load this file. The symbols it
+// produces do not scan: confirmed with a phone camera on both a join link and
+// a plain 'HELLO' rendered at 580px with a 4-module quiet zone.
+//
+// The fault is NOT in the parts that were checked offline. Verified by hand
+// and passing: the format bits (BCH(15,5), checked against the published
+// M/mask-3 value 101101101001011), the finder and timing patterns, the
+// reserved-area map, the data-region module counts against the spec at every
+// version, the Reed-Solomon syndromes, and a text round-trip.
+//
+// That round-trip is why the bug survived. The verifier walks the module grid
+// and unmasks it with the SAME code the encoder used to place and mask it, so
+// any error in the walk or the mask cancels out and the symbol still decodes
+// to the right string - offline. Exactly the two things left untested are the
+// two a camera rejects. Fixing this needs an INDEPENDENT decoder to check
+// against, not more reading of the same code.
+//
 // BirdWatchAI — a small QR encoder for the classroom lobby
 //
 // WHY THIS IS HERE RATHER THAN A CDN

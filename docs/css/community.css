@@ -3831,6 +3831,17 @@
     font-variant-numeric: tabular-nums;
 }
 
+/* The block that gets scaled to fit. It owns the layout the stage body used
+   to, so scaling it moves the whole slide as one piece. */
+.classroom-fit {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 2.2vmin;
+    width: 100%;
+    /* Children keep their natural size and the box is shrunk around them, so
+       they must be allowed to paint outside it. */
+    overflow: visible;
+}
+
 .classroom-stage-body {
     flex: 1; overflow-y: auto;
     display: flex; flex-direction: column; align-items: center;
@@ -4274,4 +4285,66 @@
 
 @media (max-height: 560px) {
     .classroom-chart svg { max-height: 28vh; }
+}
+
+/* ── The classroom panel: between-lessons bar ──────────────────────
+   Review and Results used to live on every classroom card, which meant
+   reaching the third class was a scroll through the first two. They act on
+   whichever class the picker names instead, so they stay put at the top. */
+.classroom-toolbar {
+    margin-bottom: 0.9rem;
+}
+/* Two rows on purpose rather than one wrapping row: the first acts on the
+   class the picker names, the second on the question set as a whole. Left to
+   wrap, the two groups broke mid-group and the bar read as six equal
+   buttons. */
+.classroom-toolbar-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+}
+.classroom-toolbar-row + .classroom-toolbar-row { margin-top: 0.4rem; }
+.classroom-toolbar #classroom-pick {
+    flex: 1 1 8rem;
+    min-width: 6rem;
+}
+
+/* With no classrooms there is nothing to review or report on. The row stays
+   visible but inert, rather than vanishing and shifting the layout the moment
+   the first class is created. */
+.classroom-toolbar.no-classes .classroom-toolbar-row:first-child {
+    opacity: 0.45;
+    pointer-events: none;
+}
+
+/* ── Compact classroom cards ───────────────────────────────────────
+   Two buttons out front (the two that start a lesson) and the rest behind
+   the ⋯, so a screenful holds several classes. */
+.classroom-btn-more {
+    padding-left: 0.6rem;
+    padding-right: 0.6rem;
+    font-weight: 700;
+    line-height: 1;
+}
+.classroom-card-more {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--color-gray-200, #e5e5e5);
+}
+
+/* ── Review: two doors, and two ways a question can be marked ──────
+   A flagged question is a defect to fix; a suggestion is a better idea.
+   Different colours so a review pass can be read at a glance. */
+.classroom-review-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+.classroom-review-q.suggested {
+    border-left: 3px solid #f0a500;
+    background: rgba(240, 165, 0, 0.06);
 }

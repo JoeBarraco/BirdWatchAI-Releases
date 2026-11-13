@@ -534,6 +534,9 @@ function classroomFitShot(img) {
     const w = img.naturalWidth, h = img.naturalHeight;
     if (!w || !h) return;
 
+    // The image has just given the slide its real height.
+    requestAnimationFrame(classroomFitStage);
+
     const frac = cmCaptionCropFraction(h);
     const keptH = Math.round(h * (1 - frac));
     wrap.style.aspectRatio = `${w} / ${keptH}`;
@@ -2563,13 +2566,8 @@ function renderClassroomList() {
                             ${r.home_feeder_id ? '' : 'disabled title="Set a home feeder first"'}>▶ On the board</button>
                     <button class="classroom-btn-primary" onclick="startClassroomSession('${esc(r.id)}','join_code')"
                             ${r.home_feeder_id ? '' : 'disabled title="Set a home feeder first"'}>📱 With devices</button>
-                    <button class="classroom-btn" onclick="editClassroom('${esc(r.id)}')">Edit</button>
-                    <button class="classroom-btn" onclick="reviewClassroomQuestions('${esc(r.id)}')"
-                            ${r.home_feeder_id ? '' : 'disabled'}>🔍 Review questions</button>
-                    <button class="classroom-btn" onclick="showClassroomHistory('${esc(r.id)}')">Results</button>
-                    <button class="classroom-btn" onclick="copyClassroomLink('${esc(r.id)}')"
-                            title="A link that opens straight into this class">🔗 Link</button>
-                    <button class="classroom-btn-danger" onclick="deleteClassroom('${esc(r.id)}')">Delete</button>
+                    <button class="classroom-btn classroom-btn-more" title="Edit, link, delete"
+                            onclick="toggleClassroomMore('${esc(r.id)}')">⋯</button>
                 </div>
             </div>
             <div class="classroom-card-meta">
@@ -2578,9 +2576,59 @@ function renderClassroomList() {
                 ${r.session_count ? ` · ${r.session_count} session${r.session_count === 1 ? '' : 's'}` : ''}
                 ${r.is_mine ? '' : ` · taught by ${esc(r.teacher_label)}`}
             </div>
+            <div class="classroom-card-more" id="classroom-more-${esc(r.id)}" style="display:none;">
+                <button class="classroom-btn" onclick="editClassroom('${esc(r.id)}')">Edit</button>
+                <button class="classroom-btn" onclick="copyClassroomLink('${esc(r.id)}')"
+                        title="A link that opens straight into this class">🔗 Link</button>
+                <button class="classroom-btn-danger" onclick="deleteClassroom('${esc(r.id)}')">Delete</button>
+            </div>
             <div class="classroom-pending" id="classroom-pending-${esc(r.id)}"></div>
         </div>`;
     }).join('');
+
+    syncClassroomPicker();
+}
+
+/**
+ * Keep the between-lessons class picker in step with the list.
+ *
+ * Rebuilt rather than patched, because classrooms can be created, renamed,
+ * deleted or handed to another teacher while the panel is open. The current
+ * choice survives the rebuild where that class still exists, so refreshing
+ * the list cannot quietly move Review and Results onto a different class
+ * than the one showing.
+ */
+function syncClassroomPicker() {
+    const pick = document.getElementById('classroom-pick');
+    if (!pick) return;
+
+    const wanted = pick.value;
+    pick.innerHTML = classroomList.map(r =>
+        `<option value="${esc(r.id)}">${esc(r.name)}`
+        + ` — ${esc(GRADE_BAND_LABELS[r.grade_band] || r.grade_band)}</option>`).join('');
+
+    if (classroomList.some(r => r.id === wanted)) pick.value = wanted;
+
+    // Nothing to review or report on until there is a class.
+    const bar = pick.closest('.classroom-toolbar');
+    if (bar) bar.classList.toggle('no-classes', !classroomList.length);
+}
+
+function classroomPicked() {
+    return document.getElementById('classroom-pick')?.value || null;
+}
+
+/**
+ * Edit, Link and Delete live behind this.
+ *
+ * Seven buttons per classroom pushed three classes past a screenful, which
+ * made the common case - start the lesson that is about to begin - a scroll.
+ * The two that start a lesson stay out; the three you touch a few times a
+ * year fold away.
+ */
+function toggleClassroomMore(roomId) {
+    const box = document.getElementById(`classroom-more-${roomId}`);
+    if (box) box.style.display = box.style.display === 'none' ? '' : 'none';
 }
 
 // ── Reviewing the questions (and saying what is wrong with them) ──
@@ -2664,48 +2712,96 @@ function classroomReviewItem(q, i) {
             ${q.correct_index == null
                 ? '<p class="classroom-muted">Prediction — scored later, no answer yet.</p>' : ''}
             ${q.explain ? `<p class="classroom-muted">On reveal: ${esc(q.explain)}</p>` : ''}
-            <button class="classroom-btn" onclick="openClassroomFlag(${i})">⚑ Something is wrong</button>
+            <div class="classroom-review-actions">
+                <button class="classroom-btn" onclick="openClassroomFlag(${i}, 'flag')">⚑ Something is wrong</button>
+                <button class="classroom-btn" onclick="openClassroomFlag(${i}, 'suggestion')">💡 Suggest an improvement</button>
+            </div>
             <div class="classroom-flag-form" id="classroom-flag-${i}"></div>
         </div>`;
 }
 
+// What each kind of feedback asks for.
+//
+// Two kinds, because most of what a careful reviewer notices is not a fault.
+// "The bars are too far apart and maybe should be different colours" is worth
+// more than most flags, and filing it as a defect either dilutes the real
+// defects in the queue or gets it closed unread. A teacher who has to call
+// their idea a fault will often just not file it, which loses exactly the
+// observation that was worth having.
+const CLASSROOM_FEEDBACK_KINDS = {
+    flag: {
+        reasons: [
+            ['unclear',    'The question is unclear'],
+            ['wrong',      'The answer looks wrong'],
+            ['too_hard',   'Too hard for this band'],
+            ['too_easy',   'Too easy for this band'],
+            ['bad_visual', 'The photo or chart is the problem'],
+            ['other',      'Something else'],
+        ],
+        placeholder: 'What was wrong with it? The more specific the better '
+                   + '\u2014 which word, which number.',
+        send: 'Send feedback',
+    },
+    suggestion: {
+        reasons: [
+            ['improvement', 'It would just be better this way'],
+            ['bad_visual',  'The photo or chart could be clearer'],
+            ['unclear',     'The wording could be clearer'],
+            ['too_hard',    'A bit much for this band'],
+            ['too_easy',    'A bit easy for this band'],
+            ['other',       'Something else'],
+        ],
+        placeholder: 'What would make it better? Nothing has to be wrong with '
+                   + 'it \u2014 spacing, colours, wording all count.',
+        send: 'Send suggestion',
+    },
+};
+
 /**
- * The flag form, opened under one question.
+ * The feedback form, opened under one question.
  *
  * A reason AND a comment, because the reason alone is not actionable — "too
  * hard" could mean the arithmetic, the vocabulary or the chart — and a
  * comment alone cannot be counted. The reasons are the ones that map to
  * different fixes rather than to different feelings.
+ *
+ * `kind` is 'flag' (a defect to fix before a class meets it) or 'suggestion'
+ * (a better idea). It rides along to the RPC, so the two arrive in the
+ * feedback queue as different things rather than as one undifferentiated
+ * pile.
  */
-function openClassroomFlag(i) {
+function openClassroomFlag(i, kind) {
     const box = document.getElementById(`classroom-flag-${i}`);
     if (!box) return;
+    const spec = CLASSROOM_FEEDBACK_KINDS[kind] || CLASSROOM_FEEDBACK_KINDS.flag;
 
-    // Open only. This used to toggle, so pressing the button a second time —
-    // which is what you do if you think it submits — silently threw away
-    // everything typed into it. Closing is Cancel's job, which is labelled.
-    if (box.innerHTML) {
-        box.querySelector('textarea')?.focus();
-        return;
-    }
+    // Pressing the same button again is not a request to close — it used to
+    // toggle, which silently threw away everything typed in. Closing is
+    // Cancel's job, which is labelled. Pressing the OTHER button swaps the
+    // form over, carrying the text across: realising halfway through that
+    // this is a suggestion rather than a complaint should not cost you the
+    // sentence you already wrote.
+    const existing = box.querySelector('textarea');
+    const carried  = existing ? existing.value : '';
+    if (existing && box.dataset.kind === kind) { existing.focus(); return; }
 
+    box.dataset.kind = kind;
     box.innerHTML = `
         <select id="classroom-flag-reason-${i}">
-            <option value="unclear">The question is unclear</option>
-            <option value="wrong">The answer looks wrong</option>
-            <option value="too_hard">Too hard for this band</option>
-            <option value="too_easy">Too easy for this band</option>
-            <option value="bad_visual">The photo or chart is the problem</option>
-            <option value="other">Something else</option>
+            ${spec.reasons.map(([v, label]) =>
+                `<option value="${v}">${esc(label)}</option>`).join('')}
         </select>
         <textarea id="classroom-flag-note-${i}" rows="3" maxlength="2000"
-                  placeholder="What was wrong with it? The more specific the better — which word, which number."></textarea>
+                  placeholder="${esc(spec.placeholder)}"></textarea>
         <div class="classroom-form-actions">
-            <button class="classroom-btn-primary" onclick="sendClassroomFlag(${i})">Send feedback</button>
+            <button class="classroom-btn-primary" onclick="sendClassroomFlag(${i})">${esc(spec.send)}</button>
             <button class="classroom-btn" onclick="closeClassroomFlag(${i})">Cancel</button>
         </div>
         <div class="classroom-status" id="classroom-flag-status-${i}"></div>`;
-    document.getElementById(`classroom-flag-note-${i}`).focus();
+
+    const note = document.getElementById(`classroom-flag-note-${i}`);
+    note.value = carried;
+    note.focus();
 }
 
 function closeClassroomFlag(i) {
@@ -2723,31 +2819,66 @@ async function sendClassroomFlag(i) {
     const room = classroomReviewRoom;
     if (!q || !room) return;
 
+    const box    = document.getElementById(`classroom-flag-${i}`);
+    const kind   = box.dataset.kind === 'suggestion' ? 'suggestion' : 'flag';
     const reason = document.getElementById(`classroom-flag-reason-${i}`).value;
     const note   = document.getElementById(`classroom-flag-note-${i}`).value.trim();
     const status = document.getElementById(`classroom-flag-status-${i}`);
+
+    // A defect report with no words is still actionable — the question is
+    // the evidence. A suggestion with no words is not: there is nothing in it
+    // to act on but the fact that somebody was unhappy. Caught here as well
+    // as in the RPC so it reads as a prompt rather than as an error.
+    if (kind === 'suggestion' && !note) {
+        status.style.color = '#e74c3c';
+        status.textContent = 'Say what would make it better.';
+        document.getElementById(`classroom-flag-note-${i}`).focus();
+        return;
+    }
+
     status.style.color = 'var(--color-gray-500)';
     status.textContent = 'Sending…';
 
-    const { error } = await sbRpc('classroom_flag_question', {
+    // The question AS SHOWN. The template will not reproduce it from
+    // tomorrow's data, so this is the only copy that will ever exist.
+    const snapshot = {
+        template_id:      q.template_id,
+        category:         q.category,
+        grade_band:       q.grade_band,
+        prompt:           q.prompt,
+        choices:          q.choices,
+        correct_index:    q.correct_index,
+        explain:          q.explain || null,
+        chart_kind:       q.image ? 'photo' : (q.chart ? q.chart.kind : null),
+        source_feeder_id: q.source_feeder_id,
+    };
+
+    let { error } = await sbRpc('classroom_flag_question', {
         p_community_id: classroomCommunityId,
         p_classroom_id: room.id,
+        p_kind:         kind,
         p_reason:       reason,
         p_comment:      note || null,
-        // The question AS SHOWN. The template will not reproduce it from
-        // tomorrow's data, so this is the only copy that will ever exist.
-        p_question: {
-            template_id:      q.template_id,
-            category:         q.category,
-            grade_band:       q.grade_band,
-            prompt:           q.prompt,
-            choices:          q.choices,
-            correct_index:    q.correct_index,
-            explain:          q.explain || null,
-            chart_kind:       q.image ? 'photo' : (q.chart ? q.chart.kind : null),
-            source_feeder_id: q.source_feeder_id,
-        },
+        p_question:     snapshot,
     }, true);
+
+    // The database may not have setup-classroom-suggestions.sql yet, in which
+    // case there is no p_kind to pass and PostgREST cannot resolve the call at
+    // all (PGRST202). Losing what a teacher just wrote because a migration is
+    // outstanding would be the worst possible outcome of adding a feature, so
+    // file it the old way instead and keep the distinction in the words. The
+    // reason is coerced too: 'improvement' does not exist in the old check
+    // constraint and would be rejected.
+    if (error && (error.code === 'PGRST202'
+                  || /p_kind|does not exist|schema cache/i.test(error.message || ''))) {
+        ({ error } = await sbRpc('classroom_flag_question', {
+            p_community_id: classroomCommunityId,
+            p_classroom_id: room.id,
+            p_reason:       reason === 'improvement' ? 'other' : reason,
+            p_comment:      (kind === 'suggestion' ? 'Suggestion: ' : '') + note,
+            p_question:     snapshot,
+        }, true));
+    }
 
     if (error) {
         status.style.color = '#e74c3c';
@@ -2755,9 +2886,10 @@ async function sendClassroomFlag(i) {
         return;
     }
     const card = document.querySelector(`.classroom-review-q[data-q="${i}"]`);
-    if (card) card.classList.add('flagged');
-    document.getElementById(`classroom-flag-${i}`).innerHTML =
-        '<p class="classroom-muted">✓ Thanks — recorded against this template.</p>';
+    if (card) card.classList.add(kind === 'suggestion' ? 'suggested' : 'flagged');
+    box.innerHTML = '<p class="classroom-muted">✓ Thanks — '
+        + (kind === 'suggestion' ? 'suggestion' : 'flag')
+        + ' recorded against this template.</p>';
 }
 
 function hideClassroomReview() {
@@ -3447,17 +3579,23 @@ function renderClassroomStage() {
         </div>
 
         <div class="classroom-stage-body">
+          <div class="classroom-fit">
             ${q.image ? classroomShotHtml(q, S.revealed)
                       : classroomChartHtml(q.chart, S.revealed)}
             <h1 class="classroom-prompt">${esc(q.prompt)}</h1>
             <div class="classroom-choices ${q.choices.length > 3 ? 'four' : ''}">${choices}</div>
             ${reveal}
+          </div>
         </div>
 
         <div class="classroom-stage-foot">
             ${classroomFootControls(S, last, joinMode)}
             <button class="classroom-btn" onclick="skipClassroomQuestion()">Skip</button>
         </div>`;
+
+    // After layout, not during: scrollHeight is meaningless until the browser
+    // has laid the new markup out.
+    requestAnimationFrame(classroomFitStage);
 }
 
 /**
@@ -3504,6 +3642,115 @@ function classroomShotHtml(q, revealed) {
          + (hideCaption ? ' onload="classroomFitShot(this)"' : '') + '>'
          + '</div>';
 }
+
+/**
+ * Shrink the slide until it fits, so a projector never needs scrolling.
+ *
+ * Sizing everything in vmin gets close but cannot guarantee it: the content
+ * varies — four long species names wrap to two lines each, a reveal block
+ * appears after the answer, a chart and a photo have different heights — and
+ * on a short or 4:3 projector any of those can push the choices off the
+ * bottom. Off the bottom of a projector is INVISIBLE, not merely
+ * inconvenient: nobody in the room can scroll it, and the teacher driving
+ * from the back cannot either.
+ *
+ * So the whole slide is measured after it renders and scaled down as one
+ * block if it overflows. Uniform scale keeps the layout and the relative
+ * sizes exactly as designed; only the absolute size moves.
+ *
+ * Called after every render, after an image loads (which changes the height),
+ * and on resize.
+ */
+// Suppresses the observer below while we are the ones changing the size.
+let classroomFitWriting = false;
+let classroomFitObserved = null;
+
+/**
+ * Re-fit when the slide's height changes under us.
+ *
+ * One pass on the frame after render is not enough. Measured there, a slide
+ * came out 68px taller than it settled at a moment later - the text was still
+ * in the fallback font - so the scale was computed against a height that no
+ * longer existed, and nothing ever recomputed it. Web fonts, a chart's SVG
+ * and a photo all land after that first frame.
+ *
+ * Watching the element covers all three without having to know which. Our own
+ * writes would otherwise retrigger it, so they are fenced off rather than
+ * guarded by comparing sizes, which is what turns these into infinite loops.
+ */
+const classroomFitObserver = typeof ResizeObserver === 'function'
+    ? new ResizeObserver(() => { if (!classroomFitWriting) classroomFitStage(); })
+    : null;
+
+function classroomFitStage() {
+    const body = document.querySelector('.classroom-stage-body');
+    const fit  = body && body.querySelector('.classroom-fit');
+    if (!fit) return;
+
+    // Each render builds a new element, so follow it.
+    if (classroomFitObserver && classroomFitObserved !== fit) {
+        if (classroomFitObserved) classroomFitObserver.unobserve(classroomFitObserved);
+        classroomFitObserver.observe(fit);
+        classroomFitObserved = fit;
+    }
+
+    classroomFitWriting = true;
+    try {
+        classroomFitMeasure(body, fit);
+    } finally {
+        // Release only once the layout from our writes has been observed,
+        // or the callback they provoke arrives after the flag is down and
+        // we measure our own scaled output.
+        requestAnimationFrame(() => { classroomFitWriting = false; });
+    }
+}
+
+function classroomFitMeasure(body, fit) {
+
+    // Measure unscaled, or each pass would compound the previous one.
+    // The height has to go too: it is set below to the scaled height, and
+    // leaving it would make the next pass measure the last pass's answer.
+    fit.style.transform = '';
+    fit.style.height    = '';
+
+    // clientHeight INCLUDES the stage body's own padding, so using it raw
+    // promised the slide about 36px that do not exist and left exactly that
+    // much overflow. What the slide may occupy is the padding box minus the
+    // padding.
+    const pad = getComputedStyle(body);
+    const available = body.clientHeight
+                    - parseFloat(pad.paddingTop)
+                    - parseFloat(pad.paddingBottom);
+    const natural   = fit.scrollHeight;
+    if (available <= 0 || !natural) return;
+
+    // A little margin so a rounding error does not leave one pixel of
+    // overflow and a scrollbar with it.
+    const scale = Math.min(1, (available - 4) / natural);
+
+    // Below about half size the text stops being readable from the back of a
+    // room, and scaling further would trade one unusable slide for another.
+    // Allow the scroll in that case rather than pretending.
+    if (scale < 0.5) {
+        fit.style.transform = '';
+        fit.style.height = '';
+        return;
+    }
+
+    fit.style.transformOrigin = 'center top';
+    fit.style.transform = `scale(${scale})`;
+    // transform scales what is PAINTED, not the layout box — the container
+    // goes on reserving the full height and goes on scrolling, which is the
+    // whole thing being fixed. Shrinking the box to match the painted size is
+    // what actually removes the scrollbar.
+    fit.style.height = (natural * scale) + 'px';
+}
+
+let classroomFitTimer = null;
+window.addEventListener('resize', () => {
+    clearTimeout(classroomFitTimer);
+    classroomFitTimer = setTimeout(classroomFitStage, 120);
+});
 
 /**
  * The teacher taps what the room voted for.
@@ -3768,6 +4015,7 @@ function renderClassroomLobby() {
         </div>
 
         <div class="classroom-stage-body">
+          <div class="classroom-fit">
             <div class="classroom-lobby">
                 <div class="classroom-lobby-cols">
                     <div class="classroom-lobby-text">
@@ -3786,6 +4034,7 @@ function renderClassroomLobby() {
                     ? joined.map(n => `<span class="classroom-nick">${esc(n)}</span>`).join('')
                     : '<span class="classroom-muted">Waiting for the first person to join…</span>'}
             </div>
+          </div>
         </div>
 
         <div class="classroom-stage-foot">
@@ -3795,6 +4044,8 @@ function renderClassroomLobby() {
             </button>
             <span class="classroom-muted">${S.questions.length} questions ready.</span>
         </div>`;
+
+    requestAnimationFrame(classroomFitStage);
 }
 
 /**
@@ -3804,6 +4055,13 @@ function renderClassroomLobby() {
  * missing or the URL will not fit — the code and the address beside it are
  * the real instructions, and the QR is the shortcut. A classroom should never
  * be blocked by the shortcut failing.
+ *
+ * CURRENTLY ALWAYS EMPTY. community-qr.js is deliberately not loaded, because
+ * the symbols it produces do not scan — confirmed against a phone camera on
+ * both a join link and a plain 'HELLO' rendered large and clean. A QR on the
+ * board that a class cannot scan is worse than no QR: thirty children try it,
+ * it fails, and the lesson stops while the teacher works out why. The address
+ * and the code beside it are what the lobby relies on.
  */
 function classroomJoinQrHtml(code) {
     if (!code || typeof bwQr === 'undefined' || !bwQr) return '';
