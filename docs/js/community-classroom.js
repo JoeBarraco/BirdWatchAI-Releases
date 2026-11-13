@@ -6406,7 +6406,7 @@ function renderClassroomForm() {
             </p>
             <div id="classroom-partners" class="classroom-checks"></div>
         </details>
-        <details class="classroom-details">
+        <details class="classroom-details" ontoggle="if (this.open) classroomPickLoadPreview()">
             <summary>Which questions this class can ask
                 <span class="classroom-pill" id="classroom-picks-count"></span></summary>
             <p class="classroom-muted">
@@ -6603,6 +6603,75 @@ function syncClassroomPickBoxes() {
 }
 
 /**
+ * This classroom's real feeder data, kept so the picker can say how many
+ * questions a selection ACTUALLY produces rather than how many were ticked.
+ *
+ * Loaded lazily, when the picker is first opened, because it costs a query
+ * and most edits never touch the picker at all.
+ */
+let classroomPickPreview = { roomId: null, data: null, loading: false };
+
+async function classroomPickLoadPreview() {
+    const editing = classroomEditingId
+        ? classroomList.find(r => r.id === classroomEditingId)
+        : null;
+    // A classroom being created has no id and no feeder history to build
+    // from, so there is nothing truthful to say yet.
+    if (!editing || !editing.home_feeder_id) return;
+    if (classroomPickPreview.loading || classroomPickPreview.roomId === editing.id) return;
+
+    const want = editing.id;
+    classroomPickPreview = { roomId: null, data: null, loading: true };
+    try {
+        const data = await loadClassroomData(editing);
+        // The teacher may have closed this editor and opened another one
+        // while the query was in flight; landing that data on the new room
+        // would have the picker count against the wrong feeder.
+        if (classroomEditingId !== want) {
+            classroomPickPreview = { roomId: null, data: null, loading: false };
+            return;
+        }
+        classroomPickPreview = { roomId: want, data, loading: false };
+    } catch (e) {
+        // Never fatal: without it the picker falls back to counting types,
+        // which is what it did before and is still better than nothing.
+        console.warn('[classroom] could not load data for the question picker:', e);
+        classroomPickPreview = { roomId: null, data: null, loading: false };
+        return;
+    }
+    updateClassroomPickCount();
+}
+
+/**
+ * How many questions the current selection really builds this week.
+ *
+ * Null when that cannot be known — a new classroom, or the data not loaded.
+ *
+ * Worth the trouble because counting ticks is misleading in exactly the case
+ * the warning exists for. The Art Room ticked nine art and identification
+ * types for an eight-question session, which passed the tick count without a
+ * murmur, and then built four: five of the nine had nothing in that week's
+ * data to stand on. A teacher finding that out in front of a class is the
+ * thing this is supposed to prevent.
+ */
+function classroomPickBuildCount() {
+    if (!classroomEditingId || classroomPickPreview.roomId !== classroomEditingId) return null;
+    const editing = classroomList.find(r => r.id === classroomEditingId);
+    if (!editing || !classroomPickPreview.data) return null;
+
+    const shadow = {
+        ...editing,
+        grade_band:     classroomFormBand(),
+        template_picks: classroomPicks ? [...classroomPicks] : null,
+    };
+    try {
+        return buildClassroomQuestions(shadow, classroomPickPreview.data, { all: true }).built;
+    } catch (e) {
+        return null;
+    }
+}
+
+/**
  * The line on the summary, and the warning under the list.
  *
  * The warning is the part that earns its place: picking four question types
@@ -6615,6 +6684,7 @@ function updateClassroomPickCount() {
     const list = classroomTemplatesForBand(band);
     const on   = list.filter(t => classroomPickOn(t.id)).length;
     const size = parseInt(document.getElementById('classroom-quiz-size')?.value, 10) || 8;
+    const an   = n => (n === 8 || n === 11 || n === 18) ? 'an' : 'a';
 
     const badge = document.getElementById('classroom-picks-count');
     if (badge) {
@@ -6625,15 +6695,31 @@ function updateClassroomPickCount() {
 
     const warn = document.getElementById('classroom-picks-warn');
     if (!warn) return;
+
+    const real = classroomPickBuildCount();
+
     if (on === 0) {
         warn.textContent = 'Nothing is ticked, so this class will ask anything it can — '
                          + 'unticking everything is the same as choosing everything.';
         warn.className = 'classroom-muted';
+    } else if (real != null && real < size) {
+        // The honest number, and why it differs from the tick count.
+        warn.textContent = `These build ${real} question${real === 1 ? '' : 's'} from this `
+                         + `week's data, for ${an(size)} ${size}-question session. `
+                         + (real < on
+                             ? `${on - real} of the ${on} ticked have nothing to stand on `
+                             + 'this week. Tick more, or expect a shorter lesson.'
+                             : 'Tick more, or expect a shorter lesson.');
+        warn.className = 'classroom-warn';
+    } else if (real != null) {
+        warn.textContent = `These build ${real} question${real === 1 ? '' : 's'} from this `
+                         + `week's data — enough for ${an(size)} ${size}-question session. `
+                         + 'The number moves with what the birds actually do.';
+        warn.className = 'classroom-muted';
     } else if (on < size) {
         warn.textContent = `Only ${on} question type${on === 1 ? '' : 's'} ticked for `
-                         + `${size === 8 || size === 11 || size === 18 ? 'an' : 'a'} `
-                         + `${size}-question session. Questions will repeat, or the lesson `
-                         + 'will be shorter than that.';
+                         + `${an(size)} ${size}-question session. Questions will repeat, or `
+                         + 'the lesson will be shorter than that.';
         warn.className = 'classroom-warn';
     } else {
         warn.textContent = 'How many of these actually come up depends on what the birds '
