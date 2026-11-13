@@ -555,9 +555,27 @@ function cmDaySeries(s) {
     return s.days.map(d => ({ label: cmDayLabel(d.day), value: d.n, key: d.day }));
 }
 
+/**
+ * The clearest photo this feeder has of each species, for the chart labels.
+ *
+ * A K-2 class is the band least able to read "Carolina Chickadee" off a chart
+ * and most able to recognise the bird, so the picture is doing the real work
+ * of the label for them. The best shot is the highest-confidence one, which
+ * snapshots is already sorted by.
+ *
+ * Only this feeder's own photos — never a stock image. The point of the
+ * lesson is the bird that came to THIS feeder, and a reference photo of a
+ * different individual in different light quietly undoes that.
+ */
+function cmSpeciesPhoto(s, species) {
+    const shot = s.snapshots.find(r => r.species === species);
+    return shot ? shot.image_url : null;
+}
+
 function cmSpeciesSeries(s, limit) {
     return s.species.slice(0, limit || CHART_MAX_BARS)
-        .map(x => ({ label: x.species, value: x.n, key: x.species }));
+        .map(x => ({ label: x.species, value: x.n, key: x.species,
+                     image: cmSpeciesPhoto(s, x.species) }));
 }
 
 /**
@@ -586,8 +604,9 @@ function cmNiceStep(max) {
 }
 
 function classroomBarsHtml(chart, revealed) {
-    const W = 1000, H = 420;
-    const padL = 70, padR = 20, padT = 30, padB = 86;
+    const hasPhotos = chart.series.some(x => x.image);
+    const W = 1000, H = hasPhotos ? 520 : 420;
+    const padL = 70, padR = 20, padT = 30, padB = hasPhotos ? 186 : 86;
     const plotW = W - padL - padR, plotH = H - padT - padB;
 
     const step = cmNiceStep(chart.max);
@@ -606,6 +625,22 @@ function classroomBarsHtml(chart, revealed) {
     const slot = plotW / n;
     const barW = Math.min(slot * 0.62, 96);
 
+    // Room under the axis for a photo, when the series has them. The labels
+    // move down to make space rather than the plot shrinking, because a
+    // shorter plot makes every bar harder to read against the gridlines.
+    const withPhotos = chart.series.some(x => x.image);
+    // SVG ids are document-global, so a fixed id would let a second chart's
+    // clip paths override the first one's.
+    const nonce = Math.random().toString(36).slice(2, 8);
+    const thumbW = Math.min(barW * 1.5, 130);
+    const thumbH = Math.round(thumbW / 1.3);        // same shape as .cc-thumb
+    // The image box is drawn 19% taller than the visible rect and clipped to
+    // it, so the burned-in caption falls off the bottom. A rect this shape
+    // with plain "slice" would show the full height of the frame — caption
+    // and all — because the source is wider than the box.
+    const thumbSrcH = Math.round(thumbH * 1.19);
+    const labelDrop = withPhotos ? thumbH + 12 : 0;
+
     const bars = chart.series.map((s, i) => {
         const cx = padL + slot * i + slot / 2;
         const h = Math.max(1, (s.value / top) * plotH);
@@ -618,13 +653,30 @@ function classroomBarsHtml(chart, revealed) {
             ? [parts.slice(0, -1).join(' '), parts[parts.length - 1]]
             : [label];
 
+        // preserveAspectRatio="xMidYMin slice" is cover anchored to the TOP,
+        // which crops the bottom of the frame — and the bottom of the frame is
+        // where the species name is burned in. One attribute does the whole
+        // job the big snapshot needs a measured aspect ratio for.
+        // Each image needs its OWN clip rect — one canvas-sized clipPath
+        // rounds nothing. The id carries the chart's nonce so two charts on
+        // one page cannot capture each other's clip.
+        const clipId = `cc${nonce}-${i}`;
+        const thumb = (withPhotos && s.image)
+            ? `<clipPath id="${clipId}"><rect x="${cx - thumbW / 2}" y="${H - padB + 6}"
+                     width="${thumbW}" height="${thumbH}" rx="8"/></clipPath>`
+            + `<image href="${esc(s.image)}" x="${cx - thumbW / 2}" y="${H - padB + 6}"
+                      width="${thumbW}" height="${thumbSrcH}"
+                      preserveAspectRatio="xMidYMin slice" clip-path="url(#${clipId})"/>`
+            : '';
+
         return `<rect x="${cx - barW / 2}" y="${y(s.value)}" width="${barW}" height="${h}"
                       rx="6" class="cc-bar${on ? ' on' : ''}"/>`
              + (revealed
                  ? `<text x="${cx}" y="${y(s.value) - 10}" class="cc-val" text-anchor="middle">${s.value}</text>`
                  : '')
+             + thumb
              + lines.map((ln, k) =>
-                 `<text x="${cx}" y="${H - padB + 28 + k * 26}" class="cc-label"
+                 `<text x="${cx}" y="${H - padB + 28 + labelDrop + k * 26}" class="cc-label"
                         text-anchor="middle">${esc(ln)}</text>`).join('');
     }).join('');
 
@@ -650,14 +702,19 @@ function classroomDotsHtml(chart, revealed) {
         }
         return `
             <div class="cc-row${on ? ' on' : ''}">
-                <span class="cc-row-label">${esc(s.label)}</span>
+                <span class="cc-row-head">
+                    ${s.image ? `<span class="cc-thumb"><img src="${esc(s.image)}" alt=""></span>` : ''}
+                    <span class="cc-row-label">${esc(s.label)}</span>
+                </span>
                 <span class="cc-dots">${dots || '<span class="cc-none">none</span>'}</span>
                 ${revealed ? `<span class="cc-row-val">${s.value}</span>` : ''}
             </div>`;
     }).join('');
 
+    const withPhotos = chart.series.some(x => x.image);
+
     return `
-        <figure class="classroom-chart dots">
+        <figure class="classroom-chart dots${withPhotos ? ' with-photos' : ''}">
             <div class="cc-rows">${rows}</div>
             <figcaption>${esc(chart.caption)}</figcaption>
         </figure>`;
@@ -828,7 +885,8 @@ const CLASSROOM_TEMPLATES = [
             choices: shuffled.map(x => ({ label: x.species })),
             correct_index: shuffled.findIndex(x => x.species === a.species),
             chart: cmChart('Visits by species this week',
-                           [a, b].map(x => ({ label: x.species, value: x.n, key: x.species })),
+                           [a, b].map(x => ({ label: x.species, value: x.n, key: x.species,
+                                              image: cmSpeciesPhoto(s, x.species) })),
                            { band: 'k-2' }),
             explain: `${a.species}: ${a.n} visits. ${b.species}: ${b.n} visits.`,
             fact: speciesFact(a.species, 'k-2'),
@@ -852,7 +910,8 @@ const CLASSROOM_TEMPLATES = [
             prompt: `How many more ${a.species} visits than ${b.species} visits were there this week?`,
             ...built,
             chart: cmChart('Visits by species this week',
-                           [a, b].map(x => ({ label: x.species, value: x.n, key: x.species })),
+                           [a, b].map(x => ({ label: x.species, value: x.n, key: x.species,
+                                              image: cmSpeciesPhoto(s, x.species) })),
                            { band }),
             explain: `${a.n} − ${b.n} = ${diff}.`,
         };

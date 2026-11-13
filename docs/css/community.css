@@ -4050,30 +4050,72 @@
 
 .classroom-chart.dots { width: min(92vw, 760px); }
 
-.cc-rows { display: flex; flex-direction: column; gap: 1.1vmin; }
+.cc-rows { display: flex; flex-direction: column; gap: 1.5vmin; }
+
+/* ── The bird beside its name ──────────────────────────────────────
+   A K-2 class is the band least able to read "Carolina Chickadee" and most
+   able to recognise the bird, so for them the picture is the label and the
+   words are the caption.
+
+   THE CROP IS NOT DECORATION. Every snapshot has the species name burned
+   into the bottom of the frame, so the bottom has to go.
+
+   Done by zooming rather than by flattening the box. A letterbox wide
+   enough to push the caption out (2.12:1 against a 16:9 source) leaves a
+   strip of roof and sky with the bird mostly outside it — tried, and the
+   thumbnail became unreadable, which defeats the whole point of having one.
+   Instead the image is laid in 19% taller than the box and anchored to the
+   top: `cover` crops the sides to the middle, where a feeder bird almost
+   always is, and the overflow takes the caption with it off the bottom.
+   19% because the strip runs to about 16% of frame height, plus margin. */
+.cc-thumb {
+    flex: 0 0 auto;
+    width: clamp(64px, 11vmin, 132px);
+    aspect-ratio: 1.3;
+    overflow: hidden; border-radius: 8px;
+    background: var(--border);
+}
+.cc-thumb img {
+    width: 100%; height: 119%;
+    object-fit: cover; object-position: top;
+    display: block;
+}
 
 .cc-row {
     display: grid; grid-template-columns: 7.5em 1fr auto;
     align-items: center; gap: 1.2vmin;
     padding: 0.6vmin 1vmin; border-radius: 10px;
 }
+
+/* Wider first column only when it carries a photo, so a week of day names
+   doesn't sit in a column sized for something it hasn't got. */
+.classroom-chart.dots.with-photos .cc-row { grid-template-columns: 13em 1fr auto; }
+
+.cc-row-head {
+    display: flex; align-items: center; justify-content: flex-end;
+    gap: 0.9vmin; min-width: 0;
+}
 .cc-row.on { background: color-mix(in srgb, var(--color-primary) 16%, transparent); }
 
 .cc-row-label {
     font-size: clamp(0.85rem, 2vmin, 1.4rem); font-weight: 600;
     color: var(--color-gray-900); text-align: right;
+    min-width: 0; overflow-wrap: anywhere;
 }
 
-.cc-dots { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5vmin; }
+.cc-dots { display: flex; flex-wrap: wrap; align-items: center; gap: 0.8vmin; }
 
+/* Sized to be counted from the back of a classroom, not to be tidy. These
+   were half this size and read as decoration; a child has to be able to pick
+   out individual dots across the room to count them at all. */
 .cc-dot {
-    width: clamp(10px, 1.9vmin, 22px); aspect-ratio: 1;
+    width: clamp(16px, 3.1vmin, 38px); aspect-ratio: 1;
     border-radius: 50%; background: var(--color-primary);
     display: inline-block;
 }
 /* A wider gap after every fifth dot. Counting in fives is the habit a tally
    chart is teaching, and the eye picks the grouping up without being told. */
-.cc-dot.five { margin-right: 1.6vmin; }
+.cc-dot.five { margin-right: 2.4vmin; }
 
 .cc-row-val {
     font-size: clamp(0.85rem, 2vmin, 1.4rem); font-weight: 700;
