@@ -57,11 +57,43 @@ update classroom_question_feedback
 
 
 -- ────────────────────────────────────────────────────────────────────
--- 3. The schedule — daily at 12:00 UTC (7am EST / 8am EDT)
+-- 3. ⚠ THE VAULT SECRET THIS NEEDS — AND A BUG IT UNCOVERED
+--
+-- setup-newsletter.sql schedules the weekly digest by reading BOTH the
+-- functions URL and the service-role key out of vault.decrypted_secrets.
+-- Those secrets do not exist. `select count(*) from vault.secrets`
+-- returns 0, so the url expression evaluates to NULL and net.http_post
+-- fails — and cron.job_run_details confirms it: weekly-bird-digest has
+-- status 'failed' on every run going back as far as the history goes
+-- (Nov 8, Nov 1, Oct 25…). THE WEEKLY NEWSLETTER HAS NEVER BEEN SENT.
+-- It fails silently, because a failing cron job tells nobody.
+--
+-- So this file does NOT copy that pattern wholesale. The functions URL
+-- is not a secret — it is the project ref, which is already in the
+-- deploy notes — so it is written in plainly, and only the key is
+-- looked up. That leaves exactly one thing that has to exist, and one
+-- obvious place for it to be missing.
+--
+-- BEFORE THIS JOB CAN FIRE, run once (never commit the key):
+--
+--   select vault.create_secret('eyJhbGci…the service_role key…',
+--                              'service_role_key',
+--                              'Used by pg_cron to call edge functions');
+--
+-- The same secret is what the weekly newsletter has been missing, so
+-- creating it fixes both. Verify with:
+--
+--   select name from vault.secrets;
+--   select jobname, status, start_time from cron.job_run_details d
+--     join cron.job j using (jobid) order by start_time desc limit 10;
+-- ────────────────────────────────────────────────────────────────────
+
+
+-- ────────────────────────────────────────────────────────────────────
+-- 4. The schedule — daily at 12:00 UTC (7am EST / 8am EDT)
 --
 -- Before the school day, so a flag raised in yesterday's lesson is in
--- the inbox before today's. Same vault secrets as the weekly digest,
--- which is already running on this pattern.
+-- the inbox before today's.
 --
 -- The function sends NOTHING when there is nothing new, so a quiet day
 -- is a silent one rather than an empty email.
@@ -79,7 +111,7 @@ select cron.schedule(
   '0 12 * * *',
   $$
     select net.http_post(
-      url    := (select decrypted_secret from vault.decrypted_secrets where name = 'supabase_functions_url') || '/classroom-feedback-digest',
+      url    := 'https://lsamggztfizmkyljdgwq.supabase.co/functions/v1/classroom-feedback-digest',
       body   := '{}'::jsonb,
       headers := jsonb_build_object(
         'Content-Type',  'application/json',
