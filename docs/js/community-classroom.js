@@ -7866,12 +7866,12 @@ function renderClassroomLobby() {
  * the real instructions, and the QR is the shortcut. A classroom should never
  * be blocked by the shortcut failing.
  *
- * CURRENTLY ALWAYS EMPTY. community-qr.js is deliberately not loaded, because
- * the symbols it produces do not scan — confirmed against a phone camera on
- * both a join link and a plain 'HELLO' rendered large and clean. A QR on the
- * board that a class cannot scan is worse than no QR: thirty children try it,
- * it fails, and the lesson stops while the teacher works out why. The address
- * and the code beside it are what the lobby relies on.
+ * Live again as of the qrcode-generator swap. The hand-rolled encoder this
+ * used to call produced symbols that did not scan at any version, which is
+ * why this returned nothing for so long; see the header of community-qr.js.
+ * The empty-string fallback stays, because "no QR" is a lobby that still
+ * works and "a QR that will not scan" is thirty children trying it while the
+ * lesson stops.
  */
 function classroomJoinQrHtml(code) {
     if (!code || typeof bwQr === 'undefined' || !bwQr) return '';
