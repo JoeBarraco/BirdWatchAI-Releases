@@ -3917,6 +3917,33 @@
    class types a six-digit code off it. */
 .classroom-lobby { text-align: center; }
 
+/* Code and QR side by side, because they are alternatives rather than
+   steps: a child either types the six digits or points a camera. Stacked,
+   the QR reads as something to do after the code. Wraps on a narrow or
+   portrait projector, where side-by-side would shrink both below use. */
+.classroom-lobby-cols {
+    display: flex; align-items: center; justify-content: center;
+    gap: clamp(1rem, 5vmin, 4rem); flex-wrap: wrap;
+}
+
+.classroom-lobby-text { text-align: center; }
+
+.classroom-qr { flex: 0 0 auto; }
+
+/* White plate behind the code. A QR inverted by dark mode does not scan on
+   many phones, and the quiet zone has to stay light whatever the theme —
+   so this is deliberately not themed. */
+.classroom-qr svg {
+    width: clamp(140px, 26vmin, 320px); height: auto; display: block;
+    background: #fff; border-radius: 10px;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.25);
+}
+
+.classroom-qr-cap {
+    font-size: clamp(0.75rem, 1.6vmin, 1.05rem);
+    color: var(--color-gray-500); margin: 0.7vmin 0 0; text-align: center;
+}
+
 .classroom-lobby-step {
     font-size: clamp(0.9rem, 2vmin, 1.3rem);
     color: var(--color-gray-500); margin: 0.6vmin 0;

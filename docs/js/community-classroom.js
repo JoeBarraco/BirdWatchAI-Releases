@@ -2282,6 +2282,18 @@ function startClassroomLobby() {
     startClassroomLobbyPoll();
 }
 
+/**
+ * The join URL with the class code already in it.
+ *
+ * What the QR encodes. Scanning it should leave a child with one thing to do
+ * — type a nickname — rather than two. The code is no more exposed than it
+ * already is: it is in 11rem digits on the projector behind the QR.
+ */
+function classroomJoinUrlWithCode(code) {
+    const base = classroomJoinUrl();
+    return code ? `${base}?c=${encodeURIComponent(code)}` : base;
+}
+
 function classroomJoinUrl() {
     // Derived from the current page, so this works on the live site, on a
     // staging copy and on localhost without a build-time constant.
@@ -2321,10 +2333,15 @@ function renderClassroomLobby() {
 
         <div class="classroom-stage-body">
             <div class="classroom-lobby">
-                <p class="classroom-lobby-step">On your device, go to</p>
-                <p class="classroom-lobby-url">${esc(url)}</p>
-                <p class="classroom-lobby-step">and enter the class code</p>
-                <p class="classroom-code">${esc(S.joinCode || '—')}</p>
+                <div class="classroom-lobby-cols">
+                    <div class="classroom-lobby-text">
+                        <p class="classroom-lobby-step">On your device, go to</p>
+                        <p class="classroom-lobby-url">${esc(url)}</p>
+                        <p class="classroom-lobby-step">and enter the class code</p>
+                        <p class="classroom-code">${esc(S.joinCode || '—')}</p>
+                    </div>
+                    ${classroomJoinQrHtml(S.joinCode)}
+                </div>
                 <p class="classroom-muted">Pick any nickname. No password, no sign-in,
                    and nothing is kept after the lesson.</p>
             </div>
@@ -2342,6 +2359,24 @@ function renderClassroomLobby() {
             </button>
             <span class="classroom-muted">${S.questions.length} questions ready.</span>
         </div>`;
+}
+
+/**
+ * The QR for the join link, or nothing if it cannot be made.
+ *
+ * Returns an empty string rather than a broken image when the encoder is
+ * missing or the URL will not fit — the code and the address beside it are
+ * the real instructions, and the QR is the shortcut. A classroom should never
+ * be blocked by the shortcut failing.
+ */
+function classroomJoinQrHtml(code) {
+    if (!code || typeof bwQr === 'undefined' || !bwQr) return '';
+    const svg = bwQr.svg(classroomJoinUrlWithCode(code), { label: 'Scan to join the class' });
+    if (!svg) return '';
+    return `<div class="classroom-qr">
+                ${svg}
+                <p class="classroom-qr-cap">Point your camera here</p>
+            </div>`;
 }
 
 function startClassroomLobbyPoll() {

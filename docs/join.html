@@ -340,6 +340,23 @@
         if (!document.hidden && token) poll();
     });
 
+    // Arrived by QR: the code is in the URL, so fill it in and put the
+    // cursor where the only remaining work is. Still validated server-side —
+    // a code in a link is a convenience, never an admission.
+    (function () {
+        var c = (new URLSearchParams(location.search).get('c') || '').replace(/\D/g, '');
+        if (c.length === 6) {
+            $('code').value = c;
+            // The instruction is now wrong: there is nothing to type.
+            var sub = document.querySelector('#join-view p.sub');
+            if (sub) sub.textContent = 'Pick a nickname and you are in.';
+            // Defer the focus: iOS Safari ignores focus() during parse, and a
+            // keyboard that does not open leaves the child tapping at a field
+            // that already looks filled in.
+            setTimeout(function () { $('nick').focus(); }, 60);
+        }
+    })();
+
     // Resume a lesson across a lock screen or an accidental reload.
     try {
         var saved = sessionStorage.getItem('bwai-class-token');

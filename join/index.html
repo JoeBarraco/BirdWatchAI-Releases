@@ -47,6 +47,18 @@
 <body>
     <p>Taking you to your class…</p>
     <a class="go" href="/docs/join.html">Tap here to join</a>
-    <script>location.replace('/docs/join.html');</script>
+    <script>
+      // Carry the query across. The QR encodes /join?c=123456, and dropping
+      // the search string here would land every scanned device on an empty
+      // form — the exact typing the QR exists to avoid. The meta refresh
+      // above cannot do this, so it stays as the no-JavaScript fallback that
+      // merely costs the child six digits.
+      (function () {
+        var to = '/docs/join.html' + (location.search || '');
+        var a = document.querySelector('a.go');
+        if (a) a.href = to;
+        location.replace(to);
+      })();
+    </script>
 </body>
 </html>
