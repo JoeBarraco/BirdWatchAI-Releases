@@ -13,7 +13,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="BirdWatchAI">
-    <link rel="stylesheet" href="css/community.css?v=12">
+    <link rel="stylesheet" href="css/community.css?v=8fc6bcba">
 </head>
 <body>
 <!-- Top navbar with auth controls -->
@@ -1039,20 +1039,20 @@
      a stale community-views.js is the bad mix: the old switchView() has no branch for a tab that
      now exists, so it hides every view, matches none, and leaves a blank page under the tab bar.
      Bump these whenever a change to the view list or the render hooks must land immediately. -->
-<script src="js/community-core.js?v=5"></script>
+<script src="js/community-core.js?v=c4d56808"></script>
 <!-- ?v=2: renderFeeders() now emits a badge strip per card and the Leaderboard
      grew four badge columns. A stale copy would leave the new badges modal and
      community-badges.js loaded but never called, so the feature would silently
      not appear. -->
-<script src="js/community-views.js?v=5"></script>
+<script src="js/community-views.js?v=86261aa6"></script>
 <!-- ?v=2: gained escJs(), which community-views / -auth / -communities now all
      call. Every one of those must be re-fetched with it — a cached social.js
      leaves escJs undefined and the handlers throw. -->
-<script src="js/community-social.js?v=3"></script>
+<script src="js/community-social.js?v=51f264d1"></script>
 <!-- Clips tab. Must load before community-auth.js: the theater's key handler calls
      stopImmediatePropagation so the global single-key shortcuts registered there don't also fire
      while a clip is playing, and that only works if this listener is registered first. -->
-<script src="js/community-clips.js?v=2"></script>
+<script src="js/community-clips.js?v=7de6fc5e"></script>
 <!-- ?v= on the moderator-auth scripts: moderator calls now carry a session
      token instead of a replayed password, and the RPCs no longer accept the old
      shape. A moderator holding a cached copy of the previous client would get
@@ -1060,30 +1060,30 @@
      number whenever the moderator auth contract changes again. -->
 <!-- Canvas re-burn of the photo's caption strip, used by the moderator edit
      modal. Must load before community-auth.js, which calls into window.bwOverlay. -->
-<script src="js/community-overlay.js"></script>
-<script src="js/community-auth.js?v=6"></script>
-<script src="js/community-remote.js?v=2"></script>
+<script src="js/community-overlay.js?v=81687514"></script>
+<script src="js/community-auth.js?v=7f5c7e4c"></script>
+<script src="js/community-remote.js?v=8bfa2038"></script>
 <!-- ?v=5: the panel gained the tier picker, the redeem form and the bulk
      roster paste. Markup,
      script and stylesheet all have to land together — new HTML against a cached
      script renders buttons wired to functions that don't exist, and against a
      cached stylesheet renders the tier rows as bare links. css/community.css is
      pinned to v=7 for the same reason. -->
-<script src="js/community-communities.js?v=8"></script>
+<script src="js/community-communities.js?v=d2540f21"></script>
 <!-- Classroom mode (phase 1): classrooms, teacher-led sessions, question
      templates. Loads after community-communities.js because it reads
      myCommunities and hasAuthSession from it. -->
-<script src="js/community-classroom.js?v=5"></script>
+<script src="js/community-classroom.js?v=c3dd85ce"></script>
 <!-- Interactive chart runtime: crosshair tooltips on the trend chart, per-species hover rows on
      the Activity / Calendar / Rarity Mix charts. No-op until a [data-bw-chart] element appears. -->
-<script src="js/community-charts.js"></script>
+<script src="js/community-charts.js?v=2b12e881"></script>
 <!-- Feeder badges: the achievement catalog ported from the WinForms app's
      BadgeService, scored per feeder against the feeder_badge_stats view
      (supabase/setup-feeder-badges.sql). Rules are evaluated client-side and
      never stored, so a species correction re-scores automatically. Must load
      after community-core.js (sbHeaders) and community-social.js (esc); both
      are only needed at call time, not parse time. -->
-<script src="js/community-badges.js?v=1"></script>
+<script src="js/community-badges.js?v=ae1b0c21"></script>
 
 <!-- Everything on this page is content people chose to publish from their own feeders, and this is
      where they arrive to look at it — so the privacy policy belongs here, not only on the landing
