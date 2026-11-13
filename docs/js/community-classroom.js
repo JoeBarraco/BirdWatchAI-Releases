@@ -1161,6 +1161,34 @@ function cmSpeciesPhoto(s, species) {
     return shot ? shot.image_url : null;
 }
 
+/**
+ * A snapshot in the shape a SLIDE wants, which is not the shape a chart
+ * wants.
+ *
+ * cmSpeciesPhoto returns a bare URL, because that is what a chart thumbnail
+ * needs for an SVG href. A question's `image` is an object, because the slide
+ * also needs the detection id. Assigning the string to q.image renders
+ * src="undefined" - a broken image on the projector, and silent everywhere
+ * else. Four templates did exactly that before this existed.
+ */
+function cmShotFor(s, species) {
+    const shot = s.snapshots.find(r => r.species === species);
+    return shot ? { url: shot.image_url, detection_id: shot.id } : null;
+}
+
+/**
+ * A photograph of a bird the feeder has never seen.
+ *
+ * From Wikimedia Commons, fetched by tools/fetch-bird-photos.js along with
+ * the attribution its licence requires. The credit is carried on the image
+ * object and rendered on the slide: for CC BY and CC BY-SA that is not a
+ * courtesy, it is the condition under which we are allowed to show it at all.
+ */
+function cmWonderPhoto(bird) {
+    const p = (typeof BIRD_PHOTOS !== 'undefined' && BIRD_PHOTOS) ? BIRD_PHOTOS[bird] : null;
+    return p ? { url: p.file, credit: p } : null;
+}
+
 function cmSpeciesSeries(s, limit) {
     return s.species.slice(0, limit || CHART_MAX_BARS)
         .map(x => ({ label: x.species, value: x.n, key: x.species,
@@ -3025,13 +3053,11 @@ const CLASSROOM_TEMPLATES = [
         const built = cmChoices(w.answer, cmShuffle(w.distractors, rng), rng);
         if (!built) return null;
 
-        // A picture of the bird, where we honestly have one. Several of these
-        // species do come to feeders, and "this one was at OUR feeder on
-        // Tuesday" is worth far more to a class than a stock photograph
-        // would be. The rest carry no image rather than a borrowed one:
-        // hotlinking somebody's photograph is their licence to grant, not
-        // ours to assume.
-        const photo = cmSpeciesPhoto(s, w.bird);
+        // Our own snapshot first. For the species that do visit feeders,
+        // "this one was at OUR feeder on Tuesday" is worth far more to a
+        // class than any stock photograph. Otherwise a Wikimedia Commons
+        // photograph, shown with the credit its licence requires.
+        const photo = cmShotFor(s, w.bird) || cmWonderPhoto(w.bird);
 
         return {
             prompt: w.prompt,
@@ -3059,7 +3085,7 @@ const CLASSROOM_TEMPLATES = [
         if (pool.length < 2) return null;
 
         const pick = cmShuffle(pool, rng)[0];
-        const photo = cmSpeciesPhoto(s, pick.species);
+        const photo = cmShotFor(s, pick.species);
         if (!photo) return null;
 
         const others = Object.keys(COLOR_WORD_HEX)
@@ -3094,7 +3120,7 @@ const CLASSROOM_TEMPLATES = [
         const built = cmChoices(answer, [warm ? 'Cool' : 'Warm'], rng);
         if (!built) return null;
 
-        const photo = cmSpeciesPhoto(s, pick.species);
+        const photo = cmShotFor(s, pick.species);
         return {
             prompt: 'Artists call red, orange and yellow WARM colours, and blue '
                   + `and grey COOL colours. The ${pick.species} is `
@@ -3154,7 +3180,7 @@ const CLASSROOM_TEMPLATES = [
             ['blue + yellow', 'red + blue', 'black + white'], rng);
         if (!built) return null;
 
-        const photo = cmSpeciesPhoto(s, orange.species);
+        const photo = cmShotFor(s, orange.species);
         return {
             prompt: `The ${orange.species} came to our feeder this week. Its `
                   + 'orange is not a primary colour — which two paints would '
@@ -4755,11 +4781,33 @@ function classroomFootControls(S, last, joinMode) {
  * be reading off it.
  */
 function classroomShotHtml(q, revealed) {
+    if (!q.image || !q.image.url) return '';
     const hideCaption = q.category === 'identification' && !revealed;
-    return `<div class="classroom-shot"${hideCaption ? ' data-crop="caption"' : ''}>`
-         + `<img src="${esc(q.image.url)}" alt=""`
-         + (hideCaption ? ' onload="classroomFitShot(this)"' : '') + '>'
-         + '</div>';
+
+    // CC BY and CC BY-SA require the author and the licence wherever the
+    // image appears. Small, because it is a legal notice rather than part of
+    // the lesson - but present, because without it our use of the photograph
+    // is an infringement rather than a licence.
+    const c = q.image.credit;
+    const credit = c
+        ? `<p class="classroom-shot-credit">${esc(c.artist || 'Unknown')} /
+             ${esc(c.licence || '')} · Wikimedia Commons</p>`
+        : '';
+
+    // EVERY image re-fits the slide once it has loaded, not just the cropped
+    // identification ones. A photo arriving is the single biggest change to a
+    // slide's height, and the only pass that ran was the one before the image
+    // existed - so the slide was scaled against a height that was about to
+    // grow, and then scrolled. The ResizeObserver cannot be relied on alone
+    // here: it is deliberately deaf while the fitter is writing, and an image
+    // can easily land inside that window.
+    const onload = hideCaption ? 'classroomFitShot(this)'
+                               : 'requestAnimationFrame(classroomFitStage)';
+
+    return `<div class="classroom-shot${q.image.credit ? ' wonder' : ''}"`
+         + `${hideCaption ? ' data-crop="caption"' : ''}>`
+         + `<img src="${esc(q.image.url)}" alt="" onload="${onload}">`
+         + '</div>' + credit;
 }
 
 /**

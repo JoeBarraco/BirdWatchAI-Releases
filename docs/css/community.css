@@ -4507,3 +4507,19 @@
 }
 /* Smaller in review, where the whole lesson is on one scrolling page. */
 .classroom-review-q .classroom-intro p { font-size: 0.95rem; }
+
+/* The attribution a CC BY / CC BY-SA photograph must carry. Deliberately
+   quiet — it is a legal notice, not part of the lesson — but never hidden,
+   because without it showing the photograph is an infringement. */
+.classroom-shot-credit {
+    margin: 0.4vmin 0 0;
+    text-align: center;
+    font-size: clamp(0.6rem, 1.2vmin, 0.8rem);
+    color: var(--color-gray-500);
+}
+
+/* A fact slide's photograph is the hook, not an illustration beside the
+   question — so it gets more of the screen than a data question's snapshot.
+   The fit-to-screen pass still scales the whole slide down if the result
+   does not fit, which is why this can be generous. */
+.classroom-shot.wonder img { max-height: 46vh; }
