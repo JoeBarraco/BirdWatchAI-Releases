@@ -4184,9 +4184,12 @@
     opacity: 0.8;
 }
 
+/* Read from the back of a classroom, and then scaled down again by the
+   fit-to-screen pass, so these start larger than a web chart's would.
+   Flagged as too small on the hour chart. */
 .cc-label {
     fill: var(--color-gray-900);
-    font-size: 24px; font-family: inherit; font-weight: 600;
+    font-size: 30px; font-family: inherit; font-weight: 700;
 }
 
 /* Only drawn after the reveal. Until then the axis is the only way to read a
@@ -4610,3 +4613,9 @@
 .classroom-evidence-pair .classroom-map  { flex: 1.5 1 320px; }
 .classroom-evidence-pair .classroom-shot { flex: 1 1 200px; }
 .classroom-evidence-pair .classroom-shot img { max-height: 30vh; }
+
+/* A puzzle meets the class with no options on screen. */
+.classroom-guess-first {
+    display: flex; flex-direction: column; align-items: center; gap: 0.8vmin;
+    padding: 1.2vmin 0;
+}

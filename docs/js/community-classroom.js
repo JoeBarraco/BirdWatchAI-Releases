@@ -1474,11 +1474,17 @@ function cmDayProse(dayKey) {
     const d = cmDayStart(dayKey);
     const day = ['Sunday', 'Monday', 'Tuesday', 'Wednesday',
                  'Thursday', 'Friday', 'Saturday'][d.getDay()];
+    const month = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
+                   'August', 'September', 'October', 'November', 'December'][d.getMonth()];
     const n = d.getDate();
     const ord = (n % 10 === 1 && n !== 11) ? 'st'
               : (n % 10 === 2 && n !== 12) ? 'nd'
               : (n % 10 === 3 && n !== 13) ? 'rd' : 'th';
-    return `${day} the ${n}${ord}`;
+    // The month as well as the weekday: "Wednesday the 11th" is ambiguous
+    // across a fortnight's data, and a class reading a date aloud says the
+    // month. Asked for directly: "you should spell out the day/date, for
+    // instance Wednesday November 11th."
+    return `${day} ${month} ${n}${ord}`;
 }
 
 /**
@@ -1561,6 +1567,45 @@ function cmSpeciesSeries(s, limit) {
  * already ships no chart library, and adding one to draw eight rectangles
  * would cost more download than the whole classroom module.
  */
+/**
+ * The answers, or a button that asks for them first.
+ *
+ * Two flags on the puzzles said the same thing: "maybe this should be an
+ * 'enter your answer' rather than multichoice", and "maybe it should just
+ * jumble the letters and ask what the bird is, not a selection".
+ *
+ * They are right about the problem. Four options under an anagram is not a
+ * puzzle - the class reads the four and checks which letters fit, which is a
+ * different and much smaller exercise than unscrambling a word.
+ *
+ * This is NOT a text box, deliberately. Teacher-led mode has no student
+ * devices at all - that is the whole design - so there is nothing to type
+ * into, and in join-code mode a typed answer would have to be marked, which
+ * means spelling mistakes decide who is right. Hiding the options instead
+ * gets the part that matters: the class meets the puzzle cold and has to
+ * actually solve it. The options are one press away when they are stuck,
+ * which is also what a teacher wants when thirty children are waiting.
+ */
+function classroomChoicesBlock(S, q, choices) {
+    const shown = S.choicesShownFor === S.index;
+    if (!q.guess_first || S.revealed || shown) {
+        return `<div class="classroom-choices ${q.choices.length > 3 ? 'four' : ''}">${choices}</div>`;
+    }
+    return `
+        <div class="classroom-guess-first">
+            <p class="classroom-muted">Work it out first \u2014 no options yet.</p>
+            <button class="classroom-btn" onclick="showClassroomChoices()">
+                Show the choices</button>
+        </div>`;
+}
+
+function showClassroomChoices() {
+    const S = classroomSession;
+    if (!S) return;
+    S.choicesShownFor = S.index;
+    renderClassroomStage();
+}
+
 /**
  * Whatever the question puts in front of the class: a photo, a chart, a map,
  * or a photo AND a map side by side.
@@ -2573,7 +2618,16 @@ const CLASSROOM_TEMPLATES = [
 
         // Four contiguous, non-overlapping bands covering 0..∞, so whatever
         // the week actually does, exactly one choice was right.
-        const edges = [est - step, est, est + step];
+        //
+        // The estimate sits in the MIDDLE of a band, not on its edge. It used
+        // to be an edge, which produced this flag: "shouldn't it be 21? 7
+        // days at 3 per day" - the class does the multiplication, gets 21,
+        // and finds 21 sitting at the bottom of a range rather than inside
+        // one. The arithmetic is right and the chart was making it look
+        // wrong.
+        const edges = [Math.round(est - step / 2),
+                       Math.round(est + step / 2),
+                       Math.round(est + step * 1.5)];
         const buckets = [
             { label: `Fewer than ${edges[0]}`,           lo: 0,            hi: edges[0] },
             { label: `${edges[0]}–${edges[1] - 1}`,      lo: edges[0],     hi: edges[1] },
@@ -2592,9 +2646,11 @@ const CLASSROOM_TEMPLATES = [
                   + 'over the NEXT 7 days?',
             choices: opts.map(b => ({ label: b.label })),
             correct_index: null,
-            explain: `If the average held exactly, it would be about ${est}. `
-                   + 'Write down what the class picked - we will count the real '
-                   + 'total in 7 days and see who was closest.',
+            explain: `${Math.round(perDay)} visits a day \u00d7 7 days = about `
+                   + `${est}, so that is the band to beat. Real weeks wander, `
+                   + 'which is why this is a prediction and not a sum. Write down '
+                   + 'what the class picked - we will count the real total in 7 '
+                   + 'days and see who was closest.',
             chart: cmChart(`Visits each day at ${feeder}`, cmDaySeries(s), { band }),
             pending_check: {
                 kind: 'visits_window',
@@ -2937,8 +2993,8 @@ const CLASSROOM_TEMPLATES = [
                                 cmNumberDistractors(sum, rng, 3).map(String), rng);
         if (!built) return null;
         return {
-            prompt: `How many visits were there on ${cmDayAxisLabel(a.day)} and `
-                  + `${cmDayAxisLabel(b.day)} added together?`,
+            prompt: `How many visits were there on ${cmDayProse(a.day)} and `
+                  + `${cmDayProse(b.day)} added together?`,
             ...built,
             chart: cmChart('Visits each day this week', cmDaySeries(s), { band, showValues: true }),
             explain: `${a.n} + ${b.n} = ${sum}.`,
@@ -3337,6 +3393,8 @@ const CLASSROOM_TEMPLATES = [
 {
     id: 'word-jumble',
     category: 'puzzle',
+    // The whole point is to solve it, not to recognise it in a list.
+    guessFirst: true,
     title: 'Unscramble the bird',
     bands: ['k-2', '3-5'],
     build({ s, band, rng }) {
@@ -3376,6 +3434,8 @@ const CLASSROOM_TEMPLATES = [
 {
     id: 'missing-letters',
     category: 'puzzle',
+    // The whole point is to solve it, not to recognise it in a list.
+    guessFirst: true,
     title: 'Fill in the blanks',
     bands: ['3-5'],
     build({ s, band, rng }) {
@@ -3411,6 +3471,8 @@ const CLASSROOM_TEMPLATES = [
 {
     id: 'hidden-bird',
     category: 'puzzle',
+    // The whole point is to solve it, not to recognise it in a list.
+    guessFirst: true,
     title: 'Find the hidden bird',
     bands: ['3-5', '6-8'],
     build({ s, band, rng }) {
@@ -3451,6 +3513,8 @@ const CLASSROOM_TEMPLATES = [
 {
     id: 'letter-code',
     category: 'puzzle',
+    // The whole point is to solve it, not to recognise it in a list.
+    guessFirst: true,
     title: 'Crack the code',
     bands: ['6-8'],
     build({ s, band, rng }) {
@@ -3480,6 +3544,8 @@ const CLASSROOM_TEMPLATES = [
 {
     id: 'caesar-bird',
     category: 'puzzle',
+    // The whole point is to solve it, not to recognise it in a list.
+    guessFirst: true,
     title: 'Shifted letters',
     bands: ['6-8'],
     build({ s, band, rng }) {
@@ -3787,8 +3853,7 @@ const CLASSROOM_TEMPLATES = [
         if (!built) return null;
 
         return {
-            prompt: 'Three of these colours came to our feeder this week. '
-                  + 'Which one did NOT?',
+            prompt: 'Which of these colours did NOT come to our feeder this week?',
             ...built,
             chart: cmChart('Birds that came this week', cmSpeciesSeries(s), { band }),
             explain: `No ${answer} birds this week.`,
@@ -3966,6 +4031,8 @@ function buildClassroomQuestions(room, data, opts) {
                 (String(c.label).match(/\d+/g) || []).some(num => plotted.has(num)));
             if (!givesItAway) q.chart.showValues = true;
         }
+
+        if (t.guessFirst) q.guess_first = true;
 
         out.push({
             template_id: t.id,
@@ -5367,7 +5434,7 @@ function renderClassroomStage() {
             ${classroomEvidenceHtml(q, S.revealed)}
             ${classroomIntroHtml(q)}
             <h1 class="classroom-prompt">${esc(q.prompt)}</h1>
-            <div class="classroom-choices ${q.choices.length > 3 ? 'four' : ''}">${choices}</div>
+            ${classroomChoicesBlock(S, q, choices)}
             ${reveal}
           </div>
         </div>
