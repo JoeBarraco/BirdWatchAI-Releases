@@ -4469,3 +4469,41 @@
 }
 .classroom-choice.correct::before,
 .classroom-choice.chosen-wrong::before { display: none; }
+
+/* A colour answer shows the colour. A K-2 class that cannot yet read
+   "orange" can still match a patch to a photograph, which is the whole
+   reason the art questions are worth asking at that age. */
+.classroom-swatch {
+    width: clamp(22px, 3.4vmin, 42px);
+    aspect-ratio: 1;
+    border-radius: 8px;
+    flex: none;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+
+/* ── The story above a question ────────────────────────────────────
+   A fact slide is read aloud to the room, so this is set at reading-aloud
+   size rather than caption size. It was the first thing a teacher flagged
+   about the reveal text: too small to be the part that teaches. */
+.classroom-intro {
+    max-width: 62ch;
+    margin: 0 auto 1.4vmin;
+    text-align: center;
+}
+.classroom-intro p {
+    font-size: clamp(1rem, 2.5vmin, 1.7rem);
+    line-height: 1.45;
+    margin: 0 0 0.7vmin;
+    color: var(--color-gray-900);
+}
+.classroom-intro-bird {
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-size: clamp(0.8rem, 1.9vmin, 1.15rem) !important;
+    color: var(--color-primary) !important;
+    margin-bottom: 1vmin !important;
+}
+/* Smaller in review, where the whole lesson is on one scrolling page. */
+.classroom-review-q .classroom-intro p { font-size: 0.95rem; }

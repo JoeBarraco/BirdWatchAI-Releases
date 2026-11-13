@@ -373,6 +373,233 @@ function speciesLook(species) {
     return SPECIES_LOOKS[species] || null;
 }
 
+// ── Bird wonders ─────────────────────────────────────────────────
+//
+// Everything else here asks the class about data the computer already has.
+// That is the whole reason the question set reads as a worksheet: the answer
+// exists before the question is asked, nobody in the room knows anything the
+// screen does not, and the bird is decoration on top of some arithmetic.
+//
+// These are the opposite. Tell the class something genuinely startling about
+// a bird, hold back the most startling number in it, and ask them that. The
+// bird is the subject, the hook is curiosity rather than assessment, and it
+// does not matter whether that species has ever been near the feeder - a
+// first-grader who has just learned that a penguin can hold its breath for
+// twenty minutes is engaged in a way no bar chart achieves.
+//
+// Deliberately across subjects, because the request was for a question set
+// that is not all maths: migration is geography, mimicry is language,
+// messenger pigeons are history, and the numbers carry the maths anyway.
+//
+// ── ACCURACY ────────────────────────────────────────────────────
+// Every other question here is true by construction: it is computed from the
+// feeder's own detections, so it cannot be wrong about the world. These are
+// the exception. They are curated claims, stated to children as fact, and
+// they are only as good as the person who wrote them. Figures are given as
+// the round numbers they are usually quoted at, and where a real record is
+// held by a specific individual bird it says so rather than implying every
+// bird of that species can do it. They want a once-over by someone who knows
+// the subject; the flag button on every question is the route for fixing one.
+const BIRD_WONDERS = [
+    {
+        id: 'wonder-budgie-words', subject: 'language', bands: ['3-5', '6-8'],
+        bird: 'Budgerigar',
+        intro: ['Some birds can copy human speech. Parrots are famous for it, but '
+              + 'the record for the biggest vocabulary of any bird belongs to a '
+              + 'budgie - the little blue and green pet-shop bird.',
+                'A budgerigar called Puck was recorded knowing more words than any '
+                + 'other bird ever tested.'],
+        prompt: 'About how many words did Puck the budgie know?',
+        answer: '1,700', distractors: ['17', '170', '17,000'],
+        reveal: 'About 1,700. For comparison, a four-year-old child uses '
+              + 'somewhere around 1,500 words.',
+    },
+    {
+        id: 'wonder-arctic-tern', subject: 'geography', bands: ['3-5', '6-8'],
+        bird: 'Arctic Tern',
+        intro: ['The Arctic Tern spends its summer in the Arctic, then flies all '
+              + 'the way to the Antarctic for the other summer, and back again '
+              + 'every single year.',
+                'It is the longest migration of any animal on Earth.'],
+        prompt: 'Roughly how far does an Arctic Tern fly in one year?',
+        answer: '70,000 km', distractors: ['700 km', '7,000 km', '700,000 km'],
+        reveal: 'Around 70,000 km a year - far enough to circle the whole planet '
+              + 'nearly twice. Over its life that is like flying to the Moon and back.',
+    },
+    {
+        id: 'wonder-peregrine', subject: 'science', bands: ['k-2', '3-5', '6-8'],
+        bird: 'Peregrine Falcon',
+        intro: ['The fastest animal on the planet is not a cheetah. It is a bird.',
+                'A Peregrine Falcon hunts by climbing high above its prey and then '
+              + 'folding its wings and dropping.'],
+        prompt: 'How fast can a Peregrine Falcon go in that dive?',
+        answer: 'Over 320 km/h', distractors: ['About 30 km/h', 'About 80 km/h', 'About 160 km/h'],
+        reveal: 'Over 320 km/h - faster than a Formula 1 car. It has baffles in '
+              + 'its nostrils so the air does not damage its lungs on the way down.',
+    },
+    {
+        id: 'wonder-bee-hummingbird', subject: 'science', bands: ['k-2', '3-5'],
+        bird: 'Bee Hummingbird',
+        intro: ['The smallest bird in the world lives in Cuba and is called the '
+              + 'Bee Hummingbird, because people really do mistake it for a bee.',
+                'It builds a nest about the size of a walnut shell.'],
+        prompt: 'How long is a Bee Hummingbird from beak to tail?',
+        answer: 'About 5 cm', distractors: ['About 1 cm', 'About 15 cm', 'About 30 cm'],
+        reveal: 'About 5 cm - shorter than your little finger - and it weighs less '
+              + 'than a two-pence coin.',
+    },
+    {
+        id: 'wonder-emperor-penguin', subject: 'science', bands: ['3-5', '6-8'],
+        bird: 'Emperor Penguin',
+        intro: ['Emperor Penguins hunt by diving under the Antarctic ice, in water '
+              + 'cold enough to kill a person in minutes.',
+                'They cannot breathe down there, so everything depends on how long '
+              + 'they can hold their breath.'],
+        prompt: 'How long can an Emperor Penguin stay underwater?',
+        answer: 'Over 20 minutes', distractors: ['About 30 seconds', 'About 2 minutes', 'About 5 minutes'],
+        reveal: 'Over 20 minutes, and more than 500 metres down. Most people manage '
+              + 'about one minute.',
+    },
+    {
+        id: 'wonder-swift-airborne', subject: 'science', bands: ['6-8'],
+        bird: 'Common Swift',
+        intro: ['Common Swifts eat, drink and even sleep while flying. A young swift '
+              + 'leaves the nest and may not touch the ground again for years.',
+                'Scientists attached tiny loggers to them to find out how long they '
+              + 'stay in the air without landing at all.'],
+        prompt: 'How long can a Common Swift stay airborne without landing?',
+        answer: 'About 10 months', distractors: ['About 10 hours', 'About 10 days', 'About 10 weeks'],
+        reveal: 'About 10 months of continuous flight. They sleep by shutting down '
+              + 'half the brain at a time while gliding.',
+    },
+    {
+        id: 'wonder-woodpecker-tongue', subject: 'science', bands: ['3-5', '6-8'],
+        bird: 'Woodpecker',
+        intro: ['A woodpecker hammers its beak into solid wood about twenty times a '
+              + 'second and does not get a headache.',
+                'Part of the reason is its tongue, which is far longer than its head '
+              + 'and has to be stored somewhere.'],
+        prompt: 'Where does a woodpecker keep its tongue when it is not using it?',
+        answer: 'Wrapped around its skull',
+        distractors: ['Curled up in its beak', 'Folded into its throat', 'Coiled in its chest'],
+        reveal: 'It wraps backwards around the skull, under the skin and over the '
+              + 'top of the brain - which also helps cushion all that hammering.',
+    },
+    {
+        id: 'wonder-chickadee-memory', subject: 'science', bands: ['3-5', '6-8'],
+        bird: 'Carolina Chickadee',
+        intro: ['Chickadees hide seeds all over their territory to get through the '
+              + 'winter - one seed per hiding place, thousands of places.',
+                'Then they have to remember where they all are. In autumn the part '
+              + 'of their brain that handles memory actually grows.'],
+        prompt: 'About how many hiding places can a chickadee remember?',
+        answer: 'Thousands', distractors: ['About five', 'About twenty', 'About a hundred'],
+        reveal: 'Thousands, for months at a time. One of these may well be at our '
+              + 'feeder right now.',
+    },
+    {
+        id: 'wonder-albatross-wings', subject: 'geography', bands: ['3-5', '6-8'],
+        bird: 'Wandering Albatross',
+        intro: ['The Wandering Albatross has the longest wings of any living bird '
+              + 'and spends most of its life over the open Southern Ocean.',
+                'It barely flaps. It locks its wings open and rides the wind, and can '
+              + 'travel for hours without a single wingbeat.'],
+        prompt: 'How wide are a Wandering Albatross’s wings, tip to tip?',
+        answer: 'About 3.5 m', distractors: ['About 1 m', 'About 2 m', 'About 6 m'],
+        reveal: 'About 3.5 metres - wider than a car is long, and wider than almost '
+              + 'any classroom door is tall.',
+    },
+    {
+        id: 'wonder-pigeon-post', subject: 'history', bands: ['3-5', '6-8'],
+        bird: 'Homing Pigeon',
+        intro: ['Long before radio, armies sent messages by pigeon. A pigeon taken '
+              + 'hundreds of miles from home in a basket will still find its way back.',
+                'In the First World War a pigeon called Cher Ami delivered a message '
+              + 'that saved nearly two hundred trapped soldiers, after being shot.'],
+        prompt: 'How does a homing pigeon find its way home?',
+        answer: 'It senses the Earth’s magnetic field',
+        distractors: ['It follows roads', 'It follows other pigeons', 'It is taught the route as a chick'],
+        reveal: 'It senses the Earth’s magnetic field, and uses the sun and '
+              + 'landmarks too. Nobody has fully worked out how it all fits together.',
+    },
+    {
+        id: 'wonder-crow-tools', subject: 'science', bands: ['3-5', '6-8'],
+        bird: 'New Caledonian Crow',
+        intro: ['Crows are among the few animals that make tools, not just use them.',
+                'A New Caledonian Crow will take a straight twig and work on it until '
+              + 'it is the right shape to pull a grub out of a hole.'],
+        prompt: 'What does the crow do to the twig to make it work better?',
+        answer: 'Bends a hook into the end',
+        distractors: ['Sharpens it on a stone', 'Splits it down the middle', 'Soaks it in water'],
+        reveal: 'It bends a hook into the end. Crows also remember human faces for '
+              + 'years, and tell other crows about the ones they did not like.',
+    },
+    {
+        id: 'wonder-owl-ears', subject: 'science', bands: ['3-5', '6-8'],
+        bird: 'Barn Owl',
+        intro: ['A Barn Owl can catch a mouse in total darkness, under snow, using '
+              + 'nothing but sound.',
+                'It can do it because of something odd about the way its head is '
+              + 'built.'],
+        prompt: 'What is unusual about a Barn Owl’s ears?',
+        answer: 'One is higher than the other',
+        distractors: ['They point backwards', 'It has four of them', 'They are inside its beak'],
+        reveal: 'One ear sits higher than the other, so a sound reaches them at '
+              + 'slightly different times and the owl can work out the height as well '
+              + 'as the direction.',
+    },
+    {
+        id: 'wonder-bar-headed-goose', subject: 'geography', bands: ['6-8'],
+        bird: 'Bar-headed Goose',
+        intro: ['Bar-headed Geese migrate straight over the Himalayas rather than '
+              + 'going around them.',
+                'The air up there holds so little oxygen that a person would pass out '
+              + 'without a tank.'],
+        prompt: 'How high have Bar-headed Geese been recorded flying?',
+        answer: 'Over 7,000 m', distractors: ['About 700 m', 'About 2,000 m', 'About 20,000 m'],
+        reveal: 'Over 7,000 metres - up where jets cruise. Their blood takes up '
+              + 'oxygen far more readily than ours does.',
+    },
+    {
+        id: 'wonder-cardinal-female-sings', subject: 'science', bands: ['k-2', '3-5'],
+        bird: 'Northern Cardinal',
+        intro: ['In most songbirds only the male sings. The Northern Cardinal is one '
+              + 'of the exceptions.',
+                'A female cardinal sings too, often from the nest, and she and her '
+              + 'mate answer each other back and forth.'],
+        prompt: 'Why do people think the female cardinal sings from the nest?',
+        answer: 'To tell her mate when to bring food',
+        distractors: ['To frighten away cats', 'To keep her eggs warm', 'To call the chicks out'],
+        reveal: 'The leading idea is that she is telling him when to bring food. '
+              + 'Pairs sing matching phrases to each other.',
+    },
+    {
+        id: 'wonder-hummingbird-heart', subject: 'maths', bands: ['3-5', '6-8'],
+        bird: 'Ruby-throated Hummingbird',
+        intro: ['A hummingbird beats its wings so fast you cannot see them, and its '
+              + 'heart has to keep up.',
+                'Your own heart beats about 90 times a minute while you are sitting '
+              + 'still.'],
+        prompt: 'About how fast does a hummingbird’s heart beat when it is flying?',
+        answer: 'About 1,200 a minute', distractors: ['About 120 a minute', 'About 400 a minute', 'About 12,000 a minute'],
+        reveal: 'About 1,200 beats a minute - roughly twenty every second. At night '
+              + 'it drops into a deep cold sleep to save energy.',
+    },
+    {
+        id: 'wonder-cuckoo-egg', subject: 'science', bands: ['3-5', '6-8'],
+        bird: 'Common Cuckoo',
+        intro: ['A Common Cuckoo never builds a nest or raises its own chick.',
+                'It lays its egg in another bird’s nest and flies off, leaving '
+              + 'the smaller bird to do all the work.'],
+        prompt: 'What does the cuckoo chick do when it hatches?',
+        answer: 'Pushes the other eggs out of the nest',
+        distractors: ['Shares the food fairly', 'Flies back to find its real mother', 'Sings like the host bird'],
+        reveal: 'It heaves the other eggs over the side, so it gets every scrap of '
+              + 'food - often from foster parents half its size.',
+    },
+];
+
+
 // Distractor pool for identification when the feeder has only seen one or two
 // species — a 3-choice question needs three plausible birds whether or not
 // they have all visited.
@@ -382,6 +609,69 @@ function speciesFact(species, band) {
     const f = SPECIES_FACTS[species];
     if (!f) return '';
     return band === 'k-2' ? f['k-2'] : f['up'];
+}
+
+// ── Art ──────────────────────────────────────────────────────────
+//
+// Art questions, because a feeder is one of the few data sources that is
+// also genuinely beautiful, and because forty questions of the same shape is
+// how a question set becomes boring no matter how good the questions are.
+//
+// These are not data questions wearing a smock. Warm and cool, the primary
+// colours, and what mixes to make orange are the actual beginning of a
+// primary art curriculum, and the birds supply the examples - a cardinal, a
+// goldfinch and a jay really are red, yellow and blue, which is a free and
+// surprisingly rare demonstration that the three primaries exist in nature
+// and turned up at the school feeder in the same week.
+
+// The plain colour words from SPECIES_LOOKS, as paint.
+//
+// Separate from SPECIES_COLORS: that table pulls the greys apart so chart
+// bars stay distinguishable, which is right for a chart and wrong for a
+// swatch. A swatch has to be the colour the WORD means, or matching the word
+// to the patch stops being possible.
+const COLOR_WORD_HEX = {
+    'red':             '#e23b3b',
+    'orange':          '#f08a2c',
+    'yellow':          '#f5d324',
+    'brown':           '#9c6b43',
+    'blue':            '#3b7fe2',
+    'grey':            '#9aa3ad',
+    'black':           '#2f3338',
+    'black and white': '#d9dee4',
+};
+
+// Artists' warm/cool split. Only the colours it is honestly defined for -
+// black, white and the black-and-white birds sit outside it, and a question
+// that forced them to one side would be teaching something untrue.
+const WARM_COLORS = ['red', 'orange', 'yellow', 'brown'];
+const COOL_COLORS = ['blue', 'grey'];
+
+// Red, yellow and blue. The feeder regularly supplies all three.
+const PRIMARY_COLORS = ['red', 'yellow', 'blue'];
+
+/**
+ * Paint a colour swatch onto each answer.
+ *
+ * The answers to a colour question have to BE the colours - a K-2 class that
+ * cannot yet read "orange" can still match a patch to a photograph, and that
+ * is the whole point of asking them.
+ */
+function cmSwatchChoices(built, hexOf) {
+    if (!built) return null;
+    built.choices = built.choices.map(c => {
+        const hex = hexOf(c.label);
+        return hex ? { ...c, swatch: hex } : c;
+    });
+    return built;
+}
+
+// The species seen this week that have a colour we can talk about.
+function cmColorfulSpecies(s, allow) {
+    return s.species
+        .map(x => ({ species: x.species, n: x.n, look: speciesLook(x.species) }))
+        .filter(x => x.look && x.look.color
+                  && (!allow || allow.includes(x.look.color)));
 }
 
 // ── Word puzzles (design notes §3, "activity ideas") ──────────────
@@ -741,6 +1031,10 @@ function cmRowColor(row, i, n, mode) {
     return CHART_SPECTRUM[n < 2 ? 0 : Math.round((i / (n - 1)) * span)];
 }
 
+// Where the lesson has got to in the rotation of chart shapes. Reset for
+// each build so a lesson's charts are stable from review to projector.
+let cmChartRotation = 0;
+
 function cmChart(caption, series, opts) {
     const o = opts || {};
     // Species names are long and collide past eight; hour labels are three
@@ -767,10 +1061,25 @@ function cmChart(caption, series, opts) {
     // a donut of one dominant species teaches nothing, a line through
     // unordered categories draws a trend that does not exist. Falling back is
     // better than drawing a chart that misleads.
-    let kind = dotsOk ? 'dots' : 'bars';
-    if (o.kind && CHART_KINDS_OK[o.kind] && CHART_KINDS_OK[o.kind](trimmed, o)) {
-        kind = o.kind;
+    // Every chart in a lesson used to be the same bar chart, and a class that
+    // meets the same picture eight times stops looking at it by the third.
+    // So where several shapes are all honest for this data, the lesson walks
+    // through them rather than picking one.
+    //
+    // Rotation rather than random: a lesson must look the same on the
+    // projector as it did in review ten minutes earlier, and a teacher who
+    // has just approved a donut should not get a bar chart in front of the
+    // class. The counter resets per build, so the sequence is a property of
+    // the lesson rather than of how many charts the page has ever drawn.
+    const candidates = dotsOk ? ['dots', 'bars'] : ['bars'];
+    for (const k of ['hbars', 'line', 'donut', 'clock']) {
+        if (CHART_KINDS_OK[k](trimmed, o)) candidates.push(k);
     }
+
+    // An explicit request wins, but only if the data can carry it.
+    const kind = (o.kind && CHART_KINDS_OK[o.kind] && CHART_KINDS_OK[o.kind](trimmed, o))
+        ? o.kind
+        : candidates[cmChartRotation++ % candidates.length];
 
     // Species series colour by species; everything else runs the spectrum.
     // `plain` is the opt-out, and it is not cosmetic: a question that ASKS
@@ -1007,6 +1316,22 @@ function classroomDotsHtml(chart, revealed) {
             <div class="cc-rows">${rows}</div>
             <figcaption>${esc(chart.caption)}</figcaption>
         </figure>`;
+}
+
+/**
+ * The story that sets up a question.
+ *
+ * Read aloud before the question is asked, which is why it is sentences
+ * rather than bullets and why it is set large. It is the part of the slide
+ * doing the actual teaching; the multiple choice underneath is just how the
+ * room answers.
+ */
+function classroomIntroHtml(q) {
+    if (!q || !Array.isArray(q.intro) || !q.intro.length) return '';
+    return `<div class="classroom-intro">
+                ${q.wonder_bird ? `<p class="classroom-intro-bird">${esc(q.wonder_bird)}</p>` : ''}
+                ${q.intro.map(line => `<p>${esc(line)}</p>`).join('')}
+            </div>`;
 }
 
 /**
@@ -2683,6 +3008,292 @@ const CLASSROOM_TEMPLATES = [
         };
     },
 },
+
+{
+    id: 'bird-wonder',
+    category: 'wonder',
+    title: 'Did you know?',
+    bands: ['k-2', '3-5', '6-8'],
+    build({ s, band, rng }) {
+        // The only template that asks nothing of the feeder. It runs on a
+        // week when the feeder is quiet, which is exactly when the data
+        // questions are at their thinnest and the lesson needs it most.
+        const pool = BIRD_WONDERS.filter(w => w.bands.includes(band));
+        if (!pool.length) return null;
+
+        const w = cmShuffle(pool, rng)[0];
+        const built = cmChoices(w.answer, cmShuffle(w.distractors, rng), rng);
+        if (!built) return null;
+
+        // A picture of the bird, where we honestly have one. Several of these
+        // species do come to feeders, and "this one was at OUR feeder on
+        // Tuesday" is worth far more to a class than a stock photograph
+        // would be. The rest carry no image rather than a borrowed one:
+        // hotlinking somebody's photograph is their licence to grant, not
+        // ours to assume.
+        const photo = cmSpeciesPhoto(s, w.bird);
+
+        return {
+            prompt: w.prompt,
+            ...built,
+            image: photo || null,
+            intro: w.intro,
+            subject: w.subject,
+            wonder_bird: w.bird,
+            explain: w.reveal,
+        };
+    },
+},
+
+// ── Art ──────────────────────────────────────────────────────────
+
+{
+    id: 'art-color-match',
+    category: 'art',
+    title: 'Match the colour',
+    bands: ['k-2'],
+    build({ s, band, rng }) {
+        // A photo and four patches of paint. No reading required, which is
+        // exactly why it works at K-2.
+        const pool = cmColorfulSpecies(s).filter(x => COLOR_WORD_HEX[x.look.color]);
+        if (pool.length < 2) return null;
+
+        const pick = cmShuffle(pool, rng)[0];
+        const photo = cmSpeciesPhoto(s, pick.species);
+        if (!photo) return null;
+
+        const others = Object.keys(COLOR_WORD_HEX)
+            .filter(c => c !== pick.look.color && c !== 'black and white');
+        const built = cmSwatchChoices(
+            cmChoices(pick.look.color, cmShuffle(others, rng).slice(0, 3), rng),
+            label => COLOR_WORD_HEX[label]);
+        if (!built) return null;
+
+        return {
+            prompt: 'Which colour matches this bird?',
+            ...built,
+            image: photo,
+            explain: `This is a ${pick.species}, and it is ${pick.look.color}.`,
+            fact: speciesFact(pick.species, band),
+        };
+    },
+},
+
+{
+    id: 'art-warm-cool',
+    category: 'art',
+    title: 'Warm or cool?',
+    bands: ['k-2', '3-5'],
+    build({ s, band, rng }) {
+        const pool = cmColorfulSpecies(s, WARM_COLORS.concat(COOL_COLORS));
+        if (!pool.length) return null;
+
+        const pick = cmShuffle(pool, rng)[0];
+        const warm = WARM_COLORS.includes(pick.look.color);
+        const answer = warm ? 'Warm' : 'Cool';
+        const built = cmChoices(answer, [warm ? 'Cool' : 'Warm'], rng);
+        if (!built) return null;
+
+        const photo = cmSpeciesPhoto(s, pick.species);
+        return {
+            prompt: 'Artists call red, orange and yellow WARM colours, and blue '
+                  + `and grey COOL colours. The ${pick.species} is `
+                  + `${pick.look.color}. Is that warm or cool?`,
+            ...built,
+            image: photo || null,
+            chart: photo ? null : undefined,
+            explain: `${pick.look.color} is a ${answer.toLowerCase()} colour.`,
+            fact: speciesFact(pick.species, band),
+        };
+    },
+},
+
+{
+    id: 'art-primary-color',
+    category: 'art',
+    title: 'Primary colours',
+    bands: ['3-5'],
+    build({ s, band, rng }) {
+        // Needs at least two primaries actually present, or "which is not a
+        // primary" is a question about one bird rather than about the idea.
+        const pool = cmColorfulSpecies(s);
+        const primaries = pool.filter(x => PRIMARY_COLORS.includes(x.look.color));
+        const others    = pool.filter(x => !PRIMARY_COLORS.includes(x.look.color)
+                                        && x.look.color !== 'black and white');
+        if (primaries.length < 2 || !others.length) return null;
+
+        const answer = cmShuffle(others, rng)[0];
+        const built = cmChoices(answer.species,
+            cmShuffle(primaries, rng).slice(0, 3).map(x => x.species), rng);
+        if (!built) return null;
+
+        return {
+            prompt: 'Artists call red, yellow and blue the PRIMARY colours — '
+                  + 'you cannot mix any other paints to make them. Which of these '
+                  + 'birds is NOT wearing a primary colour?',
+            ...built,
+            explain: `The ${answer.species} is ${answer.look.color}, which is not `
+                   + `red, yellow or blue. The others are.`,
+            fact: speciesFact(answer.species, band),
+        };
+    },
+},
+
+{
+    id: 'art-color-mix',
+    category: 'art',
+    title: 'Mixing paint',
+    bands: ['3-5', '6-8'],
+    build({ s, band, rng }) {
+        // Anchored to a bird that is actually orange, so the mixing question
+        // has something in the room to point at.
+        const orange = cmColorfulSpecies(s, ['orange'])[0];
+        if (!orange) return null;
+
+        const built = cmChoices('red + yellow',
+            ['blue + yellow', 'red + blue', 'black + white'], rng);
+        if (!built) return null;
+
+        const photo = cmSpeciesPhoto(s, orange.species);
+        return {
+            prompt: `The ${orange.species} came to our feeder this week. Its `
+                  + 'orange is not a primary colour — which two paints would '
+                  + 'you mix to make it?',
+            ...built,
+            image: photo || null,
+            explain: 'Red and yellow make orange. Blue and yellow make green, '
+                   + 'and red and blue make purple.',
+            fact: speciesFact(orange.species, band),
+        };
+    },
+},
+
+{
+    id: 'art-missing-color',
+    category: 'art',
+    title: 'The colour that stayed away',
+    bands: ['k-2', '3-5'],
+    build({ s, band, rng }) {
+        const here = new Set(cmColorfulSpecies(s).map(x => x.look.color));
+        if (here.size < 2) return null;
+
+        const absent = ['red', 'blue', 'yellow', 'orange', 'brown']
+            .filter(c => !here.has(c));
+        if (!absent.length) return null;
+
+        const answer = cmShuffle(absent, rng)[0];
+        const built = cmSwatchChoices(
+            cmChoices(answer, cmShuffle([...here], rng).slice(0, 3), rng),
+            label => COLOR_WORD_HEX[label]);
+        if (!built) return null;
+
+        return {
+            prompt: 'Three of these colours came to our feeder this week. '
+                  + 'Which one did NOT?',
+            ...built,
+            chart: cmChart('Birds that came this week', cmSpeciesSeries(s), { band }),
+            explain: `No ${answer} birds this week.`,
+        };
+    },
+},
+
+// ── Word problems ────────────────────────────────────────────────
+//
+// The same arithmetic the data questions ask for, wrapped in a situation the
+// class is actually in. "What is 20 divided by 5" and "how many scoops of
+// seed does our feeder need" are the same sum, and only one of them is a
+// reason to care about the answer.
+
+{
+    id: 'word-seed-scoops',
+    category: 'math',
+    title: 'Seed scoops',
+    bands: ['3-5'],
+    build({ s, band, rng }) {
+        const days = cmDaySeries(s).slice(-2);
+        if (days.length < 2) return null;
+        const total = days.reduce((a, d) => a + d.value, 0);
+        if (total < 4) return null;
+
+        // Pick a divisor that divides cleanly, so the answer is a whole
+        // number of scoops rather than a remainder nobody asked about.
+        const per = [2, 3, 4, 5].filter(n => total % n === 0).pop();
+        if (!per) return null;
+        const answer = total / per;
+
+        const built = cmChoices(String(answer),
+            cmNumberDistractors(answer, rng, 3).map(String), rng);
+        if (!built) return null;
+
+        return {
+            prompt: `Our class puts out one scoop of seed for every ${per} visits. `
+                  + `There were ${days[0].value} visits on ${days[0].label} and `
+                  + `${days[1].value} on ${days[1].label}. How many scoops do we owe?`,
+            ...built,
+            chart: cmChart('Visits each day', cmDaySeries(s), { band, ordered: true }),
+            explain: `${days[0].value} + ${days[1].value} = ${total} visits. `
+                   + `${total} ÷ ${per} = ${answer} scoops.`,
+        };
+    },
+},
+
+{
+    id: 'word-watch-minutes',
+    category: 'math',
+    title: 'Minutes of birds',
+    bands: ['3-5'],
+    build({ s, band, rng }) {
+        const busiest = cmDaySeries(s).slice().sort((a, b) => b.value - a.value)[0];
+        if (!busiest || busiest.value < 3) return null;
+
+        const mins = 2;
+        const answer = busiest.value * mins;
+        const built = cmChoices(String(answer),
+            cmNumberDistractors(answer, rng, 3).map(String), rng);
+        if (!built) return null;
+
+        return {
+            prompt: `On ${busiest.label} the feeder had ${busiest.value} visits. `
+                  + `If every bird stayed about ${mins} minutes, how many minutes `
+                  + 'of birds was that altogether?',
+            ...built,
+            chart: cmChart('Visits each day', cmDaySeries(s), { band, ordered: true }),
+            explain: `${busiest.value} × ${mins} = ${answer} minutes.`,
+        };
+    },
+},
+
+{
+    id: 'word-feeder-empty',
+    category: 'math',
+    title: 'When does it run out?',
+    bands: ['6-8'],
+    build({ s, band, rng }) {
+        const days = cmDaySeries(s);
+        if (days.length < 3) return null;
+        const perDay = Math.round(days.reduce((a, d) => a + d.value, 0) / days.length);
+        if (perDay < 2) return null;
+
+        const seedsPerVisit = 8;
+        const capacity = perDay * seedsPerVisit * 5;   // about five days' worth
+        const answer = Math.floor(capacity / (perDay * seedsPerVisit));
+
+        const built = cmChoices(String(answer),
+            cmNumberDistractors(answer, rng, 3).map(String), rng);
+        if (!built) return null;
+
+        return {
+            prompt: `Our feeder holds ${capacity} seeds, and a bird takes about `
+                  + `${seedsPerVisit} seeds a visit. At this week's average of `
+                  + `${perDay} visits a day, how many days until we refill it?`,
+            ...built,
+            chart: cmChart('Visits each day', days, { band, ordered: true, showValues: true }),
+            explain: `${perDay} visits × ${seedsPerVisit} seeds = `
+                   + `${perDay * seedsPerVisit} seeds a day. `
+                   + `${capacity} ÷ ${perDay * seedsPerVisit} = ${answer} days.`,
+        };
+    },
+},
 ];
 
 /**
@@ -2701,6 +3312,9 @@ function buildClassroomQuestions(room, data) {
     const s14  = source;
     const band = room.grade_band || 'k-2';
     const seed = `${room.id}|${cmDayKey(new Date())}|${source.feederId}`;
+
+    // Same lesson, same charts, whether this is the review pass or the class.
+    cmChartRotation = 0;
     const feeder = source.name;
 
     const out = [];
@@ -3038,6 +3652,7 @@ function classroomReviewItem(q, i) {
                 ${q.from_partner ? '<span class="classroom-pill partner">partner data</span>' : ''}
             </div>
             ${slide ? `<div class="classroom-review-slide">${slide}</div>` : ''}
+            ${classroomIntroHtml(q)}
             <p class="classroom-review-prompt">${esc(q.prompt)}</p>
             <ol class="classroom-review-choices">${choices}</ol>
             ${q.correct_index == null
@@ -3894,6 +4509,7 @@ function renderClassroomStage() {
                         ${handler ? `onclick="${handler}"` : ''}>
                     ${bar}
                     <span class="classroom-choice-key">${String.fromCharCode(65 + i)}</span>
+                    ${c.swatch ? `<span class="classroom-swatch" style="background:${esc(c.swatch)}"></span>` : ''}
                     <span class="classroom-choice-label">${esc(c.label)}</span>
                     ${tally}
                 </button>`;
@@ -3934,6 +4550,7 @@ function renderClassroomStage() {
           <div class="classroom-fit">
             ${q.image ? classroomShotHtml(q, S.revealed)
                       : classroomChartHtml(q.chart, S.revealed)}
+            ${classroomIntroHtml(q)}
             <h1 class="classroom-prompt">${esc(q.prompt)}</h1>
             <div class="classroom-choices ${q.choices.length > 3 ? 'four' : ''}">${choices}</div>
             ${reveal}
