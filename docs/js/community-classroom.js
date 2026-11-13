@@ -5847,7 +5847,9 @@ function renderClassroomTerm() {
     const s = classroomSchool;
     const show = s && (s.state === 'lapsed' || s.state === 'grace');
     box.style.display = show ? '' : 'none';
-    if (!show) { box.innerHTML = ''; return; }
+    // Reset the tone class too, not just the text. A hidden banner that still
+    // says .lapsed is a trap for whatever unhides it next.
+    if (!show) { box.className = 'classroom-term'; box.innerHTML = ''; return; }
 
     // The owner is told where the box is; everybody else is told who to ask,
     // because the renewal control is not on their screen and hunting for a
