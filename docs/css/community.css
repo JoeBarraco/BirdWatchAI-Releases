@@ -3746,6 +3746,33 @@
     font-size: 0.72rem; color: var(--color-gray-500);
 }
 
+/* The real slide inside the review list.
+   The stage sizes everything in vmin for a projector, which inside a 480px
+   panel would be several times too large. These overrides keep the same
+   markup and shrink it to fit, so what is reviewed is literally the thing
+   the class sees rather than a separate rendering that could drift from it. */
+.classroom-review-slide {
+    margin: 0 0 0.5rem; padding: 0.4rem;
+    background: var(--bg-page); border-radius: 6px;
+    display: flex; justify-content: center;
+}
+.classroom-review-slide .classroom-chart,
+.classroom-review-slide .classroom-chart.dots { width: 100%; }
+.classroom-review-slide .classroom-chart svg { max-height: none; }
+.classroom-review-slide .classroom-shot,
+.classroom-review-slide .classroom-shot.cropped {
+    width: min(100%, 260px); max-height: none; box-shadow: none;
+}
+.classroom-review-slide .classroom-shot img { max-height: 160px; max-width: 100%; }
+.classroom-review-slide figcaption { font-size: 0.7rem; }
+/* Dots stay countable but shrink; a review pass is reading, not counting
+   from the back of a room. */
+.classroom-review-slide .cc-dot { width: 9px; }
+.classroom-review-slide .cc-dot.five { margin-right: 6px; }
+.classroom-review-slide .cc-row-label,
+.classroom-review-slide .cc-row-val { font-size: 0.72rem; }
+.classroom-review-slide .cc-thumb { width: 46px; }
+
 .classroom-review-prompt {
     font-size: 0.9rem; color: var(--color-gray-900);
     margin: 0 0 0.35rem; line-height: 1.45;

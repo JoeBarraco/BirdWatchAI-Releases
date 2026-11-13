@@ -662,6 +662,19 @@ const DOTS_MAX_ROWS  = 7;      // a week
  * never set on a question whose answer IS which bar (busiest day, most common
  * species), because there it would simply point at the answer.
  */
+// Which questions need the exact numbers printed on the bars.
+//
+// From a teacher's flag on percent-change: "charts need to be easy to see
+// values." Right, and the fix is not simply to label everything. Hiding
+// values is correct when the SKILL IS reading the chart — which day was
+// busiest, which bird came most — because labelling those answers the
+// question outright. It is wrong when the skill is ARITHMETIC ON the values,
+// because an unlabelled axis then turns a subtraction exercise into a test of
+// how accurately a ten-year-old estimates a bar against a gridline, which is
+// neither what is being taught nor what gets marked.
+//
+// So the templates whose answer is computed FROM the numbers pass
+// showValues and print them from the start.
 function cmChart(caption, series, opts) {
     const o = opts || {};
     // Species names are long and collide past eight; hour labels are three
@@ -684,7 +697,8 @@ function cmChart(caption, series, opts) {
     const kind = (o.band === 'k-2' && max <= DOTS_MAX_VALUE && trimmed.length <= DOTS_MAX_ROWS)
         ? 'dots' : 'bars';
 
-    return { kind, caption, series: trimmed, highlight: o.highlight || null, max };
+    return { kind, caption, series: trimmed, highlight: o.highlight || null,
+             showValues: !!o.showValues, max };
 }
 
 // The week as one bar per day, oldest first — the shape every "per day"
@@ -743,9 +757,12 @@ function cmSpeciesSeries(s, limit) {
  */
 function classroomChartHtml(chart, revealed) {
     if (!chart) return '';
+    // A chart that declares showValues shows them whether or not the answer
+    // has been revealed.
+    const withValues = revealed || chart.showValues;
     return chart.kind === 'dots'
-        ? classroomDotsHtml(chart, revealed)
-        : classroomBarsHtml(chart, revealed);
+        ? classroomDotsHtml(chart, withValues)
+        : classroomBarsHtml(chart, withValues);
 }
 
 // Pick a gridline step that lands on friendly numbers — 1, 2, 5, 10, 20, 50…
@@ -1003,7 +1020,13 @@ const CLASSROOM_TEMPLATES = [
             ...built,
             // No highlight: the answer is the sum of every bar, so pointing at
             // one would be pointing at the wrong thing.
-            chart: cmChart(`Visits each day at ${feeder}`, cmDaySeries(s), { band }),
+            //
+            // Values ON here but NOT in the K-2 branch above. Here the answer
+            // is the sum, so printing the numbers makes it the addition it is
+            // meant to be; up there the answer is one highlighted day, and
+            // printing it on the bar would simply be the answer.
+            chart: cmChart(`Visits each day at ${feeder}`, cmDaySeries(s),
+                           { band, showValues: true }),
             explain: `${s.total} visits across ${s.days.length} day${s.days.length === 1 ? '' : 's'}.`,
         };
     },
@@ -1025,7 +1048,7 @@ const CLASSROOM_TEMPLATES = [
             // Here the answer is the NUMBER OF BARS, which is exactly what the
             // chart is for — count the bars, not their heights.
             chart: cmChart('Visits by species this week',
-                           cmSpeciesSeries(s, CHART_MAX_BARS), { band }),
+                           cmSpeciesSeries(s, CHART_MAX_BARS), { band, showValues: true }),
             explain: s.species.map(x => x.species).join(', '),
         };
     },
@@ -1074,7 +1097,7 @@ const CLASSROOM_TEMPLATES = [
             chart: cmChart('Visits by species this week',
                            [a, b].map(x => ({ label: x.species, value: x.n, key: x.species,
                                               image: cmSpeciesPhoto(s, x.species) })),
-                           { band }),
+                           { band, showValues: true }),
             explain: `${a.n} − ${b.n} = ${diff}.`,
         };
     },
@@ -1224,7 +1247,7 @@ const CLASSROOM_TEMPLATES = [
             // The named species is marked: the comparison is that bar against
             // the rest, and the answer is a ratio, not a bar.
             chart: cmChart('Visits by species this week',
-                           cmSpeciesSeries(s), { band, highlight: top.species }),
+                           cmSpeciesSeries(s), { band, highlight: top.species, showValues: true }),
             explain: `${top.n} of ${s.total} visits — that's ${Math.round(share * 100)}%.`,
         };
     },
@@ -1248,7 +1271,7 @@ const CLASSROOM_TEMPLATES = [
             prompt: `What percent of this week's visits were ${top.species}?`,
             ...built,
             chart: cmChart('Visits by species this week',
-                           cmSpeciesSeries(s), { band, highlight: top.species }),
+                           cmSpeciesSeries(s), { band, highlight: top.species, showValues: true }),
             explain: `${top.n} ÷ ${s.total} = ${(top.n / s.total).toFixed(2)} → ${pct}%.`,
         };
     },
@@ -1268,7 +1291,7 @@ const CLASSROOM_TEMPLATES = [
         return {
             prompt: `On average, about how many visits per day did ${feeder} get this week?`,
             ...built,
-            chart: cmChart(`Visits each day at ${feeder}`, cmDaySeries(s), { band }),
+            chart: cmChart(`Visits each day at ${feeder}`, cmDaySeries(s), { band, showValues: true }),
             explain: `${s.total} visits ÷ ${s.days.length} days ≈ ${avg} per day.`,
         };
     },
@@ -1459,7 +1482,7 @@ const CLASSROOM_TEMPLATES = [
             prompt: `How many more visits were there on ${cmDayAxisLabel(a.day)} `
                   + `than on ${cmDayAxisLabel(b.day)}?`,
             ...built,
-            chart: cmChart('Visits each day this week', cmDaySeries(s), { band }),
+            chart: cmChart('Visits each day this week', cmDaySeries(s), { band, showValues: true }),
             explain: `${a.n} − ${b.n} = ${diff}.`,
         };
     },
@@ -1523,7 +1546,7 @@ const CLASSROOM_TEMPLATES = [
         return {
             prompt: 'What is the median number of visits per day this week?',
             ...built,
-            chart: cmChart('Visits each day this week', cmDaySeries(s), { band }),
+            chart: cmChart('Visits each day this week', cmDaySeries(s), { band, showValues: true }),
             explain: `Sorted: ${vals.join(', ')}. The middle value is ${median}. `
                    + `The mean is ${mean} — close, but not the same thing.`,
         };
@@ -1563,7 +1586,7 @@ const CLASSROOM_TEMPLATES = [
             chart: cmChart(`Visits by hour, 7am to 6pm`,
                            s.byHour.map((n, h) => ({ label: cmHourLabel(h), value: n, key: h }))
                                    .filter(x => x.key >= FROM && x.key < TO),
-                           { band, maxBars: TO - FROM }),
+                           { band, maxBars: TO - FROM, showValues: true }),
             explain: `${inDay} visits ÷ (${TO - FROM} hours × ${s.days.length} days) `
                    + `= ${inDay} ÷ ${hours} ≈ ${rate} per hour.`,
         };
@@ -1599,7 +1622,7 @@ const CLASSROOM_TEMPLATES = [
                   + `${top.species}?`,
             ...built,
             chart: cmChart('Visits by species this week',
-                           cmSpeciesSeries(s), { band, highlight: top.species }),
+                           cmSpeciesSeries(s), { band, highlight: top.species, showValues: true }),
             explain: `${top.n} ÷ ${s.total} = ${p.toFixed(2)}. `
                    + `Both: ${p.toFixed(2)} × ${p.toFixed(2)} ≈ ${pct}%.`,
         };
@@ -1623,7 +1646,7 @@ const CLASSROOM_TEMPLATES = [
         return {
             prompt: 'What is the range of daily visits this week — the busiest day minus the quietest?',
             ...built,
-            chart: cmChart('Visits each day this week', cmDaySeries(s), { band }),
+            chart: cmChart('Visits each day this week', cmDaySeries(s), { band, showValues: true }),
             explain: `${Math.max(...vals)} − ${Math.min(...vals)} = ${range}.`,
         };
     },
@@ -1735,7 +1758,7 @@ const CLASSROOM_TEMPLATES = [
             prompt: `How many visits were there on ${cmDayAxisLabel(a.day)} and `
                   + `${cmDayAxisLabel(b.day)} added together?`,
             ...built,
-            chart: cmChart('Visits each day this week', cmDaySeries(s), { band }),
+            chart: cmChart('Visits each day this week', cmDaySeries(s), { band, showValues: true }),
             explain: `${a.n} + ${b.n} = ${sum}.`,
         };
     },
@@ -1791,7 +1814,7 @@ const CLASSROOM_TEMPLATES = [
             ...built,
             chart: cmChart('This week against last week',
                            [{ label: 'Last week', value: prev, key: 'prev' },
-                            { label: 'This week', value: s.total, key: 'now' }], { band }),
+                            { label: 'This week', value: s.total, key: 'now' }], { band, showValues: true }),
             explain: `(${s.total} − ${prev}) ÷ ${prev} = ${((s.total - prev) / prev).toFixed(2)} `
                    + `→ ${label(change)}.`,
         };
@@ -1819,7 +1842,7 @@ const CLASSROOM_TEMPLATES = [
         return {
             prompt: `At this week's rate, about how many visits would ${feeder} get in 30 days?`,
             ...built,
-            chart: cmChart('Visits each day this week', cmDaySeries(s), { band }),
+            chart: cmChart('Visits each day this week', cmDaySeries(s), { band, showValues: true }),
             explain: `${s.total} ÷ ${s.days.length} ≈ ${perDay.toFixed(1)} a day, `
                    + `× 30 ≈ ${projected}. Worth asking the class whether a week in `
                    + `${cmDayStart(s.days[s.days.length - 1].day).toLocaleDateString(undefined, { month: 'long' })} `
@@ -1849,7 +1872,7 @@ const CLASSROOM_TEMPLATES = [
             ...built,
             chart: cmChart('Visits by hour, 6am to 7pm',
                            slots.map(x => ({ label: cmHourLabel(x.h), value: x.n, key: x.h })),
-                           { band, maxBars: TO - FROM }),
+                           { band, maxBars: TO - FROM, showValues: true }),
             explain: `${empty} of the ${TO - FROM} hours are empty: `
                    + slots.filter(x => x.n === 0).map(x => cmHourLabel(x.h)).join(', ') + '.',
         };
@@ -2035,7 +2058,7 @@ const CLASSROOM_TEMPLATES = [
         return {
             prompt: 'On how many days were there MORE visits than the weekly average?',
             ...built,
-            chart: cmChart('Visits each day this week', cmDaySeries(s), { band }),
+            chart: cmChart('Visits each day this week', cmDaySeries(s), { band, showValues: true }),
             explain: `The average is ${s.total} ÷ ${s.days.length} ≈ ${mean.toFixed(1)}. `
                    + `${above} day(s) are above it.`,
         };
@@ -2089,7 +2112,7 @@ const CLASSROOM_TEMPLATES = [
             prompt: 'Is the mean or the median of this week\u2019s daily visits higher?',
             choices: opts.map(l => ({ label: l })),
             correct_index: opts.indexOf(answer),
-            chart: cmChart('Visits each day this week', cmDaySeries(s), { band }),
+            chart: cmChart('Visits each day this week', cmDaySeries(s), { band, showValues: true }),
             explain: `Mean ${mean.toFixed(1)}, median ${median}. `
                    + (mean > median
                       ? 'A few busy days pull the mean up above the typical day.'
@@ -2619,10 +2642,14 @@ function classroomReviewItem(q, i) {
         return `<li class="${right ? 'right' : ''}">${esc(c.label)}${right ? ' ✓' : ''}</li>`;
     }).join('');
 
-    const evidence = q.image ? 'photo'
-                   : q.chart ? `${q.chart.kind === 'dots' ? 'dot chart' : 'bar chart'}`
-                             + ` — ${esc(q.chart.caption)}`
-                   : 'no chart';
+    // The actual slide, rendered the way the class first meets it — before
+    // the reveal, with values hidden unless the chart asks for them.
+    // Describing it in words ("bar chart — visits each day") was useless for
+    // the one judgement review exists to make: whether a room of children can
+    // actually read the thing.
+    const slide = q.image ? classroomShotHtml(q, false)
+                : q.chart ? classroomChartHtml(q.chart, false)
+                : '';
 
     return `
         <div class="classroom-review-q" data-q="${i}">
@@ -2631,12 +2658,12 @@ function classroomReviewItem(q, i) {
                 <code class="classroom-review-tid">${esc(q.template_id)}</code>
                 ${q.from_partner ? '<span class="classroom-pill partner">partner data</span>' : ''}
             </div>
+            ${slide ? `<div class="classroom-review-slide">${slide}</div>` : ''}
             <p class="classroom-review-prompt">${esc(q.prompt)}</p>
             <ol class="classroom-review-choices">${choices}</ol>
             ${q.correct_index == null
                 ? '<p class="classroom-muted">Prediction — scored later, no answer yet.</p>' : ''}
             ${q.explain ? `<p class="classroom-muted">On reveal: ${esc(q.explain)}</p>` : ''}
-            <p class="classroom-muted">Shown with: ${evidence}</p>
             <button class="classroom-btn" onclick="openClassroomFlag(${i})">⚑ Something is wrong</button>
             <div class="classroom-flag-form" id="classroom-flag-${i}"></div>
         </div>`;
@@ -2653,7 +2680,14 @@ function classroomReviewItem(q, i) {
 function openClassroomFlag(i) {
     const box = document.getElementById(`classroom-flag-${i}`);
     if (!box) return;
-    if (box.innerHTML) { box.innerHTML = ''; return; }   // toggle shut
+
+    // Open only. This used to toggle, so pressing the button a second time —
+    // which is what you do if you think it submits — silently threw away
+    // everything typed into it. Closing is Cancel's job, which is labelled.
+    if (box.innerHTML) {
+        box.querySelector('textarea')?.focus();
+        return;
+    }
 
     box.innerHTML = `
         <select id="classroom-flag-reason-${i}">
@@ -2668,10 +2702,20 @@ function openClassroomFlag(i) {
                   placeholder="What was wrong with it? The more specific the better — which word, which number."></textarea>
         <div class="classroom-form-actions">
             <button class="classroom-btn-primary" onclick="sendClassroomFlag(${i})">Send feedback</button>
-            <button class="classroom-btn" onclick="openClassroomFlag(${i})">Cancel</button>
+            <button class="classroom-btn" onclick="closeClassroomFlag(${i})">Cancel</button>
         </div>
         <div class="classroom-status" id="classroom-flag-status-${i}"></div>`;
     document.getElementById(`classroom-flag-note-${i}`).focus();
+}
+
+function closeClassroomFlag(i) {
+    const box = document.getElementById(`classroom-flag-${i}`);
+    if (!box) return;
+    const note = box.querySelector('textarea');
+    // Only confirm when there is something to lose.
+    if (note && note.value.trim() &&
+        !confirm('Discard what you have written about this question?')) return;
+    box.innerHTML = '';
 }
 
 async function sendClassroomFlag(i) {
@@ -3515,9 +3559,49 @@ function nextClassroomQuestion() {
     }
 }
 
+/**
+ * Skip, with a chance to say why.
+ *
+ * A teacher skipping a question mid-lesson is the strongest signal the set
+ * produces — they have just read it to a class and decided not to ask it —
+ * and until now it vanished. The prompt is optional and one line: a lesson is
+ * running, thirty children are waiting, and a form here would simply mean
+ * nobody ever skips with a reason.
+ */
 function skipClassroomQuestion() {
     const S = classroomSession;
     if (!S) return;
+
+    const q = S.questions[S.index];
+    const why = window.prompt(
+        'Skipping this one. Why? (optional — press Cancel to skip without saying)\n\n'
+        + (q ? q.prompt : ''), '');
+
+    // null means Cancel: skip, record nothing. An empty string means they
+    // pressed OK with nothing typed, which is also nothing to record.
+    if (why && why.trim() && q) {
+        sbRpc('classroom_flag_question', {
+            p_community_id: classroomCommunityId,
+            p_classroom_id: S.room.id,
+            p_reason:       'other',
+            p_comment:      'Skipped during a lesson: ' + why.trim(),
+            p_question: {
+                template_id:      q.template_id,
+                category:         q.category,
+                grade_band:       q.grade_band,
+                prompt:           q.prompt,
+                choices:          q.choices,
+                correct_index:    q.correct_index,
+                explain:          q.explain || null,
+                chart_kind:       q.image ? 'photo' : (q.chart ? q.chart.kind : null),
+                source_feeder_id: q.source_feeder_id,
+            },
+        }, true).then(({ error }) => {
+            // Never interrupt a lesson over this. The toast is enough.
+            showToast(error ? 'Skipped (note not saved)' : 'Skipped — thanks, noted.');
+        });
+    }
+
     // A skipped question in join-code mode has usually already been pushed to
     // thirty devices. Close it server-side on the way past, or the room sits
     // looking at buttons for a question that has left the board.
