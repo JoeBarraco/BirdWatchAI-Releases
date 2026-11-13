@@ -3556,7 +3556,7 @@ const CLASSROOM_TEMPLATES = [
     category: 'geography',
     title: 'State birds',
     bands: ['3-5', '6-8'],
-    build({ rng }) {
+    build({ s, rng }) {
         const built = cmChoices('Northern Cardinal',
             ['Bald Eagle', 'American Robin', 'Blue Jay'], rng);
         if (!built) return null;
@@ -3564,6 +3564,10 @@ const CLASSROOM_TEMPLATES = [
             prompt: 'One bird is the official state bird of seven different states — '
                   + 'more than any other. Which one?',
             ...built,
+            // Our own cardinal if the feeder has one, which is the better
+            // version of this: the bird on the board is the bird outside.
+            image: cmShotFor(s, 'Northern Cardinal')
+                || cmWonderPhoto('Northern Cardinal'),
             explain: 'The Northern Cardinal: Illinois, Indiana, Kentucky, North '
                    + 'Carolina, Ohio, Virginia and West Virginia. The Bald Eagle is '
                    + 'the national bird, which is a different job.',
