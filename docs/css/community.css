@@ -3708,6 +3708,60 @@
     padding: 0.7rem; margin-bottom: 0.6rem; background: var(--bg-page);
 }
 .classroom-history-session { margin-bottom: 0.7rem; font-size: 0.83rem; }
+
+/* ── Reviewing questions and flagging them ─────────────────────────
+   Admin-panel sizing, not projector sizing: this is read on a laptop by
+   one person going through a lesson, so it is dense on purpose — the
+   whole point is seeing the questions together rather than one at a
+   time. */
+
+.classroom-review-list { display: flex; flex-direction: column; gap: 0.6rem; }
+
+.classroom-review-q {
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 0.6rem 0.7rem; background: var(--bg-card);
+}
+/* A flagged card stays visibly flagged for the rest of the pass, so
+   somebody working down a list of eight can see where they have been. */
+.classroom-review-q.flagged { border-color: #c97a00; }
+
+.classroom-review-head {
+    display: flex; align-items: center; gap: 6px;
+    flex-wrap: wrap; margin-bottom: 0.35rem;
+}
+
+.classroom-review-tid {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.72rem; color: var(--color-gray-500);
+}
+
+.classroom-review-prompt {
+    font-size: 0.9rem; color: var(--color-gray-900);
+    margin: 0 0 0.35rem; line-height: 1.45;
+}
+
+.classroom-review-choices {
+    margin: 0 0 0.4rem 1.1rem; padding: 0;
+    font-size: 0.82rem; color: var(--color-gray-500);
+}
+/* The answer is marked here, unlike on the projector. Review is the one
+   place the reader is supposed to see it. */
+.classroom-review-choices li.right { color: #2eaa4f; font-weight: 600; }
+
+.classroom-flag-form:not(:empty) {
+    margin-top: 0.5rem; padding-top: 0.5rem;
+    border-top: 1px dashed var(--border);
+}
+.classroom-flag-form select,
+.classroom-flag-form textarea {
+    width: 100%; margin-bottom: 0.4rem; font-family: inherit; font-size: 0.82rem;
+}
+
+.classroom-flag-note {
+    font-size: 0.83rem; color: var(--color-gray-700);
+    margin: 0 0 0.4rem; padding-left: 0.6rem;
+    border-left: 3px solid #c97a00; line-height: 1.5;
+}
 .classroom-history-qs { list-style: none; margin: 0.3rem 0 0; padding: 0; }
 .classroom-history-qs li {
     font-size: 0.78rem; color: var(--color-gray-500);

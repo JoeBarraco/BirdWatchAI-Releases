@@ -1549,6 +1549,233 @@ const CLASSROOM_TEMPLATES = [
         };
     },
 },
+
+// ── More variety ─────────────────────────────────────────────────
+//
+// The first set leaned on two shapes: "which bar is biggest" and "what is
+// this number". These add shapes it did not have — yes/no, ordinal rank,
+// absence, addition of two values, proportional projection — so a class
+// meeting the same data twice in a term is not asked the same thing twice.
+
+{
+    id: 'did-it-visit',
+    category: 'counting',
+    title: 'Did this bird come?',
+    bands: ['k-2'],
+    build({ s, band, rng }) {
+        // A yes/no, which nothing else in the set is. Half the time the
+        // answer is no, using a bird the feeder has NOT seen — otherwise the
+        // class learns that the answer to this shape is always yes.
+        if (s.species.length < 2) return null;
+        const seen = s.species.map(x => x.species);
+        const unseen = COMMON_FEEDER_SPECIES.filter(x => !seen.includes(x));
+        const askAboutSeen = rng() < 0.5 || !unseen.length;
+
+        const species = askAboutSeen
+            ? seen[Math.floor(rng() * Math.min(seen.length, 4))]
+            : unseen[Math.floor(rng() * unseen.length)];
+        const answer = askAboutSeen ? 'Yes' : 'No';
+        const opts = ['Yes', 'No'];
+
+        return {
+            prompt: `Did a ${species} come to the feeder this week?`,
+            choices: opts.map(l => ({ label: l })),
+            correct_index: opts.indexOf(answer),
+            chart: cmChart('Birds seen this week', cmSpeciesSeries(s), { band }),
+            explain: askAboutSeen
+                ? `Yes — ${species} came ${s.bySpecies.get(species)} time(s).`
+                : `No — no ${species} this week. The chart shows every bird that came.`,
+            fact: speciesFact(species, band),
+        };
+    },
+},
+
+{
+    id: 'how-many-days',
+    category: 'counting',
+    title: 'How many days?',
+    bands: ['k-2'],
+    build({ s, band, rng }) {
+        // Counting BARS rather than reading their height — a different skill
+        // from everything else at this band.
+        const withBirds = s.days.filter(d => d.n > 0).length;
+        if (withBirds < 2 || s.days.length < 3) return null;
+        const built = cmChoices(String(withBirds),
+            cmNumberDistractors(withBirds, rng, 2).filter(v => v > 0 && v <= 14).map(String), rng);
+        if (!built) return null;
+        return {
+            prompt: 'On how many days did birds come to the feeder?',
+            ...built,
+            chart: cmChart('Visits each day', cmDaySeries(s), { band }),
+            explain: `Birds came on ${withBirds} of the ${s.days.length} days.`,
+        };
+    },
+},
+
+{
+    id: 'quietest-day',
+    category: 'time',
+    title: 'Which day was quietest?',
+    bands: ['3-5'],
+    build({ s, band, rng, feeder }) {
+        // The mirror of busiest-day. Finding a minimum is genuinely harder
+        // than finding a maximum on a bar chart — the eye goes to the tall
+        // one — so it is its own question rather than a reskin.
+        if (s.days.length < 4) return null;
+        const sorted = s.days.slice().sort((a, b) => a.n - b.n);
+        if (sorted[0].n === sorted[1].n) return null;
+
+        const pick = sorted.slice(0, 4);
+        const opts = cmShuffle(pick, rng);
+        return {
+            prompt: `Which day was quietest at ${feeder} this week?`,
+            choices: opts.map(d => ({ label: cmDayAxisLabel(d.day) })),
+            correct_index: opts.findIndex(d => d.day === sorted[0].day),
+            chart: cmChart('Visits each day this week', cmDaySeries(s), { band }),
+            explain: pick.map(d => `${cmDayAxisLabel(d.day)}: ${d.n}`).join(' · '),
+        };
+    },
+},
+
+{
+    id: 'total-two-days',
+    category: 'math',
+    title: 'Two days together',
+    bands: ['3-5'],
+    build({ s, band, rng }) {
+        if (s.days.length < 4) return null;
+        const sorted = s.days.slice().sort((a, b) => b.n - a.n);
+        const a = sorted[0], b = sorted[2];
+        if (!a || !b) return null;
+        const sum = a.n + b.n;
+
+        const built = cmChoices(String(sum),
+                                cmNumberDistractors(sum, rng, 3).map(String), rng);
+        if (!built) return null;
+        return {
+            prompt: `How many visits were there on ${cmDayAxisLabel(a.day)} and `
+                  + `${cmDayAxisLabel(b.day)} added together?`,
+            ...built,
+            chart: cmChart('Visits each day this week', cmDaySeries(s), { band }),
+            explain: `${a.n} + ${b.n} = ${sum}.`,
+        };
+    },
+},
+
+{
+    id: 'species-rank',
+    category: 'comparison',
+    title: 'Second most common',
+    bands: ['3-5'],
+    build({ s, band, rng }) {
+        // Ordinal rather than extreme. "Biggest" is findable at a glance;
+        // "second biggest" needs the bars actually compared.
+        if (s.species.length < 3) return null;
+        const [first, second, third] = s.species;
+        if (second.n === third.n || first.n === second.n) return null;
+
+        const built = cmChoices(second.species,
+            [first.species, third.species].concat(
+                s.species.slice(3, 4).map(x => x.species)), rng);
+        if (!built) return null;
+        return {
+            prompt: 'Which bird was the SECOND most common this week?',
+            ...built,
+            chart: cmChart('Visits by species this week', cmSpeciesSeries(s), { band }),
+            explain: s.species.slice(0, 3).map((x, i) => `${i + 1}. ${x.species} (${x.n})`).join(' · '),
+        };
+    },
+},
+
+{
+    id: 'percent-change',
+    category: 'math',
+    title: 'Percent change on last week',
+    bands: ['6-8'],
+    build({ s, s14, band, rng }) {
+        const prev = s14.total - s.total;
+        if (s.total < 10 || prev < 10) return null;
+        const prevDays = s14.days.filter(d =>
+            cmDayStart(d.day).getTime() < Date.now() - 7 * 86400000).length;
+        if (prevDays < 4) return null;
+
+        const change = Math.round(((s.total - prev) / prev) * 100);
+        if (Math.abs(change) < 8) return null;      // too small to read confidently
+
+        const label = v => (v > 0 ? `up ${v}%` : `down ${Math.abs(v)}%`);
+        const built = cmChoices(label(change),
+            [label(-change), label(Math.round(change / 2)), label(change * 2)]
+                .filter(x => x !== label(change)), rng);
+        if (!built) return null;
+        return {
+            prompt: 'By roughly what percent did visits change from last week to this week?',
+            ...built,
+            chart: cmChart('This week against last week',
+                           [{ label: 'Last week', value: prev, key: 'prev' },
+                            { label: 'This week', value: s.total, key: 'now' }], { band }),
+            explain: `(${s.total} − ${prev}) ÷ ${prev} = ${((s.total - prev) / prev).toFixed(2)} `
+                   + `→ ${label(change)}.`,
+        };
+    },
+},
+
+{
+    id: 'expected-count',
+    category: 'math',
+    title: 'Projecting forward',
+    bands: ['6-8'],
+    build({ s, band, rng, feeder }) {
+        // Proportional reasoning, and a chance to say out loud that a rate
+        // measured over one week does not have to hold for the next four.
+        if (s.days.length < 5 || s.total < 20) return null;
+        const perDay = s.total / s.days.length;
+        const projected = Math.round(perDay * 30);
+        if (projected < 20) return null;
+
+        const round = v => Math.round(v / 5) * 5;
+        const built = cmChoices(String(round(projected)),
+            [round(projected * 2), round(projected / 2), round(projected * 1.4)]
+                .filter(v => v > 0 && v !== round(projected)).map(String), rng);
+        if (!built) return null;
+        return {
+            prompt: `At this week's rate, about how many visits would ${feeder} get in 30 days?`,
+            ...built,
+            chart: cmChart('Visits each day this week', cmDaySeries(s), { band }),
+            explain: `${s.total} ÷ ${s.days.length} ≈ ${perDay.toFixed(1)} a day, `
+                   + `× 30 ≈ ${projected}. Worth asking the class whether a week in `
+                   + `${cmDayStart(s.days[s.days.length - 1].day).toLocaleDateString(undefined, { month: 'long' })} `
+                   + `predicts the next month at all.`,
+        };
+    },
+},
+
+{
+    id: 'quiet-hours',
+    category: 'analysis',
+    title: 'Hours with nothing',
+    bands: ['6-8'],
+    build({ s, band, rng }) {
+        // Reading ABSENCE off a chart — the gaps rather than the bars.
+        const FROM = 6, TO = 19;
+        const slots = [];
+        for (let h = FROM; h < TO; h++) slots.push({ h, n: s.byHour[h] });
+        const empty = slots.filter(x => x.n === 0).length;
+        if (s.total < 20 || empty < 1 || empty > 10) return null;
+
+        const built = cmChoices(String(empty),
+            cmNumberDistractors(empty, rng, 3).filter(v => v >= 0 && v <= TO - FROM).map(String), rng);
+        if (!built) return null;
+        return {
+            prompt: `Between 6am and 7pm, how many whole hours had NO visits at all?`,
+            ...built,
+            chart: cmChart('Visits by hour, 6am to 7pm',
+                           slots.map(x => ({ label: cmHourLabel(x.h), value: x.n, key: x.h })),
+                           { band, maxBars: TO - FROM }),
+            explain: `${empty} of the ${TO - FROM} hours are empty: `
+                   + slots.filter(x => x.n === 0).map(x => cmHourLabel(x.h)).join(', ') + '.',
+        };
+    },
+},
 ];
 
 /**
@@ -1673,6 +1900,8 @@ async function refreshClassroomPanel() {
         return;
     }
     classroomList = Array.isArray(data) ? data : [];
+    const fbBtn = document.getElementById('classroom-feedback-btn');
+    if (fbBtn) fbBtn.style.display = classroomCanAssign() ? '' : 'none';
     renderClassroomList();
     renderClassroomForm();
     classroomList.forEach(r => cmResolvePendingPredictions(r));
@@ -1762,6 +1991,8 @@ function renderClassroomList() {
                     <button class="classroom-btn-primary" onclick="startClassroomSession('${esc(r.id)}','join_code')"
                             ${r.home_feeder_id ? '' : 'disabled title="Set a home feeder first"'}>📱 With devices</button>
                     <button class="classroom-btn" onclick="editClassroom('${esc(r.id)}')">Edit</button>
+                    <button class="classroom-btn" onclick="reviewClassroomQuestions('${esc(r.id)}')"
+                            ${r.home_feeder_id ? '' : 'disabled'}>🔍 Review questions</button>
                     <button class="classroom-btn" onclick="showClassroomHistory('${esc(r.id)}')">Results</button>
                     <button class="classroom-btn" onclick="copyClassroomLink('${esc(r.id)}')"
                             title="A link that opens straight into this class">🔗 Link</button>
@@ -1777,6 +2008,231 @@ function renderClassroomList() {
             <div class="classroom-pending" id="classroom-pending-${esc(r.id)}"></div>
         </div>`;
     }).join('');
+}
+
+// ── Reviewing the questions (and saying what is wrong with them) ──
+//
+// The questions are generated from templates against live data, so nobody —
+// including whoever wrote the template — sees the exact wording a class will
+// get until a class gets it. That makes "this one reads badly" the most
+// useful signal there is for improving them, and it needs somewhere to go
+// that is not a teacher's memory until the next time they see somebody.
+//
+// Review builds a real lesson and lists the whole thing: every question as it
+// would appear, its answer, its chart, and a button to say what is wrong.
+// Deliberately NOT a session — reviewing should not leave sessions in the
+// history, and a teacher checking next week's questions on a Sunday is not
+// teaching a class.
+
+let classroomReviewRoom = null;
+let classroomReviewQuestions = [];
+
+async function reviewClassroomQuestions(roomId) {
+    const room = classroomList.find(r => r.id === roomId);
+    const box = document.getElementById('classroom-review');
+    if (!room || !box) return;
+
+    hideClassroomHistory();
+    box.style.display = '';
+    box.innerHTML = '<div class="classroom-muted">Building a lesson from the feeder…</div>';
+
+    const data = await loadClassroomData(room);
+    const { questions, source } = buildClassroomQuestions(room, data);
+    classroomReviewRoom = room;
+    classroomReviewQuestions = questions;
+
+    if (!questions.length) {
+        box.innerHTML = `<div class="classroom-muted">
+            ${esc(room.home_feeder_name || 'This feeder')} hasn't logged enough
+            visits to build a lesson from, so there is nothing to review yet.</div>
+            <button class="classroom-btn" onclick="hideClassroomReview()">Close</button>`;
+        return;
+    }
+
+    const band = GRADE_BAND_LABELS[room.grade_band] || room.grade_band;
+    box.innerHTML = `
+        <h4 class="classroom-h">Questions for ${esc(room.name)} — ${esc(band)}</h4>
+        <p class="classroom-muted">
+            Built from ${esc(source.name)}${source.isHome ? '' : ' (a partner feeder)'},
+            exactly as the class would see them. Flagging one does not change this
+            lesson — it records what was wrong so the template can be fixed.
+        </p>
+        <div class="classroom-review-list">
+            ${questions.map((q, i) => classroomReviewItem(q, i)).join('')}
+        </div>
+        <button class="classroom-btn" onclick="hideClassroomReview()">Close</button>`;
+}
+
+function classroomReviewItem(q, i) {
+    const choices = (q.choices || []).map((c, k) => {
+        const right = k === q.correct_index;
+        return `<li class="${right ? 'right' : ''}">${esc(c.label)}${right ? ' ✓' : ''}</li>`;
+    }).join('');
+
+    const evidence = q.image ? 'photo'
+                   : q.chart ? `${q.chart.kind === 'dots' ? 'dot chart' : 'bar chart'}`
+                             + ` — ${esc(q.chart.caption)}`
+                   : 'no chart';
+
+    return `
+        <div class="classroom-review-q" data-q="${i}">
+            <div class="classroom-review-head">
+                <span class="classroom-pill">${esc(q.category)}</span>
+                <code class="classroom-review-tid">${esc(q.template_id)}</code>
+                ${q.from_partner ? '<span class="classroom-pill partner">partner data</span>' : ''}
+            </div>
+            <p class="classroom-review-prompt">${esc(q.prompt)}</p>
+            <ol class="classroom-review-choices">${choices}</ol>
+            ${q.correct_index == null
+                ? '<p class="classroom-muted">Prediction — scored later, no answer yet.</p>' : ''}
+            ${q.explain ? `<p class="classroom-muted">On reveal: ${esc(q.explain)}</p>` : ''}
+            <p class="classroom-muted">Shown with: ${evidence}</p>
+            <button class="classroom-btn" onclick="openClassroomFlag(${i})">⚑ Something is wrong</button>
+            <div class="classroom-flag-form" id="classroom-flag-${i}"></div>
+        </div>`;
+}
+
+/**
+ * The flag form, opened under one question.
+ *
+ * A reason AND a comment, because the reason alone is not actionable — "too
+ * hard" could mean the arithmetic, the vocabulary or the chart — and a
+ * comment alone cannot be counted. The reasons are the ones that map to
+ * different fixes rather than to different feelings.
+ */
+function openClassroomFlag(i) {
+    const box = document.getElementById(`classroom-flag-${i}`);
+    if (!box) return;
+    if (box.innerHTML) { box.innerHTML = ''; return; }   // toggle shut
+
+    box.innerHTML = `
+        <select id="classroom-flag-reason-${i}">
+            <option value="unclear">The question is unclear</option>
+            <option value="wrong">The answer looks wrong</option>
+            <option value="too_hard">Too hard for this band</option>
+            <option value="too_easy">Too easy for this band</option>
+            <option value="bad_visual">The photo or chart is the problem</option>
+            <option value="other">Something else</option>
+        </select>
+        <textarea id="classroom-flag-note-${i}" rows="3" maxlength="2000"
+                  placeholder="What was wrong with it? The more specific the better — which word, which number."></textarea>
+        <div class="classroom-form-actions">
+            <button class="classroom-btn-primary" onclick="sendClassroomFlag(${i})">Send feedback</button>
+            <button class="classroom-btn" onclick="openClassroomFlag(${i})">Cancel</button>
+        </div>
+        <div class="classroom-status" id="classroom-flag-status-${i}"></div>`;
+    document.getElementById(`classroom-flag-note-${i}`).focus();
+}
+
+async function sendClassroomFlag(i) {
+    const q = classroomReviewQuestions[i];
+    const room = classroomReviewRoom;
+    if (!q || !room) return;
+
+    const reason = document.getElementById(`classroom-flag-reason-${i}`).value;
+    const note   = document.getElementById(`classroom-flag-note-${i}`).value.trim();
+    const status = document.getElementById(`classroom-flag-status-${i}`);
+    status.style.color = 'var(--color-gray-500)';
+    status.textContent = 'Sending…';
+
+    const { error } = await sbRpc('classroom_flag_question', {
+        p_community_id: classroomCommunityId,
+        p_classroom_id: room.id,
+        p_reason:       reason,
+        p_comment:      note || null,
+        // The question AS SHOWN. The template will not reproduce it from
+        // tomorrow's data, so this is the only copy that will ever exist.
+        p_question: {
+            template_id:      q.template_id,
+            category:         q.category,
+            grade_band:       q.grade_band,
+            prompt:           q.prompt,
+            choices:          q.choices,
+            correct_index:    q.correct_index,
+            explain:          q.explain || null,
+            chart_kind:       q.image ? 'photo' : (q.chart ? q.chart.kind : null),
+            source_feeder_id: q.source_feeder_id,
+        },
+    }, true);
+
+    if (error) {
+        status.style.color = '#e74c3c';
+        status.textContent = error.message || 'Could not send that.';
+        return;
+    }
+    const card = document.querySelector(`.classroom-review-q[data-q="${i}"]`);
+    if (card) card.classList.add('flagged');
+    document.getElementById(`classroom-flag-${i}`).innerHTML =
+        '<p class="classroom-muted">✓ Thanks — recorded against this template.</p>';
+}
+
+function hideClassroomReview() {
+    const box = document.getElementById('classroom-review');
+    if (box) { box.style.display = 'none'; box.innerHTML = ''; }
+    classroomReviewRoom = null;
+    classroomReviewQuestions = [];
+}
+
+// ── Reading the feedback back ────────────────────────────────────
+//
+// Owner and moderator only, matching the RPC. The counts by template come
+// first because the actionable question is which TEMPLATE keeps drawing
+// complaints, not which question drew one.
+
+async function showClassroomFeedback() {
+    const box = document.getElementById('classroom-review');
+    if (!box) return;
+    hideClassroomHistory();
+    box.style.display = '';
+    box.innerHTML = '<div class="classroom-muted">Loading feedback…</div>';
+
+    const { data, error } = await sbRpc('classroom_feedback_list',
+        { p_community_id: classroomCommunityId, p_include_resolved: false }, true);
+    if (error) {
+        box.innerHTML = `<div class="classroom-error">${esc(error.message || 'Could not load.')}</div>`
+                      + '<button class="classroom-btn" onclick="hideClassroomReview()">Close</button>';
+        return;
+    }
+
+    const items = (data && data.items) || [];
+    const byTemplate = (data && data.by_template) || [];
+    if (!items.length) {
+        box.innerHTML = '<div class="classroom-muted">No open feedback. '
+                      + 'Use "Review questions" on a class to go through a lesson and flag anything that reads badly.</div>'
+                      + '<button class="classroom-btn" onclick="hideClassroomReview()">Close</button>';
+        return;
+    }
+
+    const REASONS = { unclear: 'unclear', wrong: 'answer looks wrong',
+                      too_hard: 'too hard', too_easy: 'too easy',
+                      bad_visual: 'photo or chart', other: 'other' };
+
+    box.innerHTML = `
+        <h4 class="classroom-h">Question feedback (${items.length} open)</h4>
+        <p class="classroom-muted">Most flagged templates:
+            ${byTemplate.slice(0, 5).map(t => `<code>${esc(t.template_id)}</code> ×${t.n}`).join(' · ')}</p>
+        <div class="classroom-review-list">
+        ${items.map(f => `
+            <div class="classroom-review-q">
+                <div class="classroom-review-head">
+                    <span class="classroom-pill">${esc(REASONS[f.reason] || f.reason)}</span>
+                    <code class="classroom-review-tid">${esc(f.template_id)}</code>
+                    <span class="classroom-muted">${esc(f.grade_band || '')}
+                        ${f.classroom_name ? '· ' + esc(f.classroom_name) : ''}
+                        · ${esc(f.by_label)}</span>
+                </div>
+                <p class="classroom-review-prompt">${esc(f.prompt)}</p>
+                ${f.comment ? `<p class="classroom-flag-note">“${esc(f.comment)}”</p>` : ''}
+                <button class="classroom-btn" onclick="resolveClassroomFeedback('${esc(f.id)}')">Mark handled</button>
+            </div>`).join('')}
+        </div>
+        <button class="classroom-btn" onclick="hideClassroomReview()">Close</button>`;
+}
+
+async function resolveClassroomFeedback(id) {
+    const { error } = await sbRpc('classroom_feedback_resolve', { p_id: id }, true);
+    if (error) { showToast('Error: ' + (error.message || 'could not update')); return; }
+    showClassroomFeedback();
 }
 
 /**
