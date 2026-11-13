@@ -3304,7 +3304,22 @@ const CLASSROOM_TEMPLATES = [
  * capped, with identification first — starting a class on a photo of a bird
  * works where starting on a percentage does not.
  */
-function buildClassroomQuestions(room, data) {
+/**
+ * How many questions this classroom's session asks.
+ *
+ * A class doing this every morning wants one or two; a class doing it once a
+ * week wants six or eight. Both are the same product used differently, so the
+ * number lives on the classroom rather than in a constant here.
+ */
+function classroomQuizSize(room, o) {
+    const n = Number((o && o.limit) || (room && room.questions_per_session));
+    return Number.isFinite(n) && n >= 1 && n <= 20
+        ? Math.round(n)
+        : CLASSROOM_QUESTIONS_PER_SESSION;
+}
+
+function buildClassroomQuestions(room, data, opts) {
+    const o = opts || {};
     const source = cmPickSource(data);
     if (!source || !source.total) return { questions: [], source: null };
 
@@ -3348,10 +3363,41 @@ function buildClassroomQuestions(room, data) {
 
     const rng = cmRng(seed + '|order');
     const ident = out.filter(q => q.category === 'identification');
-    const rest  = cmShuffle(out.filter(q => q.category !== 'identification'), rng);
+    let   rest  = cmShuffle(out.filter(q => q.category !== 'identification'), rng);
+
+    // A class running this daily meets the whole set in a fortnight, and the
+    // second time it meets Tuesday's question on Wednesday it has worked out
+    // that the lesson is on rails. So anything this classroom has been asked
+    // recently goes to the BACK rather than being dropped: with a thin week
+    // of data there may not be enough questions to fill a session otherwise,
+    // and a repeat is better than a short lesson. Least recently asked first
+    // among the repeats.
+    const recent = Array.isArray(o.recent) ? o.recent : [];
+    if (recent.length) {
+        const rank = new Map(recent.map((id, i) => [id, i]));
+        const fresh = rest.filter(q => !rank.has(q.template_id));
+        const seen  = rest.filter(q =>  rank.has(q.template_id))
+                          .sort((a, b) => rank.get(b.template_id) - rank.get(a.template_id));
+        rest = fresh.concat(seen);
+    }
+
+    const ordered = ident.concat(rest);
+
+    // How many templates this band HAS, against how many could say anything
+    // about this week. The gap is the useful number: a band that offers forty
+    // questions and builds six of them is short of data, not short of
+    // templates, and those are opposite problems with opposite fixes.
+    const offered = CLASSROOM_TEMPLATES.filter(t => t.bands.includes(band)).length;
 
     return {
-        questions: ident.concat(rest).slice(0, CLASSROOM_QUESTIONS_PER_SESSION),
+        // Reviewing is not teaching. A lesson is deliberately a handful of
+        // questions; a review pass is for seeing everything the band can
+        // currently produce, which is the only way to judge the set as a set
+        // or to give feedback on a question a lesson happened not to pick.
+        questions: o.all ? ordered
+                         : ordered.slice(0, classroomQuizSize(room, o)),
+        built:   ordered.length,
+        offered,
         source,
     };
 }
@@ -3593,6 +3639,19 @@ function toggleClassroomMore(roomId) {
 let classroomReviewRoom = null;
 let classroomReviewQuestions = [];
 
+/**
+ * Template ids this classroom has seen lately.
+ *
+ * Never fatal: a classroom with no history, or a database that has not had
+ * setup-classroom-cadence.sql run against it yet, simply gets no repeat
+ * avoidance rather than no lesson.
+ */
+async function loadClassroomRecentTemplates(roomId) {
+    const { data, error } = await sbRpc('classroom_recent_templates',
+        { p_classroom_id: roomId, p_days: 14 }, true);
+    return (!error && Array.isArray(data)) ? data : [];
+}
+
 async function reviewClassroomQuestions(roomId) {
     const room = classroomList.find(r => r.id === roomId);
     const box = document.getElementById('classroom-review');
@@ -3603,7 +3662,8 @@ async function reviewClassroomQuestions(roomId) {
     box.innerHTML = '<div class="classroom-muted">Building a lesson from the feeder…</div>';
 
     const data = await loadClassroomData(room);
-    const { questions, source } = buildClassroomQuestions(room, data);
+    const { questions, source, built, offered } =
+        buildClassroomQuestions(room, data, { all: true });
     classroomReviewRoom = room;
     classroomReviewQuestions = questions;
 
@@ -3619,9 +3679,16 @@ async function reviewClassroomQuestions(roomId) {
     box.innerHTML = `
         <h4 class="classroom-h">Questions for ${esc(room.name)} — ${esc(band)}</h4>
         <p class="classroom-muted">
-            Built from ${esc(source.name)}${source.isHome ? '' : ' (a partner feeder)'},
-            exactly as the class would see them. Flagging one does not change this
-            lesson — it records what was wrong so the template can be fixed.
+            All ${built} question${built === 1 ? '' : 's'} this band can build from
+            ${esc(source.name)}${source.isHome ? '' : ' (a partner feeder)'} today,
+            exactly as a class would see them. A lesson shows
+            ${CLASSROOM_QUESTIONS_PER_SESSION} of these; this is the whole set, so
+            nothing goes unreviewed just because a lesson did not pick it.
+            ${offered > built
+                ? `<br><span class="classroom-warn">${offered - built} more
+                   template${offered - built === 1 ? '' : 's'} exist for this band but
+                   had nothing to say about this week's data.</span>`
+                : ''}
         </p>
         <div class="classroom-review-list">
             ${questions.map((q, i) => classroomReviewItem(q, i)).join('')}
@@ -3989,12 +4056,20 @@ async function showClassroomFeedback() {
 
     const REASONS = { unclear: 'unclear', wrong: 'answer looks wrong',
                       too_hard: 'too hard', too_easy: 'too easy',
-                      bad_visual: 'photo or chart', other: 'other' };
+                      bad_visual: 'photo or chart', improvement: 'would be better',
+                      idea: 'new question idea', other: 'other' };
+
+    // Kept so the bulk action acts on exactly what is on screen.
+    classroomFeedbackShown = items.map(f => f.id);
 
     box.innerHTML = `
         <h4 class="classroom-h">Question feedback (${items.length} open)</h4>
         <p class="classroom-muted">Most flagged templates:
             ${byTemplate.slice(0, 5).map(t => `<code>${esc(t.template_id)}</code> ×${t.n}`).join(' · ')}</p>
+        <div class="classroom-form-actions">
+            <button class="classroom-btn" onclick="resolveAllClassroomFeedback()">
+                ✓ Mark all ${items.length} as addressed</button>
+        </div>
         <div class="classroom-review-list">
         ${items.map(f => `
             <div class="classroom-review-q">
@@ -4013,6 +4088,41 @@ async function showClassroomFeedback() {
             </div>`).join('')}
         </div>
         <button class="classroom-btn" onclick="hideClassroomReview()">Close</button>`;
+}
+
+// The ids currently on screen, so "mark all" cannot quietly resolve
+// something that arrived after this list was drawn.
+let classroomFeedbackShown = [];
+
+/**
+ * Clear the whole visible list in one call, with a note saying what was done.
+ *
+ * The note is the point. "Addressed" with no record of HOW is barely better
+ * than deleting the row: the next person to read that template has no idea a
+ * teacher once complained about it, or what changed in response. It is also
+ * what makes "show me what is new since last time" a question the database
+ * can answer, which is the whole reason a daily classroom needs this.
+ */
+async function resolveAllClassroomFeedback() {
+    const ids = classroomFeedbackShown.slice();
+    if (!ids.length) return;
+
+    const note = window.prompt(
+        `Mark all ${ids.length} as addressed.\n\n`
+        + 'What was done about them? (recorded against every one)', '');
+    // Cancel means cancel. An empty string means they pressed OK with nothing
+    // typed, which is a deliberate "no note" rather than a mistake.
+    if (note === null) return;
+
+    const { data, error } = await sbRpc('classroom_feedback_resolve_bulk',
+        { p_ids: ids, p_note: note.trim() || null }, true);
+
+    if (error) {
+        showToast('Could not mark them: ' + (error.message || 'unknown error'));
+        return;
+    }
+    showToast(`${data == null ? ids.length : data} marked as addressed.`);
+    await showClassroomFeedback();
 }
 
 async function resolveClassroomFeedback(id) {
@@ -4108,6 +4218,19 @@ function renderClassroomForm() {
                     <option value="6-8"${editing?.grade_band === '6-8' ? ' selected' : ''}>Grades 6–8 — percents and trends</option>
                 </select>
             </label>
+
+            <label class="classroom-field">
+                <span>How many questions a session</span>
+                <select id="classroom-quiz-size">
+                    ${[1, 2, 3, 5, 6, 8, 10, 12].map(n => `
+                        <option value="${n}"${(editing?.questions_per_session || 8) === n ? ' selected' : ''}>
+                            ${n} question${n === 1 ? '' : 's'}${
+                                n <= 2 ? ' — a daily warm-up'
+                              : n >= 10 ? ' — a long quiz'
+                              : n >= 6 ? ' — a weekly quiz' : ''}
+                        </option>`).join('')}
+                </select>
+            </label>
         </div>
         <details class="classroom-details">
             <summary>Partner feeders (optional)</summary>
@@ -4173,10 +4296,31 @@ function cancelClassroomEdit() {
     renderClassroomForm();
 }
 
+/**
+ * Store the session size, if it has moved.
+ *
+ * Its own RPC rather than a field on classroom_update: adding a defaulted
+ * argument there would leave two overloads of the same name and make
+ * PostgREST's named-argument calls ambiguous. Failure is reported but does
+ * not fail the save - a classroom whose name was updated and whose quiz size
+ * was not is a far better outcome than one that refused the whole edit.
+ */
+async function saveClassroomQuizSize(roomId, size, say) {
+    if (!roomId || !Number.isFinite(size)) return;
+    const room = classroomList.find(r => r.id === roomId);
+    if (room && (room.questions_per_session || 8) === size) return;
+
+    const { error } = await sbRpc('classroom_set_quiz_size',
+        { p_classroom_id: roomId, p_n: size }, true);
+    if (error) say('Saved, but the question count did not stick: '
+                   + (error.message || 'unknown error'), false);
+}
+
 async function saveClassroom() {
     const name   = document.getElementById('classroom-name').value.trim();
     const home   = document.getElementById('classroom-home-feeder').value;
     const band   = document.getElementById('classroom-grade-band').value;
+    const size   = parseInt(document.getElementById('classroom-quiz-size')?.value, 10);
     const status = document.getElementById('classroom-form-status');
     const say = (msg, ok) => {
         status.textContent = msg;
@@ -4246,6 +4390,7 @@ async function saveClassroom() {
         // A partner-feeder failure must not read as "the classroom wasn't
         // created" — it was, and it works without partners.
         if (error) showToast('Classroom saved, but partner feeders did not: ' + (error.message || ''));
+        await saveClassroomQuizSize(roomId, size, say);
     }
 
     classroomEditingId = null;
@@ -4417,8 +4562,13 @@ async function startClassroomSession(id, mode) {
     stage.style.display = 'flex';
     stage.innerHTML = '<div class="classroom-stage-loading">Reading the feeder…</div>';
 
-    const data = await loadClassroomData(room);
-    const { questions, source } = buildClassroomQuestions(room, data);
+    // Both in parallel: the recent-template list is a nicety and should not
+    // add a round trip to the wait a class is watching.
+    const [data, recent] = await Promise.all([
+        loadClassroomData(room),
+        loadClassroomRecentTemplates(room.id),
+    ]);
+    const { questions, source } = buildClassroomQuestions(room, data, { recent });
 
     if (!questions.length) {
         stage.innerHTML = `
