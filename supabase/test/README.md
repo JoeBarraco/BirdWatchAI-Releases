@@ -30,8 +30,30 @@ docker rm -f bwai-pgtest
 On Git Bash, prefix the `docker` lines with `MSYS_NO_PATHCONV=1` or the
 container paths are rewritten to Windows ones.
 
+For the reminder tests, add:
+
+```bash
+docker cp supabase/test/school-reminders.test.sql bwai-pgtest:/tmp/
+
+# The schedule block at the foot of setup-school-reminders.sql needs pg_cron
+# and pg_net, which plain postgres:16 has not got. Apply the file up to the
+# commit and leave the cron part to Supabase.
+sed '/^commit;$/q' supabase/setup-school-reminders.sql > /tmp/reminders-schema.sql
+docker cp /tmp/reminders-schema.sql bwai-pgtest:/tmp/
+docker exec bwai-pgtest psql -U postgres -q -f /tmp/reminders-schema.sql
+docker exec bwai-pgtest psql -U postgres -q -f /tmp/school-reminders.test.sql
+```
+
 Every check prints `PASS` or `FAIL ***`. Grep for `FAIL`. As of the last run:
-68 checks, 0 failures.
+68 subscription checks and 37 reminder checks, 0 failures.
+
+**`now()` is the transaction timestamp**, and each test's `do $$ … $$` block is
+one transaction, so every `now()` inside it is the same instant. Two
+`now() + interval '25 days'` expressions in the same block produce a byte-
+identical timestamp — which looks like two different terms and is not. That
+cost a confusing red `FAIL` on the reminder suite's renewal test, where the
+code was right and the test was lying. Use visibly different offsets when a
+test means "a different term".
 
 **The suite needs a fresh database.** It creates communities at fixed
 addresses, spends codes and moves expiry dates about, so running it twice

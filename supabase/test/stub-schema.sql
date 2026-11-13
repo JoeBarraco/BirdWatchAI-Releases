@@ -21,6 +21,18 @@ language sql stable as $$
   select nullif(current_setting('test.uid', true), '')::uuid
 $$;
 
+-- Supabase owns the real one. Only id and email are read here, by
+-- school_terms_due_reminders turning an owner id into an address.
+create table if not exists auth.users (
+    id    uuid primary key,
+    email text
+);
+
+create table if not exists user_profiles (
+    id           uuid primary key,
+    display_name text
+);
+
 create table communities (
     id            uuid primary key default gen_random_uuid(),
     slug          text unique not null,
