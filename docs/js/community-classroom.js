@@ -1441,6 +1441,16 @@ function cmChart(caption, series, opts) {
              total: trimmed.reduce((a, r) => a + r.value, 0) };
 }
 
+/**
+ * Chart kinds a class can read an exact value off, with the numbers hidden.
+ *
+ * bars and hbars have a labelled, gridded scale; line has the same scale;
+ * dots ARE the count, one mark per visit. A donut carries proportion and no
+ * scale at all, and a clock's blobs encode roughly-how-busy by area — both
+ * are fine for "which is biggest?" and useless for "how many?".
+ */
+const CHART_KINDS_READABLE = new Set(['bars', 'hbars', 'line', 'dots']);
+
 // Whether a requested chart kind is honest for this data.
 //
 // Variety is the point - a class that meets the same bar chart forty times
@@ -1948,10 +1958,37 @@ function classroomIntroHtml(q) {
  */
 function classroomHBarsHtml(chart, revealed) {
     const n = chart.series.length;
-    const W = 1000, rowH = 62, padT = 16, padB = 16;
+    const W = 1000, rowH = 62, padT = 16;
     const labelW = 300, padR = 70;
-    const H = padT + padB + n * rowH;
+
+    // This chart had no value axis at all — not a faint one, none. Flagged
+    // mid-lesson: "there are no x axis labels or markers, can't determine
+    // the answer", on a question asking how many of one bird came. Quite
+    // right: a bar whose length is the answer, drawn against nothing, with
+    // the numbers deliberately withheld until the reveal, cannot be read.
+    // The vertical bars have had gridlines all along; these are the same
+    // thing turned on its side.
+    const step  = cmNiceStep(chart.max);
+    const top   = Math.ceil(chart.max / step) * step;
+    const minor = cmMinorStep(top, step);
+    const axisH = 54;                       // room under the bars for the numbers
+    const padB  = 16 + axisH;
+    const H     = padT + padB + n * rowH;
     const plotW = W - labelW - padR;
+    const x     = v => labelW + (v / top) * plotW;
+    const baseY = padT + n * rowH;
+
+    let grid = '';
+    if (minor) {
+        for (let v = 0; v <= top + 0.001; v += minor) {
+            if (Math.abs(v / step - Math.round(v / step)) < 0.001) continue;
+            grid += `<line x1="${x(v)}" y1="${padT}" x2="${x(v)}" y2="${baseY}" class="cc-grid-minor"/>`;
+        }
+    }
+    for (let v = 0; v <= top + 0.001; v += step) {
+        grid += `<line x1="${x(v)}" y1="${padT}" x2="${x(v)}" y2="${baseY}" class="cc-grid"/>`
+             +  `<text x="${x(v)}" y="${baseY + 38}" class="cc-axis" text-anchor="middle">${v}</text>`;
+    }
 
     const rows = chart.series.map((s, i) => {
         const cy = padT + i * rowH + rowH / 2;
@@ -1969,7 +2006,9 @@ function classroomHBarsHtml(chart, revealed) {
     return `
         <figure class="classroom-chart hbars">
             <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(chart.caption)}">
-                <line x1="${labelW}" y1="${padT}" x2="${labelW}" y2="${H - padB}" class="cc-axisline"/>
+                ${grid}
+                <line x1="${labelW}" y1="${padT}" x2="${labelW}" y2="${baseY}" class="cc-axisline"/>
+                <line x1="${labelW}" y1="${baseY}" x2="${W - padR}" y2="${baseY}" class="cc-axisline"/>
                 ${rows}
             </svg>
             <figcaption>${esc(chart.caption)}</figcaption>
@@ -5468,7 +5507,23 @@ function buildClassroomQuestions(room, data, opts) {
             const plotted = new Set(q.chart.series.map(r => String(r.value)));
             const givesItAway = (q.choices || []).some(c =>
                 (String(c.label).match(/\d+/g) || []).some(num => plotted.has(num)));
-            if (!givesItAway) q.chart.showValues = true;
+            if (!givesItAway) {
+                q.chart.showValues = true;
+            } else if (!CHART_KINDS_READABLE.has(q.chart.kind)) {
+                // The numbers are staying hidden because printing them would
+                // answer the question — which means the DRAWING is now the
+                // only way to answer it, and some shapes cannot be read that
+                // precisely. A donut has no scale; a clock's blobs encode
+                // size, not an exact count.
+                //
+                // This is how "how many Northern Cardinals came this week?"
+                // reached a class with no way to answer it: the kind rotation
+                // handed that question a chart with no axis, and the rotation
+                // runs on how many charts the lesson has drawn so far, so it
+                // only bites in a full lesson and never in a one-question
+                // test. Bars always carry a labelled, gridded scale.
+                q.chart.kind = 'bars';
+            }
         }
 
         if (t.guessFirst) q.guess_first = true;

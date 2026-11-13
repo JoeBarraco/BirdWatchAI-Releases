@@ -3873,7 +3873,23 @@
    to, so scaling it moves the whole slide as one piece. */
 .classroom-fit {
     display: flex; flex-direction: column; align-items: center;
-    justify-content: center; gap: 2.2vmin;
+    /* `safe`, for the same reason .classroom-stage-body needs it, and it was
+       missed here the first time.
+
+       The fitter deliberately sets this box's height to the SCALED height
+       while the children go on laying out at their natural size — that is how
+       the scrollbar gets removed. So the content is nearly always taller than
+       its own box, and with plain `center` it overflowed equally in both
+       directions. The half above the top is past the scroll origin: invisible
+       and unreachable.
+
+       Flagged mid-lesson on the cardinal-range slide, which pairs a photo
+       with the US map and is the tallest thing the stage ever draws: "the
+       images are cut off the top of screen." The map was painting 24px above
+       the visible area. `safe center` centres while it fits and falls back to
+       flex-start when it does not, which is what the `center top` transform
+       origin already assumes. */
+    justify-content: safe center; gap: 2.2vmin;
     width: 100%;
     /* Children keep their natural size and the box is shrunk around them, so
        they must be allowed to paint outside it. */
