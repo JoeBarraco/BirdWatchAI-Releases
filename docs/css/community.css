@@ -4619,3 +4619,7 @@
     display: flex; flex-direction: column; align-items: center; gap: 0.8vmin;
     padding: 1.2vmin 0;
 }
+
+/* "Read more", on the reveal. Quiet: it is an offer for after the question,
+   not a control the lesson depends on. */
+.classroom-learn { margin-top: 1vmin; }

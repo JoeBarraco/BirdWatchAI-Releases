@@ -4034,6 +4034,15 @@ function buildClassroomQuestions(room, data, opts) {
 
         if (t.guessFirst) q.guess_first = true;
 
+        // Which bird this question is ABOUT, for the "read more" button on
+        // the reveal. A fact slide names its bird; everything else is about
+        // the bird in its answer, where that answer is a species we know.
+        if (!q.about_bird) {
+            const answer = (q.correct_index != null && q.choices && q.choices[q.correct_index])
+                ? String(q.choices[q.correct_index].label) : '';
+            q.about_bird = q.wonder_bird || (SPECIES_LOOKS[answer] ? answer : null);
+        }
+
         out.push({
             template_id: t.id,
             category:    t.category,
@@ -5398,6 +5407,17 @@ function renderClassroomStage() {
                 </button>`;
     }).join('');
 
+    // Reuses the species panel behind the "Web" button on every detection
+    // card rather than inventing a second way to look a bird up: it already
+    // carries All About Birds, Audubon and a Wikipedia summary, and a teacher
+    // who has used one has used the other. Its z-index puts it above the
+    // stage, so it works from a running lesson.
+    const learn = (S.revealed && q.about_bird && typeof openAIResearch === 'function')
+        ? `<button class="classroom-btn classroom-learn"
+                   onclick="openAIResearch('${escJs(q.about_bird)}')">
+             🌐 Read more about the ${esc(q.about_bird)}</button>`
+        : '';
+
     const reveal = !S.revealed ? '' : `
         <div class="classroom-reveal">
             ${q.correct_index == null
@@ -5407,6 +5427,7 @@ function renderClassroomStage() {
                     : '<div class="classroom-reveal-head miss">❌ Not quite</div>')}
             <div class="classroom-reveal-body">${esc(q.explain || '')}</div>
             ${q.fact ? `<div class="classroom-fact">💡 ${esc(q.fact)}</div>` : ''}
+            ${learn}
         </div>`;
 
     const last = S.index === S.questions.length - 1;

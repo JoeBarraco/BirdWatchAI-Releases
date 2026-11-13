@@ -1421,7 +1421,12 @@ async function fetchSpeciesSummary(species) {
 
     // Fetch Wikipedia summary
     try {
-        const res = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(species)}`);
+        // Wikipedia titles use a straight apostrophe. A curly one - which is
+        // what prose and some species lists carry - produces a confident
+        // "no summary found" for a bird that has a perfectly good article,
+        // e.g. Clark's Nutcracker.
+        const title = species.replace(/’/g, "'");
+        const res = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`);
         if (!res.ok) throw new Error('Not found');
         const data = await res.json();
 
