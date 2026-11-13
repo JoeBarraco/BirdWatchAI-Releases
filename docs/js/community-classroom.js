@@ -352,6 +352,69 @@ function cmSummarize(feederId, name, rows, isHome) {
     };
 }
 
+// ── The burned-in caption (design notes §3, "guess the species") ────
+//
+// THE CAMERA WRITES THE ANSWER ON THE PHOTO. Every snapshot has a caption
+// strip burned into the bottom of the JPEG at detection time — species in
+// bold, then rarity, time and temperature. For every other question that is
+// just provenance. For "which bird is this?" it is the answer key, printed
+// across the bottom of the projector in 42px type.
+//
+// So the strip is cropped off while the class is voting, and the whole photo
+// is shown again on the reveal, where the caption stops being a giveaway and
+// becomes the confirmation.
+//
+// The geometry is a port of eraseStripArea in community-overlay.js, which is
+// itself a line-for-line port of SkiaSnapshotOverlayService in the server
+// repo. THREE COPIES OF THESE NUMBERS NOW EXIST; if the server's strip
+// changes, this crop has to follow or the species name creeps back into view.
+// Erring large is the safe direction — a little too much sky cropped costs
+// nothing, a visible descender costs the question.
+
+const CAPTION_SAFETY = 0.02;   // 2% of height on top of the computed strip
+
+function cmCaptionCropFraction(naturalHeight) {
+    const h = Number(naturalHeight) || 0;
+    // Before the image reports its size, assume a generous strip rather than
+    // none: showing too much is the failure that matters.
+    if (!h) return 0.18;
+
+    const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+    const titleSize = clamp(h * 0.045, 16, 42);
+    const metaSize  = clamp(h * 0.030, 12, 28);
+    const padding   = clamp(h * 0.020, 8, 24);
+    const lineGap   = padding * 0.4;
+    const ERASE_FRINGE = 6;                       // matches the Skia constant
+
+    const strip = titleSize + lineGap + metaSize + padding * 2 + ERASE_FRINGE;
+    return Math.min(0.4, (strip / h) + CAPTION_SAFETY);
+}
+
+/**
+ * Crop the caption off a projector snapshot once it knows its own size.
+ *
+ * Called from the image's onload. Sets the wrapper's aspect ratio to the
+ * cropped shape and lets object-fit do the clipping, so the photo keeps its
+ * proportions and simply ends above the strip — no black bar, nothing that
+ * reads as a rendering fault to a room of children.
+ */
+function classroomFitShot(img) {
+    const wrap = img.closest('.classroom-shot');
+    if (!wrap || wrap.dataset.crop !== 'caption') return;
+
+    const w = img.naturalWidth, h = img.naturalHeight;
+    if (!w || !h) return;
+
+    const frac = cmCaptionCropFraction(h);
+    const keptH = Math.round(h * (1 - frac));
+    wrap.style.aspectRatio = `${w} / ${keptH}`;
+    // Also as a bare number: aspect-ratio alone gives the box a SHAPE but no
+    // size, and a flex item with only max-* constraints and no basis collapses
+    // to nothing. The width calc below needs the ratio as a multiplier.
+    wrap.style.setProperty('--shot-ar', String(w / keptH));
+    wrap.classList.add('cropped');
+}
+
 /**
  * Load the classroom's detections and summarize them.
  *
@@ -1612,7 +1675,7 @@ function renderClassroomStage() {
         </div>
 
         <div class="classroom-stage-body">
-            ${q.image ? `<div class="classroom-shot"><img src="${esc(q.image.url)}" alt=""></div>` : ''}
+            ${q.image ? classroomShotHtml(q, S.revealed) : ''}
             <h1 class="classroom-prompt">${esc(q.prompt)}</h1>
             <div class="classroom-choices ${q.choices.length > 3 ? 'four' : ''}">${choices}</div>
             ${reveal}
@@ -1649,6 +1712,24 @@ function classroomFootControls(S, last, joinMode) {
     return '<button class="classroom-btn-primary big" onclick="closeClassroomVoting()">'
          + 'Close voting &amp; reveal</button>'
          + '<span class="classroom-muted">Devices are showing the buttons now.</span>';
+}
+
+/**
+ * The snapshot, cropped while it is the question and whole once it is the
+ * answer.
+ *
+ * The crop only applies to identification questions: those are the ones whose
+ * answer is written on the photo. A counting question that happens to show a
+ * picture loses nothing by keeping its caption, and cropping every photo would
+ * quietly throw away the time and temperature the older grades are supposed to
+ * be reading off it.
+ */
+function classroomShotHtml(q, revealed) {
+    const hideCaption = q.category === 'identification' && !revealed;
+    return `<div class="classroom-shot"${hideCaption ? ' data-crop="caption"' : ''}>`
+         + `<img src="${esc(q.image.url)}" alt=""`
+         + (hideCaption ? ' onload="classroomFitShot(this)"' : '') + '>'
+         + '</div>';
 }
 
 /**

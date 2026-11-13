@@ -3766,6 +3766,37 @@
     box-shadow: 0 6px 28px rgba(0,0,0,0.25);
 }
 
+/* Identification questions only, and only until the reveal: the species name
+   is burned into the bottom of every snapshot, so showing the photo whole
+   would be showing the answer. classroomFitShot sets the aspect ratio to the
+   photo minus its caption strip; object-fit then clips the strip away while
+   the image keeps its own proportions. Until that runs the wrapper is the
+   plain uncropped image, which is why the fallback fraction in
+   cmCaptionCropFraction errs large rather than small. */
+.classroom-shot.cropped {
+    /* Width is the narrower of "as wide as the stage allows" and "whatever
+       makes it 38vh tall", with aspect-ratio supplying the height. Sizing from
+       max-height alone leaves the box with no definite basis and it collapses
+       to zero. */
+    width: min(82vw, calc(38vh * var(--shot-ar, 1.78)));
+    height: auto;
+    /* The stage body is a column flex container, so its items shrink along
+       the height when the content is taller than the screen. A box sized by
+       aspect-ratio has a min-content height of zero, so it does not just get
+       smaller — it disappears entirely. The photo is the question here; it
+       does not give up space. */
+    flex-shrink: 0;
+    overflow: hidden; border-radius: 12px;
+    box-shadow: 0 6px 28px rgba(0,0,0,0.25);
+}
+
+.classroom-shot.cropped img {
+    width: 100%; height: 100%;
+    max-height: none; max-width: none;
+    object-fit: cover; object-position: top;
+    border-radius: 0; box-shadow: none;
+}
+
 .classroom-choices {
     display: grid; gap: 1.6vmin; width: min(100%, 1100px);
     grid-template-columns: 1fr;
