@@ -3734,7 +3734,15 @@
 .classroom-stage-body {
     flex: 1; overflow-y: auto;
     display: flex; flex-direction: column; align-items: center;
-    justify-content: center; gap: 2.2vmin;
+    /* `safe` matters here. With plain `center`, content taller than the box
+       overflows EQUALLY in both directions — and the half above the top is
+       past the scroll origin, so it is both invisible and unreachable. A
+       question with a chart and a reveal block hit exactly that: the top of
+       the chart sat 77px above the visible area with scrollTop pinned at 0.
+       `safe center` centres while it fits and falls back to flex-start when
+       it does not. */
+    justify-content: safe center;
+    gap: 2.2vmin;
     padding: 3vmin 4vmin;
 }
 
@@ -3990,4 +3998,106 @@
 .classroom-choice.pickable:hover {
     border-style: solid; border-color: var(--color-primary);
     transform: translateY(-2px);
+}
+
+/* ── The chart beside the question (design notes §2, §3, §11) ──────── */
+
+.classroom-chart {
+    margin: 0; width: min(92vw, 1000px);
+    /* Same reason as the photo: in a column flex container a box like this
+       gets squeezed to nothing when the stage is tall. The chart is the
+       evidence — it does not give up room. */
+    flex-shrink: 0;
+}
+
+.classroom-chart svg { width: 100%; height: auto; display: block; }
+
+.classroom-chart figcaption {
+    text-align: center; margin-top: 0.8vmin;
+    font-size: clamp(0.8rem, 1.7vmin, 1.15rem);
+    color: var(--color-gray-500);
+}
+
+/* Gridlines are what make the bars readable without printing their values,
+   so they have to survive a washed-out projector — faint, but not a guess. */
+.cc-grid     { stroke: var(--border); stroke-width: 1.5; }
+.cc-axisline { stroke: var(--color-gray-500); stroke-width: 2.5; }
+
+.cc-axis {
+    fill: var(--color-gray-500);
+    font-size: 22px; font-family: inherit;
+    font-variant-numeric: tabular-nums;
+}
+
+.cc-label {
+    fill: var(--color-gray-900);
+    font-size: 24px; font-family: inherit; font-weight: 600;
+}
+
+/* Only drawn after the reveal. Until then the axis is the only way to read a
+   bar, which is the entire point. */
+.cc-val {
+    fill: var(--color-primary);
+    font-size: 26px; font-family: inherit; font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.cc-bar    { fill: var(--color-primary); opacity: 0.55; }
+/* The bar the question is ABOUT — never the bar that answers it. */
+.cc-bar.on { opacity: 1; }
+
+/* ── Dots: the K–2 pictograph ──────────────────────────────────────── */
+
+.classroom-chart.dots { width: min(92vw, 760px); }
+
+.cc-rows { display: flex; flex-direction: column; gap: 1.1vmin; }
+
+.cc-row {
+    display: grid; grid-template-columns: 7.5em 1fr auto;
+    align-items: center; gap: 1.2vmin;
+    padding: 0.6vmin 1vmin; border-radius: 10px;
+}
+.cc-row.on { background: color-mix(in srgb, var(--color-primary) 16%, transparent); }
+
+.cc-row-label {
+    font-size: clamp(0.85rem, 2vmin, 1.4rem); font-weight: 600;
+    color: var(--color-gray-900); text-align: right;
+}
+
+.cc-dots { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5vmin; }
+
+.cc-dot {
+    width: clamp(10px, 1.9vmin, 22px); aspect-ratio: 1;
+    border-radius: 50%; background: var(--color-primary);
+    display: inline-block;
+}
+/* A wider gap after every fifth dot. Counting in fives is the habit a tally
+   chart is teaching, and the eye picks the grouping up without being told. */
+.cc-dot.five { margin-right: 1.6vmin; }
+
+.cc-row-val {
+    font-size: clamp(0.85rem, 2vmin, 1.4rem); font-weight: 700;
+    color: var(--color-primary); font-variant-numeric: tabular-nums;
+    min-width: 2em; text-align: right;
+}
+
+.cc-none {
+    font-size: clamp(0.75rem, 1.6vmin, 1.1rem);
+    color: var(--color-gray-500); font-style: italic;
+}
+
+/* A chart, a question, four choices and a reveal block all want the same
+   screen. The chart is capped so the rest always fits beneath it: at 1080p
+   that is about 370px of chart, which is plenty for seven bars, and it stops
+   the reveal from pushing the question off the top. */
+.classroom-chart svg { max-height: 34vh; }
+
+/* Deliberately NOT capped the way the SVG is. Capping the dots clipped the
+   last day of the week clean off the board — a chart that silently drops a
+   row is worse than one you have to scroll, and worse still when the missing
+   row might be the one the question asks about. The rows are compact; the
+   stage scrolls if it must. */
+
+@media (max-height: 560px) {
+    .classroom-chart svg { max-height: 28vh; }
 }

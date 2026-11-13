@@ -500,6 +500,169 @@ function cmWindow(src, days) {
     return cmSummarize(src.feederId, src.name, rows, src.isHome);
 }
 
+// ── The evidence on the board (design notes §2, §3, §11) ───────────
+//
+// A question like "how many birds came yesterday?" with nothing but four
+// numbers to choose from is a guess. With the week's data up beside it, it is
+// a reading exercise — which is the thing the notes actually ask for: tally
+// marks for K–2, bar charts for 3–5, trends for 6–8.
+//
+// So every data question carries a chart of the window it is asking about,
+// and the chart DOES NOT print its values until the reveal. A bar with "12"
+// written above it answers the question for the class; a bar measured against
+// a labelled axis makes them read it. The numbers appear with the answer,
+// where they confirm rather than give away.
+//
+// Two shapes, by grade band rather than by template:
+//
+//   dots  — one dot per visit, in rows, grouped in fives. The kindergarten
+//           pictograph, and countable without any notion of an axis. Used for
+//           K–2 whenever the counts are small enough to stay countable.
+//   bars  — vertical bars against a gridded axis, for everyone else and for
+//           K–2 when the numbers outgrow dots.
+
+const CHART_MAX_BARS = 8;      // beyond this the labels collide on screen
+const DOTS_MAX_VALUE = 20;     // a row of more than 20 dots stops being countable
+const DOTS_MAX_ROWS  = 7;      // a week
+
+/**
+ * Build a chart spec from a list of {label, value}.
+ *
+ * `highlight` marks the bar the question is ABOUT — "how many came on
+ * Sunday" highlights Sunday so nobody is hunting for which bar to read. It is
+ * never set on a question whose answer IS which bar (busiest day, most common
+ * species), because there it would simply point at the answer.
+ */
+function cmChart(caption, series, opts) {
+    const o = opts || {};
+    const trimmed = series.filter(s => s && isFinite(s.value)).slice(0, CHART_MAX_BARS);
+    if (trimmed.length < 2) return null;
+
+    const max = Math.max(...trimmed.map(s => s.value));
+    if (max <= 0) return null;
+
+    // Dots only where they stay countable: K–2, a week or less, and no row so
+    // long that counting it is worse than reading a bar.
+    const kind = (o.band === 'k-2' && max <= DOTS_MAX_VALUE && trimmed.length <= DOTS_MAX_ROWS)
+        ? 'dots' : 'bars';
+
+    return { kind, caption, series: trimmed, highlight: o.highlight || null, max };
+}
+
+// The week as one bar per day, oldest first — the shape every "per day"
+// question wants, and the one the class sees often enough to get used to.
+function cmDaySeries(s) {
+    return s.days.map(d => ({ label: cmDayLabel(d.day), value: d.n, key: d.day }));
+}
+
+function cmSpeciesSeries(s, limit) {
+    return s.species.slice(0, limit || CHART_MAX_BARS)
+        .map(x => ({ label: x.species, value: x.n, key: x.species }));
+}
+
+/**
+ * Render a chart as inline SVG (bars) or plain elements (dots).
+ *
+ * Inline rather than a library: this is two shapes on a projector, the page
+ * already ships no chart library, and adding one to draw eight rectangles
+ * would cost more download than the whole classroom module.
+ */
+function classroomChartHtml(chart, revealed) {
+    if (!chart) return '';
+    return chart.kind === 'dots'
+        ? classroomDotsHtml(chart, revealed)
+        : classroomBarsHtml(chart, revealed);
+}
+
+// Pick a gridline step that lands on friendly numbers — 1, 2, 5, 10, 20, 50…
+// so the class reads "ten" off the axis rather than "twelve point five".
+function cmNiceStep(max) {
+    const target = max / 4;                       // about four gridlines
+    const pow = Math.pow(10, Math.floor(Math.log10(Math.max(1, target))));
+    for (const m of [1, 2, 5, 10]) {
+        if (pow * m >= target) return pow * m;
+    }
+    return pow * 10;
+}
+
+function classroomBarsHtml(chart, revealed) {
+    const W = 1000, H = 420;
+    const padL = 70, padR = 20, padT = 30, padB = 86;
+    const plotW = W - padL - padR, plotH = H - padT - padB;
+
+    const step = cmNiceStep(chart.max);
+    const top = Math.ceil(chart.max / step) * step;
+    const y = v => padT + plotH - (v / top) * plotH;
+
+    // Gridlines first, so the bars sit on top of them.
+    let grid = '';
+    for (let v = 0; v <= top + 0.001; v += step) {
+        const yy = y(v);
+        grid += `<line x1="${padL}" y1="${yy}" x2="${W - padR}" y2="${yy}" class="cc-grid"/>`
+             +  `<text x="${padL - 12}" y="${yy + 7}" class="cc-axis" text-anchor="end">${v}</text>`;
+    }
+
+    const n = chart.series.length;
+    const slot = plotW / n;
+    const barW = Math.min(slot * 0.62, 96);
+
+    const bars = chart.series.map((s, i) => {
+        const cx = padL + slot * i + slot / 2;
+        const h = Math.max(1, (s.value / top) * plotH);
+        const on = chart.highlight && s.key === chart.highlight;
+        // Long species names on a 1000-unit canvas need two lines; days and
+        // hours never do.
+        const label = String(s.label);
+        const parts = label.length > 12 ? label.split(' ') : [label];
+        const lines = parts.length > 1
+            ? [parts.slice(0, -1).join(' '), parts[parts.length - 1]]
+            : [label];
+
+        return `<rect x="${cx - barW / 2}" y="${y(s.value)}" width="${barW}" height="${h}"
+                      rx="6" class="cc-bar${on ? ' on' : ''}"/>`
+             + (revealed
+                 ? `<text x="${cx}" y="${y(s.value) - 10}" class="cc-val" text-anchor="middle">${s.value}</text>`
+                 : '')
+             + lines.map((ln, k) =>
+                 `<text x="${cx}" y="${H - padB + 28 + k * 26}" class="cc-label"
+                        text-anchor="middle">${esc(ln)}</text>`).join('');
+    }).join('');
+
+    return `
+        <figure class="classroom-chart">
+            <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(chart.caption)}">
+                ${grid}
+                <line x1="${padL}" y1="${padT + plotH}" x2="${W - padR}" y2="${padT + plotH}" class="cc-axisline"/>
+                ${bars}
+            </svg>
+            <figcaption>${esc(chart.caption)}</figcaption>
+        </figure>`;
+}
+
+function classroomDotsHtml(chart, revealed) {
+    const rows = chart.series.map(s => {
+        const on = chart.highlight && s.key === chart.highlight;
+        let dots = '';
+        for (let i = 0; i < s.value; i++) {
+            // A gap after every fifth dot: counting in fives is the point of
+            // a tally, and the eye does it without being told.
+            dots += `<span class="cc-dot${(i + 1) % 5 === 0 ? ' five' : ''}"></span>`;
+        }
+        return `
+            <div class="cc-row${on ? ' on' : ''}">
+                <span class="cc-row-label">${esc(s.label)}</span>
+                <span class="cc-dots">${dots || '<span class="cc-none">none</span>'}</span>
+                ${revealed ? `<span class="cc-row-val">${s.value}</span>` : ''}
+            </div>`;
+    }).join('');
+
+    return `
+        <figure class="classroom-chart dots">
+            <div class="cc-rows">${rows}</div>
+            <figcaption>${esc(chart.caption)}</figcaption>
+        </figure>`;
+}
+
 // ── Question templates ───────────────────────────────────
 //
 // ~15 templates across the six categories in design notes §4, each declaring
@@ -579,6 +742,8 @@ const CLASSROOM_TEMPLATES = [
                 ? 'Which bird came the most times this week?'
                 : `Which species had the most visits at ${feeder} this week?`,
             ...built,
+            // Never highlighted: which bar is tallest IS the answer.
+            chart: cmChart('Visits by species this week', cmSpeciesSeries(s), { band }),
             explain: s.species.slice(0, 3)
                 .map(x => `${x.species}: ${x.n}`).join(' · '),
             fact: speciesFact(top.species, band),
@@ -602,6 +767,11 @@ const CLASSROOM_TEMPLATES = [
             return {
                 prompt: `How many birds came ${cmWhenPhrase(best.day)}?`,
                 ...built,
+                // The whole week, with that day marked. Marking it gives away
+                // nothing — the question already names the day — and saves
+                // thirty children hunting for which row to count.
+                chart: cmChart(`Visits each day at ${feeder}`,
+                               cmDaySeries(s), { band, highlight: best.day }),
                 explain: `${best.n} visits at ${feeder} on ${cmDayLabel(best.day, true)}.`,
             };
         }
@@ -612,6 +782,9 @@ const CLASSROOM_TEMPLATES = [
         return {
             prompt: `How many bird visits did ${feeder} record in the last 7 days?`,
             ...built,
+            // No highlight: the answer is the sum of every bar, so pointing at
+            // one would be pointing at the wrong thing.
+            chart: cmChart(`Visits each day at ${feeder}`, cmDaySeries(s), { band }),
             explain: `${s.total} visits across ${s.days.length} day${s.days.length === 1 ? '' : 's'}.`,
         };
     },
@@ -621,7 +794,7 @@ const CLASSROOM_TEMPLATES = [
     category: 'counting',
     title: 'How many kinds of bird?',
     bands: ['3-5', '6-8'],
-    build({ s, rng, feeder }) {
+    build({ s, band, rng, feeder }) {
         if (s.distinct < 2) return null;
         const built = cmChoices(String(s.distinct),
                                 cmNumberDistractors(s.distinct, rng, 3)
@@ -630,6 +803,10 @@ const CLASSROOM_TEMPLATES = [
         return {
             prompt: `How many different species visited ${feeder} this week?`,
             ...built,
+            // Here the answer is the NUMBER OF BARS, which is exactly what the
+            // chart is for — count the bars, not their heights.
+            chart: cmChart('Visits by species this week',
+                           cmSpeciesSeries(s, CHART_MAX_BARS), { band }),
             explain: s.species.map(x => x.species).join(', '),
         };
     },
@@ -641,7 +818,7 @@ const CLASSROOM_TEMPLATES = [
     category: 'comparison',
     title: 'Which bird came more?',
     bands: ['k-2'],
-    build({ s, rng }) {
+    build({ s, band, rng }) {
         if (s.species.length < 2) return null;
         const [a, b] = s.species;
         if (a.n === b.n) return null;
@@ -650,6 +827,9 @@ const CLASSROOM_TEMPLATES = [
             prompt: `Did more ${a.species}s or more ${b.species}s come this week?`,
             choices: shuffled.map(x => ({ label: x.species })),
             correct_index: shuffled.findIndex(x => x.species === a.species),
+            chart: cmChart('Visits by species this week',
+                           [a, b].map(x => ({ label: x.species, value: x.n, key: x.species })),
+                           { band: 'k-2' }),
             explain: `${a.species}: ${a.n} visits. ${b.species}: ${b.n} visits.`,
             fact: speciesFact(a.species, 'k-2'),
         };
@@ -660,7 +840,7 @@ const CLASSROOM_TEMPLATES = [
     category: 'comparison',
     title: 'How many more?',
     bands: ['3-5', '6-8'],
-    build({ s, rng }) {
+    build({ s, band, rng }) {
         if (s.species.length < 2) return null;
         const [a, b] = s.species;
         const diff = a.n - b.n;
@@ -671,6 +851,9 @@ const CLASSROOM_TEMPLATES = [
         return {
             prompt: `How many more ${a.species} visits than ${b.species} visits were there this week?`,
             ...built,
+            chart: cmChart('Visits by species this week',
+                           [a, b].map(x => ({ label: x.species, value: x.n, key: x.species })),
+                           { band }),
             explain: `${a.n} − ${b.n} = ${diff}.`,
         };
     },
@@ -680,7 +863,7 @@ const CLASSROOM_TEMPLATES = [
     category: 'comparison',
     title: 'Busier than last week?',
     bands: ['3-5', '6-8'],
-    build({ s, s14, rng, feeder }) {
+    build({ s, s14, band, rng, feeder }) {
         // Needs a genuine previous week, not a feeder that only started
         // logging on Tuesday.
         const prevTotal = s14.total - s.total;
@@ -697,6 +880,9 @@ const CLASSROOM_TEMPLATES = [
             prompt: `Did ${feeder} have more or fewer visits this week than last week?`,
             choices: opts.map(l => ({ label: l })),
             correct_index: opts.indexOf(answer),
+            chart: cmChart('This week against last week',
+                           [{ label: 'Last week', value: prevTotal, key: 'prev' },
+                            { label: 'This week', value: s.total,   key: 'now' }], { band }),
             explain: `This week: ${s.total}. Last week: ${prevTotal}.`,
         };
     },
@@ -721,6 +907,8 @@ const CLASSROOM_TEMPLATES = [
                 : `Which day was busiest at ${feeder} this week?`,
             choices: opts.map(d => ({ label: cmDayLabel(d.day, true) })),
             correct_index: opts.findIndex(d => d.day === sorted[0].day),
+            // Every day, in order, unmarked: finding the tallest is the work.
+            chart: cmChart(`Visits each day at ${feeder}`, cmDaySeries(s), { band }),
             explain: pick.map(d => `${cmDayLabel(d.day)}: ${d.n}`).join(' · '),
         };
     },
@@ -730,7 +918,7 @@ const CLASSROOM_TEMPLATES = [
     category: 'time',
     title: 'Morning or afternoon?',
     bands: ['k-2'],
-    build({ s, rng }) {
+    build({ s, band, rng }) {
         if (s.total < 8) return null;
         const morning   = s.byHour.slice(5, 12).reduce((a, b) => a + b, 0);
         const afternoon = s.byHour.slice(12, 18).reduce((a, b) => a + b, 0);
@@ -743,6 +931,9 @@ const CLASSROOM_TEMPLATES = [
             prompt: 'Did more birds come in the morning or the afternoon?',
             choices: opts.map(l => ({ label: l })),
             correct_index: opts.indexOf(answer),
+            chart: cmChart('When the birds came this week',
+                           [{ label: 'Morning', value: morning, key: 'am' },
+                            { label: 'Afternoon', value: afternoon, key: 'pm' }], { band: 'k-2' }),
             explain: `Morning: ${morning} visits. Afternoon: ${afternoon} visits.`,
         };
     },
@@ -752,7 +943,7 @@ const CLASSROOM_TEMPLATES = [
     category: 'time',
     title: 'What hour was busiest?',
     bands: ['3-5', '6-8'],
-    build({ s, rng, feeder }) {
+    build({ s, band, rng, feeder }) {
         if (s.total < 12) return null;
         const ranked = s.byHour
             .map((n, h) => ({ h, n }))
@@ -766,6 +957,11 @@ const CLASSROOM_TEMPLATES = [
             prompt: `Which hour had the most visits at ${feeder} this week?`,
             choices: opts.map(x => ({ label: cmHourLabel(x.h) })),
             correct_index: opts.findIndex(x => x.h === ranked[0].h),
+            // By clock order, not by size: sorted bars would put the answer
+            // first and turn reading the chart into reading its ordering.
+            chart: cmChart('Visits by hour this week',
+                           s.byHour.map((n, h) => ({ label: cmHourLabel(h), value: n, key: h }))
+                                   .filter(x => x.value > 0), { band }),
             explain: pick.map(x => `${cmHourLabel(x.h)}: ${x.n}`).join(' · '),
         };
     },
@@ -777,7 +973,7 @@ const CLASSROOM_TEMPLATES = [
     category: 'math',
     title: 'About what fraction?',
     bands: ['3-5'],
-    build({ s, rng }) {
+    build({ s, band, rng }) {
         if (s.total < 12 || !s.species.length) return null;
         const top = s.species[0];
         const share = top.n / s.total;
@@ -800,6 +996,10 @@ const CLASSROOM_TEMPLATES = [
             prompt: `About what fraction of this week's visits were ${top.species}?`,
             choices: opts.map(l => ({ label: l })),
             correct_index: opts.indexOf(best.label),
+            // The named species is marked: the comparison is that bar against
+            // the rest, and the answer is a ratio, not a bar.
+            chart: cmChart('Visits by species this week',
+                           cmSpeciesSeries(s), { band, highlight: top.species }),
             explain: `${top.n} of ${s.total} visits — that's ${Math.round(share * 100)}%.`,
         };
     },
@@ -809,7 +1009,7 @@ const CLASSROOM_TEMPLATES = [
     category: 'math',
     title: 'What percent?',
     bands: ['6-8'],
-    build({ s, rng }) {
+    build({ s, band, rng }) {
         if (s.total < 20 || !s.species.length) return null;
         const top = s.species[0];
         const pct = Math.round((top.n / s.total) * 100);
@@ -822,6 +1022,8 @@ const CLASSROOM_TEMPLATES = [
         return {
             prompt: `What percent of this week's visits were ${top.species}?`,
             ...built,
+            chart: cmChart('Visits by species this week',
+                           cmSpeciesSeries(s), { band, highlight: top.species }),
             explain: `${top.n} ÷ ${s.total} = ${(top.n / s.total).toFixed(2)} → ${pct}%.`,
         };
     },
@@ -831,7 +1033,7 @@ const CLASSROOM_TEMPLATES = [
     category: 'math',
     title: 'Average visits per day',
     bands: ['3-5', '6-8'],
-    build({ s, rng, feeder }) {
+    build({ s, band, rng, feeder }) {
         if (s.days.length < 4 || s.total < 12) return null;
         const avg = Math.round(s.total / s.days.length);
         if (avg < 1) return null;
@@ -841,6 +1043,7 @@ const CLASSROOM_TEMPLATES = [
         return {
             prompt: `On average, about how many visits per day did ${feeder} get this week?`,
             ...built,
+            chart: cmChart(`Visits each day at ${feeder}`, cmDaySeries(s), { band }),
             explain: `${s.total} visits ÷ ${s.days.length} days ≈ ${avg} per day.`,
         };
     },
@@ -850,7 +1053,7 @@ const CLASSROOM_TEMPLATES = [
     category: 'math',
     title: 'Weather and visits',
     bands: ['6-8'],
-    build({ s, rng }) {
+    build({ s, band, rng }) {
         // Needs temperature on most rows and a real spread; otherwise the
         // "answer" is noise dressed up as a finding.
         if (s.tempCoverage < 0.6 || s.dayTemp.size < 4) return null;
@@ -872,6 +1075,12 @@ const CLASSROOM_TEMPLATES = [
             prompt: 'Did the feeder get more visits on the warmer days or the colder days this week?',
             choices: opts.map(l => ({ label: l })),
             correct_index: opts.indexOf(answer),
+            // Labelled with each day's temperature, in date order, so the
+            // class has to put the two variables together themselves.
+            chart: cmChart('Visits each day, with that day\u2019s temperature',
+                           days.slice().sort((x, y) => x.day.localeCompare(y.day))
+                               .map(d => ({ label: `${cmDayLabel(d.day)} ${Math.round(d.temp)}\u00b0`,
+                                            value: d.n, key: d.day })), { band }),
             explain: `Colder half averaged ${coldAvg.toFixed(1)} visits/day `
                    + `(${cold[0].temp.toFixed(0)}–${cold[cold.length - 1].temp.toFixed(0)}°); `
                    + `warmer half averaged ${warmAvg.toFixed(1)} `
@@ -907,6 +1116,10 @@ const CLASSROOM_TEMPLATES = [
             choices: opts.map(l => ({ label: l })),
             correct_index: null,            // not knowable yet
             explain: 'We will check this at the start of the next class.',
+            // The run-up, with today marked. A prediction with the trend in
+            // front of them is a reasoned guess; without it, it is a coin.
+            chart: cmChart(`Visits each day at ${feeder}`,
+                           cmDaySeries(s), { band, highlight: todayKey }),
             pending_check: {
                 kind: 'visits_on_day',
                 feeder_id: source.feederId,
@@ -925,7 +1138,7 @@ const CLASSROOM_TEMPLATES = [
     category: 'prediction',
     title: 'Visits over the next week',
     bands: ['3-5', '6-8'],
-    build({ s, rng, feeder, source }) {
+    build({ s, band, rng, feeder, source }) {
         if (s.total < 15 || s.days.length < 4) return null;
         const perDay = s.total / s.days.length;
         const est    = Math.round(perDay * 7);
@@ -952,6 +1165,7 @@ const CLASSROOM_TEMPLATES = [
             choices: opts.map(b => ({ label: b.label })),
             correct_index: null,
             explain: 'We will count the real total when the week is up.',
+            chart: cmChart(`Visits each day at ${feeder}`, cmDaySeries(s), { band }),
             pending_check: {
                 kind: 'visits_window',
                 feeder_id: source.feederId,
@@ -990,7 +1204,12 @@ function buildClassroomQuestions(room, data) {
         try {
             q = t.build({ s, s14, band, rng: cmRng(seed + '|' + t.id), feeder, source, room });
         } catch (e) {
-            q = null;    // a template that throws sits the week out
+            // A template that throws sits the week out rather than taking the
+            // lesson down with it — but it says so. Swallowing this silently
+            // is how a broken template disappears for months looking like
+            // "not enough data".
+            console.warn(`[classroom] template "${t.id}" failed:`, e);
+            q = null;
         }
         if (!q || !q.choices || q.choices.length < 2) continue;
 
@@ -1675,7 +1894,8 @@ function renderClassroomStage() {
         </div>
 
         <div class="classroom-stage-body">
-            ${q.image ? classroomShotHtml(q, S.revealed) : ''}
+            ${q.image ? classroomShotHtml(q, S.revealed)
+                      : classroomChartHtml(q.chart, S.revealed)}
             <h1 class="classroom-prompt">${esc(q.prompt)}</h1>
             <div class="classroom-choices ${q.choices.length > 3 ? 'four' : ''}">${choices}</div>
             ${reveal}
