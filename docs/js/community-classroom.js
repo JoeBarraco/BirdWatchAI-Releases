@@ -127,10 +127,17 @@ let classroomDeepLinkDone = false;
  * The id does not say which community it belongs to, so this asks each
  * community the user can teach in. That is one request per community, and a
  * teacher has one.
+ *
+ * With &review=1 it goes one step further and opens the review list, which is
+ * what the daily feedback email links to. "Open the review panel" has to put
+ * the review panel on screen or it is a button that lies — it landed on the
+ * community page and left you to find the classroom yourself.
  */
 async function followClassroomDeepLink() {
     if (classroomDeepLinkDone) return;
-    const wanted = new URLSearchParams(location.search).get('classroom');
+    const params = new URLSearchParams(location.search);
+    const wanted = params.get('classroom');
+    const alsoReview = params.get('review') === '1';
     if (!wanted) { classroomDeepLinkDone = true; return; }
     classroomDeepLinkDone = true;
 
@@ -145,6 +152,11 @@ async function followClassroomDeepLink() {
         if (sel) sel.value = c.id;
         await refreshClassroomPanel();
         highlightClassroom(wanted);
+        // After the refresh, so the room is in classroomList by the time the
+        // review looks it up.
+        if (alsoReview && typeof reviewClassroomQuestions === 'function') {
+            await reviewClassroomQuestions(wanted);
+        }
         return;
     }
 

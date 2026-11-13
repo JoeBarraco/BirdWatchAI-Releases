@@ -104,12 +104,22 @@ type Row = {
   id: string; community_id: string; classroom_id: string | null;
   template_id: string; grade_band: string; prompt: string | null;
   kind: string | null; reason: string | null; comment: string | null;
-  created_at: string;
+  created_by: string | null; created_at: string;
 };
 
-function card(r: Row, communityName: string, classroomName: string) {
-  // The comment is the thing worth reading, so it leads. The question it is
-  // about is context and sits under it, quieter.
+// A deep link that lands on the review list for that classroom, not on the
+// community page. community-classroom.js honours ?classroom=…&review=1.
+function reviewLink(classroomId: string | null) {
+  return classroomId
+    ? `${COMMUNITY_URL}?classroom=${encodeURIComponent(classroomId)}&review=1`
+    : COMMUNITY_URL;
+}
+
+function card(r: Row, communityName: string, classroomName: string, author: string) {
+  // The comment is the thing worth reading, so it leads. WHO said it sits
+  // with it rather than in the small print: "the bars are too far apart"
+  // from the teacher running the class and from somebody testing are the
+  // same words and not the same information.
   const where = [communityName, classroomName].filter(Boolean).join(' · ');
   const tag = [r.kind, r.reason].filter(Boolean).join('/') || 'feedback';
   return `
@@ -118,11 +128,16 @@ function card(r: Row, communityName: string, classroomName: string) {
       ${esc(where)} &middot; ${esc(r.grade_band)} &middot; <code>${esc(r.template_id)}</code>
       &middot; ${esc(tag)} &middot; ${esc(when(r.created_at))}
     </p>
-    <p style="margin:0 0 0.6rem;font-size:1rem;color:#1a1a1a;">
+    <p style="margin:0 0 0.35rem;font-size:1rem;color:#1a1a1a;">
       ${r.comment ? esc(r.comment) : '<em style="color:#7a756d;">(no comment left)</em>'}
     </p>
-    ${r.prompt ? `<p style="margin:0;font-size:0.82rem;color:#4a4640;border-left:3px solid #e8e4de;padding-left:0.7rem;">
+    <p style="margin:0 0 0.6rem;font-size:0.82rem;color:#4a4640;">
+      &mdash; ${esc(author)}
+    </p>
+    ${r.prompt ? `<p style="margin:0 0 0.6rem;font-size:0.82rem;color:#4a4640;border-left:3px solid #e8e4de;padding-left:0.7rem;">
       ${esc(String(r.prompt).replace(/\n/g, ' / '))}</p>` : ''}
+    ${r.classroom_id ? `<p style="margin:0;font-size:0.78rem;">
+      <a href="${reviewLink(r.classroom_id)}" style="color:#2eaa4f;">Review ${esc(classroomName || 'this class')}</a></p>` : ''}
   </div>`;
 }
 
@@ -141,7 +156,7 @@ Deno.serve(async (req) => {
   try {
     const { data: rows, error } = await db
       .from('classroom_question_feedback')
-      .select('id, community_id, classroom_id, template_id, grade_band, prompt, kind, reason, comment, created_at')
+      .select('id, community_id, classroom_id, template_id, grade_band, prompt, kind, reason, comment, created_by, created_at')
       .is('notified_at', null)
       .order('created_at', { ascending: false })
       .limit(MAX_ROWS);
@@ -165,8 +180,43 @@ Deno.serve(async (req) => {
     const commName = new Map((comms ?? []).map((c: any) => [c.id, c.name]));
     const roomName = new Map((rooms ?? []).map((c: any) => [c.id, c.name]));
 
+    // Who said it. display_name where they have set one; otherwise the
+    // address, which at a school is usually a name anyway. auth.users is not
+    // reachable through PostgREST, hence the admin call — one per distinct
+    // author, and a digest rarely has more than two.
+    const authorIds = [...new Set(rows.map(r => r.created_by).filter(Boolean))] as string[];
+    const authorName = new Map<string, string>();
+    if (authorIds.length) {
+      const { data: profs } = await db
+        .from('user_profiles').select('id, display_name').in('id', authorIds);
+      for (const p of (profs ?? []) as any[]) {
+        if ((p.display_name || '').trim()) authorName.set(p.id, p.display_name.trim());
+      }
+      for (const id of authorIds) {
+        if (authorName.has(id)) continue;
+        try {
+          const { data: u } = await db.auth.admin.getUserById(id);
+          if (u?.user?.email) authorName.set(id, u.user.email);
+        } catch { /* falls through to "Someone" */ }
+      }
+    }
+    const nameOf = (id: string | null) =>
+      (id && authorName.get(id)) || 'Someone';
+
     const n = rows.length;
     const subject = `${n} new classroom ${n === 1 ? 'note' : 'notes'} on BirdWatchAI`;
+
+    // The big button only promises the review panel when it can actually
+    // land there — that needs exactly one classroom across the whole digest.
+    // Spanning two, it would have to pick one and silently ignore the other,
+    // so it drops back to the community page and says so. A button that goes
+    // somewhere other than its label is the thing being fixed here.
+    const distinctRooms = [...new Set(rows.map(r => r.classroom_id).filter(Boolean))] as string[];
+    const onlyRoom = distinctRooms.length === 1 ? distinctRooms[0] : null;
+    const bigButtonHref  = onlyRoom ? reviewLink(onlyRoom) : COMMUNITY_URL;
+    const bigButtonLabel = onlyRoom
+      ? `Review ${roomName.get(onlyRoom) ?? 'this class'}`
+      : 'Open BirdWatchAI';
     const html = `<!DOCTYPE html>
 <html><head><meta charset="utf-8"></head>
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:620px;margin:0 auto;padding:1.6rem;color:#1a1a1a;">
@@ -174,9 +224,11 @@ Deno.serve(async (req) => {
     ${n} new ${n === 1 ? 'note' : 'notes'} from the classroom</h2>
   <p style="margin:0 0 1.2rem;font-size:0.85rem;color:#7a756d;">
     Flagged by teachers since the last digest. Each one is shown once.</p>
-  ${rows.map(r => card(r as Row, commName.get(r.community_id) ?? '', roomName.get(r.classroom_id ?? '') ?? '')).join('')}
+  ${rows.map(r => card(r as Row, commName.get(r.community_id) ?? '',
+                        roomName.get(r.classroom_id ?? '') ?? '',
+                        nameOf(r.created_by))).join('')}
   <div style="text-align:center;margin:1.4rem 0 0.6rem;">
-    <a href="${COMMUNITY_URL}" style="display:inline-block;background:#2eaa4f;color:white;text-decoration:none;padding:9px 22px;border-radius:6px;font-weight:600;font-size:0.9rem;">Open the review panel</a>
+    <a href="${esc(bigButtonHref)}" style="display:inline-block;background:#2eaa4f;color:white;text-decoration:none;padding:9px 22px;border-radius:6px;font-weight:600;font-size:0.9rem;">${esc(bigButtonLabel)}</a>
   </div>
   <p style="font-size:0.72rem;color:#9ca3af;text-align:center;margin-top:1rem;">
     Daily at 7am Eastern. Nothing new means no email.</p>
