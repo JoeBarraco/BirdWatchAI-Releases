@@ -373,6 +373,39 @@ function speciesLook(species) {
     return SPECIES_LOOKS[species] || null;
 }
 
+// ── Bird words ───────────────────────────────────────────────────
+//
+// "All the questions can be bird themed, but don't need to come directly from
+// feeder data." These need none of it, which is also what makes them the
+// cheapest way to keep a daily class from meeting the same question twice:
+// they work in a week when the feeder logged nothing at all.
+
+// Collective nouns. English has an absurd number of these for birds
+// specifically, most of them from 15th-century hunting manuals, and they are
+// the kind of fact a nine-year-old repeats at dinner.
+const BIRD_COLLECTIVES = [
+    { group: 'crows',     noun: 'a murder',       others: ['a parliament', 'a gaggle', 'a charm'] },
+    { group: 'owls',      noun: 'a parliament',   others: ['a murder', 'a murmuration', 'a covey'] },
+    { group: 'starlings', noun: 'a murmuration',  others: ['a parliament', 'a raft', 'a charm'] },
+    { group: 'geese on the ground', noun: 'a gaggle', others: ['a skein', 'a murder', 'a parliament'] },
+    { group: 'geese in flight',     noun: 'a skein',  others: ['a gaggle', 'a charm', 'a covey'] },
+    { group: 'finches',   noun: 'a charm',        others: ['a murder', 'a gaggle', 'a parliament'] },
+    { group: 'ducks on water',      noun: 'a raft',   others: ['a skein', 'a murder', 'a charm'] },
+    { group: 'quail',     noun: 'a covey',        others: ['a murder', 'a murmuration', 'a raft'] },
+];
+
+// Birds whose song has a well-known English mnemonic. Teachers use these to
+// teach birding by ear, and they are genuinely how most people learn these
+// songs.
+const BIRD_SOUNDS = [
+    { bird: 'Barred Owl',            says: 'Who cooks for you? Who cooks for you all?' },
+    { bird: 'Carolina Chickadee',    says: 'chick-a-dee-dee-dee - its own name' },
+    { bird: 'Eastern Towhee',        says: 'Drink your teeeea!' },
+    { bird: 'White-throated Sparrow',says: 'Old Sam Peabody, Peabody, Peabody' },
+    { bird: 'Killdeer',              says: 'kill-deer! - its own name' },
+    { bird: 'Mourning Dove',         says: 'a sad, low coo-OO-oo-oo-oo' },
+];
+
 // ── Bird wonders ─────────────────────────────────────────────────
 //
 // Everything else here asks the class about data the computer already has.
@@ -596,6 +629,218 @@ const BIRD_WONDERS = [
         answer: 'About 1,200 a minute', distractors: ['About 120 a minute', 'About 400 a minute', 'About 12,000 a minute'],
         reveal: 'About 1,200 beats a minute - roughly twenty every second. At night '
               + 'it drops into a deep cold sleep to save energy.',
+    },
+{
+        id: 'wonder-bowerbird', subject: 'art', bands: ['3-5', '6-8'],
+        bird: 'Satin Bowerbird',
+        intro: ['A male Satin Bowerbird builds a little avenue of twigs on the '
+              + 'forest floor and then decorates it, for weeks, to impress a female.',
+                'He is extremely fussy about his decorations, and he sorts them.'],
+        prompt: 'What does a Satin Bowerbird collect to decorate with?',
+        answer: 'Blue things, and only blue',
+        distractors: ['Anything shiny', 'Red flowers only', 'Smooth white pebbles'],
+        reveal: 'Blue - bottle caps, pegs, feathers, drinking straws. He will steal '
+              + 'blue things from a rival’s bower, and he arranges them by size.',
+    },
+    {
+        id: 'wonder-lyrebird', subject: 'language', bands: ['3-5', '6-8'],
+        bird: 'Superb Lyrebird',
+        intro: ['The Superb Lyrebird of Australia is the best mimic alive. It copies '
+              + 'every other bird in the forest, note for note.',
+                'It does not stop at birds. It copies whatever else it hears often '
+              + 'enough.'],
+        prompt: 'What else have wild lyrebirds been recorded imitating?',
+        answer: 'Chainsaws and camera shutters',
+        distractors: ['Thunder and rain', 'Dogs barking only', 'Nothing but other birds'],
+        reveal: 'Chainsaws, car alarms and camera shutters, learned from loggers and '
+              + 'tourists. A mimicked sound can pass from bird to bird for years.',
+    },
+    {
+        id: 'wonder-owl-neck', subject: 'science', bands: ['k-2', '3-5'],
+        bird: 'Great Horned Owl',
+        intro: ['An owl cannot move its eyes. They are fixed in its skull like two '
+              + 'telescopes, so to look sideways it must turn its whole head.',
+                'It is very good at turning its head.'],
+        prompt: 'How far around can an owl turn its head?',
+        answer: 'About three quarters of a circle',
+        distractors: ['About a quarter of a circle', 'Halfway round', 'All the way round'],
+        reveal: 'About 270 degrees - three quarters of the way round. NOT all the way. '
+              + 'It has 14 bones in its neck; you have 7.',
+    },
+    {
+        id: 'wonder-mockingbird-songs', subject: 'language', bands: ['3-5', '6-8'],
+        bird: 'Northern Mockingbird',
+        intro: ['A mockingbird does not really have a song of its own. It borrows '
+              + 'everybody else’s and strings them together.',
+                'It keeps learning new ones its whole life.'],
+        prompt: 'About how many different songs can one mockingbird learn?',
+        answer: 'Around 200', distractors: ['Around 5', 'Around 20', 'Around 2,000'],
+        reveal: 'Around 200, and it keeps adding. A male short of a mate will sing '
+              + 'through the night.',
+    },
+    {
+        id: 'wonder-kiwi-egg', subject: 'maths', bands: ['3-5', '6-8'],
+        bird: 'Kiwi',
+        intro: ['The kiwi of New Zealand is about the size of a chicken, cannot fly, '
+              + 'and has feathers like shaggy hair.',
+                'It lays what is, for its size, the most enormous egg of any bird.'],
+        prompt: 'The kiwi’s egg weighs about how much of the mother’s own weight?',
+        answer: 'About one fifth', distractors: ['About one hundredth', 'About one fiftieth', 'About half'],
+        reveal: 'About a fifth of her body weight. For a grown adult that would be '
+              + 'like carrying a 30-pound egg.',
+    },
+    {
+        id: 'wonder-eagle-nest', subject: 'maths', bands: ['3-5', '6-8'],
+        bird: 'Bald Eagle',
+        intro: ['Bald Eagles use the same nest year after year, adding sticks to it '
+              + 'every season.',
+                'After enough years the nest gets genuinely dangerous to stand under.'],
+        prompt: 'The biggest eagle nest ever recorded weighed about how much?',
+        answer: 'About 2 tons', distractors: ['About 20 pounds', 'About 200 pounds', 'About 20 tons'],
+        reveal: 'Nearly 2 tons, and about 9 feet across - heavier than a car. '
+              + 'Branches eventually give way under them.',
+    },
+    {
+        id: 'wonder-hummingbird-nest', subject: 'science', bands: ['k-2', '3-5'],
+        bird: 'Ruby-throated Hummingbird',
+        intro: ['A hummingbird’s nest is about the size of half a walnut shell, '
+              + 'and the eggs inside are the size of peas.',
+                'The nest has to stretch as the chicks grow, so it is built from '
+              + 'something unusual.'],
+        prompt: 'What does a hummingbird use to hold its nest together?',
+        answer: 'Spider silk', distractors: ['Mud', 'Its own feathers', 'Tree sap'],
+        reveal: 'Spider silk, which stretches as the chicks grow. The outside is '
+              + 'covered in lichen so it looks like a bump on the branch.',
+    },
+    {
+        id: 'wonder-flamingo-pink', subject: 'science', bands: ['k-2', '3-5'],
+        bird: 'Flamingo',
+        intro: ['Flamingo chicks hatch out grey. The pink arrives later.',
+                'A flamingo in a zoo that is fed the wrong food turns pale and white.'],
+        prompt: 'Where does a flamingo’s pink come from?',
+        answer: 'The food it eats',
+        distractors: ['The sun', 'The salty water it stands in', 'It is born pink underneath'],
+        reveal: 'From its food - tiny shrimp and algae carry the pigment, and the '
+              + 'flamingo moves it into its feathers.',
+    },
+    {
+        id: 'wonder-vulture-smell', subject: 'science', bands: ['3-5', '6-8'],
+        bird: 'Turkey Vulture',
+        intro: ['Most birds have a poor sense of smell. The Turkey Vulture is a '
+              + 'spectacular exception.',
+                'Gas companies have used this: they add a chemical to pipelines that '
+              + 'smells like rotting meat, then look for circling vultures to find a leak.'],
+        prompt: 'From how far away can a Turkey Vulture smell a meal?',
+        answer: 'Over a mile', distractors: ['About 10 feet', 'About 100 feet', 'About 50 miles'],
+        reveal: 'Over a mile. It finds food under a forest canopy it cannot see through '
+              + 'at all.',
+    },
+    {
+        id: 'wonder-pigeon-art', subject: 'art', bands: ['6-8'],
+        bird: 'Pigeon',
+        intro: ['Pigeons have been trained in laboratories to sort photographs, and '
+              + 'they are startlingly good at it.',
+                'In one well-known experiment they were shown paintings.'],
+        prompt: 'What were pigeons trained to tell apart?',
+        answer: 'Monet from Picasso',
+        distractors: ['Red from green only', 'Photographs from drawings', 'Letters of the alphabet'],
+        reveal: 'Monet from Picasso - and then they sorted paintings they had never '
+              + 'seen into the right style.',
+    },
+    {
+        id: 'wonder-dinosaur', subject: 'science', bands: ['3-5', '6-8'],
+        bird: 'Chicken',
+        intro: ['Birds are not just related to dinosaurs. Birds ARE dinosaurs - the '
+              + 'only branch of the family that survived the asteroid.',
+                'So every bird at the feeder has a very famous cousin.'],
+        prompt: 'Which living animal is the closest relative of Tyrannosaurus rex?',
+        answer: 'A chicken', distractors: ['A crocodile', 'A lizard', 'An elephant'],
+        reveal: 'Birds - and protein recovered from T. rex bone matched chicken more '
+              + 'closely than anything else alive.',
+    },
+    {
+        id: 'wonder-murmuration', subject: 'maths', bands: ['6-8'],
+        bird: 'European Starling',
+        intro: ['Starlings gather at dusk in flocks of thousands and pour across the '
+              + 'sky in shapes that look choreographed.',
+                'There is no leader. Nobody is in charge of the shape.'],
+        prompt: 'How does each starling decide where to go?',
+        answer: 'It watches about seven neighbours',
+        distractors: ['It follows the bird in front', 'It follows the oldest bird',
+                      'They all call out to each other'],
+        reveal: 'Each bird tracks roughly its seven nearest neighbours. Seven simple '
+              + 'rules, repeated by thousands of birds, make the whole shape.',
+    },
+    {
+        id: 'wonder-robin-egg', subject: 'art', bands: ['k-2', '3-5'],
+        bird: 'American Robin',
+        intro: ['"Robin’s egg blue" is a colour name used by paint companies and '
+              + 'crayon makers, because a robin’s egg really is that blue.',
+                'The colour is not painted on. It is made inside the mother.'],
+        prompt: 'Why might a robin’s egg be blue rather than white?',
+        answer: 'Blue shields the chick from sun',
+        distractors: ['To match the sky', 'Because robins eat blueberries', 'To look like a stone'],
+        reveal: 'The leading idea is sunlight: blue blocks some harmful rays while '
+              + 'still letting warmth through. The pigment comes from the mother’s blood.',
+    },
+    {
+        id: 'wonder-swallow-return', subject: 'geography', bands: ['3-5', '6-8'],
+        bird: 'Cliff Swallow',
+        intro: ['The Cliff Swallows of San Juan Capistrano in California are famous '
+              + 'for coming back from Argentina at almost the same date every spring.',
+                'The town has held a festival for their return for nearly a century.'],
+        prompt: 'Roughly how far do those swallows travel to get back?',
+        answer: 'About 6,000 miles', distractors: ['About 60 miles', 'About 600 miles', 'About 60,000 miles'],
+        reveal: 'About 6,000 miles each way, from Argentina. They can be back within '
+              + 'days of the same date year after year.',
+    },
+    {
+        id: 'wonder-woodcock-walk', subject: 'science', bands: ['k-2', '3-5'],
+        bird: 'American Woodcock',
+        intro: ['The American Woodcock is a plump brown bird that hunts worms in soft '
+              + 'ground, and it has a very odd habit.',
+                'Before it moves forward it rocks its whole body back and forth, over '
+              + 'and over, while its head stays still.'],
+        prompt: 'Why do people think the woodcock rocks like that?',
+        answer: 'To make worms move so it can feel them',
+        distractors: ['To keep warm', 'To scare off rivals', 'To look bigger than it is'],
+        reveal: 'The best guess is that the drumming makes worms shift underground, '
+              + 'and the woodcock feels them through its feet.',
+    },
+    {
+        id: 'wonder-penguin-feathers', subject: 'maths', bands: ['3-5', '6-8'],
+        bird: 'Emperor Penguin',
+        intro: ['A penguin stays warm in water near freezing, and its feathers are a '
+              + 'big part of how.',
+                'They are packed far more densely than most birds’ feathers.'],
+        prompt: 'About how many feathers does a penguin have on each square inch?',
+        answer: 'About 100', distractors: ['About 2', 'About 10', 'About 10,000'],
+        reveal: 'Around 100 per square inch, in overlapping layers that trap a sheet '
+              + 'of air against the skin.',
+    },
+    {
+        id: 'wonder-crane-dance', subject: 'art', bands: ['k-2', '3-5'],
+        bird: 'Sandhill Crane',
+        intro: ['Sandhill Cranes dance. They bow, leap into the air with their wings '
+              + 'spread, and toss sticks and grass above their heads.',
+                'Pairs dance together, and they stay together for life.'],
+        prompt: 'When do Sandhill Cranes dance?',
+        answer: 'All year, not only when courting',
+        distractors: ['Only in spring', 'Only when they are frightened', 'Only the young ones dance'],
+        reveal: 'All year and at any age. Chicks dance too, which suggests it is partly '
+              + 'just practice - and partly because they can.',
+    },
+    {
+        id: 'wonder-nutcracker-memory', subject: 'maths', bands: ['6-8'],
+        bird: 'Clark’s Nutcracker',
+        intro: ['Clark’s Nutcracker lives high in the Rocky Mountains and survives '
+              + 'winter on pine seeds it buried months earlier.',
+                'It buries them in small caches spread over many square miles, then '
+              + 'finds them again under deep snow.'],
+        prompt: 'About how many seeds can one nutcracker hide and still relocate?',
+        answer: 'Tens of thousands', distractors: ['About 50', 'About 500', 'About 5 million'],
+        reveal: 'Tens of thousands of caches, remembered for months, under snow. It is '
+              + 'among the best spatial memories ever measured in an animal.',
     },
     {
         id: 'wonder-cuckoo-egg', subject: 'science', bands: ['3-5', '6-8'],
@@ -1175,6 +1420,26 @@ const CHART_KINDS_OK = {
 
 // The week as one bar per day, oldest first — the shape every "per day"
 // question wants, and the one the class sees often enough to get used to.
+/**
+ * A day written the way it is said aloud: "Wednesday the 11th".
+ *
+ * NOT the axis label. "There were 15 visits on Wed 11 and 3 visits on Thu 12"
+ * is how the word problems read before this existed, and a teacher skipped
+ * one mid-lesson over it: "sentence is confusing without punctuation". An
+ * axis label is a compressed tag, which is right under a bar and wrong inside
+ * a sentence a class has to follow by ear.
+ */
+function cmDayProse(dayKey) {
+    const d = cmDayStart(dayKey);
+    const day = ['Sunday', 'Monday', 'Tuesday', 'Wednesday',
+                 'Thursday', 'Friday', 'Saturday'][d.getDay()];
+    const n = d.getDate();
+    const ord = (n % 10 === 1 && n !== 11) ? 'st'
+              : (n % 10 === 2 && n !== 12) ? 'nd'
+              : (n % 10 === 3 && n !== 13) ? 'rd' : 'th';
+    return `${day} the ${n}${ord}`;
+}
+
 /**
  * Axis labels for a run of days.
  *
@@ -3154,6 +3419,11 @@ const CLASSROOM_TEMPLATES = [
         const photo = cmShotFor(s, w.bird) || cmWonderPhoto(w.bird);
 
         return {
+            // Each FACT is its own template id, not all 34 sharing one.
+            // Feedback on "the woodpecker photo is cut off" has to point at
+            // the woodpecker, and repeat-avoidance has to know that yesterday
+            // being a fact slide does not make today's a repeat.
+            template_id: w.id,
             prompt: w.prompt,
             ...built,
             image: photo || null,
@@ -3161,6 +3431,69 @@ const CLASSROOM_TEMPLATES = [
             subject: w.subject,
             wonder_bird: w.bird,
             explain: w.reveal,
+        };
+    },
+},
+
+{
+    id: 'bird-collective-noun',
+    category: 'language',
+    title: 'What do you call a group of them?',
+    bands: ['3-5', '6-8'],
+    build({ rng }) {
+        const pick = cmShuffle(BIRD_COLLECTIVES, rng)[0];
+        const built = cmChoices(pick.noun, pick.others, rng);
+        if (!built) return null;
+        return {
+            template_id: 'collective-' + pick.noun.replace(/\W+/g, '-'),
+            prompt: `What do you call a group of ${pick.group}?`,
+            ...built,
+            explain: `${pick.noun.charAt(0).toUpperCase() + pick.noun.slice(1)} of `
+                   + `${pick.group}. Most of these names come from hunting books `
+                   + 'written over five hundred years ago.',
+        };
+    },
+},
+
+{
+    id: 'bird-by-sound',
+    category: 'language',
+    title: 'Who says that?',
+    bands: ['k-2', '3-5', '6-8'],
+    build({ rng }) {
+        const pool = cmShuffle(BIRD_SOUNDS, rng);
+        const pick = pool[0];
+        const built = cmChoices(pick.bird, pool.slice(1, 4).map(x => x.bird), rng);
+        if (!built) return null;
+        return {
+            template_id: 'sound-' + pick.bird.toLowerCase().replace(/\W+/g, '-'),
+            prompt: `Birders learn songs by putting words to them. Which bird sounds `
+                  + `like this?\n"${pick.says}"`,
+            ...built,
+            explain: `The ${pick.bird}. Once you have heard it as words you cannot `
+                   + 'un-hear it, which is exactly why birders teach them this way.',
+        };
+    },
+},
+
+{
+    id: 'bird-state-symbol',
+    category: 'geography',
+    title: 'State birds',
+    bands: ['3-5', '6-8'],
+    build({ rng }) {
+        const built = cmChoices('Northern Cardinal',
+            ['Bald Eagle', 'American Robin', 'Blue Jay'], rng);
+        if (!built) return null;
+        return {
+            prompt: 'One bird is the official state bird of seven different states — '
+                  + 'more than any other. Which one?',
+            ...built,
+            explain: 'The Northern Cardinal: Illinois, Indiana, Kentucky, North '
+                   + 'Carolina, Ohio, Virginia and West Virginia. The Bald Eagle is '
+                   + 'the national bird, which is a different job.',
+            fact: 'Cardinals do not migrate, so they are a bird those states really '
+                + 'do have all year round.',
         };
     },
 },
@@ -3347,8 +3680,9 @@ const CLASSROOM_TEMPLATES = [
 
         return {
             prompt: `Our class puts out one scoop of seed for every ${per} visits. `
-                  + `There were ${days[0].value} visits on ${days[0].label} and `
-                  + `${days[1].value} on ${days[1].label}. How many scoops do we owe?`,
+                  + `There were ${days[0].value} visits on ${cmDayProse(days[0].key)}, `
+                  + `and ${days[1].value} visits on ${cmDayProse(days[1].key)}. `
+                  + 'How many scoops of seed do we owe the feeder?',
             ...built,
             chart: cmChart('Visits each day', cmDaySeries(s), { band, ordered: true }),
             explain: `${days[0].value} + ${days[1].value} = ${total} visits. `
@@ -3373,9 +3707,9 @@ const CLASSROOM_TEMPLATES = [
         if (!built) return null;
 
         return {
-            prompt: `On ${busiest.label} the feeder had ${busiest.value} visits. `
-                  + `If every bird stayed about ${mins} minutes, how many minutes `
-                  + 'of birds was that altogether?',
+            prompt: `On ${cmDayProse(busiest.key)} the feeder had `
+                  + `${busiest.value} visits. If every bird stayed about `
+                  + `${mins} minutes, how many minutes of birds was that altogether?`,
             ...built,
             chart: cmChart('Visits each day', cmDaySeries(s), { band, ordered: true }),
             explain: `${busiest.value} × ${mins} = ${answer} minutes.`,
@@ -4985,6 +5319,39 @@ function classroomFitStage() {
     }
 }
 
+/**
+ * Make room by shrinking the PHOTO, before shrinking everything.
+ *
+ * The fitter scales the whole slide uniformly, which is right when the slide
+ * is simply dense - but on a fact slide the photograph is most of the height,
+ * so uniform scaling shrank the sentences to pay for the picture. The flag
+ * was exact: "the photo is cut off on the top, and the text is way too small
+ * for the screen."
+ *
+ * A photograph loses almost nothing by being smaller; a sentence read aloud
+ * from the back of a room loses everything. So the image hands back height
+ * first, down to a floor where it is still worth showing, and only what is
+ * left over goes to the uniform scale.
+ *
+ * Returns the slide's natural height after the image has given what it can.
+ */
+function classroomFitShrinkPhoto(fit, available, natural) {
+    const img = fit.querySelector('.classroom-shot img');
+    if (!img || natural <= available) return natural;
+
+    const imgH = img.getBoundingClientRect().height;
+    if (!imgH) return natural;
+
+    // Never below roughly a quarter of the slide: past that the photograph
+    // stops being a photograph and the uniform scale may as well take over.
+    const floor = Math.min(imgH, Math.max(120, available * 0.26));
+    const give  = Math.min(natural - available, imgH - floor);
+    if (give <= 1) return natural;
+
+    img.style.maxHeight = (imgH - give) + 'px';
+    return fit.scrollHeight;
+}
+
 function classroomFitMeasure(body, fit) {
 
     // Measure unscaled, or each pass would compound the previous one.
@@ -5001,8 +5368,15 @@ function classroomFitMeasure(body, fit) {
     const available = body.clientHeight
                     - parseFloat(pad.paddingTop)
                     - parseFloat(pad.paddingBottom);
-    const natural   = fit.scrollHeight;
+    // Measured unscaled, with any earlier cap lifted so this pass sees the
+    // photo's own size rather than the last pass's answer.
+    const img = fit.querySelector('.classroom-shot img');
+    if (img) img.style.maxHeight = '';
+
+    let natural = fit.scrollHeight;
     if (available <= 0 || !natural) return;
+
+    natural = classroomFitShrinkPhoto(fit, available, natural);
 
     // A little margin so a rounding error does not leave one pixel of
     // overflow and a scrollbar with it.
