@@ -94,6 +94,55 @@ function updateClassroomNavUI() {
     const show = typeof hasAuthSession === 'function' && hasAuthSession()
               && classroomCommunities().length > 0;
     btn.style.display = show ? '' : 'none';
+
+    // This runs whenever memberships change, which is the first moment a
+    // ?classroom= link can actually be resolved — before it, there is nothing
+    // to look the id up in.
+    if (show) followClassroomDeepLink();
+}
+
+// One shot per page load: a teacher who closes the panel should not have it
+// reopen under them on the next membership refresh.
+let classroomDeepLinkDone = false;
+
+/**
+ * Open the panel on the classroom named in ?classroom=…
+ *
+ * The id does not say which community it belongs to, so this asks each
+ * community the user can teach in. That is one request per community, and a
+ * teacher has one.
+ */
+async function followClassroomDeepLink() {
+    if (classroomDeepLinkDone) return;
+    const wanted = new URLSearchParams(location.search).get('classroom');
+    if (!wanted) { classroomDeepLinkDone = true; return; }
+    classroomDeepLinkDone = true;
+
+    for (const c of classroomCommunities()) {
+        const { data, error } = await sbRpc('classroom_list', { p_community_id: c.id }, true);
+        if (error || !Array.isArray(data)) continue;
+        if (!data.some(r => r.id === wanted)) continue;
+
+        classroomCommunityId = c.id;
+        openClassroomPanel();
+        const sel = document.getElementById('classroom-community-select');
+        if (sel) sel.value = c.id;
+        await refreshClassroomPanel();
+        highlightClassroom(wanted);
+        return;
+    }
+
+    // Reached only when the link points at a classroom this account cannot
+    // see — deleted, or belonging to somebody else. Say so plainly rather
+    // than opening an empty panel and letting them wonder.
+    showToast('That classroom link is not one this account can open.');
+}
+
+function highlightClassroom(id) {
+    const card = document.querySelector(`.classroom-card[data-room="${CSS.escape(id)}"]`);
+    if (!card) return;
+    card.classList.add('linked');
+    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 // ── Dates and small helpers ──────────────────────────────
@@ -1311,6 +1360,11 @@ function openClassroomPanel() {
     sel.innerHTML = mine.map(c =>
         `<option value="${esc(c.id)}">${esc(c.name)} (${esc(c.role)})</option>`).join('');
 
+    // A teacher almost always belongs to exactly one school, and a dropdown
+    // with one entry is a control that can only be set to what it already
+    // says. Hide it rather than make them look at it before every lesson.
+    sel.style.display = mine.length > 1 ? '' : 'none';
+
     const empty = document.getElementById('classroom-panel-empty');
     if (empty) empty.style.display = mine.length ? 'none' : '';
     const body = document.getElementById('classroom-panel-body');
@@ -1432,7 +1486,7 @@ function renderClassroomList() {
             : '<span class="classroom-warn">No home feeder set</span>';
 
         return `
-        <div class="classroom-card">
+        <div class="classroom-card" data-room="${esc(r.id)}">
             <div class="classroom-card-head">
                 <div>
                     <strong>${esc(r.name)}</strong>
@@ -1445,6 +1499,8 @@ function renderClassroomList() {
                             ${r.home_feeder_id ? '' : 'disabled title="Set a home feeder first"'}>📱 With devices</button>
                     <button class="classroom-btn" onclick="editClassroom('${esc(r.id)}')">Edit</button>
                     <button class="classroom-btn" onclick="showClassroomHistory('${esc(r.id)}')">Results</button>
+                    <button class="classroom-btn" onclick="copyClassroomLink('${esc(r.id)}')"
+                            title="A link that opens straight into this class">🔗 Link</button>
                     <button class="classroom-btn-danger" onclick="deleteClassroom('${esc(r.id)}')">Delete</button>
                 </div>
             </div>
@@ -1457,6 +1513,37 @@ function renderClassroomList() {
             <div class="classroom-pending" id="classroom-pending-${esc(r.id)}"></div>
         </div>`;
     }).join('');
+}
+
+/**
+ * A link that opens straight into one classroom.
+ *
+ * The point is the classroom PC. A teacher signs in there once, bookmarks
+ * this, and from then on the lesson is one click from the desktop instead of
+ * sign in, open the panel, find the class. Teachers run this between a bell
+ * and thirty children sitting down; the clicks are the feature.
+ *
+ * It grants nothing. The id in the URL is only a pointer — every RPC behind
+ * it still goes through classroom_require_manage, so a link forwarded to
+ * somebody else's account opens an empty panel.
+ */
+function classroomLinkFor(id) {
+    const u = new URL(location.href);
+    u.search = '?classroom=' + encodeURIComponent(id);
+    u.hash = '';
+    return u.toString();
+}
+
+async function copyClassroomLink(id) {
+    const url = classroomLinkFor(id);
+    try {
+        await navigator.clipboard.writeText(url);
+        showToast('Link copied — bookmark it on the classroom computer.');
+    } catch {
+        // Clipboard access needs a secure context and a user gesture, and a
+        // school machine may refuse it. Showing the link is still useful.
+        window.prompt('Copy this link:', url);
+    }
 }
 
 function renderClassroomForm() {

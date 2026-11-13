@@ -3603,6 +3603,13 @@
     padding: 0.7rem; margin-bottom: 0.6rem; background: var(--bg-card);
 }
 
+/* The classroom a ?classroom= link pointed at. A teacher arriving from a
+   bookmark should see which card the link meant without reading the list. */
+.classroom-card.linked {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 28%, transparent);
+}
+
 .classroom-card-head {
     display: flex; justify-content: space-between;
     align-items: flex-start; gap: 8px; flex-wrap: wrap;
