@@ -41,6 +41,17 @@ let classroomEditingId   = null;   // classroom being edited, or null for "new"
 // reassign one — and community_members_list refuses anybody else anyway.
 let classroomStaff       = [];
 
+// Which question types the classroom being edited may ask: a Set of template
+// ids, or null for "all of them". Null is not the same as a full Set only in
+// what gets SAVED — an untouched classroom sends nothing and keeps whatever
+// the server has, which for almost every classroom is no restriction at all.
+//
+// Deliberately held here rather than read back off the checkboxes: the picker
+// only draws the current grade band, so a teacher who curates K-2, switches
+// the band to 3-5 and saves would otherwise wipe every pick the first screen
+// could not see.
+let classroomPicks = null;
+
 // The running session. Null when the stage is closed.
 let classroomSession = null;       // {id, room, questions, index, revealed, asked, correct}
 
@@ -1423,6 +1434,10 @@ function cmChart(caption, series, opts) {
 
     return { kind, caption: titled, series: trimmed, highlight: o.highlight || null,
              showValues: !!o.showValues, palette: mode, max,
+             // A clock drawn with hands reading a time, rather than with one
+             // blob per hour. Carried through here so the template that knows
+             // WHICH time is being asked about can say so.
+             hands: o.hands != null ? o.hands : null,
              total: trimmed.reduce((a, r) => a + r.value, 0) };
 }
 
@@ -1653,6 +1668,62 @@ function cmNiceStep(max) {
     return pow * 10;
 }
 
+/**
+ * The unlabelled lines BETWEEN the labelled ones.
+ *
+ * Two separate flags, both saying the same thing: "this one is easy because
+ * the bar hits an axis line — Saturday is tough to determine", and "there are
+ * no chart lines with labels, so it's impossible to determine this". Both are
+ * right, and the cause is cmNiceStep doing its job: it aims for about four
+ * labelled gridlines, so a week topping out at 18 gets lines at 0/5/10/15/20
+ * and a bar at 13 has nothing to be read against. The class can see it is
+ * "between 10 and 15" and no more than that, which is not an answer.
+ *
+ * The fix is not more LABELS — eleven numbers up a 300-unit axis collide at
+ * the font size a projected chart needs. It is a faint line at every value,
+ * so a bar that misses a labelled line can still be counted up to from the
+ * one below it. That is how squared paper works and children already read it.
+ *
+ * Returns 0 when the labelled lines are already one apart, or when every
+ * value would mean so many lines that the chart turns into a grey wash.
+ */
+function cmMinorStep(top, step) {
+    if (step <= 1) return 0;                  // already a line at every value
+    // Finest first: a line at EVERY value is what was actually asked for, and
+    // anything coarser still leaves some bar sitting in a gap. Only when that
+    // would mean more than forty lines — at which point the plot is a grey
+    // wash and nobody counts them anyway — does it fall back to a fraction of
+    // the labelled step.
+    for (const d of [1, step / 5, step / 4, step / 2]) {
+        if (Number.isInteger(d) && d >= 1 && d < step && top / d <= 40) return d;
+    }
+    return 0;
+}
+
+/**
+ * Horizontal rules across the plot: faint ones at every value where that is
+ * readable, labelled ones on the friendly numbers.
+ *
+ * Shared by the bar and line charts because they had the same bug, and
+ * fixing it in one of them would have left the other one unanswerable.
+ */
+function cmGridHtml(top, step, x1, x2, y) {
+    let out = '';
+    const minor = cmMinorStep(top, step);
+    if (minor) {
+        for (let v = 0; v <= top + 0.001; v += minor) {
+            if (Math.abs(v / step - Math.round(v / step)) < 0.001) continue;
+            out += `<line x1="${x1}" y1="${y(v)}" x2="${x2}" y2="${y(v)}" class="cc-grid-minor"/>`;
+        }
+    }
+    for (let v = 0; v <= top + 0.001; v += step) {
+        const yy = y(v);
+        out += `<line x1="${x1}" y1="${yy}" x2="${x2}" y2="${yy}" class="cc-grid"/>`
+            +  `<text x="${x1 - 12}" y="${yy + 7}" class="cc-axis" text-anchor="end">${v}</text>`;
+    }
+    return out;
+}
+
 function classroomBarsHtml(chart, revealed) {
     const hasPhotos = chart.series.some(x => x.image);
     const n = chart.series.length;
@@ -1691,12 +1762,7 @@ function classroomBarsHtml(chart, revealed) {
     const y = v => padT + plotH - (v / top) * plotH;
 
     // Gridlines first, so the bars sit on top of them.
-    let grid = '';
-    for (let v = 0; v <= top + 0.001; v += step) {
-        const yy = y(v);
-        grid += `<line x1="${padL}" y1="${yy}" x2="${W - padR}" y2="${yy}" class="cc-grid"/>`
-             +  `<text x="${padL - 12}" y="${yy + 7}" class="cc-axis" text-anchor="end">${v}</text>`;
-    }
+    const grid = cmGridHtml(top, step, padL, W - padR, y);
 
     const withPhotos = hasPhotos;
     // SVG ids are document-global, so a fixed id would let a second chart's
@@ -1929,12 +1995,7 @@ function classroomLineHtml(chart, revealed) {
     const x = i => padL + (n < 2 ? plotW / 2 : (i / (n - 1)) * plotW);
     const y = v => padT + plotH - (v / top) * plotH;
 
-    let grid = '';
-    for (let v = 0; v <= top + 0.001; v += step) {
-        const yy = y(v);
-        grid += `<line x1="${padL}" y1="${yy}" x2="${W - padR}" y2="${yy}" class="cc-grid"/>`
-             +  `<text x="${padL - 12}" y="${yy + 7}" class="cc-axis" text-anchor="end">${v}</text>`;
-    }
+    const grid = cmGridHtml(top, step, padL, W - padR, y);
 
     const pts = chart.series.map((s, i) => `${x(i)},${y(s.value)}`).join(' ');
     const area = `${padL},${y(0)} ${pts} ${x(n - 1)},${y(0)}`;
@@ -2037,7 +2098,27 @@ function classroomDonutHtml(chart, revealed) {
  * feeder that is busy at 8am and quiet at 8pm.
  */
 function classroomClockHtml(chart, revealed) {
-    const W = 1000, H = 460;
+    // Two clocks, not one.
+    //
+    // `hands` draws a real clock reading a real time and nothing else: the
+    // question is "what time is this?", which is the thing a K-2 class is
+    // actually learning. Flagged exactly so: "for this grade it would be
+    // better to show the hands of the clock and ask them what time; having
+    // bubbles outside the clock will confuse them." Quite right — the blob
+    // version asks the class to find the biggest circle, and finding the
+    // biggest circle is not telling the time.
+    //
+    // Without `hands` it is the distribution chart the older bands get, one
+    // blob per hour sized by how busy it was.
+    const hands = chart.hands;
+
+    // The same flag's first half: "the bubbles of frequency fall off the
+    // screen." They did. A blob sits (R + 46) out with a radius up to 42, so
+    // the drawing reaches 258 below centre while the canvas was 460 tall
+    // with its centre at 240 — the bottom blob was cut in half by the edge.
+    // Height now follows from that reach rather than being a guess.
+    const W = 1000;
+    const H = hands ? 420 : 560;
     const cx = W / 2, cy = H / 2 + 10, R = 170;
 
     // Hour marks and the numbers 1-12.
@@ -2047,6 +2128,39 @@ function classroomClockHtml(chart, revealed) {
         face += `<text x="${(cx + (R - 38) * Math.cos(a)).toFixed(1)}"
                        y="${(cy + (R - 38) * Math.sin(a) + 11).toFixed(1)}"
                        class="cc-clock-num" text-anchor="middle">${h}</text>`;
+        // A tick at every minute, five of them heavy, so a class counting
+        // round the dial has something to count.
+        for (let m = 0; m < 5; m++) {
+            const t = ((h * 5 + m) / 60) * Math.PI * 2 - Math.PI / 2;
+            const inner = m === 0 ? R - 16 : R - 8;
+            face += `<line x1="${(cx + inner * Math.cos(t)).toFixed(1)}"
+                           y1="${(cy + inner * Math.sin(t)).toFixed(1)}"
+                           x2="${(cx + R * Math.cos(t)).toFixed(1)}"
+                           y2="${(cy + R * Math.sin(t)).toFixed(1)}"
+                           class="cc-clock-tick${m === 0 ? ' big' : ''}"/>`;
+        }
+    }
+
+    if (hands) {
+        const hour24 = Number(hands.hour != null ? hands.hour : hands);
+        const minute = Number(hands.minute || 0);
+        const ha = ((hour24 % 12) + minute / 60) / 12 * Math.PI * 2 - Math.PI / 2;
+        const ma = (minute / 60) * Math.PI * 2 - Math.PI / 2;
+        const hand = (ang, len, cls) =>
+            `<line x1="${cx}" y1="${cy}"
+                   x2="${(cx + len * Math.cos(ang)).toFixed(1)}"
+                   y2="${(cy + len * Math.sin(ang)).toFixed(1)}" class="${cls}"/>`;
+
+        return `
+        <figure class="classroom-chart clock">
+            <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(chart.caption)}">
+                ${face}
+                ${hand(ma, R * 0.80, 'cc-clock-hand minute')}
+                ${hand(ha, R * 0.52, 'cc-clock-hand hour')}
+                <circle cx="${cx}" cy="${cy}" r="10" class="cc-clock-pin"/>
+            </svg>
+            <figcaption>${esc(chart.caption)}</figcaption>
+        </figure>`;
     }
 
     // One blob per hour that had birds, out beyond the numbers, sized by how
@@ -3683,6 +3797,12 @@ const CLASSROOM_TEMPLATES = [
             prompt: `Birders learn songs by putting words to them. Which bird sounds `
                   + `like this?\n"${pick.says}"`,
             ...built,
+            // Puts the "Read more" button on the reveal. Asked for on this
+            // exact question — "maybe link to website about the bird?" — and
+            // it is the right instinct: a class that has just learned a bird
+            // by its song is the most curious it will ever be about that
+            // bird, and the slide was a dead end.
+            wonder_bird: pick.bird,
             explain: `The ${pick.bird}. Once you have heard it as words you cannot `
                    + 'un-hear it, which is exactly why birders teach them this way.',
         };
@@ -4065,24 +4185,61 @@ const CLASSROOM_TEMPLATES = [
         const busiest = hours.slice().sort((a, b) => b.n - a.n)[0];
         const h12 = busiest.h % 12 === 0 ? 12 : busiest.h % 12;
         const ampm = busiest.h < 12 ? 'in the morning' : 'in the afternoon';
-        const answer = `${h12} o’clock ${ampm}`;
 
-        const others = cmShuffle(hours.filter(x => x.h !== busiest.h), rng)
-            .slice(0, 3)
-            .map(x => `${x.h % 12 === 0 ? 12 : x.h % 12} o’clock `
-                    + (x.h < 12 ? 'in the morning' : 'in the afternoon'));
+        // K-2 reads the dial; the older band reads the distribution.
+        const dial = band === 'k-2';
+
+        // The dial carries a 12-hour position and nothing else, so on that
+        // version the options must differ by WHERE THE HANDS POINT. Offering
+        // "7 in the morning" against "7 in the afternoon" beside a clock that
+        // shows both the same way is a question with two right answers and no
+        // way to choose — so am/pm is dropped there, and the distractors are
+        // drawn from distinct positions on the face.
+        const answer = dial ? `${h12} o’clock` : `${h12} o’clock ${ampm}`;
+
+        const seen = new Set([h12]);
+        const pool = cmShuffle(hours.filter(x => x.h !== busiest.h), rng);
+        const others = [];
+        for (const x of pool) {
+            const o12 = x.h % 12 === 0 ? 12 : x.h % 12;
+            if (dial) {
+                if (seen.has(o12)) continue;
+                seen.add(o12);
+                others.push(`${o12} o’clock`);
+            } else {
+                others.push(`${o12} o’clock ` + (x.h < 12 ? 'in the morning' : 'in the afternoon'));
+            }
+            if (others.length === 3) break;
+        }
         const built = cmChoices(answer, others, rng);
         if (!built) return null;
 
+        // K-2 gets a clock with hands on it and is asked to read it. The
+        // older band gets the distribution and is asked to find the peak.
+        //
+        // These look like the same question and are not. Flagged on the K-2
+        // version: "for this grade it would be better to show the hands of
+        // the clock and ask them what time; having bubbles outside the clock
+        // will confuse them." The blob chart asks a six-year-old to compare
+        // circle areas and then map the biggest one back onto a dial — two
+        // hard skills stacked, neither of which is telling the time, which is
+        // what design notes §11 wanted the slide for in the first place.
+        const series = hours.map(x => ({
+            label: `${x.h % 12 === 0 ? 12 : x.h % 12}${x.h < 12 ? 'am' : 'pm'}`,
+            value: x.n, key: String(x.h), hour: x.h,
+        }));
+
         return {
-            prompt: 'Look at the clock. What time were the birds busiest?',
+            prompt: dial
+                ? 'The birds were busiest at this time.\nLook at the clock — what time is it?'
+                : 'Look at the clock. What time were the birds busiest?',
             ...built,
-            chart: cmChart('When the birds came',
-                           hours.map(x => ({
-                               label: `${x.h % 12 === 0 ? 12 : x.h % 12}${x.h < 12 ? 'am' : 'pm'}`,
-                               value: x.n, key: String(x.h), hour: x.h,
-                           })), { band, hours: true, kind: 'clock' }),
-            explain: `${busiest.n} visits at ${answer}.`,
+            chart: cmChart(dial ? 'What time is it?' : 'When the birds came', series,
+                           { band, hours: true, kind: 'clock',
+                             hands: dial ? { hour: busiest.h, minute: 0 } : null }),
+            // Always the full phrase, even where the question dropped am/pm:
+            // the reveal is where "7 o'clock" becomes "7 in the morning".
+            explain: `${busiest.n} visits at ${h12} o’clock ${ampm}.`,
         };
     },
 },
@@ -4994,7 +5151,7 @@ const CLASSROOM_TEMPLATES = [
     category: 'art',
     title: 'Pattern',
     bands: ['k-2', '3-5'],
-    build({ s, band, rng }) {
+    build({ s, band, rng, source }) {
         const pool = s.species
             .map(x => ({ species: x.species, look: speciesLook(x.species) }))
             .filter(x => x.look && /stripe|zebra|spot|bar|cap|necklace/i.test(x.look.feature));
@@ -5004,9 +5161,13 @@ const CLASSROOM_TEMPLATES = [
             cmShuffle(s.species.map(x => x.species).filter(n => n !== pick.species), rng)
                 .slice(0, 3), rng);
         if (!built) return null;
+        // "Our birds" is a lie when the week came from a partner's feeder,
+        // and the prompt is the part that gets read aloud — the amber
+        // partner badge beside it is small print nobody announces.
+        const ours = !source || source.isHome;
         return {
-            prompt: `Artists look for pattern: stripes, spots, bars. Which of our `
-                  + `birds has ${pick.look.feature}?`,
+            prompt: `Artists look for pattern: stripes, spots, bars. Which of `
+                  + `${ours ? 'our' : 'these'} birds has ${pick.look.feature}?`,
             ...built,
             image: cmShotFor(s, pick.species),
             explain: `The ${pick.species} — look for ${pick.look.feature}.`,
@@ -5151,9 +5312,12 @@ function buildDataFreeQuestions(room, o) {
     const seed = `${room.id}|${cmDayKey(new Date())}|nodata`;
     cmChartRotation = 0;
 
+    const picked = classroomPickSet(room);
+
     const out = [];
     for (const t of CLASSROOM_TEMPLATES) {
-        if (t.needsData !== false || !t.bands.includes(band)) continue;
+        if (t.needsData !== false) continue;
+        if (!classroomTemplateAllowed(t, band, picked)) continue;
         let q = null;
         try {
             q = t.build({ s: CM_EMPTY_SUMMARY, s14: CM_EMPTY_SUMMARY, band,
@@ -5176,7 +5340,8 @@ function buildDataFreeQuestions(room, o) {
     }
 
     const ordered = cmShuffle(out, cmRng(seed + '|order'));
-    const offered = CLASSROOM_TEMPLATES.filter(t => t.bands.includes(band)).length;
+    const offered = CLASSROOM_TEMPLATES.filter(t =>
+        classroomTemplateAllowed(t, band, picked)).length;
     return {
         questions: o.all ? ordered : ordered.slice(0, classroomQuizSize(room, o)),
         built: ordered.length,
@@ -5201,6 +5366,37 @@ const CM_EMPTY_SUMMARY = {
  * week wants six or eight. Both are the same product used differently, so the
  * number lives on the classroom rather than in a constant here.
  */
+/**
+ * Which templates this classroom is allowed to ask, as a Set — or null for
+ * "all of them", which is the default and what every classroom had before
+ * teachers could curate.
+ *
+ * A teacher covering telling-the-time this fortnight wants the clock question
+ * every day; one who has not taught percentages yet wants them off the board.
+ * Both are the same request: let me say which questions this room can ask.
+ *
+ * Empty and absent mean the same thing on purpose. A teacher who unticks the
+ * last box has not asked for a lesson with no questions in it, and the server
+ * collapses the two cases for the same reason — one case to handle, not two.
+ */
+function classroomPickSet(room) {
+    const picks = room && room.template_picks;
+    if (!Array.isArray(picks) || !picks.length) return null;
+    return new Set(picks);
+}
+
+/**
+ * Is this template allowed in this room, in this band?
+ *
+ * The band test is not redundant with the picker: a teacher curates a list,
+ * then moves the class up a grade band, and the half of their list that does
+ * not exist in the new band must drop out quietly rather than producing
+ * nothing. Picks are a filter ON TOP of what the band offers, never instead.
+ */
+function classroomTemplateAllowed(t, band, picked) {
+    return t.bands.includes(band) && (!picked || picked.has(t.id));
+}
+
 function classroomQuizSize(room, o) {
     const n = Number((o && o.limit) || (room && room.questions_per_session));
     return Number.isFinite(n) && n >= 1 && n <= 20
@@ -5234,9 +5430,11 @@ function buildClassroomQuestions(room, data, opts) {
     cmChartRotation = 0;
     const feeder = source.name;
 
+    const picked = classroomPickSet(room);
+
     const out = [];
     for (const t of CLASSROOM_TEMPLATES) {
-        if (!t.bands.includes(band)) continue;
+        if (!classroomTemplateAllowed(t, band, picked)) continue;
         let q = null;
         try {
             q = t.build({ s, s14, band, rng: cmRng(seed + '|' + t.id), feeder, source, room });
@@ -5319,7 +5517,8 @@ function buildClassroomQuestions(room, data, opts) {
     // about this week. The gap is the useful number: a band that offers forty
     // questions and builds six of them is short of data, not short of
     // templates, and those are opposite problems with opposite fixes.
-    const offered = CLASSROOM_TEMPLATES.filter(t => t.bands.includes(band)).length;
+    const offered = CLASSROOM_TEMPLATES.filter(t =>
+        classroomTemplateAllowed(t, band, picked)).length;
 
     return {
         // Reviewing is not teaching. A lesson is deliberately a handful of
@@ -6178,7 +6377,7 @@ function renderClassroomForm() {
                 <select id="classroom-teacher">${teacherOpts}</select>
             </label>` : ''}
             <label>Grade band
-                <select id="classroom-grade-band">
+                <select id="classroom-grade-band" onchange="renderClassroomPickChecks()">
                     <option value="k-2"${editing?.grade_band === 'k-2' ? ' selected' : ''}>K–2 — pictures and counting</option>
                     <option value="3-5"${editing?.grade_band === '3-5' ? ' selected' : ''}>Grades 3–5 — charts and averages</option>
                     <option value="6-8"${editing?.grade_band === '6-8' ? ' selected' : ''}>Grades 6–8 — percents and trends</option>
@@ -6187,7 +6386,7 @@ function renderClassroomForm() {
 
             <label class="classroom-field">
                 <span>How many questions a session</span>
-                <select id="classroom-quiz-size">
+                <select id="classroom-quiz-size" onchange="updateClassroomPickCount()">
                     ${[1, 2, 3, 5, 6, 8, 10, 12].map(n => `
                         <option value="${n}"${(editing?.questions_per_session || 8) === n ? ' selected' : ''}>
                             ${n} question${n === 1 ? '' : 's'}${
@@ -6207,6 +6406,21 @@ function renderClassroomForm() {
             </p>
             <div id="classroom-partners" class="classroom-checks"></div>
         </details>
+        <details class="classroom-details">
+            <summary>Which questions this class can ask
+                <span class="classroom-pill" id="classroom-picks-count"></span></summary>
+            <p class="classroom-muted">
+                Leave this alone and the class can be asked anything that suits its grade
+                band — that is the normal way to run it. Tick a subject down to what you
+                are teaching, and only those come up.
+            </p>
+            <div class="classroom-pick-actions">
+                <button type="button" class="classroom-btn" onclick="classroomPickAll(true)">Select all</button>
+                <button type="button" class="classroom-btn" onclick="classroomPickAll(false)">Select none</button>
+            </div>
+            <div id="classroom-picks" class="classroom-picks"></div>
+            <p id="classroom-picks-warn" class="classroom-muted"></p>
+        </details>
         <div class="classroom-form-actions">
             <button class="classroom-btn-primary" onclick="saveClassroom()">
                 ${editing ? 'Save changes' : 'Create classroom'}
@@ -6215,7 +6429,16 @@ function renderClassroomForm() {
         </div>
         <div id="classroom-form-status" class="classroom-status"></div>`;
 
+    // The classroom being edited decides the starting picks; a brand-new one
+    // starts unrestricted, which is the default a teacher should not have to
+    // opt into.
+    classroomPicks = (editing && Array.isArray(editing.template_picks)
+                      && editing.template_picks.length)
+        ? new Set(editing.template_picks)
+        : null;
+
     renderClassroomPartnerChecks();
+    renderClassroomPickChecks();
 }
 
 /**
@@ -6249,6 +6472,252 @@ function renderClassroomPartnerChecks() {
 
     box.innerHTML = boxes
         || '<span class="classroom-muted">No other feeders in this community.</span>';
+}
+
+// ── Choosing which questions a classroom may ask ─────────
+//
+// The default — ask anything the week can carry — is right for a teacher who
+// wants to open the panel and press Start, and it stays the default. It is
+// just not the only thing a teacher wants. Covering telling-the-time this
+// fortnight means wanting the clock question every day. Not having taught
+// percentages yet means wanting them off the board. An art room wants the
+// art and identification questions and none of the arithmetic.
+
+const CLASSROOM_CATEGORY_LABELS = {
+    counting:       'Counting',
+    math:           'Maths',
+    comparison:     'Comparing',
+    analysis:       'Reading data',
+    prediction:     'Predicting',
+    time:           'Time',
+    science:        'Science',
+    geography:      'Geography',
+    history:        'History',
+    language:       'Language',
+    art:            'Art',
+    music:          'Music',
+    identification: 'Identifying birds',
+    puzzle:         'Puzzles',
+    wonder:         'Fun facts',
+};
+
+// Teaching order rather than alphabetical: a teacher scanning this list is
+// looking for a subject, and subjects have a conventional order on a
+// timetable that "Art, Comparing, Counting…" does not match.
+const CLASSROOM_CATEGORY_ORDER = [
+    'counting', 'math', 'comparison', 'analysis', 'prediction', 'time',
+    'science', 'geography', 'history', 'language', 'art', 'music',
+    'identification', 'puzzle', 'wonder',
+];
+
+function cmCatLabel(cat) {
+    return CLASSROOM_CATEGORY_LABELS[cat] || cat;
+}
+
+function classroomTemplatesForBand(band) {
+    return CLASSROOM_TEMPLATES.filter(t => t.bands.includes(band));
+}
+
+// The band currently chosen in the FORM, which is not necessarily the band
+// the classroom is saved with — a teacher moving a class up a year expects
+// the picker to follow the dropdown, not the database.
+function classroomFormBand() {
+    return document.getElementById('classroom-grade-band')?.value || 'k-2';
+}
+
+/**
+ * Turn "all of them" into an explicit set.
+ *
+ * Across EVERY band, not just the one on screen. A teacher untick in K-2
+ * must not silently drop the 3-5 questions they never looked at — picks are
+ * one list on the classroom, and the picker is a window onto it.
+ */
+function classroomPickMaterialise() {
+    if (!classroomPicks) classroomPicks = new Set(CLASSROOM_TEMPLATES.map(t => t.id));
+    return classroomPicks;
+}
+
+function classroomPickOn(id) {
+    return !classroomPicks || classroomPicks.has(id);
+}
+
+function classroomPickOne(id, on) {
+    const s = classroomPickMaterialise();
+    if (on) s.add(id); else s.delete(id);
+    syncClassroomPickBoxes();
+}
+
+function classroomPickCategory(cat, on) {
+    const s = classroomPickMaterialise();
+    classroomTemplatesForBand(classroomFormBand())
+        .filter(t => t.category === cat)
+        .forEach(t => (on ? s.add(t.id) : s.delete(t.id)));
+    syncClassroomPickBoxes();
+}
+
+/**
+ * Every question in this band on, or every one off.
+ *
+ * Turning everything on collapses back to the "no restriction" state when it
+ * leaves nothing excluded anywhere, so a teacher who experiments and then
+ * changes their mind ends up with a classroom that is genuinely unrestricted
+ * rather than one carrying a frozen list of today's templates — which would
+ * quietly never show them a question added next month.
+ */
+function classroomPickAll(on) {
+    const band = classroomFormBand();
+    const s = classroomPickMaterialise();
+    classroomTemplatesForBand(band).forEach(t => (on ? s.add(t.id) : s.delete(t.id)));
+    if (on && s.size >= CLASSROOM_TEMPLATES.length) classroomPicks = null;
+    syncClassroomPickBoxes();
+}
+
+/**
+ * Push the state onto the checkboxes already on screen.
+ *
+ * Rather than re-rendering: with fifty-odd boxes open, rebuilding the markup
+ * on every tick throws away the scroll position, and a teacher working down
+ * a long list gets bounced to the top on each one.
+ */
+function classroomSyncPickGroups() {
+    const band = classroomFormBand();
+    document.querySelectorAll('#classroom-picks .classroom-pick-group').forEach(g => {
+        const cat = g.dataset.cat;
+        const ts  = classroomTemplatesForBand(band).filter(t => t.category === cat);
+        const on  = ts.filter(t => classroomPickOn(t.id)).length;
+        const head = g.querySelector('input.classroom-pick-cat');
+        if (head) {
+            head.checked = on === ts.length;
+            head.indeterminate = on > 0 && on < ts.length;
+        }
+        const tally = g.querySelector('.classroom-pick-tally');
+        if (tally) tally.textContent = `${on}/${ts.length}`;
+    });
+}
+
+function syncClassroomPickBoxes() {
+    document.querySelectorAll('#classroom-picks input.classroom-pick-one')
+        .forEach(el => { el.checked = classroomPickOn(el.value); });
+    classroomSyncPickGroups();
+    updateClassroomPickCount();
+}
+
+/**
+ * The line on the summary, and the warning under the list.
+ *
+ * The warning is the part that earns its place: picking four question types
+ * for an eight-question session is not an error, but it does mean the lesson
+ * repeats or runs short, and a teacher should find that out here rather than
+ * in front of a class.
+ */
+function updateClassroomPickCount() {
+    const band = classroomFormBand();
+    const list = classroomTemplatesForBand(band);
+    const on   = list.filter(t => classroomPickOn(t.id)).length;
+    const size = parseInt(document.getElementById('classroom-quiz-size')?.value, 10) || 8;
+
+    const badge = document.getElementById('classroom-picks-count');
+    if (badge) {
+        badge.textContent = on === list.length
+            ? `all ${list.length}`
+            : `${on} of ${list.length}`;
+    }
+
+    const warn = document.getElementById('classroom-picks-warn');
+    if (!warn) return;
+    if (on === 0) {
+        warn.textContent = 'Nothing is ticked, so this class will ask anything it can — '
+                         + 'unticking everything is the same as choosing everything.';
+        warn.className = 'classroom-muted';
+    } else if (on < size) {
+        warn.textContent = `Only ${on} question type${on === 1 ? '' : 's'} ticked for `
+                         + `${size === 8 || size === 11 || size === 18 ? 'an' : 'a'} `
+                         + `${size}-question session. Questions will repeat, or the lesson `
+                         + 'will be shorter than that.';
+        warn.className = 'classroom-warn';
+    } else {
+        warn.textContent = 'How many of these actually come up depends on what the birds '
+                         + 'did that week — a question with no data to stand on sits out.';
+        warn.className = 'classroom-muted';
+    }
+}
+
+function renderClassroomPickChecks() {
+    const box = document.getElementById('classroom-picks');
+    if (!box) return;
+
+    const band = classroomFormBand();
+    const list = classroomTemplatesForBand(band);
+
+    const groups = new Map();
+    for (const t of list) {
+        if (!groups.has(t.category)) groups.set(t.category, []);
+        groups.get(t.category).push(t);
+    }
+
+    const ordered = [...groups.keys()].sort((a, b) => {
+        const ia = CLASSROOM_CATEGORY_ORDER.indexOf(a);
+        const ib = CLASSROOM_CATEGORY_ORDER.indexOf(b);
+        return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+    });
+
+    box.innerHTML = ordered.map(cat => {
+        const ts = groups.get(cat);
+        return `
+        <div class="classroom-pick-group" data-cat="${esc(cat)}">
+            <div class="classroom-pick-head">
+                <label class="classroom-check">
+                    <input type="checkbox" class="classroom-pick-cat"
+                           onchange="classroomPickCategory('${escJs(cat)}', this.checked)">
+                    <strong>${esc(cmCatLabel(cat))}</strong>
+                </label>
+                <span class="classroom-pick-tally classroom-muted"></span>
+            </div>
+            <div class="classroom-pick-items">
+                ${ts.map(t => `
+                    <label class="classroom-check">
+                        <input type="checkbox" class="classroom-pick-one" value="${esc(t.id)}"
+                               onchange="classroomPickOne('${escJs(t.id)}', this.checked)">
+                        ${esc(t.title)}
+                    </label>`).join('')}
+            </div>
+        </div>`;
+    }).join('') || '<span class="classroom-muted">No questions for this grade band.</span>';
+
+    syncClassroomPickBoxes();
+}
+
+/**
+ * Store the question choice, if it has moved.
+ *
+ * A full set is stored as "no restriction" rather than as a list of every id,
+ * so a classroom that has never been curated — or has been reset — keeps
+ * receiving templates added after today. Freezing today's list onto every
+ * classroom would make every future question invisible to all of them.
+ */
+async function saveClassroomTemplatePicks(roomId, say) {
+    if (!roomId) return;
+
+    const all = !classroomPicks || classroomPicks.size >= CLASSROOM_TEMPLATES.length;
+    const ids = all ? [] : [...classroomPicks];
+
+    const room   = classroomList.find(r => r.id === roomId);
+    const before = (room && Array.isArray(room.template_picks)) ? room.template_picks : [];
+    if (before.length === ids.length && before.every(id => ids.includes(id))) return;
+
+    const { error } = await sbRpc('classroom_set_templates',
+        { p_classroom_id: roomId, p_template_ids: ids }, true);
+    if (!error) return;
+
+    // PGRST202 is "no function by that name". It means the page has shipped
+    // ahead of its migration — worth saying out loud, because the generic
+    // message sends whoever sees it hunting for a bug in the classroom
+    // rather than for an unrun .sql file.
+    say(error.code === 'PGRST202'
+        ? 'Saved, but the question choice needs setup-classroom-picks.sql '
+        + 'to be run on the database first.'
+        : 'Saved, but the question choice did not stick: '
+        + (error.message || 'unknown error'), false);
 }
 
 function editClassroom(id) {
@@ -6357,6 +6826,7 @@ async function saveClassroom() {
         // created" — it was, and it works without partners.
         if (error) showToast('Classroom saved, but partner feeders did not: ' + (error.message || ''));
         await saveClassroomQuizSize(roomId, size, say);
+        await saveClassroomTemplatePicks(roomId, say);
     }
 
     classroomEditingId = null;

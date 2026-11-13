@@ -13,6 +13,14 @@
             --bg-input:  #ffffff;
             --border:    #e8e4de;
             --border-input: #d0cbc3;
+
+            /* The tally-chart mark: a perched songbird, drawn from four
+               primitives so it stays readable at 16px and cannot be a
+               mangled path. Used as a MASK, so the colour comes from whatever
+               the element's background is — which is the species' own colour.
+               Kept here rather than inline in the rule so the dark theme and
+               any later variant share one definition. */
+            --cc-bird-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cg fill='black'%3E%3Cpolygon points='2,7 13,16 2,23'/%3E%3Cellipse cx='16' cy='17' rx='9' ry='7.2'/%3E%3Ccircle cx='23' cy='10.5' r='5.2'/%3E%3Cpolygon points='27.5,8.9 31.5,10.4 27.5,12'/%3E%3C/g%3E%3C/svg%3E");
         }
 
         /* ── Dark mode overrides ────────────────────────────── */
@@ -3712,6 +3720,35 @@
 
 .classroom-form-actions { display: flex; gap: 6px; margin-top: 0.3rem; }
 
+/* ── Choosing which questions a class can ask ──────────────────────
+   A long list — fifty-odd titles for the middle band — so it scrolls in
+   its own box rather than pushing the Save button off the panel. Grouped
+   by subject, two columns where there is room, because a teacher scans
+   this looking for a subject heading rather than reading it through. */
+.classroom-picks {
+    max-height: 320px; overflow-y: auto;
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 0.5rem 0.6rem; margin-top: 0.4rem;
+    background: var(--bg-page);
+}
+.classroom-pick-actions { display: flex; gap: 6px; margin-top: 0.4rem; }
+.classroom-pick-group + .classroom-pick-group {
+    margin-top: 0.55rem; padding-top: 0.55rem;
+    border-top: 1px solid var(--border);
+}
+.classroom-pick-head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 8px; margin-bottom: 0.25rem;
+}
+.classroom-pick-head strong { font-size: 0.82rem; color: var(--color-gray-900); }
+.classroom-pick-tally { font-size: 0.72rem; font-variant-numeric: tabular-nums; }
+/* Indented under its subject so the grouping survives the two columns. */
+.classroom-pick-items {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 2px 10px; padding-left: 1.3rem;
+}
+.classroom-pick-items .classroom-check { font-size: 0.77rem; }
+
 /* ── Results ───────────────────────────────────────────── */
 
 .classroom-history {
@@ -3767,7 +3804,8 @@
 .classroom-review-slide figcaption { font-size: 0.7rem; }
 /* Dots stay countable but shrink; a review pass is reading, not counting
    from the back of a room. */
-.classroom-review-slide .cc-dot { width: 9px; }
+/* A silhouette needs more pixels than a circle to still read as a bird. */
+.classroom-review-slide .cc-dot { width: 13px; }
 .classroom-review-slide .cc-dot.five { margin-right: 6px; }
 .classroom-review-slide .cc-row-label,
 .classroom-review-slide .cc-row-val { font-size: 0.72rem; }
@@ -4175,6 +4213,13 @@
 .cc-grid     { stroke: var(--border); stroke-width: 1.5; }
 .cc-axisline { stroke: var(--color-gray-500); stroke-width: 2.5; }
 
+/* A line at every value, between the labelled ones. Two flags said a bar
+   that does not land on a labelled gridline cannot be read at all, and they
+   were right — "between 10 and 15" is not an answer. These are deliberately
+   fainter and thinner than .cc-grid: they are there to be counted along when
+   a bar falls between the numbers, not to compete with them. */
+.cc-grid-minor { stroke: var(--border); stroke-width: 1; opacity: 0.45; }
+
 /* Brighter and bigger than a normal axis. Flagged as unreadable: these are
    read from the back of a classroom, and at gray-500 they were decoration. */
 .cc-axis {
@@ -4278,6 +4323,26 @@
     width: clamp(16px, 3.1vmin, 38px); aspect-ratio: 1;
     border-radius: 50%; background: var(--color-primary);
     display: inline-block;
+}
+
+/* Each tally mark is a bird, not a bubble.
+   Asked for on the busiest-day slide — "might be nice instead of each bubble
+   show a bird icon" — and it costs nothing: the mark already carries the
+   species' own colour as its background, so masking it to a bird silhouette
+   keeps every bit of that and only changes the outline. A pictograph whose
+   picture is the thing being counted is the whole idea of a pictograph.
+
+   Behind @supports so that a browser without CSS masking keeps the coloured
+   circles rather than rendering a row of squares. */
+@supports (mask-image: url("")) or (-webkit-mask-image: url("")) {
+    .cc-dot {
+        border-radius: 0;
+        -webkit-mask-image: var(--cc-bird-glyph);
+                mask-image: var(--cc-bird-glyph);
+        -webkit-mask-size: contain;      mask-size: contain;
+        -webkit-mask-repeat: no-repeat;  mask-repeat: no-repeat;
+        -webkit-mask-position: center;   mask-position: center;
+    }
 }
 /* A wider gap after every fifth dot. Counting in fives is the habit a tally
    chart is teaching, and the eye picks the grouping up without being told. */
@@ -4428,6 +4493,20 @@
     font-size: 36px; font-family: inherit; font-weight: 700;
     font-variant-numeric: tabular-nums;
 }
+/* Minute ticks, with every fifth one heavy. A class counting round the dial
+   to work out a time needs something to count — the numbers alone leave the
+   space between 2 and 3 blank. */
+.cc-clock-tick     { stroke: var(--color-gray-500); stroke-width: 2; opacity: 0.55; }
+.cc-clock-tick.big { stroke-width: 4; opacity: 0.9; }
+
+/* The hands, for the K-2 "what time is it?" slide. Rounded ends and a real
+   difference in weight between them: a child reads which hand is which by
+   length and thickness long before they read the dial. */
+.cc-clock-hand        { stroke-linecap: round; }
+.cc-clock-hand.hour   { stroke: var(--color-gray-900); stroke-width: 16; }
+.cc-clock-hand.minute { stroke: var(--color-gray-900); stroke-width: 9; opacity: 0.75; }
+.cc-clock-pin         { fill: var(--color-gray-900); }
+
 .cc-clock-blob    { opacity: 0.85; }
 .cc-clock-blob.on { opacity: 1; stroke: var(--color-gray-900); stroke-width: 4; }
 .cc-clock-val {
