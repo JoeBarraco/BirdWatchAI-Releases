@@ -4557,3 +4557,11 @@
     font-size: 22px; font-family: inherit; font-weight: 600;
     font-variant-numeric: tabular-nums;
 }
+
+/* The class list shows one classroom at a time by default — the one the
+   picker names. A dropdown naming 3-5 above a list of all three classes
+   reads as a filter that does not work, which is how it was reported. */
+.classroom-list-toggle {
+    display: flex; align-items: center; gap: 0.5rem;
+    margin-bottom: 0.6rem;
+}

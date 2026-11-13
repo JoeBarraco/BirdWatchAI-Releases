@@ -4073,6 +4073,18 @@ async function loadClassroomStaff() {
         m.kind === 'member' && ['owner', 'moderator', 'teacher'].includes(m.role));
 }
 
+// Whether the list shows every classroom or only the one the picker names.
+// Default is "only this one": a dropdown naming 3-5 sitting above a list of
+// all three classrooms reads as a filter that does not work, which is exactly
+// how it was reported. One class at a time is also what the panel is FOR -
+// you run one lesson, review one set, read one set of results.
+let classroomShowAll = false;
+
+function setClassroomShowAll(on) {
+    classroomShowAll = !!on;
+    renderClassroomList();
+}
+
 function renderClassroomList() {
     const list = document.getElementById('classroom-list');
     if (!list) return;
@@ -4084,7 +4096,27 @@ function renderClassroomList() {
         return;
     }
 
-    list.innerHTML = classroomList.map(r => {
+    // Keep the picker in step FIRST: the filter below reads its value, and on
+    // the first render it has no options yet.
+    syncClassroomPicker();
+
+    const picked = classroomPicked();
+    const shown = (classroomShowAll || !picked)
+        ? classroomList
+        : classroomList.filter(r => r.id === picked);
+
+    const others = classroomList.length - shown.length;
+    const toggle = classroomList.length < 2 ? '' : `
+        <div class="classroom-list-toggle">
+            ${classroomShowAll
+                ? `<button class="classroom-btn" onclick="setClassroomShowAll(false)">
+                     Show only the class above</button>`
+                : `<button class="classroom-btn" onclick="setClassroomShowAll(true)">
+                     Show all ${classroomList.length} classes</button>`}
+            ${others > 0 ? `<span class="classroom-muted">${others} hidden</span>` : ''}
+        </div>`;
+
+    list.innerHTML = toggle + shown.map(r => {
         const partners = (r.partners || []).map(p => p.display_name).filter(Boolean);
         const seen = r.home_feeder_seen_at
             ? new Date(r.home_feeder_seen_at).getTime() > Date.now() - 10 * 60 * 1000
@@ -4124,8 +4156,6 @@ function renderClassroomList() {
             <div class="classroom-pending" id="classroom-pending-${esc(r.id)}"></div>
         </div>`;
     }).join('');
-
-    syncClassroomPicker();
 }
 
 /**
@@ -4140,6 +4170,12 @@ function renderClassroomList() {
 function syncClassroomPicker() {
     const pick = document.getElementById('classroom-pick');
     if (!pick) return;
+
+    // Re-render on change, so choosing a class actually shows that class.
+    if (!pick.dataset.wired) {
+        pick.dataset.wired = '1';
+        pick.addEventListener('change', () => renderClassroomList());
+    }
 
     const wanted = pick.value;
     pick.innerHTML = classroomList.map(r =>
@@ -4994,11 +5030,15 @@ async function cmResolvePendingPredictions(room) {
     const now = Date.now();
     const lines = [];
 
+    // The same prediction asked in two sessions produces two identical
+    // waiting rows, which reads as a bug rather than as two classes having
+    // each made a guess. Counted instead.
+    const waitingCounts = new Map();
+
     for (const p of data) {
         const ready = p.resolve_after && new Date(p.resolve_after).getTime() <= now;
         if (!ready) {
-            lines.push(`<div class="classroom-pending-row">⏳ Waiting to check: `
-                     + `${esc(p.prompt)}</div>`);
+            waitingCounts.set(p.prompt, (waitingCounts.get(p.prompt) || 0) + 1);
             continue;
         }
 
@@ -5045,6 +5085,15 @@ async function cmResolvePendingPredictions(room) {
                  + `${ok ? '✅' : '❌'} ${esc(p.prompt)}<br>`
                  + `<span class="classroom-muted">Class said <strong>${esc(guessed)}</strong> · `
                  + `actual was ${actual} (${esc(right)})</span></div>`);
+    }
+
+    // Waiting rows last, and one per distinct question: a resolved result is
+    // news, a pending one is just a reminder.
+    for (const [prompt, n] of waitingCounts) {
+        lines.push(`<div class="classroom-pending-row">⏳ Waiting to check: `
+                 + `${esc(prompt)}`
+                 + (n > 1 ? ` <span class="classroom-muted">(asked ${n} times)</span>` : '')
+                 + '</div>');
     }
 
     box.innerHTML = lines.join('');
