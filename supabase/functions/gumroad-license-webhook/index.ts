@@ -168,6 +168,93 @@ function matchCommunityTier(
   return undefined;
 }
 
+// ── School products ─────────────────────────────────────────────────────────
+//
+// Classroom mode is a dated term, so there are two shapes of school sale and
+// they are NOT interchangeable:
+//
+//   renewal  — adds months to a community that already exists. Minted as
+//              product='school'. Applied with community_apply_school_code.
+//
+//   school   — creates a community that is already a school, with the clock
+//   community  running. Minted as product='community' with school_months set,
+//              so it goes through the ordinary redeem path and arrives as a
+//              school in one step.
+//
+// Selling the second as "a community code plus a school code" would be two
+// purchases, two emails and two screens for one decision, and the gap between
+// them is where a customer gives up.
+//
+// Postgres refuses the cross-product mistake either way: a renewal code is
+// rejected by community_redeem_unlock_code, and a creation code is rejected
+// by community_apply_school_code. Neither is spent on the wrong path.
+type SchoolProduct =
+  | { kind: 'renewal'; months: number }
+  | { kind: 'community'; tier: 'small' | 'medium' | 'large'; months: number };
+
+// Permalink → product. EMPTY until the Gumroad products exist; fill these in
+// when they do, the way COMMUNITY_TIERS is filled in, so the mapping is
+// reviewable in the diff rather than living in an env var that can silently
+// lose an entry.
+//
+//   zzzzzz: { kind: 'renewal',   months: 12 },
+//   yyyyyy: { kind: 'community', tier: 'small', months: 12 },
+const SCHOOL_PRODUCTS: Record<string, SchoolProduct> = {};
+
+// Until then, and for the opaque product_ids Gumroad assigns to products made
+// after Jan 2023, the same escape hatch COMMUNITY_TIERS_EXTRA uses:
+//
+//   GUMROAD_SCHOOL_IDS="abc123=renewal:12,def456=community:small:12"
+const SCHOOL_PRODUCTS_EXTRA: Record<string, SchoolProduct> = Object.fromEntries(
+  (Deno.env.get('GUMROAD_SCHOOL_IDS') ?? '')
+    .split(',').map(s => s.trim()).filter(Boolean)
+    .map(pair => {
+      const [k, v] = pair.split('=').map(x => x.trim());
+      const bits = (v ?? '').split(':').map(x => x.trim());
+      if (!k || bits.length < 2) return ['', null];
+
+      if (bits[0] === 'renewal') {
+        const months = Number(bits[1]);
+        if (!Number.isInteger(months) || months < 1 || months > 60) return ['', null];
+        return [normalizeProductRef(k), { kind: 'renewal', months }];
+      }
+      if (bits[0] === 'community' && bits.length === 3) {
+        const tier = bits[1];
+        const months = Number(bits[2]);
+        if (!['small', 'medium', 'large'].includes(tier)) return ['', null];
+        if (!Number.isInteger(months) || months < 1 || months > 60) return ['', null];
+        return [normalizeProductRef(k), { kind: 'community', tier, months }];
+      }
+      return ['', null];
+    })
+    .filter(([k, v]) => k && v),
+) as Record<string, SchoolProduct>;
+
+/**
+ * Which school product this sale is for, or undefined.
+ *
+ * Same generous matching as matchCommunityTier, and for the same reason: a
+ * false negative costs a customer their purchase, while a false positive
+ * needs one of these fields to literally equal a configured permalink.
+ */
+function matchSchoolProduct(
+  p: Record<string, string>, productId: string, permalink: string,
+): SchoolProduct | undefined {
+  const candidates = [
+    productId, permalink,
+    p['permalink'] ?? '', p['product_permalink'] ?? '',
+    p['short_url'] ?? '', p['product_name'] ?? '',
+  ];
+  for (const c of candidates) {
+    for (const key of [c?.trim(), normalizeProductRef(c)]) {
+      if (!key) continue;
+      const hit = SCHOOL_PRODUCTS[key] ?? SCHOOL_PRODUCTS_EXTRA[key];
+      if (hit) return hit;
+    }
+  }
+  return undefined;
+}
+
 const COMMUNITY_FROM_EMAIL = Deno.env.get('COMMUNITY_FROM_EMAIL')
                           ?? LICENSE_FROM_EMAIL;
 
@@ -180,12 +267,15 @@ const TIER_FEEDERS: Record<string, number> = { small: 5, medium: 25, large: 100 
  * ~10^18 combinations, and a wrong guess is indistinguishable from an unused
  * code because community_redeem_unlock_code gives one error for every failure.
  */
-function newUnlockCode(): string {
+// BWC creates a community, BWS renews a school. The prefix is for humans: a
+// support mail that quotes a code says which product it is without a lookup,
+// and a customer holding both can tell them apart.
+function newUnlockCode(prefix: 'BWC' | 'BWS' = 'BWC'): string {
   const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no I, O, 0, 1
   const bytes = new Uint8Array(12);
   crypto.getRandomValues(bytes);
   const chars = Array.from(bytes, b => ALPHABET[b % ALPHABET.length]);
-  return `BWC-${chars.slice(0, 4).join('')}-${chars.slice(4, 8).join('')}-${chars.slice(8, 12).join('')}`;
+  return `${prefix}-${chars.slice(0, 4).join('')}-${chars.slice(4, 8).join('')}-${chars.slice(8, 12).join('')}`;
 }
 
 // ── Small helpers ───────────────────────────────────────────────────────────
@@ -416,21 +506,35 @@ support@birdwatchai.com from this address and we will send it again.
 
 // ── Community sales ─────────────────────────────────────────────────────────
 
+// What one sale entitles the buyer to. The three Gumroad shapes — a plain
+// community, a school community, a school renewal — differ only in the row
+// that gets minted and the email that goes out. Everything else (refunds,
+// disputes, duplicate pings, code collisions) is identical, so they share one
+// function rather than getting a copy each: two copies of the revoke path is
+// how the two drift until one of them stops revoking.
+type CodeGrant =
+  | { product: 'community'; tier: 'small' | 'medium' | 'large'; schoolMonths?: number }
+  | { product: 'school'; months: number };
+
 /**
- * Mint (or revoke) a community unlock code for one Gumroad sale.
+ * Mint (or revoke) an unlock code for one Gumroad sale.
  *
  * Idempotent on `gumroad_sale_id`, which is UNIQUE: Gumroad retries pings, and
  * a retry must not hand the buyer a second code. A duplicate returns the code
  * that already exists and re-sends the email, because "I never got it" is the
  * common support case and re-sending is harmless.
  */
-async function handleCommunitySale(s: {
-  tier: 'small' | 'medium' | 'large';
+async function handleCodeSale(s: {
+  grant: CodeGrant;
   saleId: string; productId: string; permalink: string;
   email: string; name: string;
   isTest: boolean; isRefund: boolean; isDispute: boolean; disputeWon: boolean;
 }): Promise<Response> {
-  const log = (m: string) => console.log(`[community ${s.tier} ${s.saleId}] ${m}`);
+  const g = s.grant;
+  const label = g.product === 'school'
+    ? `school-renewal ${g.months}mo`
+    : `community ${g.tier}${g.schoolMonths ? ` +school ${g.schoolMonths}mo` : ''}`;
+  const log = (m: string) => console.log(`[${label} ${s.saleId}] ${m}`);
 
   // Refund / dispute: revoke rather than delete. The buyer may already have
   // created a community whose member feeders belong to other people, so their
@@ -470,7 +574,7 @@ async function handleCommunitySale(s: {
   }
 
   if (!s.email) {
-    console.error('community sale without an email; cannot deliver a code');
+    console.error('sale without an email; cannot deliver a code');
     return new Response(JSON.stringify({ error: 'no email' }), { status: 400 });
   }
 
@@ -488,14 +592,20 @@ async function handleCommunitySale(s: {
   } else {
     // The DB owns the cap; mirror it in the row so a later tier-table change
     // can't retroactively shrink somebody's purchase.
-    const feederLimit = TIER_FEEDERS[s.tier];
+    const payload = g.product === 'school'
+      ? { product: 'school', school_months: g.months }
+      : {
+          product: 'community',
+          tier: g.tier,
+          feeder_limit: TIER_FEEDERS[g.tier],
+          school_months: g.schoolMonths ?? null,
+        };
     // Retry on the astronomically-unlikely code collision rather than 500.
     for (let attempt = 0; attempt < 5 && !code; attempt++) {
-      const candidate = newUnlockCode();
+      const candidate = newUnlockCode(g.product === 'school' ? 'BWS' : 'BWC');
       const { error } = await supabase.from('community_unlock_codes').insert({
         code: candidate,
-        tier: s.tier,
-        feeder_limit: feederLimit,
+        ...payload,
         customer_email: s.email,
         customer_name: s.name || null,
         source: 'gumroad',
@@ -517,24 +627,44 @@ async function handleCommunitySale(s: {
       return new Response(JSON.stringify({ error: error.message }), { status: 500 });
     }
     if (!code) {
-      console.error('could not mint a unique community code after 5 attempts');
+      console.error('could not mint a unique code after 5 attempts');
       return new Response(JSON.stringify({ error: 'code generation failed' }), { status: 500 });
     }
     log('minted');
   }
 
-  await sendCommunityCodeEmail(s.email, s.name, code, s.tier);
-  return new Response(JSON.stringify({ ok: true, tier: s.tier, code_sent: true }), { status: 200 });
+  if (g.product === 'school') {
+    await sendSchoolRenewalEmail(s.email, s.name, code, g.months);
+  } else {
+    await sendCommunityCodeEmail(s.email, s.name, code, g.tier, g.schoolMonths);
+  }
+  return new Response(
+    JSON.stringify({ ok: true, product: g.product, code_sent: true }),
+    { status: 200 });
 }
 
 async function sendCommunityCodeEmail(
   email: string, name: string, code: string, tier: string,
+  schoolMonths?: number,
 ): Promise<void> {
   if (!RESEND_API_KEY) {
     console.warn(`RESEND_API_KEY unset — community code ${code} stored but NOT emailed to ${email}`);
     return;
   }
   const feeders = TIER_FEEDERS[tier] ?? 5;
+  const isSchool = !!schoolMonths;
+
+  // The school paragraph goes in the middle rather than at the end. A school
+  // that has just paid for classroom mode needs to know the term is already
+  // running and roughly when it ends, and nobody reads to the bottom of a
+  // receipt.
+  const schoolPara = isSchool ? `
+Because this is a school community, Classroom mode is included and its
+${schoolMonths}-month term starts the moment you redeem this code. You will get a
+reminder before it ends, and renewing adds to whatever is left rather than
+throwing it away.
+` : '';
+
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
@@ -544,8 +674,10 @@ async function sendCommunityCodeEmail(
     body: JSON.stringify({
       from: COMMUNITY_FROM_EMAIL,
       to: [email],
-      subject: `Your BirdWatchAI community unlock code`,
-      text: `${name ? name + ',\n\n' : ''}Thanks for buying a BirdWatchAI community.
+      subject: isSchool
+        ? 'Your BirdWatchAI school community unlock code'
+        : 'Your BirdWatchAI community unlock code',
+      text: `${name ? name + ',\n\n' : ''}Thanks for buying a BirdWatchAI ${isSchool ? 'school ' : ''}community.
 
 Your unlock code is:
 
@@ -553,15 +685,15 @@ Your unlock code is:
 
 It creates one community with room for up to ${feeders} feeders, and you choose
 whether that community is public or private.
-
+${schoolPara}
 To use it:
 
   1. Sign in at https://www.birdwatchai.com/docs/community.html
   2. Open Communities -> Create a community
   3. Paste the code, pick a name and a web address, and choose public or private
 
-You become the owner, and you can invite others as moderators or viewers by
-email from the same screen.
+You become the owner, and you can invite others as ${isSchool ? 'teachers, ' : ''}moderators or
+viewers by email from the same screen.
 
 Two things worth knowing up front:
 
@@ -579,6 +711,68 @@ If anything goes wrong, write to support@birdwatchai.com from this address.
   });
   if (!res.ok) {
     console.error('Resend delivery failed (community code):', res.status, await res.text());
+  }
+}
+
+/**
+ * A renewal, which is a different email from a purchase.
+ *
+ * It must not read like a code that creates something — a school that already
+ * has classes and a year of results does not want to be told to "create a
+ * community", and redeeming it on the wrong screen is the one mistake that
+ * would cost them the year. Postgres refuses that, but the email should not
+ * invite it in the first place.
+ */
+async function sendSchoolRenewalEmail(
+  email: string, name: string, code: string, months: number,
+): Promise<void> {
+  if (!RESEND_API_KEY) {
+    console.warn(`RESEND_API_KEY unset — school code ${code} stored but NOT emailed to ${email}`);
+    return;
+  }
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: COMMUNITY_FROM_EMAIL,
+      to: [email],
+      subject: 'Your BirdWatchAI Classroom renewal code',
+      text: `${name ? name + ',\n\n' : ''}Thanks for renewing BirdWatchAI Classroom.
+
+Your renewal code is:
+
+    ${code}
+
+It adds ${months} months of Classroom mode to a community you already own.
+
+To use it:
+
+  1. Sign in at https://www.birdwatchai.com/docs/community.html
+  2. Open Communities and choose your school
+  3. Paste the code into the box under "This community is a school", and
+     press Apply code
+
+Applying it early does not cost you anything: the ${months} months are added to
+whatever is left of the current term, not started over.
+
+This code renews an existing community. It will not create a new one — if you
+are setting up a school for the first time, you want a school community code
+instead, and we can swap this one for you.
+
+Only the community's owner can apply it, so if you are not the owner, forward
+this to whoever is. The code can only be used once.
+
+If anything goes wrong, write to support@birdwatchai.com from this address.
+
+-- Bird Brain Solutions LLC
+`,
+    }),
+  });
+  if (!res.ok) {
+    console.error('Resend delivery failed (school renewal):', res.status, await res.text());
   }
 }
 
@@ -632,10 +826,29 @@ Deno.serve(async (req) => {
   // moving the licence webhook's ping too, on a path that is live and minting
   // real keys. This branch returns before touching any licence logic, so the
   // licence flow is unchanged unless a community product matches.
+  // School products are matched FIRST. A school product has its own permalink
+  // and would not hit COMMUNITY_TIERS anyway, but if one were ever mapped in
+  // both places the school entry is the more specific of the two — and
+  // quietly selling it as a plain community would drop the Classroom term the
+  // customer actually paid for, in a way nobody notices until a teacher
+  // cannot start a lesson.
+  const schoolProduct = matchSchoolProduct(p, productId, permalink);
+  if (schoolProduct) {
+    const grant: CodeGrant = schoolProduct.kind === 'renewal'
+      ? { product: 'school', months: schoolProduct.months }
+      : { product: 'community', tier: schoolProduct.tier,
+          schoolMonths: schoolProduct.months };
+    return await handleCodeSale({
+      grant, saleId, productId, permalink, email, name,
+      isTest, isRefund, isDispute, disputeWon,
+    });
+  }
+
   const communityTier = matchCommunityTier(p, productId, permalink);
   if (communityTier) {
-    return await handleCommunitySale({
-      tier: communityTier, saleId, productId, permalink, email, name,
+    return await handleCodeSale({
+      grant: { product: 'community', tier: communityTier },
+      saleId, productId, permalink, email, name,
       isTest, isRefund, isDispute, disputeWon,
     });
   }
@@ -667,6 +880,9 @@ Deno.serve(async (req) => {
           email:             email || null,
           allowlist:         PRODUCT_IDS,
           community_keys:    Object.keys(COMMUNITY_TIERS),
+          community_extra:   Object.keys(COMMUNITY_TIERS_EXTRA),
+          school_keys:       Object.keys(SCHOOL_PRODUCTS),
+          school_extra:      Object.keys(SCHOOL_PRODUCTS_EXTRA),
         }),
       );
       return new Response(JSON.stringify({ ignored: 'product not allowlisted' }), { status: 200 });

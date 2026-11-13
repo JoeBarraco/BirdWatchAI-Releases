@@ -31,6 +31,8 @@ create table communities (
                   check (kind in ('general', 'school')),
     tier          text,
     feeder_limit  int,
+    suppress_location boolean not null default false,
+    unlock_code_id    uuid,
     created_at    timestamptz not null default now()
 );
 
@@ -97,6 +99,28 @@ begin
   r := community_role(p_community_id, p_user_id);
   if r is null or not (r = any(p_roles)) then
     raise exception 'Insufficient permission (have %, need %)', coalesce(r,'none'), p_roles;
+  end if;
+end $$;
+
+-- Real one lives in setup-community-tiers.sql §1.
+create or replace function community_tier_limit(p_tier text)
+returns int language sql immutable as $$
+  select case p_tier when 'small' then 5 when 'medium' then 25
+                     when 'large' then 100 end
+$$;
+
+-- Real one lives in setup-community-tiers.sql §8 and enforces length,
+-- character set and reserved words. Only uniqueness matters to these tests.
+create or replace function community_assert_slug_ok(
+  p_slug text, p_allow_id uuid default null)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if coalesce(trim(p_slug), '') = '' then
+    raise exception 'Address is required';
+  end if;
+  if exists (select 1 from communities
+              where slug = p_slug and (p_allow_id is null or id <> p_allow_id)) then
+    raise exception 'That address is taken';
   end if;
 end $$;
 

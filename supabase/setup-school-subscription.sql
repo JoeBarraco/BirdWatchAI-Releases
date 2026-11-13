@@ -88,18 +88,29 @@ comment on column communities.school_perpetual is
 
 -- ── 2. Grandfathering ───────────────────────────────────────────────
 --
--- Every community that is ALREADY a school when this runs becomes
--- perpetual. They were promised a free checkbox and some of them have
--- classes in session; a migration that switched them off on deploy day
--- would be felt by teachers in a building, not by a customer at a
--- keyboard.
+-- Every community that is ALREADY a school when this runs gets a full
+-- twelve months from today. They were promised a free checkbox and some
+-- of them have classes in session; a migration that switched them off
+-- on deploy day would be felt by teachers in a building, not by a
+-- customer at a keyboard.
 --
--- Guarded on school_expires_at being null as well, so re-running this
--- file after real subscriptions exist cannot promote a paying school
--- to free.
+-- A YEAR, not perpetual. A perpetual grant is indistinguishable from a
+-- bug for the rest of the product's life — nobody later can tell
+-- whether a community has free classrooms because it was an early
+-- school or because something failed to set a date. A term that has to
+-- be renewed puts every school on the same footing after one year, and
+-- a year is long enough that nobody is surprised.
+--
+-- school_perpetual still exists, for comps and support grants, but
+-- nothing sets it automatically. community_set_school_term (see
+-- setup-school-purchase.sql) is how a human does it on purpose.
+--
+-- Guarded on both columns, so re-running this file after real
+-- subscriptions exist cannot reset a paying school's term or overwrite
+-- a deliberate perpetual grant.
 
 update communities
-   set school_perpetual = true
+   set school_expires_at = now() + interval '12 months'
  where kind = 'school'
    and school_perpetual = false
    and school_expires_at is null;
@@ -611,10 +622,10 @@ grant  execute on function community_mint_school_code(text, text, int, text, tex
 
 -- ── 10. What this did not do ────────────────────────────────────────
 --
---  * No Gumroad product. gumroad-license-webhook maps permalinks to
---    community tiers in a hard-coded constant; a school product adds an
---    entry there and a branch that mints product='school'. Until then,
---    section 9 sells it by hand.
+--  * The purchase path is in setup-school-purchase.sql, which adds the
+--    admin term grant and teaches community_redeem_unlock_code about
+--    school_months. The webhook side is done; only the Gumroad
+--    products themselves are still to be created.
 --
 --  * No renewal reminders. pg_cron, pg_net, Vault and Resend are
 --    already wired up for the feedback digest, so the job is small —

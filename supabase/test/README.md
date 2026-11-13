@@ -10,6 +10,7 @@ anywhere near Supabase.
 docker run -d --name bwai-pgtest -e POSTGRES_PASSWORD=test postgres:16
 docker cp supabase/test/stub-schema.sql                 bwai-pgtest:/tmp/
 docker cp supabase/setup-school-subscription.sql        bwai-pgtest:/tmp/
+docker cp supabase/setup-school-purchase.sql            bwai-pgtest:/tmp/
 docker cp supabase/test/school-subscription.test.sql    bwai-pgtest:/tmp/
 
 docker exec bwai-pgtest psql -U postgres -q -f /tmp/stub-schema.sql
@@ -20,6 +21,7 @@ docker exec bwai-pgtest psql -U postgres -q -c "
   insert into community_members (community_id,user_id,role)
    select id,'11111111-1111-1111-1111-111111111111','owner' from communities;"
 docker exec bwai-pgtest psql -U postgres -q -f /tmp/setup-school-subscription.sql
+docker exec bwai-pgtest psql -U postgres -q -f /tmp/setup-school-purchase.sql
 docker exec bwai-pgtest psql -U postgres -q -f /tmp/school-subscription.test.sql
 
 docker rm -f bwai-pgtest
@@ -28,7 +30,15 @@ docker rm -f bwai-pgtest
 On Git Bash, prefix the `docker` lines with `MSYS_NO_PATHCONV=1` or the
 container paths are rewritten to Windows ones.
 
-Every check prints `PASS` or `FAIL ***`. Grep for `FAIL`.
+Every check prints `PASS` or `FAIL ***`. Grep for `FAIL`. As of the last run:
+68 checks, 0 failures.
+
+**The suite needs a fresh database.** It creates communities at fixed
+addresses, spends codes and moves expiry dates about, so running it twice
+against the same container fails about nine checks for reasons that have
+nothing to do with the migration. Drop the container and start again rather
+than reading those as regressions. Re-running the *migrations* twice is
+different, and is worth doing — see below.
 
 The seed is two communities on purpose: one already a school (so the
 grandfathering branch runs) and one not (so the "this now costs money" branch

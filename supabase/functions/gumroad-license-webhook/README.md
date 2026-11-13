@@ -223,6 +223,60 @@ that has no JWT gate.
 
 ---
 
+## Selling schools
+
+Classroom mode is a dated term, so there are **three** things this webhook can
+sell, and they mint different rows:
+
+| Gumroad product | Code | What it does |
+|---|---|---|
+| Community (small/medium/large) | `BWC-…` | Creates one community |
+| **School community** | `BWC-…` | Creates one community that is *already* a school, term running |
+| **Classroom renewal** | `BWS-…` | Adds months to a school that already exists |
+
+A renewal code cannot create a community and a creation code cannot renew one
+— Postgres refuses both, so a customer who pastes a code into the wrong box
+gets an error with the code still unspent rather than a lost year.
+
+### Wiring up a new school product
+
+`SCHOOL_PRODUCTS` in `index.ts` is empty on purpose: there is nothing to map
+until the Gumroad products exist. When you make them, add the permalinks
+there — a constant is reviewable in the diff and moves with the code, which is
+what the tier map already does and for the same reason.
+
+Until a redeploy is convenient, or for the opaque `product_id` Gumroad gives
+products created after Jan 2023, use the function secret:
+
+```
+GUMROAD_SCHOOL_IDS="schoolrenew=renewal:12,schoolmed=community:medium:12"
+```
+
+- `renewal:<months>` — a `BWS-` renewal code
+- `community:<tier>:<months>` — a `BWC-` code that creates a school community
+
+Keys are normalised the same way the tier map's are, so a full permalink URL
+(`https://birdbrainllc.gumroad.com/l/schoolrenew`) matches a bare key.
+Malformed entries are dropped silently, so **check the logs after setting it**:
+a sale whose product matched nothing logs `IGNORED a sale` with every
+identifier the ping carried, including the school keys it compared against.
+
+### Selling one without Gumroad
+
+Schools buy by purchase order more often than by card. Both products can be
+minted by hand against your admin token, which is enough to invoice, mint and
+email:
+
+```sql
+-- renewal for an existing school
+select community_mint_school_code('<admin token>', 'principal@school.edu', 12);
+
+-- a school community, sold outright
+select community_mint_school_community_code('<admin token>', 'principal@school.edu', 'small', 12);
+```
+
+---
+
 ## Things that will bite you
 
 - **A 401 on every ping** means the `--no-verify-jwt` flag was missed.

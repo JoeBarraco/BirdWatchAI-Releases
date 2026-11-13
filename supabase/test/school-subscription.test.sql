@@ -51,18 +51,37 @@ begin
 
   raise notice '';
   raise notice '── 1. Grandfathering ──';
-  perform t_ok('existing school became perpetual',
-    (select school_perpetual from communities where id = roland));
-  perform t_ok('non-school did NOT become perpetual',
-    (select not school_perpetual from communities where id = birders));
-  perform t_ok('perpetual school reads as active',
+  perform t_ok('existing school got a term, not a perpetual grant',
+    (select not school_perpetual and school_expires_at is not null
+       from communities where id = roland));
+  perform t_ok('that term is ~12 months out',
+    (select school_expires_at from communities where id = roland)
+      between now() + interval '358 days' and now() + interval '372 days');
+  perform t_ok('grandfathered school reads as active',
     community_school_active(roland));
-  perform t_ok('perpetual school state = perpetual',
-    community_school_state(roland) = 'perpetual');
+  perform t_ok('grandfathered school state = active',
+    community_school_state(roland) = 'active');
+  perform t_ok('non-school got no term',
+    (select not school_perpetual and school_expires_at is null
+       from communities where id = birders));
   perform t_ok('plain community is not active',
     not community_school_active(birders));
   perform t_ok('plain community state = not_school',
     community_school_state(birders) = 'not_school');
+
+  raise notice '';
+  raise notice '── 1b. Admin grants a perpetual term by hand ──';
+  perform t_raises('a bad admin token cannot set a term',
+    'select community_set_school_term(''NOPE'', ''roland'', 12)');
+  perform t_raises('an unknown slug is refused',
+    'select community_set_school_term(''ADMIN-OK'', ''nosuch'', 12)');
+  perform t_runs('admin makes roland perpetual',
+    'select community_set_school_term(''ADMIN-OK'', ''roland'', null)');
+  perform t_ok('roland is now perpetual with no date',
+    (select school_perpetual and school_expires_at is null
+       from communities where id = roland));
+  perform t_ok('perpetual state = perpetual',
+    community_school_state(roland) = 'perpetual');
 
   raise notice '';
   raise notice '── 2. The free checkbox no longer grants school ──';
@@ -204,4 +223,43 @@ begin
   perform set_config('test.uid', other_id::text, false);
   perform t_raises('a non-member cannot read the status',
     format('select community_school_status(%L)', birders));
+
+  raise notice '';
+  raise notice '── 13. Buying a school community outright ──';
+  perform set_config('test.uid', other_id::text, false);
+
+  -- A plain community code still makes a plain community.
+  select (community_mint_school_community_code('ADMIN-OK','plain@example.com','small',12)->>'code')
+    into code1;
+  insert into community_unlock_codes (code, product, tier, feeder_limit, customer_email)
+  values ('BWC-PLAI-NPLA-INPL', 'community', 'small', 5, 'plain@example.com');
+  perform t_runs('a code with no school_months makes a general community',
+    'select community_redeem_unlock_code(''BWC-PLAI-NPLA-INPL'', ''plainco'', ''Plain Co'', ''public'')');
+  perform t_ok('…and it is not a school',
+    (select kind = 'general' and school_expires_at is null
+       from communities where slug = 'plainco'));
+
+  -- A school-community code makes a school with the clock already running.
+  perform t_runs('a school-community code is redeemable',
+    format('select community_redeem_unlock_code(%L, ''newschool'', ''New School'', ''private'')', code1));
+  perform t_ok('the new community is a school',
+    (select kind = 'school' from communities where slug = 'newschool'));
+  perform t_ok('…with a ~12 month term already running',
+    (select school_expires_at from communities where slug = 'newschool')
+      between now() + interval '358 days' and now() + interval '372 days');
+  perform t_ok('…and is not perpetual',
+    (select not school_perpetual from communities where slug = 'newschool'));
+  perform t_ok('…and carries its tier',
+    (select tier = 'small' and feeder_limit = 5 from communities where slug = 'newschool'));
+  perform t_ok('…and can start lessons',
+    community_school_active((select id from communities where slug = 'newschool')));
+
+  -- The cross-product mistake that would cost a customer a year.
+  select (community_mint_school_code('ADMIN-OK','renew@example.com',12)->>'code') into code2;
+  perform t_raises('a RENEWAL code cannot create a community',
+    format('select community_redeem_unlock_code(%L, ''wrongco'', ''Wrong Co'', ''public'')', code2));
+  perform t_ok('…and the renewal code is still unspent',
+    (select redeemed_at is null from community_unlock_codes where code = code2));
+  perform t_ok('…and no community was created',
+    not exists (select 1 from communities where slug = 'wrongco'));
 end $$;
