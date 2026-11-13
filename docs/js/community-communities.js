@@ -370,6 +370,11 @@ function openCommunityPanel() {
     const empty = document.getElementById('community-panel-empty');
     if (empty) empty.style.display = hasAny ? 'none' : '';
 
+    // Fills the school half of the buy box, or leaves it empty while there is
+    // no product to link to. Cheap, and it has to have run before the toggle
+    // can reveal the box.
+    renderSchoolBuyOptions();
+
     modal.classList.add('open');
     if (hasAny) refreshCommunityPanel();
 }
@@ -624,6 +629,106 @@ function syncCommunitySchoolUI(cid) {
     if (isOwner) refreshCommunitySchoolTerm(cid);
 }
 
+// ── Where a school is bought ─────────────────────────────────────────────
+//
+// Everything on this site is bought through GUMROAD. Stripe handles the
+// desktop software licences and nothing else, so a community — school or
+// otherwise — is a Gumroad link, exactly like the three tier links written
+// into community.html and like every purchase on the landing page.
+//
+// The school products are listed HERE rather than in the markup because they
+// do not exist yet. An entry with no `url` renders nothing at all, so the
+// school options are simply absent from the page until there is something to
+// sell, and turning them on later is one line each with no HTML to touch and
+// no risk of shipping a dead link.
+//
+// Two different purchases, and conflating them is the mistake that costs a
+// customer a year:
+//
+//   community — creates a community that is ALREADY a school, with the
+//               Classroom term running. For somebody starting from nothing.
+//               Mints a BWC- code, redeemed on the create-a-community form.
+//
+//   renewal   — adds Classroom to a community that already exists, or
+//               extends one. Mints a BWS- code, applied in the community's
+//               own settings.
+//
+// The webhook maps its Gumroad permalinks in SCHOOL_PRODUCTS
+// (supabase/functions/gumroad-license-webhook/index.ts). When you create the
+// products, both ends need the permalink: that file to mint the right code,
+// this one to link to the right page.
+const SCHOOL_BUY = {
+    community: [
+        { size: 'Up to 5 feeders',   price: '', url: '' },
+        { size: 'Up to 25 feeders',  price: '', url: '' },
+        { size: 'Up to 100 feeders', price: '', url: '' },
+    ],
+    renewal: { price: '', url: '' },
+};
+
+/**
+ * The school tiers inside the buy box, or nothing.
+ *
+ * Deliberately a separate block from the plain tiers rather than three more
+ * rows in the same list. A school costs more and renews annually, and a
+ * price sitting in a list headed "one-time purchase" would be read as
+ * one-time whatever the small print said.
+ */
+function renderSchoolBuyOptions() {
+    const box = document.getElementById('community-school-tiers');
+    if (!box) return;
+
+    const live = SCHOOL_BUY.community.filter(t => t.url);
+    if (!live.length) { box.innerHTML = ''; return; }
+
+    box.innerHTML = `
+        <h4 style="font-size:0.9rem;margin:0.9rem 0 0.35rem;color:var(--color-gray-900);">
+            🎓 For a school
+        </h4>
+        <p style="font-size:0.78rem;color:var(--color-gray-500);margin:0 0 0.6rem;line-height:1.45;">
+            Everything above, plus Classroom — questions about your own feeders on
+            the projector, for a whole class. Renewed yearly; the rest of the
+            community is still a one-time purchase.
+        </p>
+        <div class="community-tier-list">
+            ${live.map(t => `
+                <a class="community-tier" href="${esc(t.url)}" target="_blank" rel="noopener">
+                    <span class="community-tier-size">${esc(t.size)}</span>
+                    <span class="community-tier-price">${esc(t.price)}</span>
+                </a>`).join('')}
+        </div>
+        <p style="font-size:0.72rem;color:var(--color-gray-500);margin:0.6rem 0 0;line-height:1.45;">
+            Already have a community? Don't buy another — add Classroom to the one
+            you have from its own settings instead.
+        </p>`;
+}
+
+/**
+ * The "I don't have a code" half of the renewal box.
+ *
+ * Without it an owner whose term has run out is asked for a code and given
+ * nowhere to get one, which is the single most likely moment for somebody to
+ * give up on renewing.
+ */
+function renderCommunitySchoolBuy() {
+    const box = document.getElementById('community-school-buy');
+    if (!box) return;
+
+    const r = SCHOOL_BUY.renewal;
+    if (!r.url) { box.innerHTML = ''; return; }
+
+    const t = communitySchoolTerm;
+    // "Add" before there is a term, "Renew" once there is one. The same link
+    // either way — the product is the same — but an owner who has never had
+    // Classroom should not be invited to "renew" it.
+    const verb = (t && (t.expires_at || t.perpetual)) ? 'Renew' : 'Add';
+
+    box.innerHTML = `No code? <a href="${esc(r.url)}" target="_blank" rel="noopener"
+        style="color:var(--color-primary);font-weight:600;">${verb} Classroom${
+        r.price ? ` — ${esc(r.price)}` : ''}</a>. The code is emailed to you,
+        then paste it above.`;
+}
+
 // ── The school subscription, owner side ──────────────────────────────────
 //
 // School mode is a dated term bought with an unlock code. The checkbox stays
@@ -703,6 +808,10 @@ function renderCommunitySchoolTerm() {
     const t    = communitySchoolTerm;
 
     if (!box || !row) return;
+
+    // Before the branches: the buy link is wanted in every state, including
+    // the one where the term is unknown.
+    renderCommunitySchoolBuy();
 
     if (!t) {
         box.style.display = 'none';

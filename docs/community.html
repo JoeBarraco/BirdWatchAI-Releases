@@ -680,6 +680,13 @@
                 doesn't include cloud photo storage. What it buys is the grouping and
                 the privacy setting. Your unlock code arrives by email — redeem it below.
             </p>
+
+            <!-- Schools. Filled by renderSchoolBuyOptions from the SCHOOL_BUY
+                 config in js/community-communities.js, not written here,
+                 because the products do not exist yet: an entry with no URL
+                 renders nothing at all, so this section is simply absent until
+                 there is something to sell. One line to turn it on later. -->
+            <div id="community-school-tiers"></div>
         </div>
 
         <!-- Redeem an unlock code. Server-side, community_redeem_unlock_code
@@ -751,6 +758,13 @@
                 </div>
                 <div id="community-school-code-status"
                      style="font-size:0.78rem;margin-top:0.35rem;min-height:1em;"></div>
+
+                <!-- "I don't have a code" — the other half of the box. Without
+                     it, an owner whose term has run out is asked for a code
+                     and given nowhere to get one. Rendered only when a
+                     product URL is configured. -->
+                <div id="community-school-buy"
+                     style="font-size:0.78rem;margin-top:0.4rem;"></div>
             </div>
         </div>
 
@@ -1145,7 +1159,7 @@
      script renders buttons wired to functions that don't exist, and against a
      cached stylesheet renders the tier rows as bare links. css/community.css is
      pinned to v=7 for the same reason. -->
-<script src="js/community-communities.js?v=74d4b38a"></script>
+<script src="js/community-communities.js?v=7b06e0de"></script>
 <!-- QR for the classroom lobby's join code. Same-origin on purpose: the
      lobby is the screen that must work when a lesson starts, and a CDN
      blocked by school wifi at that moment ends the lesson.
