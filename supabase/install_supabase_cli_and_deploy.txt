@@ -20,6 +20,14 @@ it wants the bare ref.)
     npx supabase@latest functions deploy send-temp-password     --project-ref lsamggztfizmkyljdgwq
     npx supabase@latest functions deploy moderator-delete-media --project-ref lsamggztfizmkyljdgwq
     npx supabase@latest functions deploy community-invite-email --project-ref lsamggztfizmkyljdgwq
+    npx supabase@latest functions deploy classroom-feedback-digest --project-ref lsamggztfizmkyljdgwq
+
+classroom-feedback-digest is called by pg_cron, not by the site. Keep JWT
+verification ON; the function additionally compares the bearer to the
+service-role key, because verify_jwt alone would let any signed-in user set
+off a digest email. Its schedule and the notified_at column it depends on
+come from supabase/setup-classroom-feedback-digest.sql — deploy the function
+FIRST, or the first cron tick posts to a URL that is not there yet.
 
 community-invite-email needs JWT verification ON (the default) and no extra
 secrets: RESEND_API_KEY is already set, and the two optional ones below have
@@ -55,6 +63,11 @@ Community invites (both OPTIONAL — the defaults in the function are correct
 for the live site, so set them only to change them):
     INVITE_FROM_EMAIL           BirdWatchAI <noreply@birdwatchai.com>
     COMMUNITY_URL               https://www.birdwatchai.com/docs/community.html
+
+Classroom feedback digest:
+    FEEDBACK_DIGEST_TO          REQUIRED. Where the daily digest goes. Not in
+                                this file and not in the function: the repo is
+                                public and that is a personal address.
 
 Licensing:
     LICENSE_PRIVATE_KEY_PEM     -----BEGIN PRIVATE KEY-----...   (whole PEM)
