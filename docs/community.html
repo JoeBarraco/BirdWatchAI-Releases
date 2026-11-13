@@ -1039,16 +1039,16 @@
      a stale community-views.js is the bad mix: the old switchView() has no branch for a tab that
      now exists, so it hides every view, matches none, and leaves a blank page under the tab bar.
      Bump these whenever a change to the view list or the render hooks must land immediately. -->
-<script src="js/community-core.js?v=4"></script>
+<script src="js/community-core.js?v=5"></script>
 <!-- ?v=2: renderFeeders() now emits a badge strip per card and the Leaderboard
      grew four badge columns. A stale copy would leave the new badges modal and
      community-badges.js loaded but never called, so the feature would silently
      not appear. -->
-<script src="js/community-views.js?v=4"></script>
+<script src="js/community-views.js?v=5"></script>
 <!-- ?v=2: gained escJs(), which community-views / -auth / -communities now all
      call. Every one of those must be re-fetched with it — a cached social.js
      leaves escJs undefined and the handlers throw. -->
-<script src="js/community-social.js?v=2"></script>
+<script src="js/community-social.js?v=3"></script>
 <!-- Clips tab. Must load before community-auth.js: the theater's key handler calls
      stopImmediatePropagation so the global single-key shortcuts registered there don't also fire
      while a clip is playing, and that only works if this listener is registered first. -->
@@ -1061,15 +1061,15 @@
 <!-- Canvas re-burn of the photo's caption strip, used by the moderator edit
      modal. Must load before community-auth.js, which calls into window.bwOverlay. -->
 <script src="js/community-overlay.js"></script>
-<script src="js/community-auth.js?v=5"></script>
-<script src="js/community-remote.js?v=1"></script>
+<script src="js/community-auth.js?v=6"></script>
+<script src="js/community-remote.js?v=2"></script>
 <!-- ?v=5: the panel gained the tier picker, the redeem form and the bulk
      roster paste. Markup,
      script and stylesheet all have to land together — new HTML against a cached
      script renders buttons wired to functions that don't exist, and against a
      cached stylesheet renders the tier rows as bare links. css/community.css is
      pinned to v=7 for the same reason. -->
-<script src="js/community-communities.js?v=7"></script>
+<script src="js/community-communities.js?v=8"></script>
 <!-- Classroom mode (phase 1): classrooms, teacher-led sessions, question
      templates. Loads after community-communities.js because it reads
      myCommunities and hasAuthSession from it. -->
