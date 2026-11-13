@@ -384,6 +384,39 @@ function speciesFact(species, band) {
     return band === 'k-2' ? f['k-2'] : f['up'];
 }
 
+// ── Word puzzles (design notes §3, "activity ideas") ──────────────
+//
+// Everything else in the set asks the class to read data. These ask them to
+// read WORDS — jumbles, missing letters, a hidden name, a letter code — using
+// the birds that actually came to the feeder this week as the material. A
+// class that has met Carolina Wren on the board five times can unscramble
+// NERW; the puzzle is doing double duty as spelling practice on vocabulary
+// they have a reason to care about.
+//
+// A real crossword is a worksheet, not a projector question — it needs a grid
+// and twenty minutes. "Missing letters" below is the single-clue version of
+// one, which is what fits a question screen.
+
+// "Northern Cardinal" -> "CARDINAL". The last word is the one a class says
+// out loud and the one short enough to play with; "NORTHERNCARDINAL" as a
+// jumble is a punishment rather than a puzzle.
+function cmShortName(species) {
+    const parts = String(species || '').trim().split(/[\s-]+/);
+    return (parts[parts.length - 1] || '').toUpperCase();
+}
+
+// Shuffle until it actually differs from the original — a "jumble" that
+// comes back as the word itself has happened and looks like a bug.
+function cmJumble(word, rng) {
+    for (let attempt = 0; attempt < 20; attempt++) {
+        const out = cmShuffle(word.split(''), rng).join('');
+        if (out !== word) return out;
+    }
+    return null;
+}
+
+const PUZZLE_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
 // ── Classroom data ───────────────────────────────────────
 
 /**
@@ -2090,6 +2123,206 @@ const CLASSROOM_TEMPLATES = [
                                               key: d.day })), { band }),
             explain: `${daysSeen} of ${s.days.length} days = ${pct}%. `
                    + 'Note this is days, not visits — a bird that came nine times in one day still counts once.',
+        };
+    },
+},
+
+// ── Puzzles ──────────────────────────────────────────────────────
+
+{
+    id: 'word-jumble',
+    category: 'puzzle',
+    title: 'Unscramble the bird',
+    bands: ['k-2', '3-5'],
+    build({ s, band, rng }) {
+        // K-2 gets short names only. WREN and JAY are a game at six;
+        // MOCKINGBIRD is not.
+        const maxLen = band === 'k-2' ? 5 : 11;
+        // Only the ANSWER needs a short name — it is the word being
+        // unscrambled. The wrong options are just names to read, so they can
+        // be any bird that came. Requiring three short names meant K-2 almost
+        // never got a jumble: of the regulars only WREN and JAY are short
+        // enough, so the pool was two and the template sat out every week.
+        const short = s.species
+            .map(x => ({ species: x.species, short: cmShortName(x.species) }))
+            .filter(x => x.short.length >= 3 && x.short.length <= maxLen);
+        if (!short.length || s.species.length < 3) return null;
+
+        const pick = cmShuffle(short, rng)[0];
+        const jumbled = cmJumble(pick.short, rng);
+        if (!jumbled) return null;
+
+        const built = cmChoices(pick.species,
+            cmShuffle(s.species.map(x => x.species).filter(sp => sp !== pick.species), rng)
+                .slice(0, band === 'k-2' ? 2 : 3), rng);
+        if (!built) return null;
+        return {
+            prompt: `Which bird is this? ${jumbled.split('').join(' ')}`,
+            ...built,
+            explain: `${jumbled} unscrambles to ${pick.short} — the ${pick.species}. `
+                   + `It came ${s.bySpecies.get(pick.species)} time(s) this week.`,
+            fact: speciesFact(pick.species, band),
+        };
+    },
+},
+
+{
+    id: 'missing-letters',
+    category: 'puzzle',
+    title: 'Fill in the blanks',
+    bands: ['3-5'],
+    build({ s, band, rng }) {
+        // The single-clue version of a crossword entry. First and last letters
+        // stay, because a word with both ends missing is a guess rather than a
+        // deduction.
+        const pool = s.species
+            .map(x => ({ species: x.species, short: cmShortName(x.species) }))
+            .filter(x => x.short.length >= 5);
+        if (pool.length < 3) return null;
+
+        const pick = cmShuffle(pool, rng)[0];
+        const letters = pick.short.split('');
+        const hideable = [];
+        for (let i = 1; i < letters.length - 1; i++) hideable.push(i);
+        const hideCount = Math.max(2, Math.round(hideable.length * 0.45));
+        const hidden = new Set(cmShuffle(hideable, rng).slice(0, hideCount));
+        const masked = letters.map((ch, i) => (hidden.has(i) ? '_' : ch)).join(' ');
+
+        const built = cmChoices(pick.species,
+            cmShuffle(pool.filter(x => x.species !== pick.species), rng)
+                .slice(0, 3).map(x => x.species), rng);
+        if (!built) return null;
+        return {
+            prompt: `Which bird fits? ${masked}  (${pick.short.length} letters)`,
+            ...built,
+            explain: `${pick.short} — the ${pick.species}.`,
+            fact: speciesFact(pick.species, band),
+        };
+    },
+},
+
+{
+    id: 'hidden-bird',
+    category: 'puzzle',
+    title: 'Find the hidden bird',
+    bands: ['3-5', '6-8'],
+    build({ s, band, rng }) {
+        const pool = s.species
+            .map(x => ({ species: x.species, short: cmShortName(x.species) }))
+            .filter(x => x.short.length >= 4 && x.short.length <= 10);
+        if (pool.length < 3) return null;
+
+        const pick = cmShuffle(pool, rng)[0];
+        const others = pool.filter(x => x.species !== pick.species);
+        const pad = n => Array.from({ length: n },
+            () => PUZZLE_ALPHABET[Math.floor(rng() * 26)]).join('');
+
+        // Four to six letters of noise each side. Enough that the word does
+        // not simply sit there, not so much that finding it is a chore.
+        let line = null;
+        for (let attempt = 0; attempt < 20; attempt++) {
+            const candidate = pad(4 + Math.floor(rng() * 3)) + pick.short
+                            + pad(4 + Math.floor(rng() * 3));
+            // The noise must not accidentally spell one of the OTHER options,
+            // which would give the question two right answers.
+            if (!others.some(o => candidate.includes(o.short))) { line = candidate; break; }
+        }
+        if (!line) return null;
+
+        const built = cmChoices(pick.species,
+                                cmShuffle(others, rng).slice(0, 3).map(x => x.species), rng);
+        if (!built) return null;
+        return {
+            prompt: `A bird's name is hidden in here. Which one?\n${line.split('').join(' ')}`,
+            ...built,
+            explain: `${pick.short} is hidden in it — the ${pick.species}.`,
+            fact: speciesFact(pick.species, band),
+        };
+    },
+},
+
+{
+    id: 'letter-code',
+    category: 'puzzle',
+    title: 'Crack the code',
+    bands: ['6-8'],
+    build({ s, band, rng }) {
+        // A=1 … Z=26. Ten numbers is a decode; twenty is a chore, so this is
+        // capped at eight letters.
+        const pool = s.species
+            .map(x => ({ species: x.species, short: cmShortName(x.species) }))
+            .filter(x => x.short.length >= 3 && x.short.length <= 8);
+        if (pool.length < 3) return null;
+
+        const pick = cmShuffle(pool, rng)[0];
+        const code = pick.short.split('')
+            .map(ch => PUZZLE_ALPHABET.indexOf(ch) + 1).join(' - ');
+
+        const built = cmChoices(pick.species,
+            cmShuffle(pool.filter(x => x.species !== pick.species), rng)
+                .slice(0, 3).map(x => x.species), rng);
+        if (!built) return null;
+        return {
+            prompt: `If A=1 and Z=26, which bird is this? ${code}`,
+            ...built,
+            explain: `${code} spells ${pick.short} — the ${pick.species}.`,
+        };
+    },
+},
+
+{
+    id: 'caesar-bird',
+    category: 'puzzle',
+    title: 'Shifted letters',
+    bands: ['6-8'],
+    build({ s, band, rng }) {
+        const pool = s.species
+            .map(x => ({ species: x.species, short: cmShortName(x.species) }))
+            .filter(x => x.short.length >= 4 && x.short.length <= 10);
+        if (pool.length < 3) return null;
+
+        const pick = cmShuffle(pool, rng)[0];
+        const shift = 1 + Math.floor(rng() * 5);
+        const coded = pick.short.split('').map(ch => {
+            const i = PUZZLE_ALPHABET.indexOf(ch);
+            return i < 0 ? ch : PUZZLE_ALPHABET[(i + shift) % 26];
+        }).join('');
+
+        const built = cmChoices(pick.species,
+            cmShuffle(pool.filter(x => x.species !== pick.species), rng)
+                .slice(0, 3).map(x => x.species), rng);
+        if (!built) return null;
+        return {
+            prompt: `Every letter has been moved ${shift} forward in the alphabet. `
+                  + `Move them back to find the bird: ${coded.split('').join(' ')}`,
+            ...built,
+            explain: `${coded} shifted back ${shift} is ${pick.short} — the ${pick.species}.`,
+        };
+    },
+},
+
+{
+    id: 'odd-one-out',
+    category: 'puzzle',
+    title: 'Which one did not come?',
+    bands: ['k-2', '3-5'],
+    build({ s, band, rng }) {
+        // Three birds the feeder saw and one it did not. Needs no reading of
+        // numbers at all, which is what makes it work at K-2.
+        const seen = s.species.map(x => x.species);
+        if (seen.length < 3) return null;
+        const unseen = COMMON_FEEDER_SPECIES.filter(sp => !seen.includes(sp));
+        if (!unseen.length) return null;
+
+        const answer = cmShuffle(unseen, rng)[0];
+        const built = cmChoices(answer, cmShuffle(seen, rng).slice(0, 3), rng);
+        if (!built) return null;
+        return {
+            prompt: 'Three of these birds came to the feeder this week. Which one did NOT?',
+            ...built,
+            chart: cmChart('Birds that came this week', cmSpeciesSeries(s), { band }),
+            explain: `No ${answer} this week. The chart shows every bird that came.`,
+            fact: speciesFact(answer, band),
         };
     },
 },

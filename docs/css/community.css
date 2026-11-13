@@ -3749,6 +3749,7 @@
 .classroom-review-prompt {
     font-size: 0.9rem; color: var(--color-gray-900);
     margin: 0 0 0.35rem; line-height: 1.45;
+    white-space: pre-line;
 }
 
 .classroom-review-choices {
@@ -3833,6 +3834,11 @@
     font-size: clamp(1.5rem, 5vmin, 3.4rem);
     line-height: 1.2; text-align: center; margin: 0;
     color: var(--color-gray-900); max-width: 24ch;
+    /* The word puzzles put their letter run on its own line, and HTML would
+       otherwise collapse that newline into a space — turning "find the
+       hidden bird" into one unreadable sentence of letters. pre-line keeps
+       deliberate breaks and still collapses incidental whitespace. */
+    white-space: pre-line;
 }
 
 /* The photo is the question in an identification round, so it gets the
