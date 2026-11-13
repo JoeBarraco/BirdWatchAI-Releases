@@ -1586,6 +1586,27 @@ function cmShotFor(s, species) {
  * object and rendered on the slide: for CC BY and CC BY-SA that is not a
  * courtesy, it is the condition under which we are allowed to show it at all.
  */
+/**
+ * A male/female photo pair, or null when the catalogue has not loaded.
+ *
+ * Rotates with the lesson's seed so a class meeting this twice in a fortnight
+ * gets a different species the second time — the point is that the pattern
+ * holds across birds, not that cardinals are odd.
+ */
+function cmSexedPair(rng) {
+    if (typeof BIRD_PAIRS === 'undefined' || !BIRD_PAIRS) return null;
+    const names = Object.keys(BIRD_PAIRS);
+    if (!names.length) return null;
+    const species = cmShuffle(names, rng)[0];
+    const p = BIRD_PAIRS[species];
+    if (!p || !p.male || !p.female) return null;
+    return {
+        species,
+        male:   { url: p.male.file,   credit: p.male },
+        female: { url: p.female.file, credit: p.female },
+    };
+}
+
 function cmWonderPhoto(bird) {
     const p = (typeof BIRD_PHOTOS !== 'undefined' && BIRD_PHOTOS) ? BIRD_PHOTOS[bird] : null;
     return p ? { url: p.file, credit: p } : null;
@@ -1653,6 +1674,10 @@ function showClassroomChoices() {
  */
 function classroomEvidenceHtml(q, revealed) {
     if (!q) return '';
+    // A sexed pair is its own shape: two photographs of ONE species whose
+    // whole job is to be compared. It comes first because a question that has
+    // one cannot be answered from anything else.
+    if (q.pair) return classroomPairHtml(q.pair);
     const shot = q.image ? classroomShotHtml(q, revealed) : '';
     const map  = q.map   ? classroomMapHtml(q.map, revealed) : '';
 
@@ -4707,10 +4732,23 @@ const CLASSROOM_TEMPLATES = [
              'She cannot make bright colours',
              'Brown feathers are warmer'], rng);
         if (!built) return null;
+
+        // The pair is the evidence. Without it this asks a class to reason
+        // about a difference it never shows them — fine for a child who has
+        // seen a cardinal pair, an act of faith for one who has not.
+        const pair = cmSexedPair(rng);
+
         return {
-            prompt: 'In many birds the male is brightly coloured and the female is '
-                  + 'plain brown. Why would being dull be an ADVANTAGE?',
+            // No "s" on the species name: pluralising these by rule gives
+            // "House Finchs", and the exceptions are not worth a table.
+            prompt: pair
+                ? `Here is a male and a female ${pair.species}. The male is bright `
+                + 'and the female is plain brown. Why would being dull be an ADVANTAGE?'
+                : 'In many birds the male is brightly coloured and the female is '
+                + 'plain brown. Why would being dull be an ADVANTAGE?',
             ...built,
+            pair,
+            about_bird: pair ? pair.species : null,
             explain: 'The female does most of the sitting on the nest, where being '
                    + 'invisible to a hawk matters more than being noticed by a '
                    + 'mate. Two jobs, two sets of feathers.',
@@ -7376,6 +7414,45 @@ function classroomFootControls(S, last, joinMode) {
  * quietly throw away the time and temperature the older grades are supposed to
  * be reading off it.
  */
+/**
+ * Two photographs of the same species, male beside female.
+ *
+ * Asked for on sci-camouflage: "would be nice to see a male and female of the
+ * same species side by side here as an example." The question was asking a
+ * class to reason about a difference in plumage while showing them nothing —
+ * every child who had not already seen a cardinal pair was being asked to
+ * take the premise on trust.
+ *
+ * Labelled under each picture rather than over, so the eye meets the birds
+ * first and the words second; and labelled at all because "which is which"
+ * is not the question being asked and should not become one.
+ *
+ * Both credits are rendered. CC BY and CC BY-SA require the author and the
+ * licence wherever the image appears, and these are two separate photographs
+ * by two different people.
+ */
+function classroomPairHtml(pair) {
+    if (!pair || !pair.male || !pair.female) return '';
+
+    const one = (half, label) => {
+        const c = half.credit || {};
+        return `
+        <figure class="classroom-pair-half">
+            <img src="${esc(half.url)}" alt=""
+                 onload="requestAnimationFrame(classroomFitStage)">
+            <figcaption>${esc(label)}</figcaption>
+            <p class="classroom-shot-credit">${esc(c.artist || 'Unknown')} /
+               ${esc(c.licence || '')} · Wikimedia Commons</p>
+        </figure>`;
+    };
+
+    return `<div class="classroom-pair">
+                ${one(pair.male, 'male')}
+                ${one(pair.female, 'female')}
+            </div>`
+         + (pair.species ? `<p class="classroom-pair-cap">${esc(pair.species)}</p>` : '');
+}
+
 function classroomShotHtml(q, revealed) {
     if (!q.image || !q.image.url) return '';
     const hideCaption = q.category === 'identification' && !revealed;

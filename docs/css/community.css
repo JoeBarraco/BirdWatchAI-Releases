@@ -4709,6 +4709,41 @@
 .classroom-evidence-pair .classroom-shot { flex: 1 1 200px; }
 .classroom-evidence-pair .classroom-shot img { max-height: 30vh; }
 
+/* ── Male beside female ────────────────────────────────────────────
+   Two photographs of one species, shown to be compared. Side by side
+   wherever there is room and stacked where there is not — on a phone,
+   two birds at half width each are two birds nobody can see. */
+.classroom-pair {
+    display: flex; flex-wrap: wrap;
+    align-items: flex-start; justify-content: center;
+    gap: 2vmin; width: 100%;
+}
+.classroom-pair-half {
+    flex: 1 1 260px; max-width: 46%; min-width: 0; margin: 0;
+    display: flex; flex-direction: column; align-items: center;
+}
+/* Below the breakpoint the flex basis wins and each half takes a full row,
+   so the cap has to lift or they stay at 46% of a narrow screen. */
+@media (max-width: 620px) {
+    .classroom-pair-half { max-width: 100%; }
+}
+.classroom-pair-half img {
+    width: 100%; max-height: 34vh; object-fit: cover;
+    border-radius: 12px; display: block;
+    box-shadow: 0 6px 28px rgba(0,0,0,0.25);
+}
+/* The label the question turns on, so it is readable from the back. */
+.classroom-pair-half figcaption {
+    font-size: clamp(1rem, 2.6vmin, 1.7rem);
+    font-weight: 700; color: var(--color-gray-900);
+    margin-top: 0.8vmin; letter-spacing: 0.02em;
+}
+.classroom-pair-cap {
+    text-align: center; margin: 0.8vmin 0 0;
+    font-size: clamp(0.85rem, 1.9vmin, 1.2rem);
+    color: var(--color-gray-500); font-style: italic;
+}
+
 /* A puzzle meets the class with no options on screen. */
 .classroom-guess-first {
     display: flex; flex-direction: column; align-items: center; gap: 0.8vmin;
