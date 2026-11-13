@@ -21,9 +21,22 @@
 // doubt.
 //
 // AUTHORISATION
-// Called by pg_cron with the service-role key. The bearer is compared to
-// that key exactly: without the check any signed-in user's JWT would pass
-// the gateway's verify_jwt and could trigger digest mail at will.
+// Called by pg_cron with the service-role key. Some check is needed because
+// verify_jwt alone would let any signed-in user's JWT through, and the
+// result lands in somebody's inbox.
+//
+// It reads the `role` claim out of the bearer rather than comparing the
+// bearer to SUPABASE_SERVICE_ROLE_KEY as a string. The string comparison was
+// the first attempt and it returned 403 against a correctly-vaulted key:
+// this project has migrated to the new publishable/secret key system, so the
+// injected SUPABASE_SERVICE_ROLE_KEY is no longer the same string as the
+// legacy service_role JWT that pg_cron sends. Comparing claims instead works
+// whichever key is in play, and survives the 2027 legacy retirement.
+//
+// ⚠ This leans on "Verify JWT" being ON for the function, which is what
+// checks the SIGNATURE. The claim is only trustworthy because the gateway
+// has already proved the token is genuine; turn that off and the role claim
+// becomes something anybody can type.
 //
 // RECIPIENT
 // FEEDBACK_DIGEST_TO, a secret. THIS REPO IS PUBLIC — a personal address
@@ -55,6 +68,27 @@ const db = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
 function esc(s: unknown) {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;')
                         .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+/**
+ * The `role` claim from a bearer token, or null if it is not a JWT.
+ *
+ * Reads the payload WITHOUT verifying the signature, which is safe here only
+ * because the gateway's verify_jwt has already done that — see the note at
+ * the top. base64url, so the characters and the padding both need fixing
+ * before atob will take it.
+ */
+function bearerRole(auth: string): string | null {
+  const token = auth.replace(/^Bearer\s+/i, '');
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;          // not a JWT, e.g. sb_secret_…
+  try {
+    const b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const payload = atob(b64 + '='.repeat((4 - (b64.length % 4)) % 4));
+    return JSON.parse(payload).role ?? null;
+  } catch {
+    return null;
+  }
 }
 
 function when(iso: string) {
@@ -96,10 +130,11 @@ Deno.serve(async (req) => {
   const json = (b: unknown, status = 200) =>
     new Response(JSON.stringify(b), { status, headers: { 'Content-Type': 'application/json' } });
 
-  // Service role only. verify_jwt alone would let any signed-in user set
-  // this off, and the result lands in somebody's inbox.
+  // Service role only — by the token's own claim, not by string equality.
   const auth = req.headers.get('Authorization') ?? '';
-  if (auth !== `Bearer ${SUPABASE_SERVICE_ROLE}`) return json({ error: 'Forbidden' }, 403);
+  const isServiceRole = bearerRole(auth) === 'service_role'
+                     || (!!SUPABASE_SERVICE_ROLE && auth === `Bearer ${SUPABASE_SERVICE_ROLE}`);
+  if (!isServiceRole) return json({ error: 'Forbidden' }, 403);
 
   if (!TO_EMAIL) return json({ error: 'FEEDBACK_DIGEST_TO is not set' }, 500);
 
