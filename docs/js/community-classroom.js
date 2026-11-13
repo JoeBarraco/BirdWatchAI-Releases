@@ -5694,6 +5694,21 @@ async function refreshClassroomPanel() {
 
     await loadClassroomFeederOptions();
     await loadClassroomStaff();
+    await loadClassroomSchoolStatus();
+
+    renderClassroomTerm();
+
+    // A lapsed school cannot create a classroom — the trigger on classrooms
+    // refuses the insert — so the button says so here rather than letting
+    // somebody fill in the whole form and lose it to an error.
+    const newBtn = document.getElementById('classroom-new-btn');
+    if (newBtn) {
+        const blocked = classroomTermBlocks();
+        newBtn.disabled = blocked;
+        newBtn.title = blocked
+            ? 'This school’s subscription has ended'
+            : '';
+    }
 
     // Purge nicknames and tokens left behind by a session nobody closed —
     // the lid went down, the tab was shut. §8 says student data goes at the
@@ -5765,6 +5780,100 @@ async function loadClassroomStaff() {
 
     classroomStaff = data.filter(m =>
         m.kind === 'member' && ['owner', 'moderator', 'teacher'].includes(m.role));
+}
+
+// ── The school subscription ──────────────────────────────────────
+//
+// School mode is a dated term. When it runs out the community stays a school
+// — kind is never flipped back, or every teacher would be demoted to viewer
+// and the term's results would be stranded behind an empty panel — but new
+// lessons and new classes stop. Everything already recorded stays readable.
+//
+// Shape: { state, can_start, expires_at, days_left, perpetual, is_owner }
+// where state is not_school | perpetual | active | grace | lapsed.
+
+let classroomSchool = null;
+
+/**
+ * Load the current community's term.
+ *
+ * FAILS OPEN, deliberately and in one specific case: a database that has not
+ * had setup-school-subscription.sql run against it has no
+ * community_school_status, and PostgREST answers that with PGRST202. This
+ * file ships to GitHub Pages the moment it is pushed, while the SQL is pasted
+ * into Supabase by hand some minutes later — so for that window every school
+ * in the world would otherwise be told its subscription had lapsed, and the
+ * start buttons would go grey on a database that has no subscriptions in it
+ * at all. Treat "the feature does not exist here" as "nothing to enforce".
+ *
+ * Any OTHER error leaves the status null, which renders no banner and gates
+ * nothing. A network blip must not cancel a lesson either; the server-side
+ * triggers are what actually enforce the term, and they cannot be reached
+ * from here.
+ */
+async function loadClassroomSchoolStatus() {
+    classroomSchool = null;
+    if (!classroomCommunityId) return;
+
+    const { data, error } = await sbRpc('community_school_status',
+        { p_community_id: classroomCommunityId }, true);
+
+    if (error) {
+        const missing = error.code === 'PGRST202'
+            || /could not find the function|does not exist/i.test(error.message || '');
+        if (missing) classroomSchool = { state: 'perpetual', can_start: true };
+        return;
+    }
+    if (data && typeof data === 'object') classroomSchool = data;
+}
+
+// Can this community start lessons right now? Unknown counts as yes — see
+// loadClassroomSchoolStatus. The database has the final word regardless.
+function classroomTermBlocks() {
+    return !!(classroomSchool && classroomSchool.can_start === false);
+}
+
+/**
+ * The banner above both panes, or nothing at all.
+ *
+ * Only speaks up when there is something to act on: lapsed, or inside the
+ * grace window. A school with nine months left does not need to be told about
+ * its subscription every time it opens the panel.
+ */
+function renderClassroomTerm() {
+    const box = document.getElementById('classroom-term-banner');
+    if (!box) return;
+
+    const s = classroomSchool;
+    const show = s && (s.state === 'lapsed' || s.state === 'grace');
+    box.style.display = show ? '' : 'none';
+    if (!show) { box.innerHTML = ''; return; }
+
+    // The owner is told where the box is; everybody else is told who to ask,
+    // because the renewal control is not on their screen and hunting for a
+    // setting that is not there is worse than being redirected.
+    const where = s.is_owner
+        ? 'Enter a renewal code under Manage community → settings.'
+        : 'Ask whoever owns this community to renew it.';
+
+    if (s.state === 'grace') {
+        const ends = s.grace_ends_at
+            ? new Date(s.grace_ends_at).toLocaleDateString(undefined,
+                { month: 'long', day: 'numeric' })
+            : null;
+        box.className = 'classroom-term grace';
+        box.innerHTML = '<strong>This school&rsquo;s subscription has ended.</strong> '
+            + 'Lessons keep working'
+            + (ends ? ` until ${esc(ends)}` : ' for now')
+            + `. ${esc(where)}`;
+        return;
+    }
+
+    box.className = 'classroom-term lapsed';
+    box.innerHTML = '<strong>This school&rsquo;s subscription has ended.</strong> '
+        + 'New lessons and new classes are paused. Results and history are '
+        + 'still here, and nothing has been deleted. '
+        + esc(where);
 }
 
 // Which class the right-hand pane is acting on.
@@ -5887,7 +5996,15 @@ function renderClassroomActions() {
         : false;
     // Disabled with a reason, rather than absent: "why can I not start?" is a
     // worse question to be left with than "set a home feeder first".
-    const noFeeder = r.home_feeder_id ? '' : ' disabled title="Set a home feeder first"';
+    //
+    // Two separate reasons a lesson cannot start, and they need separate
+    // messages: no feeder is something this teacher can fix in the next
+    // thirty seconds, while a lapsed subscription is somebody else's
+    // purchase order. The term is checked first because it is the one the
+    // teacher cannot do anything about.
+    const noStart = classroomTermBlocks()
+        ? ' disabled title="This school’s subscription has ended"'
+        : (r.home_feeder_id ? '' : ' disabled title="Set a home feeder first"');
 
     box.innerHTML = `
         <div class="classroom-actions-head">
@@ -5908,9 +6025,9 @@ function renderClassroomActions() {
             <div class="classroom-group-title">Start a lesson</div>
             <div class="classroom-group-row">
                 <button class="classroom-btn-primary"
-                        onclick="startClassroomSession('${escJs(r.id)}','teacher_led')"${noFeeder}>▶ On the board</button>
+                        onclick="startClassroomSession('${escJs(r.id)}','teacher_led')"${noStart}>▶ On the board</button>
                 <button class="classroom-btn-primary"
-                        onclick="startClassroomSession('${escJs(r.id)}','join_code')"${noFeeder}>📱 With devices</button>
+                        onclick="startClassroomSession('${escJs(r.id)}','join_code')"${noStart}>📱 With devices</button>
             </div>
         </div>
 

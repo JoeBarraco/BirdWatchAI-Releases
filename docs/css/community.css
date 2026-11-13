@@ -3758,6 +3758,30 @@
 }
 .classroom-group-row { display: flex; flex-wrap: wrap; gap: 6px; }
 
+/* ── The subscription banner ───────────────────────────────────────
+   Above both panes, because it governs both: the left pane's "+ New
+   class" and the right pane's start buttons go dead together.
+
+   Amber for grace and red for lapsed, rather than one colour for
+   "there is a billing problem". They are different situations — one
+   is a reminder while lessons still run, the other is lessons
+   stopped — and a teacher reading it mid-morning needs to know which
+   without parsing the sentence. */
+.classroom-term {
+    font-size: 0.83rem; line-height: 1.5;
+    padding: 0.6rem 0.75rem; border-radius: 8px;
+    margin-bottom: 0.8rem; border: 1px solid;
+}
+.classroom-term.grace {
+    color: #8a5a00; border-color: #e8c07a;
+    background: color-mix(in srgb, #f0b429 14%, transparent);
+}
+.classroom-term.lapsed {
+    color: #9b2c2c; border-color: #e3a0a0;
+    background: color-mix(in srgb, #e74c3c 12%, transparent);
+}
+.classroom-term strong { font-weight: 700; }
+
 /* Community-wide, so it sits under both panes rather than inside one. */
 .classroom-panel-foot {
     margin-top: 1rem; padding-top: 0.7rem;

@@ -611,8 +611,182 @@ function syncCommunitySchoolUI(cid) {
     if (note) {
         note.textContent = school
             ? 'Teachers and classrooms are available in this community.'
-            : 'Turn this on for a school, to use classrooms and the teacher role.';
+            : 'Classrooms and the teacher role, for a school. Needs a '
+            + 'subscription code.';
     }
+
+    // The term arrives from the server, so it cannot be part of this
+    // synchronous pass. Clear what the last community left on screen first —
+    // otherwise one community's expiry date is briefly shown under another
+    // community's name.
+    communitySchoolTerm = null;
+    renderCommunitySchoolTerm();
+    if (isOwner) refreshCommunitySchoolTerm(cid);
+}
+
+// ── The school subscription, owner side ──────────────────────────────────
+//
+// School mode is a dated term bought with an unlock code. The checkbox stays
+// — an owner may still turn classrooms off and on inside a term they have
+// paid for — but it no longer GRANTS anything, and community_set_kind
+// refuses it without a live term.
+//
+// Shape: { state, expires_at, grace_ends_at, days_left, perpetual, can_start }
+// state is not_school | perpetual | active | grace | lapsed.
+
+let communitySchoolTerm = null;
+
+/**
+ * Fetch the term for one community.
+ *
+ * A database without setup-school-subscription.sql has no
+ * community_school_status, and PostgREST answers PGRST202. That is not an
+ * error worth showing anybody: it means this deployment has not been
+ * migrated yet, in which case school mode is still the free checkbox it
+ * always was and there is no term to render. Leave the UI exactly as it was.
+ */
+async function refreshCommunitySchoolTerm(cid) {
+    const { data, error } = await sbRpc('community_school_status',
+        { p_community_id: cid }, true);
+
+    // Another community may have been selected while this was in flight.
+    if (document.getElementById('community-panel-select')?.value !== cid) return;
+
+    if (error) {
+        communitySchoolTerm = null;
+        renderCommunitySchoolTerm();
+        return;
+    }
+    communitySchoolTerm = data && typeof data === 'object' ? data : null;
+    renderCommunitySchoolTerm();
+}
+
+function communitySchoolTermText(t) {
+    const on = iso => new Date(iso).toLocaleDateString(undefined,
+        { year: 'numeric', month: 'long', day: 'numeric' });
+
+    if (t.perpetual) {
+        return ['ok', 'Classroom mode is included on this community permanently.'];
+    }
+    if (t.state === 'active') {
+        const d = t.days_left;
+        // Counted in days near the end and dated otherwise: "renews in 243
+        // days" is a number nobody can act on, while "in 12 days" is.
+        return ['ok', d !== null && d <= 45
+            ? `Classroom subscription ends in ${d} day${d === 1 ? '' : 's'} — ${on(t.expires_at)}.`
+            : `Classroom subscription runs until ${on(t.expires_at)}.`];
+    }
+    if (t.state === 'grace') {
+        return ['warn', `Classroom subscription ended on ${on(t.expires_at)}. `
+            + `Lessons keep working until ${on(t.grace_ends_at)}.`];
+    }
+    if (t.state === 'lapsed' && t.expires_at) {
+        return ['bad', `Classroom subscription ended on ${on(t.expires_at)}. `
+            + 'Lessons and new classes are paused; results are untouched.'];
+    }
+    return ['', ''];
+}
+
+/**
+ * Show the term, and the code box when it can do something.
+ *
+ * The code box is offered to a school whatever its state — renewing early
+ * stacks onto the end date rather than throwing the remainder away — and to
+ * a community that is not a school yet, because applying a code is now the
+ * only way to become one. It is hidden only for a perpetual community, where
+ * a code would be spent for nothing; the server refuses that case too.
+ */
+function renderCommunitySchoolTerm() {
+    const box  = document.getElementById('community-school-term');
+    const row  = document.getElementById('community-school-code-row');
+    const chk  = document.getElementById('community-school-check');
+    const t    = communitySchoolTerm;
+
+    if (!box || !row) return;
+
+    if (!t) {
+        box.style.display = 'none';
+        box.textContent = '';
+        row.style.display = 'none';
+        if (chk) { chk.disabled = false; chk.title = ''; }
+        return;
+    }
+
+    const [tone, text] = communitySchoolTermText(t);
+    box.textContent = text;
+    box.style.cssText = 'font-size:0.78rem;line-height:1.45;margin-top:0.4rem;'
+        + (tone === 'bad'  ? 'color:#c0392b;' :
+           tone === 'warn' ? 'color:#c97a00;' : 'color:var(--color-gray-500);')
+        + (text ? '' : 'display:none;');
+
+    row.style.display = t.perpetual ? 'none' : '';
+
+    // Ticking the box without a term now fails server-side. Saying so before
+    // the click is better than a toast afterwards, and it points at the one
+    // control that would fix it, which is directly underneath.
+    //
+    // The test mirrors community_set_kind exactly — perpetual, or inside the
+    // grace window — rather than reading `state`, because state says
+    // 'not_school' for a paid-up community whose owner has merely switched
+    // classrooms off, and that owner must be able to switch them back on.
+    // Never disabled while it is checked: turning school mode OFF is free
+    // and must stay possible whatever the subscription says.
+    if (chk) {
+        const entitled = t.perpetual
+            || (t.grace_ends_at && Date.now() < new Date(t.grace_ends_at).getTime());
+        chk.disabled = !entitled && !chk.checked;
+        chk.title = chk.disabled ? 'Apply a subscription code to turn this on' : '';
+    }
+}
+
+/**
+ * Apply an unlock code to the selected community.
+ *
+ * The server validates everything that matters and only claims the code once
+ * it is sure — a code typed into the wrong community comes back as an error
+ * with the code still unspent.
+ */
+async function applySchoolCode() {
+    const cid   = document.getElementById('community-panel-select')?.value;
+    const input = document.getElementById('community-school-code');
+    const out   = document.getElementById('community-school-code-status');
+    if (!cid || !input || !out) return;
+
+    const code = input.value.trim().toUpperCase();
+    if (!code) {
+        out.style.color = '#c0392b';
+        out.textContent = 'Enter the code from your subscription email.';
+        return;
+    }
+
+    out.style.color = 'var(--color-gray-500)';
+    out.textContent = 'Checking…';
+
+    const { data, error } = await sbRpc('community_apply_school_code',
+        { p_code: code, p_community_id: cid }, true);
+
+    if (error) {
+        out.style.color = '#c0392b';
+        out.textContent = error.message || 'That code could not be applied.';
+        return;
+    }
+
+    input.value = '';
+    out.style.color = 'var(--color-primary)';
+    const until = data && data.expires_at
+        ? new Date(data.expires_at).toLocaleDateString(undefined,
+            { year: 'numeric', month: 'long', day: 'numeric' })
+        : null;
+    out.textContent = until
+        ? `Applied. Classroom mode runs until ${until}.`
+        : 'Applied.';
+
+    // The code may have turned this community INTO a school, so the cached
+    // kind is stale and every school-only control on the panel is wrong
+    // until it is refreshed.
+    const c = myCommunities.find(x => x.id === cid);
+    if (c) c.kind = 'school';
+    syncCommunitySchoolUI(cid);
 }
 
 /**

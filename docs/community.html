@@ -13,7 +13,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="BirdWatchAI">
-    <link rel="stylesheet" href="css/community.css?v=9e78bdfd">
+    <link rel="stylesheet" href="css/community.css?v=0a5732c1">
 </head>
 <body>
 <!-- Top navbar with auth controls -->
@@ -732,6 +732,26 @@
                 <span>🎓 This community is a school</span>
             </label>
             <p id="community-school-note" style="font-size:0.75rem;color:var(--color-gray-500);margin:0.35rem 0 0;line-height:1.45;"></p>
+
+            <!-- The term, and how to extend it. Hidden for a community that
+                 has never been a school and has no code applied: somebody
+                 setting up a birding group should not be shown a renewal
+                 box for a product they have not bought. renderCommunitySchool
+                 decides. -->
+            <div id="community-school-term" style="display:none;"></div>
+
+            <div id="community-school-code-row" style="display:none;margin-top:0.5rem;">
+                <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                    <input type="text" id="community-school-code"
+                           placeholder="BWS-XXXX-XXXX-XXXX" autocomplete="off"
+                           spellcheck="false"
+                           style="flex:1;min-width:190px;text-transform:uppercase;">
+                    <button type="button" class="classroom-btn"
+                            onclick="applySchoolCode()">Apply code</button>
+                </div>
+                <div id="community-school-code-status"
+                     style="font-size:0.78rem;margin-top:0.35rem;min-height:1em;"></div>
+            </div>
         </div>
 
         <!-- At-a-glance state: tier and how much of the feeder allowance is used,
@@ -905,11 +925,19 @@
                  — and everything that acts on the chosen one is on the right,
                  grouped by when you would do it: starting a lesson, between
                  lessons, and settings you touch a few times a year. -->
+
+            <!-- The subscription, only when there is something to say. A
+                 teacher who finds the start buttons greyed out has to learn
+                 why from this screen; the alternative is a phone call to
+                 whoever owns the community, during a lesson. -->
+            <div id="classroom-term-banner" class="classroom-term" style="display:none;"></div>
+
             <div class="classroom-panes">
                 <div class="classroom-pane-left">
                     <div class="classroom-pane-title">Classes</div>
                     <div id="classroom-list"></div>
-                    <button type="button" class="classroom-btn classroom-new-btn"
+                    <button type="button" id="classroom-new-btn"
+                            class="classroom-btn classroom-new-btn"
                             onclick="newClassroom()">+ New class</button>
                 </div>
 
@@ -1117,7 +1145,7 @@
      script renders buttons wired to functions that don't exist, and against a
      cached stylesheet renders the tier rows as bare links. css/community.css is
      pinned to v=7 for the same reason. -->
-<script src="js/community-communities.js?v=8cfe7266"></script>
+<script src="js/community-communities.js?v=74d4b38a"></script>
 <!-- QR for the classroom lobby's join code. Same-origin on purpose: the
      lobby is the screen that must work when a lesson starts, and a CDN
      blocked by school wifi at that moment ends the lesson.
@@ -1131,7 +1159,7 @@
 <script src="js/community-bird-photos.js?v=75bfa8a8"></script>
 <script src="js/community-bird-pairs.js?v=fde6b7cd"></script>
 <script src="js/community-us-map.js?v=7260cdca"></script>
-<script src="js/community-classroom.js?v=06caaa3d"></script>
+<script src="js/community-classroom.js?v=b90bd388"></script>
 <!-- Interactive chart runtime: crosshair tooltips on the trend chart, per-species hover rows on
      the Activity / Calendar / Rarity Mix charts. No-op until a [data-bw-chart] element appears. -->
 <script src="js/community-charts.js?v=2b12e881"></script>
