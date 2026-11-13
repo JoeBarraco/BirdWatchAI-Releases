@@ -4101,7 +4101,11 @@ const CLASSROOM_TEMPLATES = [
 {
     id: 'count-one-day',
     category: 'math',
-    title: 'Counting',
+    // Not "Counting": the picker lists this under Maths, directly below a
+    // whole subject called Counting, and "Maths > Counting" reads as either
+    // a mistake or a duplicate. The only title in all 104 that collided with
+    // a subject name.
+    title: 'Birds on one day',
     bands: ['k-2'],
     build({ s, band, rng }) {
         const days = cmDaySeries(s).filter(d => d.value > 0 && d.value <= 20);
