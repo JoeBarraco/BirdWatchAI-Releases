@@ -3602,6 +3602,9 @@ const CLASSROOM_TEMPLATES = [
 
 {
     id: 'bird-wonder',
+    // Works with no feeder data at all, which is what carries a lesson
+    // at a feeder the birds have not found yet.
+    needsData: false,
     category: 'wonder',
     title: 'Did you know?',
     bands: ['k-2', '3-5', '6-8'],
@@ -3641,6 +3644,9 @@ const CLASSROOM_TEMPLATES = [
 
 {
     id: 'bird-collective-noun',
+    // Works with no feeder data at all, which is what carries a lesson
+    // at a feeder the birds have not found yet.
+    needsData: false,
     category: 'language',
     title: 'What do you call a group of them?',
     bands: ['3-5', '6-8'],
@@ -3661,6 +3667,9 @@ const CLASSROOM_TEMPLATES = [
 
 {
     id: 'bird-by-sound',
+    // Works with no feeder data at all, which is what carries a lesson
+    // at a feeder the birds have not found yet.
+    needsData: false,
     category: 'language',
     title: 'Who says that?',
     bands: ['k-2', '3-5', '6-8'],
@@ -3682,6 +3691,9 @@ const CLASSROOM_TEMPLATES = [
 
 {
     id: 'bird-state-symbol',
+    // Works with no feeder data at all, which is what carries a lesson
+    // at a feeder the birds have not found yet.
+    needsData: false,
     category: 'geography',
     title: 'State birds',
     bands: ['3-5', '6-8'],
@@ -3959,6 +3971,388 @@ const CLASSROOM_TEMPLATES = [
         };
     },
 },
+
+// ── Maths across the bands ───────────────────────────────────────
+//
+// The curriculum a K-8 class is actually working through, asked against this
+// week's feeder. The feeder supplies the numbers; the skill being practised
+// is the one named in the title.
+
+{
+    id: 'count-one-day',
+    category: 'math',
+    title: 'Counting',
+    bands: ['k-2'],
+    build({ s, band, rng }) {
+        const days = cmDaySeries(s).filter(d => d.value > 0 && d.value <= 20);
+        if (!days.length) return null;
+        const pick = cmShuffle(days, rng)[0];
+        const built = cmChoices(String(pick.value),
+                                cmNumberDistractors(pick.value, rng, 3).map(String), rng);
+        if (!built) return null;
+        return {
+            prompt: `How many birds came on ${cmDayProse(pick.key)}?`,
+            ...built,
+            chart: cmChart('Visits each day', cmDaySeries(s),
+                           { band, highlight: pick.key }),
+            explain: `${pick.value} visits on ${cmDayProse(pick.key)}.`,
+        };
+    },
+},
+
+{
+    id: 'odd-or-even',
+    category: 'math',
+    title: 'Odd and even',
+    bands: ['k-2', '3-5'],
+    build({ s, band, rng }) {
+        const days = cmDaySeries(s).filter(d => d.value > 0);
+        if (!days.length) return null;
+        const pick = cmShuffle(days, rng)[0];
+        const answer = pick.value % 2 === 0 ? 'Even' : 'Odd';
+        const built = cmChoices(answer, [answer === 'Even' ? 'Odd' : 'Even'], rng);
+        if (!built) return null;
+        return {
+            prompt: `${pick.value} birds came on ${cmDayProse(pick.key)}. `
+                  + 'Is that an odd number or an even number?',
+            ...built,
+            explain: pick.value % 2 === 0
+                ? `${pick.value} splits into two equal groups, so it is even.`
+                : `${pick.value} leaves one over when you split it in two, so it is odd.`,
+        };
+    },
+},
+
+{
+    id: 'ordinal-rank',
+    category: 'math',
+    title: 'First, second, third',
+    bands: ['k-2', '3-5'],
+    build({ s, band, rng }) {
+        if (s.species.length < 4) return null;
+        const place = 2 + Math.floor(rng() * 2);          // 2nd or 3rd
+        const word  = ['', 'first', 'second', 'third', 'fourth'][place];
+        const answer = s.species[place - 1].species;
+        const built = cmChoices(answer,
+            s.species.filter((_, i) => i !== place - 1).slice(0, 3).map(x => x.species), rng);
+        if (!built) return null;
+        return {
+            prompt: `Put the birds in order, most visits first. Which bird is `
+                  + `${word}?`,
+            ...built,
+            chart: cmChart('Visits by species this week', cmSpeciesSeries(s),
+                           { band, showValues: true }),
+            explain: `${answer} is ${word}, with `
+                   + `${s.bySpecies.get(answer)} visits.`,
+        };
+    },
+},
+
+{
+    id: 'clock-hour',
+    category: 'math',
+    title: 'Telling the time',
+    bands: ['k-2', '3-5'],
+    build({ s, band, rng }) {
+        // Design notes §11: telling the time from detection timestamps on an
+        // analog clock. The clock face IS the question - the class has to
+        // find the hour on a dial rather than read a digital label.
+        const hours = s.byHour
+            .map((n, h) => ({ h, n }))
+            .filter(x => x.n > 0 && x.h >= 5 && x.h <= 20);
+        if (hours.length < 3) return null;
+
+        const busiest = hours.slice().sort((a, b) => b.n - a.n)[0];
+        const h12 = busiest.h % 12 === 0 ? 12 : busiest.h % 12;
+        const ampm = busiest.h < 12 ? 'in the morning' : 'in the afternoon';
+        const answer = `${h12} o’clock ${ampm}`;
+
+        const others = cmShuffle(hours.filter(x => x.h !== busiest.h), rng)
+            .slice(0, 3)
+            .map(x => `${x.h % 12 === 0 ? 12 : x.h % 12} o’clock `
+                    + (x.h < 12 ? 'in the morning' : 'in the afternoon'));
+        const built = cmChoices(answer, others, rng);
+        if (!built) return null;
+
+        return {
+            prompt: 'Look at the clock. What time were the birds busiest?',
+            ...built,
+            chart: cmChart('When the birds came',
+                           hours.map(x => ({
+                               label: `${x.h % 12 === 0 ? 12 : x.h % 12}${x.h < 12 ? 'am' : 'pm'}`,
+                               value: x.n, key: String(x.h), hour: x.h,
+                           })), { band, hours: true, kind: 'clock' }),
+            explain: `${busiest.n} visits at ${answer}.`,
+        };
+    },
+},
+
+{
+    id: 'multiply-days',
+    category: 'math',
+    title: 'Multiplication',
+    bands: ['3-5'],
+    build({ s, band, rng }) {
+        const days = cmDaySeries(s).filter(d => d.value > 0);
+        if (!days.length) return null;
+        const pick = cmShuffle(days, rng)[0];
+        if (pick.value < 2 || pick.value > 15) return null;
+        const weeks = 2 + Math.floor(rng() * 3);          // 2-4
+        const answer = pick.value * weeks;
+        const built = cmChoices(String(answer),
+                                cmNumberDistractors(answer, rng, 3).map(String), rng);
+        if (!built) return null;
+        return {
+            prompt: `There were ${pick.value} visits on ${cmDayProse(pick.key)}. `
+                  + `If the next ${weeks} days were each exactly the same, how `
+                  + 'many visits would that be altogether?',
+            ...built,
+            explain: `${pick.value} × ${weeks} = ${answer}.`,
+        };
+    },
+},
+
+{
+    id: 'divide-share',
+    category: 'math',
+    title: 'Division',
+    bands: ['3-5'],
+    build({ s, band, rng }) {
+        const total = s.total;
+        const groups = [2, 3, 4, 5].filter(n => total % n === 0 && total / n >= 2);
+        if (!groups.length) return null;
+        const per = cmShuffle(groups, rng)[0];
+        const answer = total / per;
+        const built = cmChoices(String(answer),
+                                cmNumberDistractors(answer, rng, 3).map(String), rng);
+        if (!built) return null;
+        return {
+            prompt: `Our feeder had ${total} visits this week. If ${per} groups of `
+                  + 'children shared the job of counting them equally, how many '
+                  + 'would each group count?',
+            ...built,
+            explain: `${total} ÷ ${per} = ${answer} each.`,
+        };
+    },
+},
+
+{
+    id: 'round-nearest-ten',
+    category: 'math',
+    title: 'Rounding',
+    bands: ['3-5'],
+    build({ s, band, rng }) {
+        const total = s.total;
+        if (total < 12) return null;
+        const answer = Math.round(total / 10) * 10;
+        const opts = [answer - 10, answer, answer + 10, answer + 20]
+            .filter(n => n >= 0);
+        const built = cmChoices(String(answer),
+                                cmShuffle(opts.filter(n => n !== answer), rng)
+                                    .slice(0, 3).map(String), rng);
+        if (!built) return null;
+        return {
+            prompt: `Our feeder had ${total} visits this week. Rounded to the `
+                  + 'nearest ten, about how many is that?',
+            ...built,
+            explain: `${total} rounds to ${answer}. Look at the ones digit: `
+                   + `${total % 10} is ${total % 10 >= 5 ? '5 or more, so round up' : 'less than 5, so round down'}.`,
+        };
+    },
+},
+
+{
+    id: 'fraction-of-week',
+    category: 'math',
+    title: 'Fractions',
+    bands: ['3-5'],
+    build({ s, band, rng }) {
+        const days = cmDaySeries(s);
+        const withBirds = days.filter(d => d.value > 0).length;
+        if (!days.length || !withBirds || withBirds === days.length) return null;
+        const answer = `${withBirds} out of ${days.length}`;
+        const built = cmChoices(answer,
+            cmShuffle([1, 2, 3, 4, 5, 6, 7].filter(n => n !== withBirds), rng)
+                .slice(0, 3).map(n => `${n} out of ${days.length}`), rng);
+        if (!built) return null;
+        return {
+            prompt: 'On how many of the last 7 days did ANY bird come to our feeder?',
+            ...built,
+            chart: cmChart('Visits each day', days, { band, ordered: true }),
+            explain: `${withBirds} of the 7 days had at least one visit, `
+                   + `so ${withBirds}/${days.length} of the week.`,
+        };
+    },
+},
+
+{
+    id: 'elapsed-hours',
+    category: 'math',
+    title: 'Elapsed time',
+    bands: ['3-5'],
+    build({ s, band, rng }) {
+        const active = s.byHour.map((n, h) => ({ h, n })).filter(x => x.n > 0);
+        if (active.length < 2) return null;
+        const first = active[0].h, last = active[active.length - 1].h;
+        const answer = last - first;
+        if (answer < 2) return null;
+
+        const fmt = h => `${h % 12 === 0 ? 12 : h % 12}${h < 12 ? 'am' : 'pm'}`;
+        const built = cmChoices(`${answer} hours`,
+            cmShuffle([answer - 2, answer - 1, answer + 1, answer + 2]
+                .filter(n => n > 0 && n !== answer), rng)
+                .slice(0, 3).map(n => `${n} hours`), rng);
+        if (!built) return null;
+        return {
+            prompt: `The first bird of the day arrived at ${fmt(first)} and the `
+                  + `last one at ${fmt(last)}. How long was the feeder busy?`,
+            ...built,
+            explain: `From ${fmt(first)} to ${fmt(last)} is ${answer} hours.`,
+        };
+    },
+},
+
+{
+    id: 'ratio-two-species',
+    category: 'math',
+    title: 'Ratios',
+    bands: ['6-8'],
+    build({ s, band, rng }) {
+        if (s.species.length < 2) return null;
+        const a = s.species[0], b = s.species[1];
+        if (!a.n || !b.n) return null;
+
+        const gcd = (x, y) => y ? gcd(y, x % y) : x;
+        const g = gcd(a.n, b.n);
+        const answer = `${a.n / g} : ${b.n / g}`;
+        const built = cmChoices(answer,
+            [`${a.n} : ${b.n + 1}`, `${b.n / g} : ${a.n / g}`, `${a.n / g + 1} : ${b.n / g}`], rng);
+        if (!built) return null;
+        return {
+            prompt: `There were ${a.n} ${a.species} visits and ${b.n} ${b.species} `
+                  + 'visits. What is that ratio in its simplest form?',
+            ...built,
+            chart: cmChart('Visits by species this week', cmSpeciesSeries(s),
+                           { band, showValues: true }),
+            explain: `${a.n} : ${b.n}, and both divide by ${g}, giving ${answer}.`,
+        };
+    },
+},
+
+{
+    id: 'proportion-scale',
+    category: 'math',
+    title: 'Proportion',
+    bands: ['6-8'],
+    build({ s, band, rng }) {
+        if (!s.species.length || s.total < 10) return null;
+        const top = s.species[0];
+        const share = top.n / s.total;
+        if (share < 0.15 || share > 0.8) return null;
+
+        const future = 100;
+        const answer = Math.round(share * future);
+        const built = cmChoices(String(answer),
+                                cmNumberDistractors(answer, rng, 3).map(String), rng);
+        if (!built) return null;
+        return {
+            prompt: `${top.n} of our ${s.total} visits this week were `
+                  + `${top.species}. If the feeder gets ${future} visits next `
+                  + 'month and the pattern holds, about how many would be '
+                  + `${top.species}?`,
+            ...built,
+            explain: `${top.n}/${s.total} is about ${(share * 100).toFixed(0)}%, `
+                   + `and ${(share * 100).toFixed(0)}% of ${future} is about ${answer}.`,
+        };
+    },
+},
+
+{
+    id: 'integer-temp-change',
+    category: 'math',
+    title: 'Negative numbers',
+    bands: ['6-8'],
+    build({ s, band, rng }) {
+        if (s.tempCoverage < 0.5 || s.dayTemp.size < 3) return null;
+        const temps = [...s.dayTemp.entries()]
+            .map(([day, t]) => ({ day, temp: Math.round(t.sum / t.n) }))
+            .sort((a, b) => a.day.localeCompare(b.day));
+        const a = temps[0], b = temps[temps.length - 1];
+        const diff = b.temp - a.temp;
+        if (Math.abs(diff) < 3) return null;
+
+        const answer = `${diff > 0 ? '+' : ''}${diff}°`;
+        const built = cmChoices(answer,
+            [`${-diff > 0 ? '+' : ''}${-diff}°`,
+             `${diff > 0 ? '+' : ''}${diff + 2}°`,
+             `${a.temp + b.temp}°`], rng);
+        if (!built) return null;
+        return {
+            prompt: `It was ${a.temp}° on ${cmDayProse(a.day)} and `
+                  + `${b.temp}° on ${cmDayProse(b.day)}. What was the change `
+                  + 'in temperature?',
+            ...built,
+            explain: `${b.temp} − ${a.temp} = ${diff}. A ${diff > 0 ? 'rise' : 'fall'} `
+                   + `of ${Math.abs(diff)} degrees.`,
+        };
+    },
+},
+
+{
+    id: 'probability-two-same',
+    category: 'math',
+    title: 'Compound probability',
+    bands: ['6-8'],
+    build({ s, band, rng }) {
+        if (!s.species.length || s.total < 20) return null;
+        const top = s.species[0];
+        const p = top.n / s.total;
+        if (p < 0.25 || p > 0.7) return null;
+
+        const both = Math.round(p * p * 100);
+        const built = cmChoices(`About ${both}%`,
+            [`About ${Math.round(p * 100)}%`,
+             `About ${Math.round(p * 200)}%`,
+             `About ${Math.round(p * 50)}%`], rng);
+        if (!built) return null;
+        return {
+            prompt: `About ${Math.round(p * 100)} out of every 100 visits are `
+                  + `${top.species}. If two birds arrive, what is the chance BOTH `
+                  + `are ${top.species}?`,
+            ...built,
+            explain: `Multiply the two chances: ${(p).toFixed(2)} × ${(p).toFixed(2)} `
+                   + `≈ ${(p * p).toFixed(2)}, about ${both}%. Two things both `
+                   + 'happening is always less likely than either one alone.',
+        };
+    },
+},
+
+{
+    id: 'unit-rate',
+    category: 'math',
+    title: 'Unit rate',
+    bands: ['6-8'],
+    build({ s, band, rng }) {
+        const active = s.byHour.map((n, h) => ({ h, n })).filter(x => x.n > 0);
+        if (active.length < 4 || s.total < 20) return null;
+        const span = active[active.length - 1].h - active[0].h + 1;
+        if (span < 4) return null;
+        const answer = (s.total / span).toFixed(1);
+        const built = cmChoices(`${answer} per hour`,
+            [`${(s.total / span * 2).toFixed(1)} per hour`,
+             `${(s.total / span / 2).toFixed(1)} per hour`,
+             `${(span / s.total).toFixed(1)} per hour`], rng);
+        if (!built) return null;
+        return {
+            prompt: `There were ${s.total} visits this week, spread over about `
+                  + `${span} daylight hours a day. What is the rate, in visits `
+                  + 'per hour?',
+            ...built,
+            explain: `${s.total} ÷ ${span} ≈ ${answer} visits an hour. A unit `
+                   + 'rate is always "how many per ONE of something".',
+        };
+    },
+},
 ];
 
 /**
@@ -3969,6 +4363,64 @@ const CLASSROOM_TEMPLATES = [
  * capped, with identification first — starting a class on a photo of a bird
  * works where starting on a percentage does not.
  */
+/**
+ * The lesson you can build when the feeder has told you nothing.
+ *
+ * Only templates that declare `needsData: false` - they take a band and a
+ * random seed and nothing else. Deliberately a separate, smaller function
+ * rather than a flag threaded through the main one: the main path assumes a
+ * summary exists and reads it in a dozen places, and making every one of
+ * those tolerate null would be a much larger and much more fragile change
+ * than having an honest second path for an honest second situation.
+ */
+function buildDataFreeQuestions(room, o) {
+    const band = room.grade_band || 'k-2';
+    const seed = `${room.id}|${cmDayKey(new Date())}|nodata`;
+    cmChartRotation = 0;
+
+    const out = [];
+    for (const t of CLASSROOM_TEMPLATES) {
+        if (t.needsData !== false || !t.bands.includes(band)) continue;
+        let q = null;
+        try {
+            q = t.build({ s: CM_EMPTY_SUMMARY, s14: CM_EMPTY_SUMMARY, band,
+                          rng: cmRng(seed + '|' + t.id), feeder: null,
+                          source: null, room });
+        } catch (e) {
+            console.warn(`[classroom] data-free template "${t.id}" failed:`, e);
+            continue;
+        }
+        if (!q || !q.choices || q.choices.length < 2) continue;
+        if (t.guessFirst) q.guess_first = true;
+        if (!q.about_bird) q.about_bird = q.wonder_bird || null;
+
+        out.push({
+            template_id: q.template_id || t.id,
+            category: t.category, title: t.title, grade_band: band,
+            scope: 'none', from_partner: false,
+            ...q,
+        });
+    }
+
+    const ordered = cmShuffle(out, cmRng(seed + '|order'));
+    const offered = CLASSROOM_TEMPLATES.filter(t => t.bands.includes(band)).length;
+    return {
+        questions: o.all ? ordered : ordered.slice(0, classroomQuizSize(room, o)),
+        built: ordered.length,
+        offered,
+        no_data: true,
+    };
+}
+
+// A summary shaped like a real one, holding nothing. Lets the data-free
+// templates use the same helpers without each of them guarding for null.
+const CM_EMPTY_SUMMARY = {
+    feederId: null, name: null, isHome: true, rows: [], total: 0,
+    species: [], bySpecies: new Map(), days: [], byDay: new Map(),
+    byHour: new Array(24).fill(0), daySpec: new Map(), snapshots: [],
+    distinct: 0, avgTemp: null, tempCoverage: 0, dayTemp: new Map(),
+};
+
 /**
  * How many questions this classroom's session asks.
  *
@@ -3986,7 +4438,19 @@ function classroomQuizSize(room, o) {
 function buildClassroomQuestions(room, data, opts) {
     const o = opts || {};
     const source = cmPickSource(data);
-    if (!source || !source.total) return { questions: [], source: null };
+
+    // A feeder with nothing on it used to mean no lesson at all: the function
+    // gave up here and the stage said "not enough data yet". That was true
+    // when every question was computed from detections. It is not true now -
+    // the fact slides, the colour and language questions and the state-bird
+    // map need no feeder data whatsoever, and a new feeder that birds have
+    // not found yet is EXACTLY when a class needs them.
+    //
+    // Roland Park is the case in point: a courtyard feeder with five
+    // detections in a fortnight, about to be shown to four teachers.
+    if (!source || !source.total) {
+        return { ...buildDataFreeQuestions(room, o), source: null };
+    }
 
     const s    = cmWindow(source, 7);
     const s14  = source;
@@ -5310,7 +5774,7 @@ async function startClassroomSession(id, mode) {
         loadClassroomData(room),
         loadClassroomRecentTemplates(room.id),
     ]);
-    const { questions, source } = buildClassroomQuestions(room, data, { recent });
+    const { questions, source, no_data } = buildClassroomQuestions(room, data, { recent });
 
     if (!questions.length) {
         stage.innerHTML = `
@@ -5339,6 +5803,9 @@ async function startClassroomSession(id, mode) {
 
     classroomSession = {
         id: sess.id, room, source, questions, mode,
+        // Say so on the board rather than letting a teacher wonder why none
+        // of today's questions mention their feeder.
+        noData: !!no_data,
         joinCode: sess.join_code || null,
         index: 0, revealed: false, asked: 0, correct: 0,
         // Join-code only: the open question's row id, the live tally, and
@@ -5437,6 +5904,8 @@ function renderClassroomStage() {
             <div>
                 <strong>${esc(S.room.name)}</strong>
                 <span class="classroom-pill">${esc(band)}</span>
+                ${S.noData ? '<span class="classroom-pill warn">Feeder quiet — '
+                           + 'general bird questions today</span>' : ''}
                 ${q.from_partner
                     ? `<span class="classroom-pill partner">Partner feeder: ${esc(q.source_feeder_name)}</span>`
                     : `<span class="classroom-pill">${esc(q.source_feeder_name)}</span>`}

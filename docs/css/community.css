@@ -4623,3 +4623,10 @@
 /* "Read more", on the reveal. Quiet: it is an offer for after the question,
    not a control the lesson depends on. */
 .classroom-learn { margin-top: 1vmin; }
+
+/* Said out loud on the board: today's questions are not about this feeder,
+   because this feeder has not seen anything yet. */
+.classroom-pill.warn {
+    background: color-mix(in srgb, #f0a500 22%, transparent);
+    color: #f0c674;
+}
