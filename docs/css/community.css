@@ -4549,3 +4549,11 @@
     fill: var(--color-gray-500);
     font-size: 54px; font-family: inherit; font-weight: 800;
 }
+
+/* The second axis line — a day's temperature under its date. Lighter than
+   the label above it so the two read as a pair rather than competing. */
+.cc-sublabel {
+    fill: var(--color-gray-500);
+    font-size: 22px; font-family: inherit; font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}

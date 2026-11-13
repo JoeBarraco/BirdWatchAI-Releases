@@ -1313,6 +1313,23 @@ const CHART_SPECTRUM = [
 ];
 
 /**
+ * Cold blue to warm red, for a temperature.
+ *
+ * `t` is 0 (the coldest day in view) to 1 (the warmest). Deliberately not a
+ * full rainbow: blue-to-red is the one colour ramp almost everybody already
+ * reads as cold-to-hot without a legend, which is the whole point of using
+ * colour rather than another axis.
+ */
+function cmHeatColor(t) {
+    const stops = [[103, 183, 240], [150, 190, 210], [222, 196, 150], [240, 134, 74]];
+    const x = Math.max(0, Math.min(1, t)) * (stops.length - 1);
+    const i = Math.min(stops.length - 2, Math.floor(x));
+    const f = x - i;
+    const c = stops[i].map((v, k) => Math.round(v + (stops[i + 1][k] - v) * f));
+    return `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
+}
+
+/**
  * The colour for one row of a chart.
  *
  * `mode` is decided once in cmChart and baked onto each row, so the renderers
@@ -1386,9 +1403,25 @@ function cmChart(caption, series, opts) {
     const mode = o.plain ? 'plain'
                : trimmed.every(r => SPECIES_COLORS[r.key]) ? 'species'
                : 'spectrum';
-    trimmed.forEach((r, i) => { r.color = cmRowColor(r, i, trimmed.length, mode); });
+    // A row may bring its own colour, which is how a chart encodes a SECOND
+    // variable in the bars themselves - height for one, colour for the other
+    // - instead of spending an axis or a label line on it.
+    trimmed.forEach((r, i) => {
+        if (!r.color) r.color = cmRowColor(r, i, trimmed.length, mode);
+    });
 
-    return { kind, caption, series: trimmed, highlight: o.highlight || null,
+    // A rolling 7-day window starts on a different weekday every day, which
+    // produced a reasonable question from a teacher: "why does it start on a
+    // Friday? School weeks start on Monday." The window stays rolling on
+    // purpose - a Monday-aligned week would show a Monday class a single
+    // day's data - so the chart states its own range instead of leaving the
+    // reader to work out why it begins where it does.
+    const isDays = trimmed.every(r => /^\d{4}-\d{2}-\d{2}$/.test(String(r.key || '')));
+    const titled = (isDays && trimmed.length > 2)
+        ? `${caption} \u00b7 ${trimmed[0].label} to ${trimmed[trimmed.length - 1].label}`
+        : caption;
+
+    return { kind, caption: titled, series: trimmed, highlight: o.highlight || null,
              showValues: !!o.showValues, palette: mode, max,
              total: trimmed.reduce((a, r) => a + r.value, 0) };
 }
@@ -1399,6 +1432,14 @@ function cmChart(caption, series, opts) {
 // stops looking at it - but not at the cost of a chart that says something
 // untrue. Each guard is the condition under which that shape means anything.
 const CHART_KINDS_OK = {
+    // The two that always work. Without entries here an explicit
+    // kind: 'bars' fell straight through to the rotation, so a template that
+    // asked for a specific shape quietly got whatever came next in the cycle.
+    bars: () => true,
+    dots: (rows, o) => o.band === 'k-2'
+                    && Math.max(...rows.map(r => r.value)) <= DOTS_MAX_VALUE
+                    && rows.length <= DOTS_MAX_ROWS,
+
     // Horizontal bars: long species names get room to be read instead of
     // being wrapped onto two lines under a narrow column.
     hbars: rows => rows.length >= 2 && rows.length <= 8,
@@ -1574,7 +1615,8 @@ function classroomBarsHtml(chart, revealed) {
 
     // Under the axis: the photo, a gap, then up to two lines of label.
     const labelDrop = hasPhotos ? thumbH + 12 : 0;
-    const padB = 56 + labelDrop + 52;
+    const hasSub = chart.series.some(r => r.sub);
+    const padB = 56 + labelDrop + 52 + (hasSub ? 30 : 0);
     const H = padT + 300 + padB;
     const plotH = H - padT - padB;
 
@@ -1611,6 +1653,18 @@ function classroomBarsHtml(chart, revealed) {
         const lines = parts.length > 1
             ? [parts.slice(0, -1).join(' '), parts[parts.length - 1]]
             : [label];
+
+        // An explicit second line, for a series that carries two facts per
+        // bar. Flagged on the weather chart: "the x-axis labels need to be on
+        // 2 lines, first the Day and Date, and beneath that the temperature."
+        // Relying on the length-based wrap above would have put the split
+        // wherever the string happened to be long enough, which is not the
+        // same thing as putting it where the meaning changes.
+        const subLine = s.sub
+            ? `<text x="${cx}" y="${H - padB + 28 + labelDrop + lines.length * 26}"
+                     class="cc-sublabel" text-anchor="middle"
+                     ${s.subColor ? `fill="${s.subColor}"` : ''}>${esc(s.sub)}</text>`
+            : '';
 
         // preserveAspectRatio="xMidYMin slice" is cover anchored to the TOP,
         // which crops the bottom of the frame — and the bottom of the frame is
@@ -1649,7 +1703,8 @@ function classroomBarsHtml(chart, revealed) {
              + thumb
              + lines.map((ln, k) =>
                  `<text x="${cx}" y="${H - padB + 28 + labelDrop + k * 26}" class="cc-label"
-                        text-anchor="middle">${esc(ln)}</text>`).join('');
+                        text-anchor="middle">${esc(ln)}</text>`).join('')
+             + subLine;
     }).join('');
 
     return `
@@ -2359,10 +2414,30 @@ const CLASSROOM_TEMPLATES = [
             correct_index: opts.indexOf(answer),
             // Labelled with each day's temperature, in date order, so the
             // class has to put the two variables together themselves.
-            chart: cmChart('Visits each day, with that day\u2019s temperature',
+            // Temperature is carried by the BAR'S COLOUR \u2014 not a second axis,
+            // and not the label.
+            //
+            // Height is visits, colour is temperature, so a single mark holds
+            // both variables and the chart gains no extra furniture. Cold
+            // blue to warm red is the one ramp nearly everybody reads without
+            // a legend, so the relationship the question actually asks about
+            // \u2014 do the warm days have the taller bars? \u2014 is visible before
+            // anyone has read a number.
+            //
+            // The degrees stay in small type under each date. Once colour is
+            // carrying the PATTERN, the number is supporting detail rather
+            // than something that has to be decoded, and a 6\u20138 class needs
+            // the real values to justify an answer.
+            chart: cmChart('Visits each day \u2014 bar colour is that day\u2019s temperature',
                            days.slice().sort((x, y) => x.day.localeCompare(y.day))
-                               .map(d => ({ label: `${cmDayAxisLabel(d.day)} ${Math.round(d.temp)}\u00b0`,
-                                            value: d.n, key: d.day })), { band }),
+                               .map(d => ({
+                                   label: cmDayAxisLabel(d.day),
+                                   sub: `${Math.round(d.temp)}\u00b0`,
+                                   value: d.n, key: d.day,
+                                   color: cmHeatColor(
+                                       (d.temp - days[0].temp)
+                                       / Math.max(1, days[days.length - 1].temp - days[0].temp)),
+                               })), { band, kind: 'bars' }),
             explain: `Colder half averaged ${coldAvg.toFixed(1)} visits/day `
                    + `(${cold[0].temp.toFixed(0)}–${cold[cold.length - 1].temp.toFixed(0)}°); `
                    + `warmer half averaged ${warmAvg.toFixed(1)} `
