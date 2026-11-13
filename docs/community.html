@@ -720,6 +720,20 @@
         <select id="community-panel-select" onchange="refreshCommunityPanel()"
                 style="width:100%;margin-bottom:0.5rem;"></select>
 
+        <!-- What this community IS. Classroom mode and the teacher role answer
+             to this rather than to whoever happens to be an owner, so a birding
+             group never sees either. Owner only — a moderator administers a
+             community, but deciding what it is changes what the whole roster
+             sees. Server-side the triggers in setup-community-kinds.sql are the
+             real gate; this is just where you say so. -->
+        <div id="community-school-row" style="display:none;border:1px solid var(--border);border-radius:8px;padding:0.6rem 0.75rem;margin-bottom:0.75rem;">
+            <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;color:var(--color-gray-900);cursor:pointer;">
+                <input type="checkbox" id="community-school-check" onchange="toggleCommunitySchool(this)">
+                <span>🎓 This community is a school</span>
+            </label>
+            <p id="community-school-note" style="font-size:0.75rem;color:var(--color-gray-500);margin:0.35rem 0 0;line-height:1.45;"></p>
+        </div>
+
         <!-- At-a-glance state: tier and how much of the feeder allowance is used,
              plus visibility and the join code. Filled by renderCommunityStats from
              community_tier_status. This replaces three separate lines of prose and
@@ -761,7 +775,6 @@
             <input type="email" id="community-invite-email" placeholder="Email address">
             <select id="community-invite-role">
                 <option value="viewer">Viewer</option>
-                <option value="teacher">Teacher</option>
                 <option value="moderator">Moderator</option>
             </select>
             <button onclick="inviteToCommunity()">+ Invite</button>
@@ -790,7 +803,6 @@
             <div style="display:flex;gap:8px;align-items:center;">
                 <select id="community-bulk-role" style="flex:1;">
                     <option value="viewer">Invite all as Viewer</option>
-                    <option value="teacher">Invite all as Teacher</option>
                     <option value="moderator">Invite all as Moderator</option>
                 </select>
                 <button type="button" id="community-bulk-btn" onclick="bulkInviteToCommunity()"
@@ -1069,11 +1081,11 @@
      script renders buttons wired to functions that don't exist, and against a
      cached stylesheet renders the tier rows as bare links. css/community.css is
      pinned to v=7 for the same reason. -->
-<script src="js/community-communities.js?v=d2540f21"></script>
+<script src="js/community-communities.js?v=36e2b85a"></script>
 <!-- Classroom mode (phase 1): classrooms, teacher-led sessions, question
      templates. Loads after community-communities.js because it reads
      myCommunities and hasAuthSession from it. -->
-<script src="js/community-classroom.js?v=8c6d730b"></script>
+<script src="js/community-classroom.js?v=383e2909"></script>
 <!-- Interactive chart runtime: crosshair tooltips on the trend chart, per-species hover rows on
      the Activity / Calendar / Rarity Mix charts. No-op until a [data-bw-chart] element appears. -->
 <script src="js/community-charts.js?v=2b12e881"></script>

@@ -68,8 +68,13 @@ const GRADE_BAND_LABELS = {
 // — that is the whole point of the role (design notes §8).
 function classroomCommunities() {
     if (typeof myCommunities === 'undefined') return [];
+    // School communities only. A birding group or a family's two feeders has
+    // no use for a Classroom button, and the server agrees — the trigger in
+    // setup-community-kinds.sql refuses a classroom anywhere else, so showing
+    // the button would only lead to an error.
     return myCommunities.filter(c =>
-        c.role === 'owner' || c.role === 'moderator' || c.role === 'teacher');
+        c.kind === 'school' &&
+        (c.role === 'owner' || c.role === 'moderator' || c.role === 'teacher'));
 }
 
 // My role in the community the panel is currently showing.

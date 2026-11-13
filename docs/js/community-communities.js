@@ -40,8 +40,63 @@ async function loadMyCommunities() {
     const { data, error } = await sbRpc('community_my_communities', {}, true);
     if (error || !Array.isArray(data)) { myCommunities = []; }
     else { myCommunities = data; }
+    await loadCommunityKinds();
     renderCommunityFilter();
     updateCommunityNavUI();
+}
+
+/**
+ * Attach each community's `kind` — 'general' or 'school'.
+ *
+ * Read straight off the table rather than added to community_my_communities,
+ * because the communities SELECT policy already lets a member read their own
+ * row: one request against a handful of ids, versus redefining a function
+ * that lives in another file and would then exist in two versions.
+ *
+ * Defaults to 'general' when the lookup fails: school-only features stay off
+ * unless something positively says otherwise, and a network error is not
+ * something saying otherwise.
+ *
+ * ONE EXCEPTION, and it is a deployment one. If `kind` does not exist yet —
+ * this file deployed before setup-community-kinds.sql was run — then every
+ * community would read as 'general' and classroom mode would vanish from a
+ * school that had been using it. PostgREST names that case exactly (42703,
+ * undefined column), so it is detected rather than guessed, and until the
+ * migration runs everything behaves as it did before this change. The branch
+ * stops applying the moment the column exists.
+ */
+async function loadCommunityKinds() {
+    myCommunities.forEach(c => { c.kind = c.kind || 'general'; });
+    if (!myCommunities.length) return;
+    try {
+        const ids = myCommunities.map(c => c.id).join(',');
+        const res = await fetch(
+            `${SUPABASE_URL}/rest/v1/communities?id=in.(${ids})&select=id,kind`,
+            { headers: sbHeaders(true) });
+
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            if (err && err.code === '42703') {
+                // Migration not applied yet — pre-change behaviour.
+                myCommunities.forEach(c => { c.kind = 'school'; });
+            }
+            return;
+        }
+
+        const byId = new Map((await res.json()).map(r => [r.id, r.kind]));
+        myCommunities.forEach(c => { c.kind = byId.get(c.id) || 'general'; });
+    } catch {
+        // Leave everything 'general'.
+    }
+}
+
+function communityKind(communityId) {
+    const c = myCommunities.find(x => x.id === communityId);
+    return (c && c.kind) || 'general';
+}
+
+function communityIsSchool(communityId) {
+    return communityKind(communityId) === 'school';
 }
 
 // feeder_id -> which communities it publishes into. RLS already limits this to
@@ -520,8 +575,86 @@ async function copyCommunityCode(slug) {
     }
 }
 
+/**
+ * Show or hide every school-only control for the community in the panel.
+ *
+ * Called whenever the selected community changes. The teacher options are
+ * removed from the DOM rather than disabled: an option that cannot be chosen
+ * still invites the question "why not?", and the honest answer is that this
+ * community is not a school, which the toggle above now says.
+ */
+function syncCommunitySchoolUI(cid) {
+    const school = communityIsSchool(cid);
+    const isOwner = communityRoleIn(cid) === 'owner';
+
+    ['community-invite-role', 'community-bulk-role'].forEach(id => {
+        const sel = document.getElementById(id);
+        if (!sel) return;
+        const had = sel.value;
+        const opt = [...sel.options].find(o => o.value === 'teacher');
+        if (school && !opt) {
+            const o = document.createElement('option');
+            o.value = 'teacher';
+            o.textContent = id === 'community-bulk-role' ? 'Invite all as Teacher' : 'Teacher';
+            sel.insertBefore(o, sel.options[1] || null);
+        } else if (!school && opt) {
+            opt.remove();
+        }
+        if ([...sel.options].some(o => o.value === had)) sel.value = had;
+    });
+
+    const row = document.getElementById('community-school-row');
+    if (row) row.style.display = isOwner ? '' : 'none';
+    const box = document.getElementById('community-school-check');
+    if (box) box.checked = school;
+    const note = document.getElementById('community-school-note');
+    if (note) {
+        note.textContent = school
+            ? 'Teachers and classrooms are available in this community.'
+            : 'Turn this on for a school, to use classrooms and the teacher role.';
+    }
+}
+
+/**
+ * Owner toggles school mode.
+ *
+ * The server refuses to turn it off while classrooms exist, so the checkbox
+ * is put back if it does — a tick that silently did nothing would read as the
+ * setting having been saved.
+ */
+async function toggleCommunitySchool(el) {
+    const cid = document.getElementById('community-panel-select').value;
+    const want = el.checked ? 'school' : 'general';
+    el.disabled = true;
+
+    const { data, error } = await sbRpc('community_set_kind',
+        { p_community_id: cid, p_kind: want }, true);
+    el.disabled = false;
+
+    if (error) {
+        el.checked = !el.checked;
+        showToast(error.message || 'Could not change this setting.');
+        return;
+    }
+
+    const c = myCommunities.find(x => x.id === cid);
+    if (c) c.kind = want;
+
+    if (want === 'general' && data && data.teachers_remaining) {
+        showToast(`School mode off. ${data.teachers_remaining} person(s) still have `
+                + 'the teacher role here and can be changed in the list below.');
+    } else {
+        showToast(want === 'school' ? 'Classrooms are now available here.' : 'School mode off.');
+    }
+
+    syncCommunitySchoolUI(cid);
+    if (typeof updateClassroomNavUI === 'function') updateClassroomNavUI();
+    await refreshCommunityMembers();
+}
+
 async function refreshCommunityMembers() {
     const cid  = document.getElementById('community-panel-select').value;
+    syncCommunitySchoolUI(cid);
     const list = document.getElementById('community-member-list');
     if (!cid || !list) return;
 
@@ -561,7 +694,8 @@ async function refreshCommunityMembers() {
             // 'moderator' is offered to the owner alone, matching the server:
             // community_set_member_role refuses it from a moderator, and an
             // option that always errors is worse than no option.
-            const opts = ['viewer', 'teacher']
+            const opts = ['viewer']
+                .concat(communityIsSchool(cid) ? ['teacher'] : [])
                 .concat(isOwner ? ['moderator'] : [])
                 .map(r => `<option value="${r}"${r === m.role ? ' selected' : ''}>${r}</option>`)
                 .join('');
