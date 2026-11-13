@@ -817,8 +817,14 @@ const CLASSROOM_TEMPLATES = [
 
         const when = new Date(shot.detected_at);
         return {
+            // "our feeder" only when it IS our feeder. On a quiet week the
+            // data comes from a partner, and the amber badge saying so is
+            // small print a six-year-old will not read — the prompt is the
+            // sentence the teacher says out loud, so it has to be the one
+            // that is true.
             prompt: band === 'k-2'
-                ? 'Which bird came to our feeder?'
+                ? (s.isHome ? 'Which bird came to our feeder?'
+                            : `Which bird came to ${feeder}?`)
                 : 'Which species is in this photo?',
             ...built,
             image: { url: shot.image_url, detection_id: shot.id },
