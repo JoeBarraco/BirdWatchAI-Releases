@@ -3885,7 +3885,9 @@
 .classroom-shot:empty { display: none; }
 
 .classroom-shot img {
-    max-height: 38vh; max-width: 82vw;
+    /* max-width in vw overflows the review panel for the same reason the
+       charts did. */
+    max-height: 38vh; max-width: 100%;
     border-radius: 12px; display: block;
     box-shadow: 0 6px 28px rgba(0,0,0,0.25);
 }
@@ -4146,7 +4148,14 @@
 /* ── The chart beside the question (design notes §2, §3, §11) ──────── */
 
 .classroom-chart {
-    margin: 0; width: min(92vw, 1000px);
+    /* Sized against the CONTAINER, not the viewport.
+       It was 92vw, which is right on a projector and catastrophic in the
+       review panel: that panel is about 340px wide, so every chart in it was
+       drawn nearly three times wider than its box and ran off the side -
+       "label is off the screen as well as bar". 100% is also simply more
+       correct on the stage, where the body already has its own padding that
+       a vw measurement knows nothing about. */
+    margin: 0; width: min(100%, 1000px);
     /* Same reason as the photo: in a column flex container a box like this
        gets squeezed to nothing when the stage is tall. The chart is the
        evidence — it does not give up room. */
@@ -4166,10 +4175,13 @@
 .cc-grid     { stroke: var(--border); stroke-width: 1.5; }
 .cc-axisline { stroke: var(--color-gray-500); stroke-width: 2.5; }
 
+/* Brighter and bigger than a normal axis. Flagged as unreadable: these are
+   read from the back of a classroom, and at gray-500 they were decoration. */
 .cc-axis {
-    fill: var(--color-gray-500);
-    font-size: 22px; font-family: inherit;
+    fill: var(--color-gray-900);
+    font-size: 26px; font-family: inherit; font-weight: 600;
     font-variant-numeric: tabular-nums;
+    opacity: 0.8;
 }
 
 .cc-label {
@@ -4199,7 +4211,7 @@
 
 /* ── Dots: the K–2 pictograph ──────────────────────────────────────── */
 
-.classroom-chart.dots { width: min(92vw, 760px); }
+.classroom-chart.dots { width: min(100%, 760px); }
 
 .cc-rows { display: flex; flex-direction: column; gap: 1.5vmin; }
 
@@ -4363,10 +4375,10 @@
    "what happened over the week", a donut for "what share", a clock for
    "when", horizontal bars for names too long to sit under a column. */
 
-.classroom-chart.hbars { width: min(94vw, 980px); }
-.classroom-chart.line  { width: min(94vw, 980px); }
-.classroom-chart.donut { width: min(94vw, 980px); }
-.classroom-chart.clock { width: min(88vw, 820px); }
+.classroom-chart.hbars { width: min(100%, 980px); }
+.classroom-chart.line  { width: min(100%, 980px); }
+.classroom-chart.donut { width: min(100%, 980px); }
+.classroom-chart.clock { width: min(100%, 820px); }
 
 /* ── Line ─────────────────────────────────────────────────────────── */
 
@@ -4523,3 +4535,17 @@
    The fit-to-screen pass still scales the whole slide down if the result
    does not fit, which is why this can be generous. */
 .classroom-shot.wonder img { max-height: 46vh; }
+
+/* The day a prediction question is about: no bar, because there is no number
+   yet and drawing a zero would be a claim about the future. */
+.cc-pending {
+    fill: none;
+    stroke: var(--color-gray-500);
+    stroke-width: 3;
+    stroke-dasharray: 10 8;
+    opacity: 0.7;
+}
+.cc-pending-q {
+    fill: var(--color-gray-500);
+    font-size: 54px; font-family: inherit; font-weight: 800;
+}

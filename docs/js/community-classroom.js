@@ -422,9 +422,11 @@ const BIRD_WONDERS = [
               + 'every single year.',
                 'It is the longest migration of any animal on Earth.'],
         prompt: 'Roughly how far does an Arctic Tern fly in one year?',
-        answer: '70,000 km', distractors: ['700 km', '7,000 km', '700,000 km'],
-        reveal: 'Around 70,000 km a year - far enough to circle the whole planet '
-              + 'nearly twice. Over its life that is like flying to the Moon and back.',
+        answer: 'About 44,000 miles',
+        distractors: ['About 440 miles', 'About 4,400 miles', 'About 440,000 miles'],
+        reveal: 'About 44,000 miles a year. All the way around the Earth is about '
+              + '25,000, so it laps the planet nearly twice. Over a whole life that '
+              + 'is roughly three round trips to the Moon.',
     },
     {
         id: 'wonder-peregrine', subject: 'science', bands: ['k-2', '3-5', '6-8'],
@@ -433,9 +435,12 @@ const BIRD_WONDERS = [
                 'A Peregrine Falcon hunts by climbing high above its prey and then '
               + 'folding its wings and dropping.'],
         prompt: 'How fast can a Peregrine Falcon go in that dive?',
-        answer: 'Over 320 km/h', distractors: ['About 30 km/h', 'About 80 km/h', 'About 160 km/h'],
-        reveal: 'Over 320 km/h - faster than a Formula 1 car. It has baffles in '
-              + 'its nostrils so the air does not damage its lungs on the way down.',
+        answer: 'Over 200 mph',
+        distractors: ['About 20 mph - a fast bicycle', 'About 50 mph - a car on the highway',
+                      'About 100 mph - a fastball times two'],
+        reveal: 'Over 200 mph. A car on the highway does about 70. It has baffles '
+              + 'in its nostrils so the rushing air does not damage its lungs on '
+              + 'the way down.',
     },
     {
         id: 'wonder-bee-hummingbird', subject: 'science', bands: ['k-2', '3-5'],
@@ -444,9 +449,11 @@ const BIRD_WONDERS = [
               + 'Bee Hummingbird, because people really do mistake it for a bee.',
                 'It builds a nest about the size of a walnut shell.'],
         prompt: 'How long is a Bee Hummingbird from beak to tail?',
-        answer: 'About 5 cm', distractors: ['About 1 cm', 'About 15 cm', 'About 30 cm'],
-        reveal: 'About 5 cm - shorter than your little finger - and it weighs less '
-              + 'than a two-pence coin.',
+        answer: 'About 2 inches',
+        distractors: ['About half an inch', 'About 6 inches - a pencil',
+                      'About 12 inches - a ruler'],
+        reveal: 'About 2 inches, shorter than your thumb, and it weighs less than '
+              + 'a penny.',
     },
     {
         id: 'wonder-emperor-penguin', subject: 'science', bands: ['3-5', '6-8'],
@@ -457,8 +464,8 @@ const BIRD_WONDERS = [
               + 'they can hold their breath.'],
         prompt: 'How long can an Emperor Penguin stay underwater?',
         answer: 'Over 20 minutes', distractors: ['About 30 seconds', 'About 2 minutes', 'About 5 minutes'],
-        reveal: 'Over 20 minutes, and more than 500 metres down. Most people manage '
-              + 'about one minute.',
+        reveal: 'Over 20 minutes, and more than 1,500 feet down - deeper than the '
+              + 'Empire State Building is tall. Most people manage about a minute.',
     },
     {
         id: 'wonder-swift-airborne', subject: 'science', bands: ['6-8'],
@@ -505,9 +512,11 @@ const BIRD_WONDERS = [
                 'It barely flaps. It locks its wings open and rides the wind, and can '
               + 'travel for hours without a single wingbeat.'],
         prompt: 'How wide are a Wandering Albatross’s wings, tip to tip?',
-        answer: 'About 3.5 m', distractors: ['About 1 m', 'About 2 m', 'About 6 m'],
-        reveal: 'About 3.5 metres - wider than a car is long, and wider than almost '
-              + 'any classroom door is tall.',
+        answer: 'About 11 feet',
+        distractors: ['About 3 feet - a yardstick', 'About 6 feet - a tall adult',
+                      'About 20 feet - a school bus'],
+        reveal: 'About 11 feet, tip to tip. Lie two grown-ups end to end and you are '
+              + 'close. It can glide for hours without flapping once.',
     },
     {
         id: 'wonder-pigeon-post', subject: 'history', bands: ['3-5', '6-8'],
@@ -556,9 +565,12 @@ const BIRD_WONDERS = [
                 'The air up there holds so little oxygen that a person would pass out '
               + 'without a tank.'],
         prompt: 'How high have Bar-headed Geese been recorded flying?',
-        answer: 'Over 7,000 m', distractors: ['About 700 m', 'About 2,000 m', 'About 20,000 m'],
-        reveal: 'Over 7,000 metres - up where jets cruise. Their blood takes up '
-              + 'oxygen far more readily than ours does.',
+        answer: 'Over 23,000 feet',
+        distractors: ['About 500 feet - a tall building', 'About 2,000 feet',
+                      'About 100,000 feet'],
+        reveal: 'Over 23,000 feet, near the top of Everest and not far below a '
+              + 'cruising airliner. Their blood takes up oxygen far more readily '
+              + 'than ours does.',
     },
     {
         id: 'wonder-cardinal-female-sings', subject: 'science', bands: ['k-2', '3-5'],
@@ -695,6 +707,24 @@ function cmShortName(species) {
     return (parts[parts.length - 1] || '').toUpperCase();
 }
 
+/**
+ * Wrong answers whose NAME IS THE SAME LENGTH as the right one.
+ *
+ * From a flag on the Caesar cipher: "I knew there were only 4 letters, so I
+ * could easily tell WREN, without actually moving letters." Every puzzle here
+ * shows the answer's length - a jumble, a cipher, a row of blanks - so if
+ * only one option is that long the puzzle is already solved. Prefers same
+ * length, then nearest, so it degrades to the old behaviour rather than
+ * returning nothing when the feeder has only a handful of species.
+ */
+function cmLengthMatchedDistractors(pool, answerLen, rng, count) {
+    const exact = cmShuffle(pool.filter(x => x.short.length === answerLen), rng);
+    const near  = cmShuffle(pool.filter(x => x.short.length !== answerLen), rng)
+        .sort((a, b) => Math.abs(a.short.length - answerLen)
+                      - Math.abs(b.short.length - answerLen));
+    return exact.concat(near).slice(0, count);
+}
+
 // Shuffle until it actually differs from the original — a "jumble" that
 // comes back as the word itself has happened and looks like a bug.
 function cmJumble(word, rng) {
@@ -716,7 +746,27 @@ const PUZZLE_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
  * templates each re-reducing the same few thousand rows is the kind of thing
  * that makes a projector laptop stutter between questions.
  */
-function cmSummarize(feederId, name, rows, isHome) {
+/**
+ * Every day in the window, including the empty ones.
+ *
+ * Teacher feedback: "x axis shows Fri, Sat, then Wed, Thurs - what happened
+ * to Sunday, Monday and Tuesday?" They were missing because the summary was
+ * built from the detections, so a day with no birds produced no row and the
+ * chart simply skipped it. That is not a cosmetic gap: it makes the axis lie
+ * about the passage of time, and it quietly changes the answer to "which day
+ * was quietest", because the quietest day was not on the chart at all.
+ */
+function cmDayKeysEnding(today, count) {
+    const out = [];
+    for (let i = count - 1; i >= 0; i--) {
+        const d = new Date(today);
+        d.setDate(d.getDate() - i);
+        out.push(cmDayKey(d));
+    }
+    return out;
+}
+
+function cmSummarize(feederId, name, rows, isHome, windowDays) {
     const bySpecies = new Map();
     const byDay     = new Map();
     const byHour    = new Array(24).fill(0);
@@ -756,9 +806,10 @@ function cmSummarize(feederId, name, rows, isHome) {
         .map(([species, n]) => ({ species, n }))
         .sort((a, b) => b.n - a.n || a.species.localeCompare(b.species));
 
-    const days = [...byDay.entries()]
-        .map(([day, n]) => ({ day, n }))
-        .sort((a, b) => a.day.localeCompare(b.day));
+    const days = (windowDays
+        ? cmDayKeysEnding(new Date(), windowDays)
+        : [...byDay.keys()].sort((a, b) => a.localeCompare(b))
+      ).map(day => ({ day, n: byDay.get(day) || 0 }));
 
     return {
         feederId, name, isHome,
@@ -919,7 +970,7 @@ function cmPickSource(data) {
 function cmWindow(src, days) {
     const cutoff = Date.now() - days * 86400000;
     const rows = src.rows.filter(r => new Date(r.detected_at).getTime() >= cutoff);
-    return cmSummarize(src.feederId, src.name, rows, src.isHome);
+    return cmSummarize(src.feederId, src.name, rows, src.isHome, days);
 }
 
 // ── The evidence on the board (design notes §2, §3, §11) ───────────
@@ -1049,8 +1100,10 @@ function cmChart(caption, series, opts) {
                           .slice(0, o.maxBars || CHART_MAX_BARS);
     if (trimmed.length < 2) return null;
 
-    const max = Math.max(...trimmed.map(s => s.value));
-    if (max <= 0) return null;
+    // A pending row has no value yet, so it cannot set the scale.
+    const real = trimmed.filter(r => !r.pending);
+    const max = Math.max(...real.map(r => r.value));
+    if (!real.length || max <= 0) return null;
 
     // Dots only where they stay countable: K–2, a week or less, and no row so
     // long that counting it is worse than reading a bar.
@@ -1230,9 +1283,35 @@ function cmNiceStep(max) {
 
 function classroomBarsHtml(chart, revealed) {
     const hasPhotos = chart.series.some(x => x.image);
-    const W = 1000, H = hasPhotos ? 520 : 420;
-    const padL = 70, padR = 20, padT = 30, padB = hasPhotos ? 186 : 86;
-    const plotW = W - padL - padR, plotH = H - padT - padB;
+    const n = chart.series.length;
+
+    // Geometry in dependency order: the photographs decide how much room the
+    // area under the axis needs, so their size has to be known before the
+    // canvas height is. Fixing padB first and sizing the thumbnails
+    // afterwards is what pushed the species names off the bottom edge when
+    // the thumbnails were enlarged.
+    const W = 1000;
+    const padL = 70, padR = 20, padT = 30;
+    const plotW = W - padL - padR;
+    const slot  = plotW / n;
+
+    // Two bars should not sit at opposite ends of the canvas with a chasm
+    // between them - "bars should be closer together" was a flag on the
+    // week-over-week chart, which has exactly two. Below five bars the slot
+    // is capped and the whole group is centred instead of spread.
+    const barW   = Math.min(slot * 0.62, 96);
+    const group  = Math.min(slot, 200);
+    const originX = padL + (plotW - group * n) / 2;
+    const cxOf = i => originX + group * i + group / 2;
+
+    const thumbW = hasPhotos ? Math.max(96, Math.min(group * 0.92, 190)) : 0;
+    const thumbH = Math.round(thumbW / 1.3);
+
+    // Under the axis: the photo, a gap, then up to two lines of label.
+    const labelDrop = hasPhotos ? thumbH + 12 : 0;
+    const padB = 56 + labelDrop + 52;
+    const H = padT + 300 + padB;
+    const plotH = H - padT - padB;
 
     const step = cmNiceStep(chart.max);
     const top = Math.ceil(chart.max / step) * step;
@@ -1246,28 +1325,18 @@ function classroomBarsHtml(chart, revealed) {
              +  `<text x="${padL - 12}" y="${yy + 7}" class="cc-axis" text-anchor="end">${v}</text>`;
     }
 
-    const n = chart.series.length;
-    const slot = plotW / n;
-    const barW = Math.min(slot * 0.62, 96);
-
-    // Room under the axis for a photo, when the series has them. The labels
-    // move down to make space rather than the plot shrinking, because a
-    // shorter plot makes every bar harder to read against the gridlines.
-    const withPhotos = chart.series.some(x => x.image);
+    const withPhotos = hasPhotos;
     // SVG ids are document-global, so a fixed id would let a second chart's
     // clip paths override the first one's.
     const nonce = Math.random().toString(36).slice(2, 8);
-    const thumbW = Math.min(barW * 1.5, 130);
-    const thumbH = Math.round(thumbW / 1.3);        // same shape as .cc-thumb
     // The image box is drawn 19% taller than the visible rect and clipped to
     // it, so the burned-in caption falls off the bottom. A rect this shape
     // with plain "slice" would show the full height of the frame — caption
     // and all — because the source is wider than the box.
     const thumbSrcH = Math.round(thumbH * 1.19);
-    const labelDrop = withPhotos ? thumbH + 12 : 0;
 
     const bars = chart.series.map((s, i) => {
-        const cx = padL + slot * i + slot / 2;
+        const cx = cxOf(i);
         const h = Math.max(1, (s.value / top) * plotH);
         const on = chart.highlight && s.key === chart.highlight;
         // Long species names on a 1000-unit canvas need two lines; days and
@@ -1293,6 +1362,19 @@ function classroomBarsHtml(chart, revealed) {
                       width="${thumbW}" height="${thumbSrcH}"
                       preserveAspectRatio="xMidYMin slice" clip-path="url(#${clipId})"/>`
             : '';
+
+        // The day being predicted: an empty slot rather than a bar, because
+        // there is no number yet and drawing a zero would be a claim.
+        if (s.pending) {
+            return `<rect x="${cx - barW / 2}" y="${padT}" width="${barW}"
+                          height="${plotH}" rx="6" class="cc-pending"/>`
+                 + `<text x="${cx}" y="${padT + plotH / 2 + 18}" class="cc-pending-q"
+                          text-anchor="middle">?</text>`
+                 + thumb
+                 + lines.map((ln, k) =>
+                     `<text x="${cx}" y="${H - padB + 28 + labelDrop + k * 26}" class="cc-label"
+                            text-anchor="middle">${esc(ln)}</text>`).join('');
+        }
 
         return `<rect x="${cx - barW / 2}" y="${y(s.value)}" width="${barW}" height="${h}"
                       rx="6" class="cc-bar${on ? ' on' : ''}" fill="${s.color}"/>`
@@ -2051,10 +2133,17 @@ const CLASSROOM_TEMPLATES = [
             choices: opts.map(l => ({ label: l })),
             correct_index: null,            // not knowable yet
             explain: 'We will check this at the start of the next class.',
-            // The run-up, with today marked. A prediction with the trend in
-            // front of them is a reasoned guess; without it, it is a coin.
+            // The run-up, with today marked AND tomorrow drawn as an empty
+            // slot. A prediction chart that stops at today asks the class to
+            // imagine the thing they are predicting; showing it as a dashed
+            // box with a question mark puts it on the axis where it belongs,
+            // and makes plain that the answer does not exist yet.
             chart: cmChart(`Visits each day at ${feeder}`,
-                           cmDaySeries(s), { band, highlight: todayKey }),
+                           cmDaySeries(s).concat([{
+                               label: cmDayAxisLabel(tomorrowKey),
+                               value: 0, key: tomorrowKey, pending: true,
+                           }]),
+                           { band, highlight: todayKey, ordered: true, kind: 'bars' }),
             pending_check: {
                 kind: 'visits_on_day',
                 feeder_id: source.feederId,
@@ -2095,11 +2184,14 @@ const CLASSROOM_TEMPLATES = [
         const opts = cmShuffle(buckets, rng);
 
         return {
-            prompt: `${feeder} averages about ${Math.round(perDay)} visits a day. `
-                  + 'How many visits will it get over the next 7 days?',
+            prompt: `${feeder} has averaged about ${Math.round(perDay)} visits a day `
+                  + 'this week. If that average holds, how many visits will it get '
+                  + 'over the NEXT 7 days?',
             choices: opts.map(b => ({ label: b.label })),
             correct_index: null,
-            explain: 'We will count the real total when the week is up.',
+            explain: `If the average held exactly, it would be about ${est}. `
+                   + 'Write down what the class picked - we will count the real '
+                   + 'total in 7 days and see who was closest.',
             chart: cmChart(`Visits each day at ${feeder}`, cmDaySeries(s), { band }),
             pending_check: {
                 kind: 'visits_window',
@@ -2863,8 +2955,10 @@ const CLASSROOM_TEMPLATES = [
         if (!jumbled) return null;
 
         const built = cmChoices(pick.species,
-            cmShuffle(s.species.map(x => x.species).filter(sp => sp !== pick.species), rng)
-                .slice(0, band === 'k-2' ? 2 : 3), rng);
+            cmLengthMatchedDistractors(
+                s.species.map(x => ({ species: x.species, short: cmShortName(x.species) }))
+                         .filter(x => x.species !== pick.species),
+                pick.short.length, rng, band === 'k-2' ? 2 : 3).map(x => x.species), rng);
         if (!built) return null;
         return {
             prompt: `Which bird is this? ${jumbled.split('').join(' ')}`,
@@ -2899,8 +2993,8 @@ const CLASSROOM_TEMPLATES = [
         const masked = letters.map((ch, i) => (hidden.has(i) ? '_' : ch)).join(' ');
 
         const built = cmChoices(pick.species,
-            cmShuffle(pool.filter(x => x.species !== pick.species), rng)
-                .slice(0, 3).map(x => x.species), rng);
+            cmLengthMatchedDistractors(pool.filter(x => x.species !== pick.species),
+                                       pick.short.length, rng, 3).map(x => x.species), rng);
         if (!built) return null;
         return {
             prompt: `Which bird fits? ${masked}  (${pick.short.length} letters)`,
@@ -2969,8 +3063,8 @@ const CLASSROOM_TEMPLATES = [
             .map(ch => PUZZLE_ALPHABET.indexOf(ch) + 1).join(' - ');
 
         const built = cmChoices(pick.species,
-            cmShuffle(pool.filter(x => x.species !== pick.species), rng)
-                .slice(0, 3).map(x => x.species), rng);
+            cmLengthMatchedDistractors(pool.filter(x => x.species !== pick.species),
+                                       pick.short.length, rng, 3).map(x => x.species), rng);
         if (!built) return null;
         return {
             prompt: `If A=1 and Z=26, which bird is this? ${code}`,
@@ -2999,8 +3093,8 @@ const CLASSROOM_TEMPLATES = [
         }).join('');
 
         const built = cmChoices(pick.species,
-            cmShuffle(pool.filter(x => x.species !== pick.species), rng)
-                .slice(0, 3).map(x => x.species), rng);
+            cmLengthMatchedDistractors(pool.filter(x => x.species !== pick.species),
+                                       pick.short.length, rng, 3).map(x => x.species), rng);
         if (!built) return null;
         return {
             prompt: `Every letter has been moved ${shift} forward in the alphabet. `
@@ -3373,6 +3467,25 @@ function buildClassroomQuestions(room, data, opts) {
             q = null;
         }
         if (!q || !q.choices || q.choices.length < 2) continue;
+
+        // Show the values on the chart unless they ARE the answer.
+        //
+        // Three separate flags said the same thing: "each bar should have the
+        // total on top", "vertical axis values need to be added", "charts
+        // need to be easy to see values". The original rule - hide until the
+        // reveal, so reading the chart is the exercise - is right for exactly
+        // one case and wrong everywhere else. Asking a class to estimate a
+        // bar against a gridline turns a question about birds into a question
+        // about eyesight, and when two days are close it has no answer at all.
+        //
+        // So the numbers go on, except where a choice IS one of the plotted
+        // values, which is the case where printing them answers the question.
+        if (q.chart && !q.chart.showValues) {
+            const plotted = new Set(q.chart.series.map(r => String(r.value)));
+            const givesItAway = (q.choices || []).some(c =>
+                (String(c.label).match(/\d+/g) || []).some(num => plotted.has(num)));
+            if (!givesItAway) q.chart.showValues = true;
+        }
 
         out.push({
             template_id: t.id,
