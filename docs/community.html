@@ -13,7 +13,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="BirdWatchAI">
-    <link rel="stylesheet" href="css/community.css?v=1f63eebe">
+    <link rel="stylesheet" href="css/community.css?v=dd1df756">
 </head>
 <body>
 <!-- Top navbar with auth controls -->
@@ -895,6 +895,10 @@
             <!-- Owner/moderator only, shown from refreshClassroomPanel. A
                  teacher files feedback; reading the pile and deciding what to
                  do about it belongs to whoever runs the community. -->
+            <!-- Any teacher. The people running lessons see what the question
+                 set is missing long before whoever writes templates does. -->
+            <button type="button" class="classroom-btn"
+                    onclick="openClassroomSuggest()">💡 Suggest a question</button>
             <button type="button" id="classroom-feedback-btn" style="display:none;"
                     class="classroom-btn" onclick="showClassroomFeedback()">💬 Question feedback</button>
 
@@ -1096,7 +1100,7 @@
 <!-- Classroom mode (phase 1): classrooms, teacher-led sessions, question
      templates. Loads after community-communities.js because it reads
      myCommunities and hasAuthSession from it. -->
-<script src="js/community-classroom.js?v=d696a806"></script>
+<script src="js/community-classroom.js?v=3dab36db"></script>
 <!-- Interactive chart runtime: crosshair tooltips on the trend chart, per-species hover rows on
      the Activity / Calendar / Rarity Mix charts. No-op until a [data-bw-chart] element appears. -->
 <script src="js/community-charts.js?v=2b12e881"></script>

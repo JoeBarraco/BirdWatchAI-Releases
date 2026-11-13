@@ -19,6 +19,13 @@
 -- from different data, and "the counting one was unclear" is not enough
 -- to act on a week later.
 --
+-- It also carries teachers' SUGGESTIONS for new questions, in the same
+-- table and the same list. A flag says "this one reads badly"; a
+-- suggestion says "ask them this instead". They arrive from the same
+-- people, get read in the same sitting and turn into the same kind of
+-- work, so splitting them across two tables would only mean two lists
+-- to remember to check.
+--
 -- SAFE TO RE-RUN.
 -- ============================================================
 
@@ -42,9 +49,14 @@ create table if not exists classroom_question_feedback (
   -- the feedback, and losing the note with it would be the wrong trade.
   classroom_id  uuid references classrooms(id) on delete set null,
 
-  -- What produced it. template_id is the actionable part — it points at
-  -- the code to change.
-  template_id   text not null,
+  -- 'flag'       — something is wrong with a generated question
+  -- 'suggestion'  — a question a teacher would like to exist
+  kind          text not null default 'flag'
+                  check (kind in ('flag', 'suggestion')),
+
+  -- What produced it. For a flag this points at the code to change; a
+  -- suggestion has no template yet, which is the point of it.
+  template_id   text not null default 'suggestion',
   category      text,
   grade_band    text,
 
@@ -56,9 +68,10 @@ create table if not exists classroom_question_feedback (
   chart_kind    text,
   source_feeder_id uuid,
 
+  -- 'idea' is the reason a suggestion carries; the rest belong to flags.
   reason        text not null
                   check (reason in ('unclear', 'wrong', 'too_easy',
-                                    'too_hard', 'bad_visual', 'other')),
+                                    'too_hard', 'bad_visual', 'other', 'idea')),
   comment       text,
 
   created_by    uuid not null,
@@ -163,6 +176,68 @@ $$;
 
 
 -- ────────────────────────────────────────────────────────────────────
+-- 3b. Suggesting a question
+--
+-- Any teacher. The whole value is that the people running lessons see
+-- what the questions are missing long before anyone writing templates
+-- does, and the cost of a bad suggestion is one line in a list somebody
+-- skims.
+--
+-- The idea goes in `prompt` — the same column a flag uses for the
+-- question it is complaining about — so one list renders both without
+-- a branch. grade_band and category are optional hints, not a
+-- classification the teacher has to get right.
+-- ────────────────────────────────────────────────────────────────────
+
+create or replace function classroom_suggest_question(
+  p_community_id uuid,
+  p_idea         text,
+  p_grade_band   text default null,
+  p_category     text default null,
+  p_classroom_id uuid default null
+)
+returns json
+language plpgsql security definer
+set search_path = public
+as $$
+declare
+  fb classroom_question_feedback%rowtype;
+begin
+  perform community_require_role(p_community_id, auth.uid(),
+                                 array['owner', 'moderator', 'teacher']);
+
+  if coalesce(trim(p_idea), '') = '' then
+    raise exception 'Describe the question you would like';
+  end if;
+  if length(p_idea) > 2000 then
+    raise exception 'That is too long (2000 characters max)';
+  end if;
+  if p_grade_band is not null and p_grade_band not in ('k-2', '3-5', '6-8') then
+    raise exception 'Unknown grade band: %', p_grade_band;
+  end if;
+
+  if p_classroom_id is not null and not exists (
+    select 1 from classrooms
+     where id = p_classroom_id and community_id = p_community_id
+  ) then
+    raise exception 'That classroom is not in this community';
+  end if;
+
+  insert into classroom_question_feedback (
+    community_id, classroom_id, kind, template_id,
+    category, grade_band, prompt, reason, created_by)
+  values (
+    p_community_id, p_classroom_id, 'suggestion', 'suggestion',
+    nullif(trim(coalesce(p_category, '')), ''),
+    p_grade_band, trim(p_idea), 'idea', auth.uid())
+  returning * into fb;
+
+  return row_to_json(fb);
+end;
+$$;
+
+
+-- ────────────────────────────────────────────────────────────────────
 -- 4. Reading it back
 --
 -- Owner and moderator only. A teacher files feedback; deciding what to
@@ -195,7 +270,7 @@ begin
   from (
     select f.id, f.template_id, f.category, f.grade_band, f.prompt,
            f.choices, f.correct_index, f.explain, f.chart_kind,
-           f.reason, f.comment, f.created_at, f.resolved_at, f.resolved_note,
+           f.kind, f.reason, f.comment, f.created_at, f.resolved_at, f.resolved_note,
            coalesce(nullif(p.display_name, ''), u.email, 'Someone') as by_label,
            c.name as classroom_name
     from classroom_question_feedback f
@@ -261,6 +336,7 @@ declare
 begin
   foreach f in array array[
     'classroom_flag_question(uuid, jsonb, text, text, uuid)',
+    'classroom_suggest_question(uuid, text, text, text, uuid)',
     'classroom_feedback_list(uuid, boolean, integer)',
     'classroom_feedback_resolve(uuid, text)'
   ]

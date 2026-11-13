@@ -331,6 +331,48 @@ const SPECIES_FACTS = {
     },
 };
 
+// ── What each bird looks like (design notes §2, the K–2 line) ──────
+//
+// "Colour/shape matching to identify birds" is the first thing the notes ask
+// for at K–2, and it is the one thing the detection data cannot supply: the
+// model reports a species and a time, never a colour. So this is a small
+// hand-written table about the birds themselves.
+//
+// `color` is the ONE colour a five-year-old would say if asked, not an
+// ornithologically complete description — a Blue Jay is blue even though it
+// is also white, black and grey. Questions below only ever ask about a colour
+// exactly one of the offered birds has, so "which is blue?" never has two
+// defensible answers.
+//
+// `female` is set where the sexes differ enough that a class will notice and
+// ask, which is most of the feeder regulars and a good discussion either way.
+//
+// Only species the feeders actually see, matching SPECIES_FACTS. A bird with
+// no entry here simply never appears in a colour question.
+const SPECIES_LOOKS = {
+    'Northern Cardinal':      { color: 'red',             female: 'soft brown with a little red', feature: 'a pointy crest on its head' },
+    'Carolina Chickadee':     { color: 'black and white', feature: 'a black cap and a black bib' },
+    'Black-capped Chickadee': { color: 'black and white', feature: 'a black cap and a black bib' },
+    'Tufted Titmouse':        { color: 'grey',            feature: 'a little grey crest' },
+    'Carolina Wren':          { color: 'brown',           feature: 'a white stripe over its eye and a tail that points up' },
+    'House Finch':            { color: 'red',             female: 'streaky brown', feature: 'a red head and chest' },
+    'American Goldfinch':     { color: 'yellow',          feature: 'black wings with white bars' },
+    'Blue Jay':               { color: 'blue',            feature: 'a blue crest and a black necklace' },
+    'Mourning Dove':          { color: 'grey',            feature: 'a long pointed tail' },
+    'Downy Woodpecker':       { color: 'black and white', female: 'the same, but with no red patch', feature: 'a chisel beak for tapping wood' },
+    'Red-bellied Woodpecker': { color: 'black and white', feature: 'a red cap and zebra stripes on its back' },
+    'White-breasted Nuthatch':{ color: 'grey',            feature: 'walking DOWN the tree head first' },
+    'House Sparrow':          { color: 'brown',           feature: 'a grey cap and a black bib' },
+    'European Starling':      { color: 'black',           feature: 'shiny feathers with little white spots' },
+    'American Robin':         { color: 'orange',          feature: 'an orange tummy' },
+    'Dark-eyed Junco':        { color: 'grey',            feature: 'grey on top and white underneath' },
+    'Northern Mockingbird':   { color: 'grey',            feature: 'white flashes in its wings when it flies' },
+};
+
+function speciesLook(species) {
+    return SPECIES_LOOKS[species] || null;
+}
+
 // Distractor pool for identification when the feeder has only seen one or two
 // species — a 3-choice question needs three plausible birds whether or not
 // they have all visited.
@@ -1051,7 +1093,11 @@ const CLASSROOM_TEMPLATES = [
             prompt: band === 'k-2'
                 ? 'Which day did the most birds come?'
                 : `Which day was busiest at ${feeder} this week?`,
-            choices: opts.map(d => ({ label: cmDayLabel(d.day, true) })),
+            // Same label the chart uses. They were "Sunday, Nov 8" and
+            // "yesterday" while the bars beside them said "Sun 8", so a class
+            // reading the chart then looking for that bar in the options
+            // found neither of them written the same way.
+            choices: opts.map(d => ({ label: cmDayAxisLabel(d.day) })),
             correct_index: opts.findIndex(d => d.day === sorted[0].day),
             // Every day, in order, unmarked: finding the tallest is the work.
             chart: cmChart(`Visits each day at ${feeder}`, cmDaySeries(s), { band }),
@@ -1776,6 +1822,277 @@ const CLASSROOM_TEMPLATES = [
         };
     },
 },
+
+// ── Colour and shape, for K–2 ────────────────────────────────────
+//
+// These ask about the birds rather than about the numbers, which is the
+// point: a five-year-old who cannot yet read a bar chart can absolutely tell
+// you which bird is red. They are still grounded in this feeder — every bird
+// offered is one that actually came this week.
+
+{
+    id: 'which-bird-is-color',
+    category: 'identification',
+    title: 'Which bird is this colour?',
+    bands: ['k-2'],
+    build({ s, band, rng }) {
+        // Only a colour exactly ONE of the birds on offer has, or the
+        // question has two right answers and the class is right to argue.
+        const known = s.species
+            .map(x => ({ species: x.species, look: speciesLook(x.species) }))
+            .filter(x => x.look);
+        if (known.length < 3) return null;
+
+        const byColor = new Map();
+        known.forEach(k => {
+            if (!byColor.has(k.look.color)) byColor.set(k.look.color, []);
+            byColor.get(k.look.color).push(k.species);
+        });
+        const unique = [...byColor.entries()].filter(([, list]) => list.length === 1);
+        if (!unique.length) return null;
+
+        const [color, [answer]] = cmShuffle(unique, rng)[0];
+        const others = known.filter(k => k.look.color !== color).map(k => k.species);
+        if (others.length < 2) return null;
+
+        const built = cmChoices(answer, cmShuffle(others, rng).slice(0, 2), rng);
+        if (!built) return null;
+        return {
+            prompt: `Which of these birds is ${color}?`,
+            ...built,
+            chart: cmChart('Birds that came this week', cmSpeciesSeries(s), { band }),
+            explain: `The ${answer} is ${color}. `
+                   + `Look for ${speciesLook(answer).feature}.`,
+            fact: speciesFact(answer, band),
+        };
+    },
+},
+
+{
+    id: 'what-color-is',
+    category: 'identification',
+    title: 'What colour is it?',
+    bands: ['k-2'],
+    build({ s, band, rng }) {
+        const known = s.species.map(x => x.species).filter(sp => speciesLook(sp));
+        if (!known.length) return null;
+
+        const species = cmShuffle(known, rng)[0];
+        const look = speciesLook(species);
+        const others = [...new Set(Object.values(SPECIES_LOOKS).map(l => l.color))]
+            .filter(c => c !== look.color);
+        const built = cmChoices(look.color, cmShuffle(others, rng).slice(0, 2), rng);
+        if (!built) return null;
+        return {
+            prompt: `What colour is a ${species}?`,
+            ...built,
+            // No chart: this one is about the bird, not the data, and a chart
+            // of visit counts beside it would only suggest the answer is in
+            // there somewhere.
+            explain: look.female
+                ? `${look.color} — though the female is ${look.female}.`
+                : `${look.color}. Look for ${look.feature}.`,
+            fact: speciesFact(species, band),
+        };
+    },
+},
+
+{
+    id: 'spot-the-feature',
+    category: 'identification',
+    title: 'Which bird has this?',
+    bands: ['k-2'],
+    build({ s, band, rng }) {
+        // The "shape" half of colour/shape matching. Features are written so
+        // that only one bird on offer could have each.
+        const known = s.species.map(x => x.species).filter(sp => speciesLook(sp));
+        if (known.length < 3) return null;
+
+        const answer = cmShuffle(known, rng)[0];
+        const look = speciesLook(answer);
+        if (!look.feature) return null;
+        const others = known.filter(sp => sp !== answer);
+        const built = cmChoices(answer, cmShuffle(others, rng).slice(0, 2), rng);
+        if (!built) return null;
+        return {
+            prompt: `Which bird has ${look.feature}?`,
+            ...built,
+            explain: `The ${answer}. ${speciesFact(answer, band) || ''}`.trim(),
+        };
+    },
+},
+
+{
+    id: 'came-today',
+    category: 'counting',
+    title: 'Which bird came today?',
+    bands: ['k-2'],
+    build({ s, band, rng }) {
+        // Straight from the notes: "Which bird came today?" as a picture
+        // choice. Today only, so it is about what is happening now rather
+        // than about a week of history.
+        const todayKey = cmDayKey(new Date());
+        const today = s.daySpec.get(todayKey);
+        if (!today || !today.size) return null;
+
+        const seenToday = [...today.keys()];
+        const notToday = s.species.map(x => x.species).filter(sp => !today.has(sp));
+        if (!seenToday.length || notToday.length < 2) return null;
+
+        const answer = cmShuffle(seenToday, rng)[0];
+        const built = cmChoices(answer, cmShuffle(notToday, rng).slice(0, 2), rng);
+        if (!built) return null;
+        return {
+            prompt: 'Which of these birds came to the feeder TODAY?',
+            ...built,
+            explain: `${answer} came ${today.get(answer)} time(s) today. `
+                   + `The others came earlier in the week, but not today.`,
+            fact: speciesFact(answer, band),
+        };
+    },
+},
+
+{
+    id: 'species-on-day',
+    category: 'comparison',
+    title: 'Most common on one day',
+    bands: ['3-5'],
+    build({ s, band, rng }) {
+        // Slices the week by day rather than summing it — a different cut of
+        // the same data from every other species question.
+        const busiest = s.days.slice().sort((a, b) => b.n - a.n)[0];
+        if (!busiest || busiest.n < 6) return null;
+        const onDay = s.daySpec.get(busiest.day);
+        if (!onDay || onDay.size < 3) return null;
+
+        const ranked = [...onDay.entries()].sort((a, b) => b[1] - a[1]);
+        if (ranked[0][1] === ranked[1][1]) return null;
+
+        const built = cmChoices(ranked[0][0], ranked.slice(1, 4).map(r => r[0]), rng);
+        if (!built) return null;
+        return {
+            prompt: `Which bird came most often on ${cmDayAxisLabel(busiest.day)}?`,
+            ...built,
+            chart: cmChart(`Visits on ${cmDayAxisLabel(busiest.day)}, by species`,
+                           ranked.map(([sp, n]) => ({ label: sp, value: n, key: sp,
+                                                      image: cmSpeciesPhoto(s, sp) })),
+                           { band }),
+            explain: ranked.slice(0, 3).map(([sp, n]) => `${sp}: ${n}`).join(' · '),
+        };
+    },
+},
+
+{
+    id: 'above-average-days',
+    category: 'math',
+    title: 'Days above the average',
+    bands: ['3-5'],
+    build({ s, band, rng }) {
+        // Work out the mean, then compare every bar against it. Two steps
+        // rather than one, which is the step up from "what is the average".
+        if (s.days.length < 5 || s.total < 15) return null;
+        const mean = s.total / s.days.length;
+        const above = s.days.filter(d => d.n > mean).length;
+        if (above === 0 || above === s.days.length) return null;
+
+        const built = cmChoices(String(above),
+            cmNumberDistractors(above, rng, 3)
+                .filter(v => v >= 0 && v <= s.days.length).map(String), rng);
+        if (!built) return null;
+        return {
+            prompt: 'On how many days were there MORE visits than the weekly average?',
+            ...built,
+            chart: cmChart('Visits each day this week', cmDaySeries(s), { band }),
+            explain: `The average is ${s.total} ÷ ${s.days.length} ≈ ${mean.toFixed(1)}. `
+                   + `${above} day(s) are above it.`,
+        };
+    },
+},
+
+{
+    id: 'compare-two-hours',
+    category: 'time',
+    title: 'Which hour was busier?',
+    bands: ['3-5'],
+    build({ s, band, rng }) {
+        const active = s.byHour.map((n, h) => ({ h, n })).filter(x => x.n > 0);
+        if (active.length < 4 || s.total < 12) return null;
+        const pair = cmShuffle(active, rng).slice(0, 2).sort((a, b) => a.h - b.h);
+        if (pair[0].n === pair[1].n) return null;
+
+        const answer = pair[0].n > pair[1].n ? pair[0] : pair[1];
+        const opts = pair.map(x => cmHourLabel(x.h));
+        return {
+            prompt: `Were there more visits at ${opts[0]} or at ${opts[1]}?`,
+            choices: opts.map(l => ({ label: l })),
+            correct_index: opts.indexOf(cmHourLabel(answer.h)),
+            chart: cmChart('Visits by hour this week',
+                           s.byHour.map((n, h) => ({ label: cmHourLabel(h), value: n, key: h }))
+                                   .filter(x => x.value > 0), { band, maxBars: 14 }),
+            explain: `${opts[0]}: ${pair[0].n} · ${opts[1]}: ${pair[1].n}.`,
+        };
+    },
+},
+
+{
+    id: 'mean-vs-median',
+    category: 'math',
+    title: 'Mean against median',
+    bands: ['6-8'],
+    build({ s, band, rng }) {
+        // Not "what is the median" — that already exists — but what the gap
+        // between them SAYS about the shape of the week.
+        if (s.days.length < 5) return null;
+        const vals = s.days.map(d => d.n).sort((a, b) => a - b);
+        const mid = Math.floor(vals.length / 2);
+        const median = vals.length % 2 ? vals[mid] : (vals[mid - 1] + vals[mid]) / 2;
+        const mean = s.total / s.days.length;
+        if (Math.abs(mean - median) < 0.75) return null;
+
+        const answer = mean > median ? 'The mean is higher' : 'The median is higher';
+        const opts = cmShuffle(['The mean is higher', 'The median is higher',
+                                'They are the same'], rng);
+        return {
+            prompt: 'Is the mean or the median of this week\u2019s daily visits higher?',
+            choices: opts.map(l => ({ label: l })),
+            correct_index: opts.indexOf(answer),
+            chart: cmChart('Visits each day this week', cmDaySeries(s), { band }),
+            explain: `Mean ${mean.toFixed(1)}, median ${median}. `
+                   + (mean > median
+                      ? 'A few busy days pull the mean up above the typical day.'
+                      : 'A few very quiet days drag the mean below the typical day.'),
+        };
+    },
+},
+
+{
+    id: 'percent-of-days',
+    category: 'math',
+    title: 'How often does it turn up?',
+    bands: ['6-8'],
+    build({ s, band, rng }) {
+        if (s.days.length < 5 || !s.species.length) return null;
+        const top = s.species[0];
+        const daysSeen = s.days.filter(d => (s.daySpec.get(d.day) || new Map()).has(top.species)).length;
+        if (daysSeen === 0 || daysSeen === s.days.length) return null;
+
+        const pct = Math.round((daysSeen / s.days.length) * 100);
+        const built = cmChoices(`${pct}%`,
+            cmNumberDistractors(pct, rng, 4).filter(v => v > 0 && v <= 100)
+                .slice(0, 3).map(v => `${v}%`), rng);
+        if (!built) return null;
+        return {
+            prompt: `On what percent of days this week did at least one ${top.species} appear?`,
+            ...built,
+            chart: cmChart(`Days ${top.species} appeared`,
+                           s.days.map(d => ({ label: cmDayAxisLabel(d.day),
+                                              value: (s.daySpec.get(d.day) || new Map()).get(top.species) || 0,
+                                              key: d.day })), { band }),
+            explain: `${daysSeen} of ${s.days.length} days = ${pct}%. `
+                   + 'Note this is days, not visits — a bird that came nine times in one day still counts once.',
+        };
+    },
+},
 ];
 
 /**
@@ -2173,6 +2490,97 @@ function hideClassroomReview() {
     classroomReviewQuestions = [];
 }
 
+/**
+ * A teacher proposing a question that does not exist yet.
+ *
+ * Separate from flagging, because they are different acts: a flag says "this
+ * one reads badly", a suggestion says "ask them this instead". The people
+ * running lessons see what the question set is missing long before anyone
+ * writing templates does, and the cost of a bad suggestion is one line in a
+ * list somebody skims.
+ *
+ * Open to teachers, not just moderators. Gating the idea box to the people
+ * who already decide what gets built would defeat the point of having one.
+ */
+function openClassroomSuggest() {
+    const box = document.getElementById('classroom-review');
+    if (!box) return;
+    hideClassroomHistory();
+    box.style.display = '';
+
+    const rooms = classroomList.map(r =>
+        `<option value="${esc(r.id)}">${esc(r.name)}</option>`).join('');
+
+    box.innerHTML = `
+        <h4 class="classroom-h">Suggest a question</h4>
+        <p class="classroom-muted">
+            What would you like to be able to ask? Plain words are fine — it does
+            not have to be worded as a finished question, and it does not have to
+            be something the feeder data can obviously answer. Someone will read
+            every one of these.
+        </p>
+        <textarea id="classroom-suggest-idea" rows="4" maxlength="2000"
+                  placeholder="e.g. Something about which birds come when it rains. Or: the class wants to compare this month with last month."></textarea>
+        <div class="classroom-form-row">
+            <label>Which band is it for?
+                <select id="classroom-suggest-band">
+                    <option value="">Not sure / any</option>
+                    <option value="k-2">K–2</option>
+                    <option value="3-5">Grades 3–5</option>
+                    <option value="6-8">Grades 6–8</option>
+                </select>
+            </label>
+            <label>Which class prompted it?
+                <select id="classroom-suggest-room">
+                    <option value="">Not about one class</option>
+                    ${rooms}
+                </select>
+            </label>
+        </div>
+        <div class="classroom-form-actions">
+            <button class="classroom-btn-primary" onclick="sendClassroomSuggestion()">Send suggestion</button>
+            <button class="classroom-btn" onclick="hideClassroomReview()">Cancel</button>
+        </div>
+        <div class="classroom-status" id="classroom-suggest-status"></div>`;
+    document.getElementById('classroom-suggest-idea').focus();
+}
+
+async function sendClassroomSuggestion() {
+    const idea   = document.getElementById('classroom-suggest-idea').value.trim();
+    const band   = document.getElementById('classroom-suggest-band').value;
+    const room   = document.getElementById('classroom-suggest-room').value;
+    const status = document.getElementById('classroom-suggest-status');
+
+    if (!idea) {
+        status.style.color = '#e74c3c';
+        status.textContent = 'Describe the question you would like.';
+        return;
+    }
+    status.style.color = 'var(--color-gray-500)';
+    status.textContent = 'Sending…';
+
+    const { error } = await sbRpc('classroom_suggest_question', {
+        p_community_id: classroomCommunityId,
+        p_idea:         idea,
+        p_grade_band:   band || null,
+        p_classroom_id: room || null,
+    }, true);
+
+    if (error) {
+        status.style.color = '#e74c3c';
+        status.textContent = error.message || 'Could not send that.';
+        return;
+    }
+    document.getElementById('classroom-review').innerHTML = `
+        <h4 class="classroom-h">Thanks</h4>
+        <p class="classroom-muted">Your suggestion is on the list. If it turns into a
+           question you will meet it in a lesson.</p>
+        <div class="classroom-form-actions">
+            <button class="classroom-btn" onclick="openClassroomSuggest()">Suggest another</button>
+            <button class="classroom-btn" onclick="hideClassroomReview()">Close</button>
+        </div>`;
+}
+
 // ── Reading the feedback back ────────────────────────────────────
 //
 // Owner and moderator only, matching the RPC. The counts by template come
@@ -2215,8 +2623,10 @@ async function showClassroomFeedback() {
         ${items.map(f => `
             <div class="classroom-review-q">
                 <div class="classroom-review-head">
-                    <span class="classroom-pill">${esc(REASONS[f.reason] || f.reason)}</span>
-                    <code class="classroom-review-tid">${esc(f.template_id)}</code>
+                    <span class="classroom-pill${f.kind === 'suggestion' ? ' partner' : ''}">${
+                        f.kind === 'suggestion' ? 'suggestion' : esc(REASONS[f.reason] || f.reason)}</span>
+                    ${f.kind === 'suggestion' ? ''
+                        : `<code class="classroom-review-tid">${esc(f.template_id)}</code>`}
                     <span class="classroom-muted">${esc(f.grade_band || '')}
                         ${f.classroom_name ? '· ' + esc(f.classroom_name) : ''}
                         · ${esc(f.by_label)}</span>

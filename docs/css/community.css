@@ -3675,6 +3675,17 @@
 }
 .classroom-form input[type="text"] { width: 100%; margin-bottom: 0.5rem; }
 
+/* The suggestion box lives in the review panel rather than the form, and
+   a textarea defaults to roughly 20 characters wide — which makes a box
+   asking for a paragraph look like it wants three words. */
+#classroom-review textarea,
+.classroom-flag-form textarea {
+    width: 100%; margin-bottom: 0.5rem; box-sizing: border-box;
+    font-family: inherit; font-size: 0.85rem; line-height: 1.5;
+    padding: 0.5rem;
+}
+#classroom-review .classroom-form-row { margin-bottom: 0.5rem; }
+
 .classroom-form-row { display: grid; gap: 0.5rem; margin-bottom: 0.5rem; }
 /* Two fields for a teacher, three for a moderator (who also gets the
    "Taught by" picker), so the track count is not hardcoded. */
