@@ -13,7 +13,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="BirdWatchAI">
-    <link rel="stylesheet" href="css/community.css?v=2d3242f5">
+    <link rel="stylesheet" href="css/community.css?v=bc1a283b">
 </head>
 <body>
 <!-- Top navbar with auth controls -->
@@ -892,37 +892,45 @@
             <select id="classroom-community-select" onchange="onClassroomCommunityChange()"
                     style="width:100%;margin-bottom:0.75rem;"></select>
 
-            <!-- Between lessons.
-                 Reviewing next week's questions and reading last week's
-                 results are not things you do while starting a class, and
-                 giving each classroom its own copy of both meant scrolling
-                 the whole list to reach the one you wanted. They pick a class
-                 here instead. Feedback is owner/moderator only, shown from
-                 refreshClassroomPanel: a teacher files it, but reading the
-                 pile and deciding what to do about it belongs to whoever runs
-                 the community. -->
-            <div class="classroom-toolbar">
-                <!-- Acts on the class named here. -->
-                <div class="classroom-toolbar-row">
-                    <select id="classroom-pick" aria-label="Which class"></select>
-                    <button type="button" class="classroom-btn"
-                            onclick="reviewClassroomQuestions(classroomPicked())">🔍 Review</button>
-                    <button type="button" class="classroom-btn"
-                            onclick="showClassroomHistory(classroomPicked())">📊 Results</button>
+            <!-- Two panes: WHICH class on the left, WHAT TO DO WITH IT on
+                 the right.
+                 This used to be one column that did everything at once — a
+                 community select, a second class dropdown, a list of cards
+                 each carrying its own start buttons, a hidden ⋯ menu, and the
+                 new-classroom form underneath. Choosing a class was possible
+                 in two different places, and the thing you came to do (start
+                 the lesson that begins in a minute) was somewhere in the
+                 middle of it.
+                 Now there is one way to choose a class — click it on the left
+                 — and everything that acts on the chosen one is on the right,
+                 grouped by when you would do it: starting a lesson, between
+                 lessons, and settings you touch a few times a year. -->
+            <div class="classroom-panes">
+                <div class="classroom-pane-left">
+                    <div class="classroom-pane-title">Classes</div>
+                    <div id="classroom-list"></div>
+                    <button type="button" class="classroom-btn classroom-new-btn"
+                            onclick="newClassroom()">+ New class</button>
                 </div>
-                <!-- Acts on the whole question set, not on one class. -->
-                <div class="classroom-toolbar-row">
-                    <button type="button" class="classroom-btn"
-                            onclick="openClassroomSuggest()">💡 Suggest a question</button>
-                    <button type="button" id="classroom-feedback-btn" style="display:none;"
-                            class="classroom-btn" onclick="showClassroomFeedback()">💬 Question feedback</button>
+
+                <div class="classroom-pane-right">
+                    <div id="classroom-actions"></div>
+                    <div id="classroom-review" class="classroom-history" style="display:none;"></div>
+                    <div id="classroom-history" class="classroom-history" style="display:none;"></div>
+                    <div id="classroom-form" class="classroom-form"></div>
                 </div>
             </div>
 
-            <div id="classroom-list"></div>
-            <div id="classroom-review" class="classroom-history" style="display:none;"></div>
-            <div id="classroom-history" class="classroom-history" style="display:none;"></div>
-            <div id="classroom-form" class="classroom-form"></div>
+            <!-- Acts on the whole question set, not on one class. Feedback is
+                 owner/moderator only, shown from refreshClassroomPanel: a
+                 teacher files it, but reading the pile and deciding what to
+                 do about it belongs to whoever runs the community. -->
+            <div class="classroom-toolbar-row classroom-panel-foot">
+                <button type="button" class="classroom-btn"
+                        onclick="openClassroomSuggest()">💡 Suggest a question</button>
+                <button type="button" id="classroom-feedback-btn" style="display:none;"
+                        class="classroom-btn" onclick="showClassroomFeedback()">💬 Question feedback</button>
+            </div>
         </div>
 
         <div class="mod-btn-row" style="margin-top:1.25rem;">
@@ -1123,7 +1131,7 @@
 <script src="js/community-bird-photos.js?v=75bfa8a8"></script>
 <script src="js/community-bird-pairs.js?v=fde6b7cd"></script>
 <script src="js/community-us-map.js?v=7260cdca"></script>
-<script src="js/community-classroom.js?v=d3eefa35"></script>
+<script src="js/community-classroom.js?v=06caaa3d"></script>
 <!-- Interactive chart runtime: crosshair tooltips on the trend chart, per-species hover rows on
      the Activity / Calendar / Rarity Mix charts. No-op until a [data-bw-chart] element appears. -->
 <script src="js/community-charts.js?v=2b12e881"></script>

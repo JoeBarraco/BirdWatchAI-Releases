@@ -167,10 +167,12 @@ async function followClassroomDeepLink() {
 }
 
 function highlightClassroom(id) {
-    const card = document.querySelector(`.classroom-card[data-room="${CSS.escape(id)}"]`);
-    if (!card) return;
-    card.classList.add('linked');
-    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // Selecting IS the highlight now: the row goes active and the right-hand
+    // pane fills with that class. The old version added a .linked class to a
+    // card in a flat list, which no longer exists.
+    if (typeof selectClassroom === 'function') selectClassroom(id);
+    const row = document.querySelector(`.classroom-row[data-room="${CSS.escape(id)}"]`);
+    if (row) row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 // ── Dates and small helpers ──────────────────────────────
@@ -5765,16 +5767,56 @@ async function loadClassroomStaff() {
         m.kind === 'member' && ['owner', 'moderator', 'teacher'].includes(m.role));
 }
 
-// Whether the list shows every classroom or only the one the picker names.
-// Default is "only this one": a dropdown naming 3-5 sitting above a list of
-// all three classrooms reads as a filter that does not work, which is exactly
-// how it was reported. One class at a time is also what the panel is FOR -
-// you run one lesson, review one set, read one set of results.
-let classroomShowAll = false;
+// Which class the right-hand pane is acting on.
+//
+// ONE selection, held here. There used to be two ways to choose a class — a
+// dropdown above the list, and the list itself — plus a show-all toggle to
+// reconcile them, which is what made a dropdown naming "3-5" sit above all
+// three classrooms and read as a filter that did not work. The list is now
+// the only selector, so the state it reflects has to live somewhere other
+// than inside a <select> that no longer exists.
+let classroomSelectedId = null;
 
-function setClassroomShowAll(on) {
-    classroomShowAll = !!on;
+function classroomPicked() {
+    // Defaults to the first class, so the right-hand pane is never blank
+    // when there is something it could be showing.
+    if (classroomSelectedId && classroomList.some(r => r.id === classroomSelectedId)) {
+        return classroomSelectedId;
+    }
+    return classroomList.length ? classroomList[0].id : null;
+}
+
+/**
+ * Choose a class. Everything on the right follows from this.
+ *
+ * Closing the review and results panels matters: they are rendered for a
+ * specific class, and leaving last class's results on screen beside the new
+ * class's name is a quietly wrong answer rather than an obviously missing
+ * one.
+ */
+function selectClassroom(id) {
+    classroomSelectedId = id;
+    hideClassroomReview();
+    hideClassroomHistory();
+    classroomEditingId = null;
     renderClassroomList();
+    renderClassroomActions();
+    renderClassroomForm();
+}
+
+// The form is a MODE, not furniture. It used to sit at the bottom of the
+// panel permanently, which is part of what made the panel look like it was
+// doing several things at once: a page about running today's lesson with a
+// half-filled "New classroom" form underneath it at all times.
+let classroomFormOpen = false;
+
+function newClassroom() {
+    classroomEditingId = null;
+    classroomFormOpen = true;
+    hideClassroomReview();
+    hideClassroomHistory();
+    renderClassroomForm();
+    document.getElementById('classroom-form')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function renderClassroomList() {
@@ -5782,120 +5824,115 @@ function renderClassroomList() {
     if (!list) return;
 
     if (!classroomList.length) {
-        list.innerHTML = '<div class="classroom-muted">No classrooms yet. '
-                       + 'Create one below — it takes a name, the feeder your class watches, '
-                       + 'and a grade band.</div>';
+        list.innerHTML = '<div class="classroom-muted">No classes yet. '
+                       + 'Make one with the button below — it takes a name, the feeder '
+                       + 'your class watches, and a grade band.</div>';
+        renderClassroomActions();
         return;
     }
 
-    // Keep the picker in step FIRST: the filter below reads its value, and on
-    // the first render it has no options yet.
-    syncClassroomPicker();
-
     const picked = classroomPicked();
-    const shown = (classroomShowAll || !picked)
-        ? classroomList
-        : classroomList.filter(r => r.id === picked);
 
-    const others = classroomList.length - shown.length;
-    const toggle = classroomList.length < 2 ? '' : `
-        <div class="classroom-list-toggle">
-            ${classroomShowAll
-                ? `<button class="classroom-btn" onclick="setClassroomShowAll(false)">
-                     Show only the class above</button>`
-                : `<button class="classroom-btn" onclick="setClassroomShowAll(true)">
-                     Show all ${classroomList.length} classes</button>`}
-            ${others > 0 ? `<span class="classroom-muted">${others} hidden</span>` : ''}
-        </div>`;
-
-    list.innerHTML = toggle + shown.map(r => {
-        const partners = (r.partners || []).map(p => p.display_name).filter(Boolean);
+    // Every class, always. The list is short, it is the only selector, and
+    // hiding the others behind a toggle was what made choosing one confusing.
+    list.innerHTML = classroomList.map(r => {
         const seen = r.home_feeder_seen_at
             ? new Date(r.home_feeder_seen_at).getTime() > Date.now() - 10 * 60 * 1000
             : false;
-        const feederLine = r.home_feeder_id
+        const feeder = r.home_feeder_id
             ? `<span class="classroom-dot ${seen ? 'on' : 'off'}"></span>${esc(r.home_feeder_name || 'Feeder')}`
-            : '<span class="classroom-warn">No home feeder set</span>';
+            : '<span class="classroom-warn">No feeder</span>';
 
         return `
-        <div class="classroom-card" data-room="${esc(r.id)}">
-            <div class="classroom-card-head">
-                <div>
-                    <strong>${esc(r.name)}</strong>
-                    <span class="classroom-pill">${esc(GRADE_BAND_LABELS[r.grade_band] || r.grade_band)}</span>
-                </div>
-                <div class="classroom-card-actions">
-                    <button class="classroom-btn-primary" onclick="startClassroomSession('${esc(r.id)}','teacher_led')"
-                            ${r.home_feeder_id ? '' : 'disabled title="Set a home feeder first"'}>▶ On the board</button>
-                    <button class="classroom-btn-primary" onclick="startClassroomSession('${esc(r.id)}','join_code')"
-                            ${r.home_feeder_id ? '' : 'disabled title="Set a home feeder first"'}>📱 With devices</button>
-                    <button class="classroom-btn classroom-btn-more" title="Edit, link, delete"
-                            onclick="toggleClassroomMore('${esc(r.id)}')">⋯</button>
-                </div>
-            </div>
-            <div class="classroom-card-meta">
-                ${feederLine}
-                ${partners.length ? ` · partners: ${esc(partners.join(', '))}` : ''}
-                ${r.session_count ? ` · ${r.session_count} session${r.session_count === 1 ? '' : 's'}` : ''}
-                ${r.is_mine ? '' : ` · taught by ${esc(r.teacher_label)}`}
-            </div>
-            <div class="classroom-card-more" id="classroom-more-${esc(r.id)}" style="display:none;">
-                <button class="classroom-btn" onclick="editClassroom('${esc(r.id)}')">Edit</button>
-                <button class="classroom-btn" onclick="copyClassroomLink('${esc(r.id)}')"
-                        title="A link that opens straight into this class">🔗 Link</button>
-                <button class="classroom-btn-danger" onclick="deleteClassroom('${esc(r.id)}')">Delete</button>
-            </div>
-            <div class="classroom-pending" id="classroom-pending-${esc(r.id)}"></div>
-        </div>`;
+        <button type="button" class="classroom-row${r.id === picked ? ' on' : ''}"
+                data-room="${esc(r.id)}" onclick="selectClassroom('${escJs(r.id)}')">
+            <span class="classroom-row-name">${esc(r.name)}</span>
+            <span class="classroom-row-meta">
+                ${esc(GRADE_BAND_LABELS[r.grade_band] || r.grade_band)} · ${feeder}
+            </span>
+        </button>`;
     }).join('');
+
+    renderClassroomActions();
 }
 
 /**
- * Keep the between-lessons class picker in step with the list.
+ * The right-hand pane: everything you can do to the class on the left.
  *
- * Rebuilt rather than patched, because classrooms can be created, renamed,
- * deleted or handed to another teacher while the panel is open. The current
- * choice survives the rebuild where that class still exists, so refreshing
- * the list cannot quietly move Review and Results onto a different class
- * than the one showing.
+ * Grouped by WHEN rather than by what the code calls them. Starting a lesson
+ * is the thing you came to do and is at the top, in the two modes the design
+ * notes describe. Review and Results are between-lessons work. Edit, Link and
+ * Delete are touched a few times a year and sit last, quietly — they used to
+ * hide behind a "⋯" on every card, which is a lot of machinery for three
+ * buttons that now have room to simply exist.
  */
-function syncClassroomPicker() {
-    const pick = document.getElementById('classroom-pick');
-    if (!pick) return;
+function renderClassroomActions() {
+    const box = document.getElementById('classroom-actions');
+    if (!box) return;
 
-    // Re-render on change, so choosing a class actually shows that class.
-    if (!pick.dataset.wired) {
-        pick.dataset.wired = '1';
-        pick.addEventListener('change', () => renderClassroomList());
+    const id = classroomPicked();
+    const r  = id ? classroomList.find(x => x.id === id) : null;
+    if (!r) {
+        box.innerHTML = classroomList.length
+            ? '<div class="classroom-muted">Pick a class on the left.</div>'
+            : '<div class="classroom-muted">Once there is a class, everything you can '
+            + 'do with it appears here — start a lesson, look over the questions '
+            + 'first, and read how it went afterwards.</div>';
+        return;
     }
 
-    const wanted = pick.value;
-    pick.innerHTML = classroomList.map(r =>
-        `<option value="${esc(r.id)}">${esc(r.name)}`
-        + ` — ${esc(GRADE_BAND_LABELS[r.grade_band] || r.grade_band)}</option>`).join('');
+    const partners = (r.partners || []).map(p => p.display_name).filter(Boolean);
+    const seen = r.home_feeder_seen_at
+        ? new Date(r.home_feeder_seen_at).getTime() > Date.now() - 10 * 60 * 1000
+        : false;
+    // Disabled with a reason, rather than absent: "why can I not start?" is a
+    // worse question to be left with than "set a home feeder first".
+    const noFeeder = r.home_feeder_id ? '' : ' disabled title="Set a home feeder first"';
 
-    if (classroomList.some(r => r.id === wanted)) pick.value = wanted;
+    box.innerHTML = `
+        <div class="classroom-actions-head">
+            <h4 class="classroom-h">${esc(r.name)}</h4>
+            <span class="classroom-pill">${esc(GRADE_BAND_LABELS[r.grade_band] || r.grade_band)}</span>
+        </div>
+        <div class="classroom-card-meta">
+            ${r.home_feeder_id
+                ? `<span class="classroom-dot ${seen ? 'on' : 'off'}"></span>${esc(r.home_feeder_name || 'Feeder')}`
+                + (seen ? '' : ' <span class="classroom-muted">(quiet)</span>')
+                : '<span class="classroom-warn">No home feeder set</span>'}
+            ${partners.length ? ` · partners: ${esc(partners.join(', '))}` : ''}
+            · ${r.questions_per_session || 8} question${(r.questions_per_session || 8) === 1 ? '' : 's'} a session
+            ${r.is_mine ? '' : ` · taught by ${esc(r.teacher_label)}`}
+        </div>
 
-    // Nothing to review or report on until there is a class.
-    const bar = pick.closest('.classroom-toolbar');
-    if (bar) bar.classList.toggle('no-classes', !classroomList.length);
-}
+        <div class="classroom-group">
+            <div class="classroom-group-title">Start a lesson</div>
+            <div class="classroom-group-row">
+                <button class="classroom-btn-primary"
+                        onclick="startClassroomSession('${escJs(r.id)}','teacher_led')"${noFeeder}>▶ On the board</button>
+                <button class="classroom-btn-primary"
+                        onclick="startClassroomSession('${escJs(r.id)}','join_code')"${noFeeder}>📱 With devices</button>
+            </div>
+        </div>
 
-function classroomPicked() {
-    return document.getElementById('classroom-pick')?.value || null;
-}
+        <div class="classroom-group">
+            <div class="classroom-group-title">Between lessons</div>
+            <div class="classroom-group-row">
+                <button class="classroom-btn" onclick="reviewClassroomQuestions('${escJs(r.id)}')">🔍 Review questions</button>
+                <button class="classroom-btn" onclick="showClassroomHistory('${escJs(r.id)}')">📊 Results</button>
+            </div>
+        </div>
 
-/**
- * Edit, Link and Delete live behind this.
- *
- * Seven buttons per classroom pushed three classes past a screenful, which
- * made the common case - start the lesson that is about to begin - a scroll.
- * The two that start a lesson stay out; the three you touch a few times a
- * year fold away.
- */
-function toggleClassroomMore(roomId) {
-    const box = document.getElementById(`classroom-more-${roomId}`);
-    if (box) box.style.display = box.style.display === 'none' ? '' : 'none';
+        <div class="classroom-group">
+            <div class="classroom-group-title">Settings</div>
+            <div class="classroom-group-row">
+                <button class="classroom-btn" onclick="editClassroom('${escJs(r.id)}')">✏️ Edit</button>
+                <button class="classroom-btn" onclick="copyClassroomLink('${escJs(r.id)}')"
+                        title="A link that opens straight into this class">🔗 Link</button>
+                <button class="classroom-btn-danger" onclick="deleteClassroom('${escJs(r.id)}')">🗑 Delete</button>
+            </div>
+        </div>
+
+        <div class="classroom-pending" id="classroom-pending-${esc(r.id)}"></div>`;
 }
 
 // ── Reviewing the questions (and saying what is wrong with them) ──
@@ -6439,6 +6476,7 @@ async function copyClassroomLink(id) {
 function renderClassroomForm() {
     const box = document.getElementById('classroom-form');
     if (!box) return;
+    if (!classroomFormOpen) { box.innerHTML = ''; return; }
     const editing = classroomEditingId
         ? classroomList.find(r => r.id === classroomEditingId)
         : null;
@@ -6917,12 +6955,21 @@ async function saveClassroomTemplatePicks(roomId, say) {
 
 function editClassroom(id) {
     classroomEditingId = id;
+    classroomFormOpen = true;
+    // Editing a class also makes it the selected one, or the form would be
+    // editing something other than what the pane above it describes.
+    classroomSelectedId = id;
+    hideClassroomReview();
+    hideClassroomHistory();
+    renderClassroomList();
+    renderClassroomActions();
     renderClassroomForm();
     document.getElementById('classroom-form')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function cancelClassroomEdit() {
     classroomEditingId = null;
+    classroomFormOpen = false;
     renderClassroomForm();
 }
 
@@ -7024,7 +7071,11 @@ async function saveClassroom() {
         await saveClassroomTemplatePicks(roomId, say);
     }
 
+    // A class just created should become the selected one — otherwise you
+    // make it and the right-hand pane goes on describing a different class.
+    if (roomId) classroomSelectedId = roomId;
     classroomEditingId = null;
+    classroomFormOpen = false;
     say('Saved.', true);
     await refreshClassroomPanel();
 }
@@ -7067,12 +7118,17 @@ async function cmCountDetections(feederId, fromIso, toIso) {
  * is exactly when a teacher opens this.
  */
 async function cmResolvePendingPredictions(room) {
+    // NOT an early return on a missing box. This function also SCORES
+    // predictions, and only the selected class has a box now that the panel
+    // is two panes — bailing here would mean a week-long prediction made in
+    // one class never settles unless somebody happens to have that class
+    // selected when the panel opens. Showing is optional; resolving is not.
     const box = document.getElementById(`classroom-pending-${room.id}`);
-    if (!box) return;
+    const show = html => { if (box) box.innerHTML = html; };
 
     const { data, error } = await sbRpc('classroom_pending_predictions',
         { p_classroom_id: room.id }, true);
-    if (error || !Array.isArray(data) || !data.length) { box.innerHTML = ''; return; }
+    if (error || !Array.isArray(data) || !data.length) { show(''); return; }
 
     const now = Date.now();
     const lines = [];
@@ -7143,7 +7199,7 @@ async function cmResolvePendingPredictions(room) {
                  + '</div>');
     }
 
-    box.innerHTML = lines.join('');
+    show(lines.join(''));
 }
 
 // ── Session history ──────────────────────────────────────

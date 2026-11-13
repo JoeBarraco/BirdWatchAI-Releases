@@ -3705,6 +3705,86 @@
 }
 .classroom-form-row select { width: 100%; margin-top: 3px; }
 
+/* ── The panel's two panes ─────────────────────────────────────────
+   WHICH class on the left, WHAT TO DO WITH IT on the right. One column
+   that held a community select, a class dropdown, cards carrying their
+   own start buttons, a hidden ⋯ menu and a permanent new-class form was
+   reported as "trying to do too much", and it was.
+
+   Stacks below 720px: two columns on a phone gives a list too narrow to
+   read names in and buttons too narrow to press. */
+/* Wider than the other admin modals, which are all 480px. Two panes in 480
+   leaves a class list too narrow for a name and a right-hand pane that wraps
+   every button onto its own line — and this box also has to hold the review
+   list and the question picker, which were cramped there even as one column.
+   max-width: 90vw is inherited, so a small screen still behaves. */
+#classroom-panel-modal .mod-admin-box { width: 880px; }
+
+.classroom-panes {
+    display: flex; gap: 0.9rem; align-items: flex-start;
+}
+.classroom-pane-left {
+    flex: 0 0 210px; min-width: 0;
+    display: flex; flex-direction: column; gap: 0.4rem;
+}
+.classroom-pane-right { flex: 1 1 auto; min-width: 0; }
+
+@media (max-width: 720px) {
+    .classroom-panes { flex-direction: column; }
+    .classroom-pane-left { flex: 1 1 auto; width: 100%; }
+    .classroom-pane-right { width: 100%; }
+}
+
+.classroom-pane-title {
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--color-gray-500);
+}
+
+/* One class, one row. A button rather than a div: it is the only way to
+   choose a class now, so it has to be reachable by keyboard. */
+.classroom-row {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+    width: 100%; text-align: left; cursor: pointer;
+    padding: 0.5rem 0.6rem; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--bg-card);
+    color: inherit; font: inherit;
+}
+.classroom-row:hover { border-color: var(--color-primary-light); }
+.classroom-row.on {
+    border-color: var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 12%, var(--bg-card));
+}
+.classroom-row-name {
+    font-weight: 700; font-size: 0.86rem; color: var(--color-gray-900);
+    overflow-wrap: anywhere;
+}
+.classroom-row-meta {
+    font-size: 0.72rem; color: var(--color-gray-500);
+    display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
+}
+
+.classroom-new-btn { margin-top: 0.2rem; }
+
+.classroom-actions-head {
+    display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+}
+.classroom-actions-head .classroom-h { margin: 0; }
+
+/* Grouped by WHEN you would do it, not by what the code calls it. */
+.classroom-group { margin-top: 0.8rem; }
+.classroom-group-title {
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--color-gray-500);
+    margin-bottom: 0.3rem;
+}
+.classroom-group-row { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* Community-wide, so it sits under both panes rather than inside one. */
+.classroom-panel-foot {
+    margin-top: 1rem; padding-top: 0.7rem;
+    border-top: 1px solid var(--border);
+}
+
 .classroom-details { margin: 0.4rem 0 0.7rem; }
 .classroom-details summary {
     cursor: pointer; font-size: 0.82rem; font-weight: 600;
