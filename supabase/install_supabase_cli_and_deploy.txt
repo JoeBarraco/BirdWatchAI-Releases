@@ -19,6 +19,17 @@ it wants the bare ref.)
     npx supabase@latest functions deploy unsubscribe            --project-ref lsamggztfizmkyljdgwq
     npx supabase@latest functions deploy send-temp-password     --project-ref lsamggztfizmkyljdgwq
     npx supabase@latest functions deploy moderator-delete-media --project-ref lsamggztfizmkyljdgwq
+    npx supabase@latest functions deploy community-invite-email --project-ref lsamggztfizmkyljdgwq
+
+community-invite-email needs JWT verification ON (the default) and no extra
+secrets: RESEND_API_KEY is already set, and the two optional ones below have
+working defaults. It invites AS the caller, using their JWT, so the
+permission check is community_invite's own — do NOT deploy it with
+--no-verify-jwt, which would turn it into an open relay for "you have been
+invited to BirdWatchAI" to any address on earth.
+
+Until it is deployed the community panel still invites people correctly; it
+just says plainly that no email went out.
 
 Licensing (see functions/gumroad-license-webhook/README.md for the full
 runbook). The --no-verify-jwt flag is MANDATORY here: Gumroad's ping carries no
@@ -39,6 +50,11 @@ mangled PEM fails on every sale. The dashboard textarea takes a paste as-is.
     RESEND_API_KEY              re_...          (shared by all mail functions)
     DIGEST_FROM_EMAIL           BirdWatchAI Weekly <digest@birdwatchai.com>
     SITE_URL                    https://joebarraco.github.io/birdwatchai-releases
+
+Community invites (both OPTIONAL — the defaults in the function are correct
+for the live site, so set them only to change them):
+    INVITE_FROM_EMAIL           BirdWatchAI <noreply@birdwatchai.com>
+    COMMUNITY_URL               https://www.birdwatchai.com/docs/community.html
 
 Licensing:
     LICENSE_PRIVATE_KEY_PEM     -----BEGIN PRIVATE KEY-----...   (whole PEM)

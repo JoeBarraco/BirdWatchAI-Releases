@@ -813,6 +813,27 @@ async function decideFeeder(communityId, feederId, decision) {
     await refreshCommunityPanel();
 }
 
+/**
+ * Invite somebody, and tell them.
+ *
+ * Invites are keyed by email and redeemed on the invitee's next sign-in, so
+ * there has never been a link to send — which quietly meant nobody was ever
+ * told they had been invited at all. Four teachers sat as pending invites for
+ * three days with no way of knowing, because the only mechanism was somebody
+ * mentioning it to them.
+ *
+ * The community-invite-email edge function now creates the invite AND sends a
+ * notification. It still carries no token, no password and no sign-in link:
+ * it names the community and the address to sign in with, so forwarding it to
+ * the wrong person grants them nothing.
+ *
+ * Both paths, because an invite must not depend on mail working:
+ *   - the function does the invite itself, so its own permission check is the
+ *     RPC's, and it cannot be used to mail people you could not invite;
+ *   - if the function is unreachable, fall back to the RPC directly. The
+ *     invite lands and the panel says plainly that no email went out, which
+ *     is the old behaviour and still works.
+ */
 async function inviteToCommunity() {
     const cid   = document.getElementById('community-panel-select').value;
     const email = document.getElementById('community-invite-email').value.trim();
@@ -820,24 +841,53 @@ async function inviteToCommunity() {
     const status = document.getElementById('community-invite-status');
     if (!cid || !email) { showToast('An email address is required'); return; }
 
-    const { error } = await sbRpc('community_invite', {
-        p_community_id: cid, p_email: email, p_role: role,
-    }, true);
-    if (error) {
-        status.style.color = '#e74c3c';
-        status.textContent = 'Error: ' + (error.message || 'invite failed');
+    const say = (msg, ok) => {
+        status.style.color = ok ? '#2eaa4f' : '#e74c3c';
+        status.textContent = msg;
         status.style.display = 'block';
-        return;
+    };
+    say('Inviting…', true);
+
+    let invited = false, emailed = false, failure = null;
+
+    try {
+        const functionsUrl = SUPABASE_URL.replace('.supabase.co', '.supabase.co/functions/v1');
+        const res = await fetch(`${functionsUrl}/community-invite-email`, {
+            method: 'POST',
+            headers: sbHeaders(true),          // the caller's own JWT: the function invites AS them
+            body: JSON.stringify({ community_id: cid, email, role }),
+        });
+        const body = await res.json().catch(() => ({}));
+        if (res.ok && body.success) {
+            invited = true;
+            emailed = !!body.email_sent;
+        } else if (body && body.error) {
+            // A refusal from community_invite — wrong role, not a school,
+            // not allowed. Real and worth showing; do not retry it.
+            say('Error: ' + body.error, false);
+            return;
+        } else {
+            failure = 'function';
+        }
+    } catch (e) {
+        failure = 'unreachable';
     }
+
+    if (!invited) {
+        const { error } = await sbRpc('community_invite', {
+            p_community_id: cid, p_email: email, p_role: role,
+        }, true);
+        if (error) { say('Error: ' + (error.message || 'invite failed'), false); return; }
+        invited = true;
+    }
+
     document.getElementById('community-invite-email').value = '';
     await refreshCommunityMembers();
-    status.style.color = '#2eaa4f';
-    // No email is sent. Invites are keyed by address and redeemed by
-    // community_redeem_invites() on the recipient's next sign-in, so all they
-    // have to do is sign in with this address — nothing to forward, and no
-    // token to leak.
-    status.textContent = `${email} invited as ${role}. They get access the next time they sign in with that address.`;
-    status.style.display = 'block';
+
+    say(emailed
+        ? `${email} invited as ${role}, and emailed. They are added the first time they sign in with that address.`
+        : `${email} invited as ${role}, but no email went out${failure ? '' : ' (mail failed)'}. `
+        + 'Tell them to sign in with that address — that is all it takes.', emailed);
 }
 
 async function revokeCommunityInvite() {
