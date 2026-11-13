@@ -678,6 +678,69 @@ const DOTS_MAX_ROWS  = 7;      // a week
 //
 // So the templates whose answer is computed FROM the numbers pass
 // showValues and print them from the start.
+// ── Colour ────────────────────────────────────────────────────────
+//
+// Every bar used to be the same green, separated only by opacity. On a
+// projector that reads as a spreadsheet, and the feedback from an actual
+// classroom was blunt: kids love colour, and there wasn't any.
+//
+// Colour here is not decoration, which is why it is a hand-written table
+// rather than a generated ramp. Each species gets the colour a child would
+// say that bird is, so the cardinal's bar is red and the jay's is blue, and
+// the chart quietly teaches identification every time it is shown. By the
+// third lesson "the red one" and "the cardinal" are the same thought.
+//
+// Where plumage would collide - five of these birds are honestly just grey -
+// the greys are pulled apart along the shades they really do differ by: a
+// nuthatch IS blue-grey above, a dove IS pinkish, a junco IS charcoal. So the
+// bars stay distinguishable without the colours becoming a lie.
+//
+// Tuned for a dark projector in a lit room: mid-to-light tones, nothing below
+// about 45% lightness, because a dark bar on a dark slide is a missing bar at
+// the back of the room.
+const SPECIES_COLORS = {
+    'Northern Cardinal':       '#ef4444',  // the red everyone pictures
+    'House Finch':             '#f0638a',  // red too, pushed to rose to separate
+    'Red-bellied Woodpecker':  '#fb8c6a',  // red cap, coral so it is not a third red
+    'American Robin':          '#f59e0b',  // orange tummy
+    'American Goldfinch':      '#fde047',  // the brightest bird at the feeder
+    'Carolina Wren':           '#c08457',  // warm brown
+    'House Sparrow':           '#a8926f',  // duller brown than the wren
+    'Blue Jay':                '#3b82f6',
+    'White-breasted Nuthatch': '#7dd3fc',  // genuinely blue-grey above
+    'Tufted Titmouse':         '#a5b4cf',  // soft slate, and it is a slate bird
+    'Mourning Dove':           '#d8b4a0',  // doves really are pinkish-grey
+    'Dark-eyed Junco':         '#8b93a7',  // charcoal, lifted enough to read
+    'Northern Mockingbird':    '#cbd5e1',  // pale grey
+    'Carolina Chickadee':      '#e8eef5',  // black and white, so near-white
+    'Black-capped Chickadee':  '#dbe4ee',
+    'Downy Woodpecker':        '#f1f5f9',  // the other black-and-white
+    'European Starling':       '#a78bfa',  // black with a purple-green sheen
+};
+
+// For series that are not species - days of the week, hours of the day. A
+// run of related hues keeps the order readable left to right while still
+// being a row of colours rather than a row of grey.
+const CHART_SPECTRUM = [
+    '#60a5fa', '#38bdf8', '#2dd4bf', '#4ade80', '#a3e635',
+    '#fde047', '#fbbf24', '#fb923c', '#f87171', '#f472b6',
+];
+
+/**
+ * The colour for one row of a chart.
+ *
+ * `mode` is decided once in cmChart and baked onto each row, so the renderers
+ * never have to know what a series is about.
+ */
+function cmRowColor(row, i, n, mode) {
+    if (mode === 'plain')   return 'var(--color-primary)';
+    if (mode === 'species') return SPECIES_COLORS[row.key] || '#94a3b8';
+    // Spread the spectrum across however many rows there are, so a week uses
+    // the whole range rather than the first five.
+    const span = CHART_SPECTRUM.length - 1;
+    return CHART_SPECTRUM[n < 2 ? 0 : Math.round((i / (n - 1)) * span)];
+}
+
 function cmChart(caption, series, opts) {
     const o = opts || {};
     // Species names are long and collide past eight; hour labels are three
@@ -697,12 +760,56 @@ function cmChart(caption, series, opts) {
 
     // Dots only where they stay countable: K–2, a week or less, and no row so
     // long that counting it is worse than reading a bar.
-    const kind = (o.band === 'k-2' && max <= DOTS_MAX_VALUE && trimmed.length <= DOTS_MAX_ROWS)
-        ? 'dots' : 'bars';
+    const dotsOk = o.band === 'k-2' && max <= DOTS_MAX_VALUE
+                                    && trimmed.length <= DOTS_MAX_ROWS;
+
+    // A requested kind wins, but only where the data can actually carry it -
+    // a donut of one dominant species teaches nothing, a line through
+    // unordered categories draws a trend that does not exist. Falling back is
+    // better than drawing a chart that misleads.
+    let kind = dotsOk ? 'dots' : 'bars';
+    if (o.kind && CHART_KINDS_OK[o.kind] && CHART_KINDS_OK[o.kind](trimmed, o)) {
+        kind = o.kind;
+    }
+
+    // Species series colour by species; everything else runs the spectrum.
+    // `plain` is the opt-out, and it is not cosmetic: a question that ASKS
+    // about colour ("which of these birds is blue?") must not be shown a
+    // chart that has already answered it in the bars.
+    const mode = o.plain ? 'plain'
+               : trimmed.every(r => SPECIES_COLORS[r.key]) ? 'species'
+               : 'spectrum';
+    trimmed.forEach((r, i) => { r.color = cmRowColor(r, i, trimmed.length, mode); });
 
     return { kind, caption, series: trimmed, highlight: o.highlight || null,
-             showValues: !!o.showValues, max };
+             showValues: !!o.showValues, palette: mode, max,
+             total: trimmed.reduce((a, r) => a + r.value, 0) };
 }
+
+// Whether a requested chart kind is honest for this data.
+//
+// Variety is the point - a class that meets the same bar chart forty times
+// stops looking at it - but not at the cost of a chart that says something
+// untrue. Each guard is the condition under which that shape means anything.
+const CHART_KINDS_OK = {
+    // Horizontal bars: long species names get room to be read instead of
+    // being wrapped onto two lines under a narrow column.
+    hbars: rows => rows.length >= 2 && rows.length <= 8,
+
+    // A line asserts that the x axis is a sequence. Only true where the
+    // caller says so, which is days and hours.
+    line:  (rows, o) => !!o.ordered && rows.length >= 3,
+
+    // A donut is about share of a whole. Pointless with one slice, unreadable
+    // past six, and misleading when one slice is nearly everything - at 90%
+    // the other species are slivers nobody can compare.
+    donut: rows => rows.length >= 2 && rows.length <= 6
+                && Math.max(...rows.map(r => r.value))
+                   / rows.reduce((a, r) => a + r.value, 0) <= 0.9,
+
+    // The clock needs real hours to place its marks.
+    clock: (rows, o) => !!o.hours && rows.length >= 2,
+};
 
 // The week as one bar per day, oldest first — the shape every "per day"
 // question wants, and the one the class sees often enough to get used to.
@@ -763,9 +870,14 @@ function classroomChartHtml(chart, revealed) {
     // A chart that declares showValues shows them whether or not the answer
     // has been revealed.
     const withValues = revealed || chart.showValues;
-    return chart.kind === 'dots'
-        ? classroomDotsHtml(chart, withValues)
-        : classroomBarsHtml(chart, withValues);
+    switch (chart.kind) {
+        case 'dots':  return classroomDotsHtml(chart, withValues);
+        case 'hbars': return classroomHBarsHtml(chart, withValues);
+        case 'line':  return classroomLineHtml(chart, withValues);
+        case 'donut': return classroomDonutHtml(chart, withValues);
+        case 'clock': return classroomClockHtml(chart, withValues);
+        default:      return classroomBarsHtml(chart, withValues);
+    }
 }
 
 // Pick a gridline step that lands on friendly numbers — 1, 2, 5, 10, 20, 50…
@@ -846,7 +958,7 @@ function classroomBarsHtml(chart, revealed) {
             : '';
 
         return `<rect x="${cx - barW / 2}" y="${y(s.value)}" width="${barW}" height="${h}"
-                      rx="6" class="cc-bar${on ? ' on' : ''}"/>`
+                      rx="6" class="cc-bar${on ? ' on' : ''}" fill="${s.color}"/>`
              + (revealed
                  ? `<text x="${cx}" y="${y(s.value) - 10}" class="cc-val" text-anchor="middle">${s.value}</text>`
                  : '')
@@ -874,7 +986,8 @@ function classroomDotsHtml(chart, revealed) {
         for (let i = 0; i < s.value; i++) {
             // A gap after every fifth dot: counting in fives is the point of
             // a tally, and the eye does it without being told.
-            dots += `<span class="cc-dot${(i + 1) % 5 === 0 ? ' five' : ''}"></span>`;
+            dots += `<span class="cc-dot${(i + 1) % 5 === 0 ? ' five' : ''}"
+                           style="background:${s.color}"></span>`;
         }
         return `
             <div class="cc-row${on ? ' on' : ''}">
@@ -894,6 +1007,224 @@ function classroomDotsHtml(chart, revealed) {
             <div class="cc-rows">${rows}</div>
             <figcaption>${esc(chart.caption)}</figcaption>
         </figure>`;
+}
+
+/**
+ * Horizontal bars.
+ *
+ * The same data as a bar chart, read the other way round. Worth having for
+ * species: "White-breasted Nuthatch" wrapped onto two lines under a narrow
+ * column is most of why the vertical chart looks cramped, and lying the bars
+ * down gives every name a whole line to itself at full size.
+ */
+function classroomHBarsHtml(chart, revealed) {
+    const n = chart.series.length;
+    const W = 1000, rowH = 62, padT = 16, padB = 16;
+    const labelW = 300, padR = 70;
+    const H = padT + padB + n * rowH;
+    const plotW = W - labelW - padR;
+
+    const rows = chart.series.map((s, i) => {
+        const cy = padT + i * rowH + rowH / 2;
+        const w = Math.max(3, (s.value / chart.max) * plotW);
+        const on = chart.highlight && s.key === chart.highlight;
+        return `<text x="${labelW - 16}" y="${cy + 9}" class="cc-label"
+                      text-anchor="end">${esc(cmShorten(String(s.label), 22))}</text>`
+             + `<rect x="${labelW}" y="${cy - 19}" width="${w}" height="38" rx="8"
+                      class="cc-bar${on ? ' on' : ''}" fill="${s.color}"/>`
+             + (revealed
+                 ? `<text x="${labelW + w + 14}" y="${cy + 9}" class="cc-val">${s.value}</text>`
+                 : '');
+    }).join('');
+
+    return `
+        <figure class="classroom-chart hbars">
+            <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(chart.caption)}">
+                <line x1="${labelW}" y1="${padT}" x2="${labelW}" y2="${H - padB}" class="cc-axisline"/>
+                ${rows}
+            </svg>
+            <figcaption>${esc(chart.caption)}</figcaption>
+        </figure>`;
+}
+
+/**
+ * A line over time.
+ *
+ * Only drawn where the caller has said the x axis is a sequence, because the
+ * whole meaning of a line is "this followed that". The area beneath is filled
+ * so it still reads as a quantity from the back of a room, where a 3px stroke
+ * on its own disappears.
+ */
+function classroomLineHtml(chart, revealed) {
+    const W = 1000, H = 420;
+    const padL = 70, padR = 30, padT = 30, padB = 86;
+    const plotW = W - padL - padR, plotH = H - padT - padB;
+
+    const step = cmNiceStep(chart.max);
+    const top = Math.ceil(chart.max / step) * step;
+    const n = chart.series.length;
+    const x = i => padL + (n < 2 ? plotW / 2 : (i / (n - 1)) * plotW);
+    const y = v => padT + plotH - (v / top) * plotH;
+
+    let grid = '';
+    for (let v = 0; v <= top + 0.001; v += step) {
+        const yy = y(v);
+        grid += `<line x1="${padL}" y1="${yy}" x2="${W - padR}" y2="${yy}" class="cc-grid"/>`
+             +  `<text x="${padL - 12}" y="${yy + 7}" class="cc-axis" text-anchor="end">${v}</text>`;
+    }
+
+    const pts = chart.series.map((s, i) => `${x(i)},${y(s.value)}`).join(' ');
+    const area = `${padL},${y(0)} ${pts} ${x(n - 1)},${y(0)}`;
+
+    // A fat dot per reading, in that reading's own colour, so the line is
+    // also a row of coloured markers rather than one undifferentiated stroke.
+    const marks = chart.series.map((s, i) => {
+        const on = chart.highlight && s.key === chart.highlight;
+        return `<circle cx="${x(i)}" cy="${y(s.value)}" r="${on ? 16 : 11}"
+                        fill="${s.color}" class="cc-point${on ? ' on' : ''}"/>`
+             + (revealed
+                 ? `<text x="${x(i)}" y="${y(s.value) - 24}" class="cc-val"
+                          text-anchor="middle">${s.value}</text>`
+                 : '')
+             + `<text x="${x(i)}" y="${H - padB + 34}" class="cc-label"
+                      text-anchor="middle">${esc(cmShorten(String(s.label), 10))}</text>`;
+    }).join('');
+
+    return `
+        <figure class="classroom-chart line">
+            <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(chart.caption)}">
+                ${grid}
+                <polygon points="${area}" class="cc-area"/>
+                <polyline points="${pts}" class="cc-line"/>
+                <line x1="${padL}" y1="${padT + plotH}" x2="${W - padR}" y2="${padT + plotH}" class="cc-axisline"/>
+                ${marks}
+            </svg>
+            <figcaption>${esc(chart.caption)}</figcaption>
+        </figure>`;
+}
+
+/**
+ * A donut of the share each species took.
+ *
+ * The one chart whose shape IS the fraction, which is why it earns a place
+ * next to the fraction and percent questions: "about a quarter" is something
+ * you can see in a ring and have to compute from bars. A ring rather than a
+ * full pie so the total can sit in the hole, where it answers "a quarter of
+ * WHAT" without a sentence.
+ *
+ * Slices are not labelled with their values before the reveal - reading the
+ * share off the chart is the exercise.
+ */
+function classroomDonutHtml(chart, revealed) {
+    const W = 1000, H = 440;
+    const cx = 250, cy = H / 2, rOuter = 170, rInner = 96;
+    const total = chart.total || chart.series.reduce((a, r) => a + r.value, 0);
+    if (!total) return '';
+
+    let angle = -Math.PI / 2;            // start at twelve o'clock
+    const slices = chart.series.map(s => {
+        const sweep = (s.value / total) * Math.PI * 2;
+        const a0 = angle, a1 = angle + sweep;
+        angle = a1;
+        const on = chart.highlight && s.key === chart.highlight;
+        // A slice at or past half the circle needs the large-arc flag, or it
+        // is drawn as its own complement.
+        const large = sweep > Math.PI ? 1 : 0;
+        const p = (r, a) => `${(cx + r * Math.cos(a)).toFixed(2)},${(cy + r * Math.sin(a)).toFixed(2)}`;
+        const d = `M ${p(rOuter, a0)} A ${rOuter} ${rOuter} 0 ${large} 1 ${p(rOuter, a1)}`
+                + ` L ${p(rInner, a1)} A ${rInner} ${rInner} 0 ${large} 0 ${p(rInner, a0)} Z`;
+        return `<path d="${d}" fill="${s.color}" class="cc-slice${on ? ' on' : ''}"/>`;
+    }).join('');
+
+    // Legend, because a slice cannot carry a species name inside it.
+    const legend = chart.series.map((s, i) => {
+        const ly = 70 + i * 56;
+        const pct = Math.round((s.value / total) * 100);
+        return `<rect x="560" y="${ly - 22}" width="30" height="30" rx="7" fill="${s.color}"/>`
+             + `<text x="604" y="${ly + 2}" class="cc-label" text-anchor="start">`
+             + `${esc(cmShorten(String(s.label), 20))}</text>`
+             + (revealed
+                 ? `<text x="${W - 30}" y="${ly + 2}" class="cc-val" text-anchor="end">${pct}%</text>`
+                 : '');
+    }).join('');
+
+    return `
+        <figure class="classroom-chart donut">
+            <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(chart.caption)}">
+                ${slices}
+                <text x="${cx}" y="${cy - 2}" class="cc-donut-total" text-anchor="middle">${total}</text>
+                <text x="${cx}" y="${cy + 34}" class="cc-donut-cap" text-anchor="middle">visits</text>
+                ${legend}
+            </svg>
+            <figcaption>${esc(chart.caption)}</figcaption>
+        </figure>`;
+}
+
+/**
+ * A clock face showing when the birds came.
+ *
+ * Design notes section 11 asks for exactly this for K-2: telling the time
+ * from detection timestamps on an analog clock. It is the one chart here that
+ * teaches something other than reading a chart, and a class that has to find
+ * eight o'clock on a dial to answer is practising the dial, not the data.
+ *
+ * Twelve positions, so morning and afternoon land on the same mark. That is a
+ * property of real clocks and not a thing to paper over, so the two are drawn
+ * in different colours with a legend, which is also the honest way to show a
+ * feeder that is busy at 8am and quiet at 8pm.
+ */
+function classroomClockHtml(chart, revealed) {
+    const W = 1000, H = 460;
+    const cx = W / 2, cy = H / 2 + 10, R = 170;
+
+    // Hour marks and the numbers 1-12.
+    let face = `<circle cx="${cx}" cy="${cy}" r="${R}" class="cc-clock-face"/>`;
+    for (let h = 1; h <= 12; h++) {
+        const a = (h / 12) * Math.PI * 2 - Math.PI / 2;
+        face += `<text x="${(cx + (R - 38) * Math.cos(a)).toFixed(1)}"
+                       y="${(cy + (R - 38) * Math.sin(a) + 11).toFixed(1)}"
+                       class="cc-clock-num" text-anchor="middle">${h}</text>`;
+    }
+
+    // One blob per hour that had birds, out beyond the numbers, sized by how
+    // busy that hour was. Size rather than colour carries the quantity,
+    // because colour is already carrying am/pm.
+    const blobs = chart.series.map(s => {
+        const hour24 = s.hour != null ? s.hour : parseInt(s.key, 10);
+        if (!isFinite(hour24)) return '';
+        const h12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
+        const a = (h12 / 12) * Math.PI * 2 - Math.PI / 2;
+        const r = 16 + (s.value / chart.max) * 26;
+        const bx = cx + (R + 46) * Math.cos(a);
+        const by = cy + (R + 46) * Math.sin(a);
+        const on = chart.highlight && s.key === chart.highlight;
+        const am = hour24 < 12;
+        return `<circle cx="${bx.toFixed(1)}" cy="${by.toFixed(1)}" r="${r.toFixed(1)}"
+                        fill="${am ? '#fbbf24' : '#60a5fa'}"
+                        class="cc-clock-blob${on ? ' on' : ''}"/>`
+             + (revealed
+                 ? `<text x="${bx.toFixed(1)}" y="${(by + 9).toFixed(1)}"
+                          class="cc-clock-val" text-anchor="middle">${s.value}</text>`
+                 : '');
+    }).join('');
+
+    return `
+        <figure class="classroom-chart clock">
+            <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(chart.caption)}">
+                ${face}
+                ${blobs}
+                <circle cx="60" cy="34" r="14" fill="#fbbf24"/>
+                <text x="86" y="42" class="cc-label" text-anchor="start">morning</text>
+                <circle cx="260" cy="34" r="14" fill="#60a5fa"/>
+                <text x="286" y="42" class="cc-label" text-anchor="start">afternoon</text>
+            </svg>
+            <figcaption>${esc(chart.caption)}</figcaption>
+        </figure>`;
+}
+
+// Long species names have to stop somewhere on a fixed canvas.
+function cmShorten(text, max) {
+    return text.length <= max ? text : text.slice(0, max - 1).trimEnd() + '…';
 }
 
 // ── Question templates ───────────────────────────────────
@@ -2862,15 +3193,36 @@ async function sendClassroomFlag(i) {
         p_question:     snapshot,
     }, true);
 
-    // The database may not have setup-classroom-suggestions.sql yet, in which
-    // case there is no p_kind to pass and PostgREST cannot resolve the call at
-    // all (PGRST202). Losing what a teacher just wrote because a migration is
-    // outstanding would be the worst possible outcome of adding a feature, so
-    // file it the old way instead and keep the distinction in the words. The
-    // reason is coerced too: 'improvement' does not exist in the old check
-    // constraint and would be rejected.
-    if (error && (error.code === 'PGRST202'
-                  || /p_kind|does not exist|schema cache/i.test(error.message || ''))) {
+    // Losing what a teacher just wrote because a migration is outstanding is
+    // the worst possible outcome of adding a feature, and it happened twice
+    // in real use before these fallbacks existed. There are two ways a
+    // half-migrated database refuses this call, and they fail at different
+    // depths:
+    //
+    //   PGRST202 — no p_kind on the function, so PostgREST cannot resolve the
+    //              call at all. Retry against the old five-argument shape.
+    //   23514    — the function accepted 'improvement' but the table's own
+    //              check constraint has not been widened to allow it. Retry
+    //              with the same shape and a reason the old constraint knows,
+    //              which keeps the flag/suggestion distinction intact and
+    //              gives up only the finer reason.
+    //
+    // Either way the teacher's words are what matter, and they survive.
+    const missingArg = error && (error.code === 'PGRST202'
+        || /p_kind|does not exist|schema cache/i.test(error.message || ''));
+    const badReason  = error && (error.code === '23514'
+        || /reason_check/i.test(error.message || ''));
+
+    if (badReason && !missingArg) {
+        ({ error } = await sbRpc('classroom_flag_question', {
+            p_community_id: classroomCommunityId,
+            p_classroom_id: room.id,
+            p_kind:         kind,
+            p_reason:       'other',
+            p_comment:      note,
+            p_question:     snapshot,
+        }, true));
+    } else if (missingArg) {
         ({ error } = await sbRpc('classroom_flag_question', {
             p_community_id: classroomCommunityId,
             p_classroom_id: room.id,

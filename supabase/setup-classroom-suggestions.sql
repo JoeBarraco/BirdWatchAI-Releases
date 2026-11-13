@@ -34,7 +34,37 @@
 -- ════════════════════════════════════════════════════════════════════
 
 -- ────────────────────────────────────────────────────────────────────
--- 1. Replace the flag RPC with one that can file either kind
+-- 1. Let the table hold the new reason
+--
+-- The first cut of this migration taught the FUNCTION about
+-- 'improvement' and left the TABLE's check constraint alone, so every
+-- suggestion was accepted by the function and then refused by the
+-- constraint underneath it:
+--
+--   new row for relation "classroom_question_feedback" violates check
+--   constraint "classroom_question_feedback_reason_check"
+--
+-- Validating the same vocabulary in two places is what made that
+-- possible. The constraint is the one that actually protects the data,
+-- so it is the one that has to be widened; the function's check stays
+-- only to turn a violation into a sentence a teacher can read.
+--
+-- 'idea' is kept: classroom_suggest_question writes it for a free-text
+-- suggestion that has no question attached, and dropping it here would
+-- break that path instead.
+-- ────────────────────────────────────────────────────────────────────
+
+alter table classroom_question_feedback
+  drop constraint if exists classroom_question_feedback_reason_check;
+
+alter table classroom_question_feedback
+  add constraint classroom_question_feedback_reason_check
+  check (reason in ('unclear', 'wrong', 'too_easy', 'too_hard',
+                    'bad_visual', 'improvement', 'other', 'idea'));
+
+
+-- ────────────────────────────────────────────────────────────────────
+-- 2. Replace the flag RPC with one that can file either kind
 -- ────────────────────────────────────────────────────────────────────
 
 drop function if exists classroom_flag_question(uuid, jsonb, text, text, uuid);
@@ -126,7 +156,7 @@ $$;
 
 
 -- ────────────────────────────────────────────────────────────────────
--- 2. Grants
+-- 3. Grants
 --
 -- Same shape as setup-classroom-feedback.sql §5: nothing to public or
 -- anon, execute to authenticated, and the function's own role check

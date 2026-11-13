@@ -4185,9 +4185,17 @@
     font-variant-numeric: tabular-nums;
 }
 
-.cc-bar    { fill: var(--color-primary); opacity: 0.55; }
-/* The bar the question is ABOUT — never the bar that answers it. */
-.cc-bar.on { opacity: 1; }
+/* NO fill here. Each bar carries its own fill="..." from the renderer — the
+   species' real colour — and a fill in this rule would override every one of
+   them, because a presentation attribute loses to any stylesheet rule. */
+/* Nearly full strength: distinguishing the bars is the colours' job now, so
+   opacity is free to just make them bright. It used to carry both and had to
+   sit at 0.55, which on a projector read as washed out. */
+.cc-bar    { opacity: 0.88; transition: opacity 0.15s ease; }
+/* The bar the question is ABOUT — never the bar that answers it. An outline
+   as well as full opacity, because 0.88 against 1.0 is not a difference you
+   can see from the back of a room. */
+.cc-bar.on { opacity: 1; stroke: var(--color-gray-900); stroke-width: 3; }
 
 /* ── Dots: the K–2 pictograph ──────────────────────────────────────── */
 
@@ -4348,3 +4356,116 @@
     border-left: 3px solid #f0a500;
     background: rgba(240, 165, 0, 0.06);
 }
+
+/* ── Chart kinds beyond bars and dots ──────────────────────────────
+   A class that meets the same bar chart forty times stops looking at it.
+   Each of these is the shape that suits a particular question: a line for
+   "what happened over the week", a donut for "what share", a clock for
+   "when", horizontal bars for names too long to sit under a column. */
+
+.classroom-chart.hbars { width: min(94vw, 980px); }
+.classroom-chart.line  { width: min(94vw, 980px); }
+.classroom-chart.donut { width: min(94vw, 980px); }
+.classroom-chart.clock { width: min(88vw, 820px); }
+
+/* ── Line ─────────────────────────────────────────────────────────── */
+
+.cc-line {
+    fill: none;
+    stroke: var(--color-primary);
+    stroke-width: 5;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+}
+/* Filled underneath, because a 5px stroke alone vanishes from the back of a
+   classroom. The fill is what makes it read as a quantity. */
+.cc-area {
+    fill: color-mix(in srgb, var(--color-primary) 22%, transparent);
+    stroke: none;
+}
+.cc-point    { stroke: var(--bg); stroke-width: 3; }
+.cc-point.on { stroke-width: 5; }
+
+/* ── Donut ────────────────────────────────────────────────────────── */
+
+.cc-slice    { opacity: 0.88; stroke: var(--bg); stroke-width: 3; }
+.cc-slice.on { opacity: 1; }
+
+.cc-donut-total {
+    fill: var(--color-gray-900);
+    font-size: 64px; font-family: inherit; font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+.cc-donut-cap {
+    fill: var(--color-gray-500);
+    font-size: 26px; font-family: inherit; font-weight: 600;
+}
+
+/* ── Clock ────────────────────────────────────────────────────────── */
+
+.cc-clock-face {
+    fill: none;
+    stroke: var(--color-gray-500);
+    stroke-width: 4;
+}
+.cc-clock-num {
+    fill: var(--color-gray-900);
+    font-size: 36px; font-family: inherit; font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+.cc-clock-blob    { opacity: 0.85; }
+.cc-clock-blob.on { opacity: 1; stroke: var(--color-gray-900); stroke-width: 4; }
+.cc-clock-val {
+    fill: #1a1a1a;
+    font-size: 24px; font-family: inherit; font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── Colour-coded answers ──────────────────────────────────────────
+   Four colours, one per position, the way every quiz game a child has met
+   does it. It also gives the room a way to vote that does not depend on
+   reading: "put your hand up for the blue one" works in a K-2 class where
+   "put your hand up for C" does not.
+
+   The accent is deliberately on the key badge and a stripe, NOT the button's
+   whole background: the reveal states below have to be able to shout over it,
+   and a wall of four saturated blocks would make the correct answer no louder
+   than the rest. */
+
+.classroom-choice { position: relative; overflow: hidden; }
+
+.classroom-choice::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 6px;
+    background: var(--cc-accent, var(--color-primary));
+}
+.classroom-choice .classroom-choice-key {
+    background: var(--cc-accent, var(--color-primary));
+    color: #10231a;
+    font-weight: 800;
+}
+
+.classroom-choices > .classroom-choice:nth-child(1) { --cc-accent: #ef4444; }
+.classroom-choices > .classroom-choice:nth-child(2) { --cc-accent: #3b82f6; }
+.classroom-choices > .classroom-choice:nth-child(3) { --cc-accent: #f59e0b; }
+.classroom-choices > .classroom-choice:nth-child(4) { --cc-accent: #a78bfa; }
+
+/* Purple rather than green in fourth place on purpose. Green is what the
+   reveal uses for "right", and a fourth option permanently wearing the
+   correct-answer colour is a hint on every single question. */
+
+/* The reveal has to beat the accent, so it takes the whole button. */
+.classroom-choice.correct {
+    background: color-mix(in srgb, #22c55e 30%, transparent) !important;
+    border-color: #22c55e !important;
+    box-shadow: inset 0 0 0 3px #22c55e;
+}
+.classroom-choice.chosen-wrong {
+    background: color-mix(in srgb, #ef4444 26%, transparent) !important;
+    border-color: #ef4444 !important;
+    box-shadow: inset 0 0 0 3px #ef4444;
+}
+.classroom-choice.correct::before,
+.classroom-choice.chosen-wrong::before { display: none; }
