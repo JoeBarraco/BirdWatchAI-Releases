@@ -1561,6 +1561,27 @@ function cmSpeciesSeries(s, limit) {
  * already ships no chart library, and adding one to draw eight rectangles
  * would cost more download than the whole classroom module.
  */
+/**
+ * Whatever the question puts in front of the class: a photo, a chart, a map,
+ * or a photo AND a map side by side.
+ *
+ * One place that decides, because three call sites were each deciding it
+ * slightly differently and the review pass had already drifted out of step
+ * with the projector once.
+ */
+function classroomEvidenceHtml(q, revealed) {
+    if (!q) return '';
+    const shot = q.image ? classroomShotHtml(q, revealed) : '';
+    const map  = q.map   ? classroomMapHtml(q.map, revealed) : '';
+
+    // Both: the bird beside the places. Side by side on a projector, stacked
+    // when there is no room for two.
+    if (shot && map) return `<div class="classroom-evidence-pair">${shot}${map}</div>`;
+    if (map)  return map;
+    if (shot) return shot;
+    return classroomChartHtml(q.chart, revealed);
+}
+
 function classroomChartHtml(chart, revealed) {
     if (!chart) return '';
     // A chart that declares showValues shows them whether or not the answer
@@ -1745,6 +1766,48 @@ function classroomDotsHtml(chart, revealed) {
         <figure class="classroom-chart dots${withPhotos ? ' with-photos' : ''}">
             <div class="cc-rows">${rows}</div>
             <figcaption>${esc(chart.caption)}</figcaption>
+        </figure>`;
+}
+
+/**
+ * A US map with some states picked out.
+ *
+ * Drawn from the state outlines rather than embedded as a picture, because
+ * the only reason to put a map on a question is to colour part of it — "these
+ * seven states" is a fact you can see in two seconds and cannot get from a
+ * list of seven names read aloud.
+ *
+ * The states are NOT labelled. A class that can see Ohio lit up and has to
+ * work out that it is Ohio is doing geography; a map with the names printed
+ * on it is a diagram they read once and forget. The names arrive with the
+ * reveal, where they confirm rather than replace the looking.
+ */
+function classroomMapHtml(spec, revealed) {
+    const M = (typeof US_MAP !== 'undefined') ? US_MAP : null;
+    if (!M || !spec) return '';
+
+    const hi = new Set((spec.highlight || []).map(c => String(c).toLowerCase()));
+    if (!hi.size) return '';
+
+    // Highlighted states last, so a lit state's border is never painted over
+    // by the plain neighbour drawn after it.
+    const order = Object.keys(M.paths).sort(
+        (a, b) => (hi.has(a) ? 1 : 0) - (hi.has(b) ? 1 : 0));
+
+    const paths = order.map(code =>
+        `<path d="${M.paths[code]}" class="cc-state${hi.has(code) ? ' on' : ''}"/>`).join('');
+
+    const named = [...hi].map(c => M.names[c]).filter(Boolean).sort();
+
+    return `
+        <figure class="classroom-map">
+            <svg viewBox="${esc(M.viewBox)}" role="img"
+                 aria-label="${esc(spec.caption || 'Map of the United States')}">
+                ${paths}
+            </svg>
+            <figcaption>${revealed && named.length
+                ? esc(named.join(', '))
+                : esc(spec.caption || '')}</figcaption>
         </figure>`;
 }
 
@@ -3568,6 +3631,10 @@ const CLASSROOM_TEMPLATES = [
             // version of this: the bird on the board is the bird outside.
             image: cmShotFor(s, 'Northern Cardinal')
                 || cmWonderPhoto('Northern Cardinal'),
+            map: {
+                highlight: ['il', 'in', 'ky', 'nc', 'oh', 'va', 'wv'],
+                caption: 'Seven states, one bird',
+            },
             explain: 'The Northern Cardinal: Illinois, Indiana, Kentucky, North '
                    + 'Carolina, Ohio, Virginia and West Virginia. The Bald Eagle is '
                    + 'the national bird, which is a different job.',
@@ -4295,9 +4362,7 @@ function classroomReviewItem(q, i) {
     // Describing it in words ("bar chart — visits each day") was useless for
     // the one judgement review exists to make: whether a room of children can
     // actually read the thing.
-    const slide = q.image ? classroomShotHtml(q, false)
-                : q.chart ? classroomChartHtml(q.chart, false)
-                : '';
+    const slide = classroomEvidenceHtml(q, false);
 
     return `
         <div class="classroom-review-q" data-q="${i}">
@@ -5299,8 +5364,7 @@ function renderClassroomStage() {
 
         <div class="classroom-stage-body">
           <div class="classroom-fit">
-            ${q.image ? classroomShotHtml(q, S.revealed)
-                      : classroomChartHtml(q.chart, S.revealed)}
+            ${classroomEvidenceHtml(q, S.revealed)}
             ${classroomIntroHtml(q)}
             <h1 class="classroom-prompt">${esc(q.prompt)}</h1>
             <div class="classroom-choices ${q.choices.length > 3 ? 'four' : ''}">${choices}</div>
@@ -5315,7 +5379,7 @@ function renderClassroomStage() {
 
     // After layout, not during: scrollHeight is meaningless until the browser
     // has laid the new markup out.
-    requestAnimationFrame(classroomFitStage);
+    classroomFitSoon();
 }
 
 /**
@@ -5526,6 +5590,25 @@ function classroomFitMeasure(body, fit) {
     // whole thing being fixed. Shrinking the box to match the painted size is
     // what actually removes the scrollbar.
     fit.style.height = (natural * scale) + 'px';
+}
+
+/**
+ * Fit now, and again shortly afterwards.
+ *
+ * A single pass after render keeps being wrong, in three different ways now:
+ * the stage body has no height yet because it was shown in the same tick, a
+ * web font lands and reflows the text, or a photograph arrives. Each time the
+ * fitter measured something that was about to change, and nothing ran again.
+ *
+ * Rather than chase each cause, measure a few times over the first quarter
+ * second. The passes are idempotent - each one resets and re-measures from
+ * scratch - so the only cost of an unnecessary one is a few microseconds, and
+ * the cost of a missing one is a slide that scrolls in front of a class.
+ */
+function classroomFitSoon() {
+    requestAnimationFrame(classroomFitStage);
+    setTimeout(classroomFitStage, 90);
+    setTimeout(classroomFitStage, 280);
 }
 
 let classroomFitTimer = null;
@@ -5827,7 +5910,7 @@ function renderClassroomLobby() {
             <span class="classroom-muted">${S.questions.length} questions ready.</span>
         </div>`;
 
-    requestAnimationFrame(classroomFitStage);
+    classroomFitSoon();
 }
 
 /**

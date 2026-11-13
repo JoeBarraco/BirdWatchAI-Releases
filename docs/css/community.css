@@ -4565,3 +4565,48 @@
     display: flex; align-items: center; gap: 0.5rem;
     margin-bottom: 0.6rem;
 }
+
+/* ── A map as evidence ─────────────────────────────────────────────
+   Unlit states are visible but recede; the highlighted ones are the point.
+   Borders in the page background colour so the states read as separate
+   shapes without drawing a grid over the map. */
+.classroom-map { margin: 0; width: min(100%, 820px); flex-shrink: 0; }
+.classroom-map svg { width: 100%; height: auto; display: block; }
+
+.cc-state {
+    fill: var(--color-gray-500);
+    opacity: 0.32;
+    stroke: var(--bg);
+    stroke-width: 1.2;
+}
+.cc-state.on {
+    fill: var(--color-primary);
+    opacity: 1;
+    stroke: var(--color-gray-900);
+    stroke-width: 1.6;
+}
+
+.classroom-map figcaption {
+    text-align: center; margin-top: 0.8vmin;
+    font-size: clamp(0.8rem, 1.7vmin, 1.15rem);
+    color: var(--color-gray-500);
+}
+
+/* The bird beside the places. Side by side where there is room, stacked
+   where there is not — a phone, or the narrow review panel. */
+.classroom-evidence-pair {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 2vmin;
+    width: 100%;
+}
+.classroom-evidence-pair > * { flex: 1 1 280px; min-width: 0; max-width: 100%; }
+.classroom-evidence-pair .classroom-shot { display: flex; justify-content: center; }
+
+/* The map carries more information than the portrait beside it, so it gets
+   the larger share rather than an even split. */
+.classroom-evidence-pair .classroom-map  { flex: 1.5 1 320px; }
+.classroom-evidence-pair .classroom-shot { flex: 1 1 200px; }
+.classroom-evidence-pair .classroom-shot img { max-height: 30vh; }
