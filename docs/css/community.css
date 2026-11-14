@@ -4647,6 +4647,15 @@
     fill: var(--color-primary);
     font-size: 26px; font-family: inherit; font-weight: 700;
     font-variant-numeric: tabular-nums;
+    /* A halo in the card colour, painted UNDER the glyph. A value label is
+       drawn over gridlines, the area fill and sometimes the line itself, and
+       on a projector a number sitting on a rule reads as a number with a
+       line through it. paint-order is what keeps the stroke behind the fill
+       rather than fattening the digits. */
+    paint-order: stroke;
+    stroke: var(--bg-card);
+    stroke-width: 7px;
+    stroke-linejoin: round;
 }
 
 /* NO fill here. Each bar carries its own fill="..." from the renderer — the

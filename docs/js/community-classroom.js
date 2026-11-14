@@ -2118,11 +2118,22 @@ function classroomLineHtml(chart, revealed) {
     // also a row of colored markers rather than one undifferentiated stroke.
     const marks = chart.series.map((s, i) => {
         const on = chart.highlight && s.key === chart.highlight;
+
+        // The first point sits ON the y-axis, so a centred value label lands
+        // in the axis column: four pixels from the tick label, at the same
+        // size, and — whenever the value falls about four fifths of a step
+        // below a gridline — on the same baseline to within a pixel. On the
+        // slide that showed this up, the axis "5" and Monday's "4" read as
+        // "54". Anchoring the end labels inward moves them out of that column
+        // entirely; the halo below handles every other overlap.
+        const edge = i === 0 ? 'start' : (i === n - 1 ? 'end' : 'middle');
+        const vx   = x(i) + (edge === 'start' ? 8 : edge === 'end' ? -8 : 0);
+
         return `<circle cx="${x(i)}" cy="${y(s.value)}" r="${on ? 16 : 11}"
                         fill="${s.color}" class="cc-point${on ? ' on' : ''}"/>`
              + (revealed
-                 ? `<text x="${x(i)}" y="${y(s.value) - 24}" class="cc-val"
-                          text-anchor="middle">${s.value}</text>`
+                 ? `<text x="${vx}" y="${y(s.value) - 24}" class="cc-val"
+                          text-anchor="${edge}">${s.value}</text>`
                  : '')
              + `<text x="${x(i)}" y="${H - padB + 34}" class="cc-label"
                       text-anchor="middle">${esc(cmShorten(String(s.label), 10))}</text>`;
