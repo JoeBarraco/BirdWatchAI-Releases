@@ -5698,16 +5698,34 @@ async function refreshClassroomPanel() {
 
     renderClassroomTerm();
 
-    // A lapsed school cannot create a classroom — the trigger on classrooms
-    // refuses the insert — so the button says so here rather than letting
-    // somebody fill in the whole form and lose it to an error.
+    // Two separate reasons the trigger on classrooms would refuse the insert,
+    // and they need different words: a lapsed term is a renewal, a full plan
+    // is an upgrade or an archive. Either way the button says so here rather
+    // than letting somebody fill in the whole form and lose it to an error.
+    //
+    // The term is checked first because the trigger checks it first — telling
+    // a lapsed school to archive a class would send them to do something that
+    // still would not work.
+    const rooms = classroomSchool && classroomSchool.classrooms;
+    const full  = !!(rooms && rooms.room === false);
+
+    const title = document.getElementById('classroom-pane-title');
+    if (title) {
+        title.textContent = (rooms && rooms.limit)
+            ? `Classes ${rooms.used} of ${rooms.limit}`
+            : 'Classes';
+    }
+
     const newBtn = document.getElementById('classroom-new-btn');
     if (newBtn) {
-        const blocked = classroomTermBlocks();
+        const blocked = classroomTermBlocks() || full;
         newBtn.disabled = blocked;
-        newBtn.title = blocked
+        newBtn.title = classroomTermBlocks()
             ? 'This school’s subscription has ended'
-            : '';
+            : full
+                ? `This school’s plan covers ${rooms.limit} ` +
+                  `class${rooms.limit === 1 ? '' : 'es'} — archive one, or upgrade`
+                : '';
     }
 
     // Purge nicknames and tokens left behind by a session nobody closed —

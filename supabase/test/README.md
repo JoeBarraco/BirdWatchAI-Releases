@@ -44,8 +44,24 @@ docker exec bwai-pgtest psql -U postgres -q -f /tmp/reminders-schema.sql
 docker exec bwai-pgtest psql -U postgres -q -f /tmp/school-reminders.test.sql
 ```
 
+There are four suites, each needing the migrations it builds on applied first:
+
+| Suite | Needs | Checks |
+|---|---|---|
+| `school-subscription.test.sql` | subscription + purchase | 68 |
+| `school-reminders.test.sql` | + reminders | 37 |
+| `classroom-limits.test.sql` | + classroom limits | 25 |
+| `feedback-teachers.test.sql` | feedback-teachers only | 18 |
+
 Every check prints `PASS` or `FAIL ***`. Grep for `FAIL`. As of the last run:
-68 subscription checks and 37 reminder checks, 0 failures.
+148 checks, 0 failures.
+
+**Run `school-subscription.test.sql` again after any migration that touches a
+function it covers.** The classroom-limit work added a parameter to two mint
+functions, which `create or replace` turns into a second overload rather than
+a replacement — every short-form call then fails with "function is not
+unique". That suite caught it; nothing else would have, until a customer's
+purchase did.
 
 **`now()` is the transaction timestamp**, and each test's `do $$ … $$` block is
 one transaction, so every `now()` inside it is the same instant. Two
