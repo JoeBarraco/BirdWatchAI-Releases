@@ -3713,10 +3713,16 @@
        required: in a flex row the default `stretch` makes this item as tall
        as the tallest sibling, and an element the full height of the scroller
        has nowhere to stick to.
-       -2rem cancels the box's own 2rem padding so the column's top edge
-       lands at the top of the scrolled area rather than 32px down. */
+       top: 0, and nothing cleverer. This used to be top: -2rem with a
+       matching padding-top: 2rem / margin-top: -2rem, meant to land the
+       column at the very top of the box. Measured, it bought nothing — the
+       first line sticks 32px down either way — and the negative margin
+       pulled the column's opaque background 2rem up over whatever sat
+       above the panes: the subscription banner lost its bottom-left
+       corner, and with no banner the community dropdown lost its text.
+       Reported from the live site as "Banner and pulldown get cutoff". */
     position: sticky;
-    top: -2rem;
+    top: 0;
     align-self: flex-start;
     /* Capped so it can never outgrow the viewport — a column taller than
        the screen cannot stick, which would put Close out of reach again.
@@ -3728,8 +3734,6 @@
     overflow: visible;
     /* So the right pane's content never shows through while it scrolls past. */
     background: var(--bg-card);
-    padding-top: 2rem;
-    margin-top: -2rem;
     z-index: 1;
 }
 
@@ -3765,7 +3769,6 @@
         /* Stacked, there is nothing to sit beside: a sticky column here
            would pin itself over the pane it is meant to introduce. */
         position: static; max-height: none; overflow: visible;
-        padding-top: 0; margin-top: 0;
     }
     .classroom-pane-right { width: 100%; }
 }
