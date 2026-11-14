@@ -8324,10 +8324,33 @@ async function showClassroomHistory(id) {
                       + '<button class="classroom-btn" onclick="hideClassroomHistory()">Close</button>';
         return;
     }
-    const sessions = Array.isArray(data) ? data : [];
+    const all = Array.isArray(data) ? data : [];
+
+    // A SESSION IS NOT A LESSON UNTIL SOMETHING IS ASKED.
+    //
+    // The row has to be created the moment the board goes up — the join code
+    // and every answer hang off it — so a teacher who opens one and is
+    // interrupted leaves a row behind with nothing in it. Four of eight rows
+    // on a real class were those, and the panel called it "8 lessons".
+    //
+    // The scoreboard has excluded them since the day it was written, for
+    // exactly this reason. This list disagreeing with that one was the bug:
+    // the same week could be four lessons on the board and eight here.
+    //
+    // They are counted and said, not silently dropped. "You opened the board
+    // and taught nothing four times" is worth knowing once; it is not worth
+    // four rows that look like lessons with no results.
+    const sessions = all.filter(x => (x.questions || []).length > 0);
+    const emptied  = all.length - sessions.length;
+
     if (!sessions.length) {
         box.innerHTML = '<div class="classroom-muted">No lessons yet. Once you have run one, '
-                      + 'it appears here with every question the class answered.</div>'
+                      + 'it appears here with every question the class answered.'
+                      + (emptied
+                          ? ` The board has been opened ${emptied} time${emptied === 1 ? '' : 's'} `
+                          + 'without a question going up.'
+                          : '')
+                      + '</div>'
                       + '<button class="classroom-btn" onclick="hideClassroomHistory()">Close</button>';
         return;
     }
@@ -8367,17 +8390,20 @@ async function showClassroomHistory(id) {
         ${overall != null ? `<div class="classroom-hstat"><strong>${overall}%</strong><span>correct overall</span></div>` : ''}
         ${pending ? `<div class="classroom-hstat"><strong>${pending}</strong><span>still waiting</span></div>` : ''}
     </div>
+    ${emptied ? `<p class="classroom-muted classroom-hcats">
+        The board went up ${emptied} other time${emptied === 1 ? '' : 's'} with no question
+        asked — not counted above, and not listed below.
+    </p>` : ''}
     ${cats.length >= 2 ? `<p class="classroom-muted classroom-hcats">
         Hardest so far: ${cats.slice(0, 2).map(c => `${esc(c.cat)} (${c.pct}%)`).join(', ')}
         · Easiest: ${cats.slice(-1).map(c => `${esc(c.cat)} (${c.pct}%)`).join('')}
     </p>` : ''}`;
 
-    // Open the newest lesson THAT HAS QUESTIONS, not simply the newest.
-    // A session started and closed without asking anything is a real row —
-    // somebody put the board up and the bell went — but auto-opening it
-    // shows an empty panel while every lesson with content stays shut, which
-    // is exactly backwards. Found by opening this on a real class.
-    const firstWithQs = sessions.findIndex(s => (s.questions || []).length > 0);
+    // The newest lesson, opened. This used to have to hunt for the newest one
+    // WITH QUESTIONS, because an empty session would otherwise auto-open and
+    // show nothing while every real lesson stayed shut. The empties are gone
+    // from the list now, so it is just the first row again.
+    const firstWithQs = 0;
 
     const lessons = sessions.map((s, idx) => {
         const when = new Date(s.started_at)
