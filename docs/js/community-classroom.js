@@ -1042,6 +1042,10 @@ function cmSummarize(feederId, name, rows, isHome, windowDays) {
     const byHour    = new Array(24).fill(0);
     const daySpec   = new Map();
     const snapshots = [];
+    // Detections that came with a recorded clip. Only feeders set up to
+    // record have any, so most summaries carry none and the clip questions
+    // simply sit the week out.
+    const clips = [];
     let tempSum = 0, tempRows = 0;
     const dayTemp = new Map();   // day -> {sum, n}
 
@@ -1066,11 +1070,13 @@ function cmSummarize(feederId, name, rows, isHome, windowDays) {
         }
 
         if (r.image_url && !isPrivateMedia(r.image_url)) snapshots.push(r);
+        if (r.video_url && !isPrivateMedia(r.video_url)) clips.push(r);
     }
 
     // Highest confidence first: the identification question wants the clearest
     // photo of the bird, not the most recent blur.
     snapshots.sort((a, b) => (b.confidence || 0) - (a.confidence || 0));
+    clips.sort((a, b) => (b.confidence || 0) - (a.confidence || 0));
 
     const species = [...bySpecies.entries()]
         .map(([species, n]) => ({ species, n }))
@@ -1084,7 +1090,7 @@ function cmSummarize(feederId, name, rows, isHome, windowDays) {
     return {
         feederId, name, isHome,
         rows, total: rows.length,
-        species, bySpecies, days, byDay, byHour, daySpec, snapshots,
+        species, bySpecies, days, byDay, byHour, daySpec, snapshots, clips,
         distinct: species.length,
         avgTemp: tempRows ? tempSum / tempRows : null,
         tempCoverage: rows.length ? tempRows / rows.length : 0,
@@ -1174,7 +1180,7 @@ async function loadClassroomData(room) {
 
     const since = new Date(Date.now() - CLASSROOM_WINDOW_DAYS * 86400000).toISOString();
     const url = `${SUPABASE_URL}/rest/v1/community_detections`
-              + `?select=id,feeder_id,species,confidence,detected_at,image_url,temperature,rarity`
+              + `?select=id,feeder_id,species,confidence,detected_at,image_url,video_url,temperature,rarity`
               + `&feeder_id=in.(${ids.join(',')})`
               + `&detected_at=gte.${encodeURIComponent(since)}`
               + `&order=detected_at.desc`;
@@ -1719,6 +1725,7 @@ function classroomEvidenceHtml(q, revealed) {
     // whole job is to be compared. It comes first because a question that has
     // one cannot be answered from anything else.
     if (q.pair) return classroomPairHtml(q.pair);
+    if (q.video && q.video.url) return classroomClipHtml(q, revealed);
     // image_on_reveal: a photo that would answer the question, held back until
     // the answer is up. Before then the slide falls through to whatever else
     // it has, which for a puzzle is nothing — the letters are the evidence.
@@ -1732,6 +1739,42 @@ function classroomEvidenceHtml(q, revealed) {
     if (map)  return map;
     if (shot) return shot;
     return classroomChartHtml(q.chart, revealed);
+}
+
+/**
+ * A feeder clip on the slide.
+ *
+ * Muted and looping: a four-to-twenty-second clip that plays once and stops
+ * is over before the room has settled, and sound from a projector across a
+ * classroom is mostly fan noise. Looping means the class can watch it as
+ * many times as the conversation needs without anyone touching anything.
+ *
+ * Cropped like a snapshot when the question asks which bird it is: the
+ * feeder burns the species name into the bottom of every clip, in the same
+ * strip geometry it uses on photos, so the photo's crop fraction is reused
+ * on the video's own height.
+ */
+function classroomClipHtml(q, revealed) {
+    const v = q.video;
+    const crop = v.crop && !revealed;
+    return `<div class="classroom-shot classroom-clip"${crop ? ' data-crop="caption"' : ''}>`
+         + `<video src="${esc(v.url)}"${v.poster ? ` poster="${esc(v.poster)}"` : ''}`
+         + ' autoplay muted loop playsinline preload="auto"'
+         + ' onloadedmetadata="classroomFitClip(this)"></video>'
+         + '</div>';
+}
+
+function classroomFitClip(video) {
+    // The clip has just given the slide its real height.
+    requestAnimationFrame(classroomFitStage);
+    const wrap = video.closest('.classroom-shot');
+    if (!wrap || wrap.dataset.crop !== 'caption') return;
+    const w = video.videoWidth, h = video.videoHeight;
+    if (!w || !h) return;
+    const keptH = Math.round(h * (1 - cmCaptionCropFraction(h)));
+    wrap.style.aspectRatio = `${w} / ${keptH}`;
+    wrap.style.setProperty('--shot-ar', String(w / keptH));
+    wrap.classList.add('cropped');
 }
 
 function classroomChartHtml(chart, revealed) {
@@ -2352,6 +2395,22 @@ function cmShorten(text, max) {
     return text.length <= max ? text : text.slice(0, max - 1).trimEnd() + '…';
 }
 
+/**
+ * The clip a question should use. Confidence floor as for photos — a
+ * misidentified clip teaches the wrong bird — and, where the feeder has a
+ * choice, a different bird from the photo question, so a class does not
+ * meet the same cardinal twice in its first two slides.
+ */
+function cmPickClip(s, rng) {
+    const good = s.clips.filter(r => (r.confidence || 0) >= 0.65);
+    if (!good.length) return null;
+    const photo = s.snapshots.find(r => (r.confidence || 0) >= 0.65 && SPECIES_FACTS[r.species])
+               || s.snapshots.find(r => (r.confidence || 0) >= 0.65);
+    const other = good.filter(r => !photo || r.species !== photo.species);
+    const pool = (other.length ? other : good).slice(0, 6);
+    return cmShuffle(pool, rng)[0];
+}
+
 // ── Question templates ───────────────────────────────────
 //
 // ~15 templates across the six categories in design notes §4, each declaring
@@ -2411,6 +2470,96 @@ const CLASSROOM_TEMPLATES = [
                    + ` at ${when.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}.`,
             fact: speciesFact(shot.species, band),
             detection_id: shot.id,
+        };
+    },
+},
+
+// ── Clips ───────────────────────────────────────────────
+//
+// A feeder that records clips has something a photo cannot give a class:
+// the bird MOVING — how it lands, how it eats, how often it looks up. Two
+// questions use them, and they are deliberately different kinds of question.
+//
+// "Which bird is this?" has a right answer, and it is the detection's own
+// species, exactly as the photo question's is.
+//
+// "What is it doing?" does NOT, and is not pretended to. Nothing records
+// what a bird was doing in a clip — the camera knows the species, not the
+// behaviour — so any "right answer" would be one this file made up. It is a
+// poll: the class watches, votes, and the reveal says there is no single
+// answer and asks whether everyone saw the same thing. Noticing is the
+// lesson; a wrong mark for having noticed something different would teach
+// the opposite.
+
+{
+    id: 'clip-which-bird',
+    category: 'identification',
+    title: 'Watch the clip',
+    bands: ['k-2', '3-5', '6-8'],
+    build({ s, band, rng, feeder }) {
+        const clip = cmPickClip(s, rng);
+        if (!clip) return null;
+
+        // Distractors as the photo question draws them: this feeder's own
+        // visitors first, so the clip has to be watched rather than the
+        // options merely recognised.
+        const others = s.species.map(x => x.species).filter(sp => sp !== clip.species);
+        const want   = band === 'k-2' ? 2 : 3;
+        const pool   = cmShuffle(others, rng).concat(
+            cmShuffle(COMMON_FEEDER_SPECIES.filter(
+                sp => sp !== clip.species && !others.includes(sp)), rng));
+        const built  = cmChoices(clip.species, pool.slice(0, want), rng);
+        if (!built) return null;
+
+        const when = new Date(clip.detected_at);
+        return {
+            prompt: band === 'k-2' ? 'Watch the video. Which bird is it?'
+                                   : 'Watch the clip. Which species is this?',
+            ...built,
+            // The species name is burned into the bottom of the clip, as it
+            // is on every snapshot — so the caption is cropped until the
+            // reveal, the same as the photo question.
+            video: { url: clip.video_url, poster: clip.image_url || '', crop: true },
+            explain: `${clip.species}, filmed at ${feeder} on `
+                   + `${when.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}`
+                   + ` at ${when.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}.`,
+            fact: speciesFact(clip.species, band),
+            detection_id: clip.id,
+        };
+    },
+},
+
+{
+    id: 'clip-what-doing',
+    category: 'science',
+    title: 'What is it doing?',
+    bands: ['k-2', '3-5', '6-8'],
+    build({ s, band, rng }) {
+        const clip = cmPickClip(s, rng);
+        if (!clip) return null;
+
+        // Fixed order, not shuffled: with no right answer there is no
+        // pattern to give away, and "Something else" belongs last.
+        const opts = band === 'k-2'
+            ? ['Eating', 'Looking around', 'Flying away']
+            : ['Eating', 'Watching for danger', 'Flying in or out', 'Something else'];
+
+        return {
+            prompt: band === 'k-2'
+                ? 'Watch the bird. What is it doing most of the time?'
+                : 'Watch closely. What does the bird spend most of the clip doing?',
+            choices: opts.map(label => ({ label })),
+            correct_index: null,
+            poll: true,
+            // Uncropped: the question is about the bird's behaviour, and
+            // its name on the screen gives none of that away.
+            video: { url: clip.video_url, poster: clip.image_url || '', crop: false },
+            // The reveal's heading already says there is no right answer, so
+            // this goes straight to the conversation it is for.
+            explain: 'Did everyone see the same thing? Watch it again and look for '
+                   + 'how often it stops to look up.',
+            detection_id: clip.id,
+            about_bird: SPECIES_LOOKS[clip.species] ? clip.species : null,
         };
     },
 },
@@ -5643,7 +5792,7 @@ function buildDataFreeQuestions(room, o) {
 const CM_EMPTY_SUMMARY = {
     feederId: null, name: null, isHome: true, rows: [], total: 0,
     species: [], bySpecies: new Map(), days: [], byDay: new Map(),
-    byHour: new Array(24).fill(0), daySpec: new Map(), snapshots: [],
+    byHour: new Array(24).fill(0), daySpec: new Map(), snapshots: [], clips: [],
     distinct: 0, avgTemp: null, tempCoverage: 0, dayTemp: new Map(),
 };
 
@@ -6906,7 +7055,9 @@ function classroomReviewItem(q, i) {
             ${classroomIntroHtml(q)}
             <p class="classroom-review-prompt">${esc(q.prompt)}</p>
             <ol class="classroom-review-choices">${choices}</ol>
-            ${q.correct_index == null
+            ${q.poll
+                ? '<p class="classroom-muted">A poll — no right answer; the class says what it saw.</p>'
+                : q.correct_index == null
                 ? '<p class="classroom-muted">Prediction — scored later, no answer yet.</p>' : ''}
             ${q.explain ? `<p class="classroom-muted">On reveal: ${esc(q.explain)}</p>` : ''}
             <div class="classroom-review-actions">
@@ -7047,7 +7198,8 @@ async function sendClassroomFlag(i) {
         correct_index:    q.correct_index,
         explain:          q.explain || null,
         // A reveal-only photo is not what the class was asked about.
-        chart_kind:       (q.image && !q.image_on_reveal) ? 'photo'
+        chart_kind:       q.video ? 'clip'
+                        : (q.image && !q.image_on_reveal) ? 'photo'
                         : (q.chart ? q.chart.kind : null),
         source_feeder_id: q.source_feeder_id,
     };
@@ -9131,7 +9283,11 @@ function renderClassroomStage() {
         let cls = 'classroom-choice';
         if (S.revealed) {
             if (q.correct_index != null && i === q.correct_index) cls += ' correct';
-            if (i === q.class_index && i !== q.correct_index)     cls += ' chosen-wrong';
+            // Only where there IS a right answer. With none — a prediction
+            // still waiting, or a poll — "not the right answer" was true of
+            // every pick, so the class's own vote was painted red as wrong.
+            if (q.correct_index != null && i === q.class_index
+                && i !== q.correct_index)                          cls += ' chosen-wrong';
             if (i === q.class_index && i === q.correct_index)     cls += ' chosen';
             if (q.correct_index == null && i === q.class_index)   cls += ' chosen';
         }
@@ -9178,7 +9334,9 @@ function renderClassroomStage() {
 
     const reveal = !S.revealed ? '' : `
         <div class="classroom-reveal">
-            ${q.correct_index == null
+            ${q.poll
+                ? '<div class="classroom-reveal-head pending">🗳 No single right answer — what did you notice?</div>'
+                : q.correct_index == null
                 ? '<div class="classroom-reveal-head pending">📌 Answer recorded — we check this next class</div>'
                 : (q.class_index === q.correct_index
                     ? '<div class="classroom-reveal-head ok">✅ The class got it</div>'
@@ -9197,9 +9355,17 @@ function renderClassroomStage() {
                 <span class="classroom-pill">${esc(band)}</span>
                 ${S.noData ? '<span class="classroom-pill warn">Feeder quiet — '
                            + 'general bird questions today</span>' : ''}
-                ${q.from_partner
+                ${q.own
+                    // A teacher's own question has no feeder behind it, and
+                    // the class should know whose question it is.
+                    ? '<span class="classroom-pill">Your teacher’s question</span>'
+                    : q.from_partner
                     ? `<span class="classroom-pill partner">Partner feeder: ${esc(q.source_feeder_name)}</span>`
-                    : `<span class="classroom-pill">${esc(q.source_feeder_name)}</span>`}
+                    // Data-free questions have no feeder either; an empty pill
+                    // read as a rendering fault.
+                    : q.source_feeder_name
+                    ? `<span class="classroom-pill">${esc(q.source_feeder_name)}</span>`
+                    : ''}
             </div>
             <div class="classroom-stage-bar-right">
                 ${joinMode ? `<span class="classroom-code-sm">Code ${esc(S.joinCode || '—')}</span>
@@ -9607,7 +9773,8 @@ function skipClassroomQuestion() {
                 correct_index:    q.correct_index,
                 explain:          q.explain || null,
                 // A reveal-only photo is not what the class was asked about.
-                chart_kind:       (q.image && !q.image_on_reveal) ? 'photo'
+                chart_kind:       q.video ? 'clip'
+                                : (q.image && !q.image_on_reveal) ? 'photo'
                                 : (q.chart ? q.chart.kind : null),
                 source_feeder_id: q.source_feeder_id,
             },

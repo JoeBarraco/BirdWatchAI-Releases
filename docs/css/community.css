@@ -4424,6 +4424,27 @@
     border-radius: 0; box-shadow: none;
 }
 
+/* A feeder clip takes the photo's place and the photo's rules: same caps,
+   same rounded card, and the same crop when the question is which bird it
+   is (classroomFitClip sets the shape; object-fit clips the burned-in
+   name off the bottom). Separate selectors rather than editing the photo
+   rules, so neither can drift the other. */
+.classroom-clip video {
+    max-height: 38vh; max-width: 100%;
+    border-radius: 12px; display: block; background: #000;
+    box-shadow: 0 6px 28px rgba(0,0,0,0.25);
+}
+.classroom-clip.cropped video {
+    width: 100%; height: 100%;
+    max-height: none; max-width: none;
+    object-fit: cover; object-position: top;
+    border-radius: 0; box-shadow: none;
+}
+@media (min-width: 900px) {
+    .classroom-slide-top.has-media .classroom-clip video { max-height: 54vh; }
+}
+.classroom-review-slide .classroom-clip video { max-height: 160px; }
+
 .classroom-choices {
     display: grid; gap: 1.6vmin; width: min(100%, 1100px);
     grid-template-columns: 1fr;
