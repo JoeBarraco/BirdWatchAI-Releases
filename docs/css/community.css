@@ -4134,6 +4134,63 @@
     overflow: visible;
 }
 
+/* ── The top half of a slide: media beside the question ─────────────
+
+   Stacked, the picture and the question share one column of height and the
+   picture always loses — it is the thing you can shrink without making the
+   slide unreadable, so the fitter shrinks it. Three flags from one morning
+   said so: "the graph is too small", "the chart is too small", "the photo
+   could be larger by moving it to top left quadrant, and question to top
+   right."
+
+   Side by side they stop competing. The media column takes a little over
+   half the width and roughly twice the height it had, and the question did
+   not give up anything to pay for it.
+
+   Wide screens only. A projector is 16:9 — width is exactly what it has
+   spare and height is exactly what it has not. Below 900px, and on any
+   slide with nothing to show, this is the single centred column it was. */
+.classroom-slide-top {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 2.2vmin; width: 100%;
+}
+
+@media (min-width: 900px) {
+    .classroom-slide-top.has-media {
+        display: grid;
+        grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr);
+        align-items: center;
+        gap: 3.4vmin;
+    }
+    .classroom-slide-media { min-width: 0; display: flex; justify-content: center; }
+    .classroom-slide-ask   { min-width: 0; }
+
+    /* Left-aligned beside a picture. Centred text next to a left-aligned
+       image gives the slide two different edges and no spine. */
+    .classroom-slide-top.has-media .classroom-prompt { text-align: left; max-width: 20ch; }
+    .classroom-slide-top.has-media .classroom-intro  { text-align: left; margin-left: 0; }
+
+    /* The media column no longer shares its height with the question, so
+       the caps that kept a tall photo from pushing the choices off the
+       bottom can be roughly doubled. This is the actual fix the three
+       flags were asking for. */
+    .classroom-slide-top.has-media .classroom-chart svg { max-height: 52vh; }
+    .classroom-slide-top.has-media .classroom-shot img  { max-height: 54vh; }
+    .classroom-slide-top.has-media .classroom-shot.cropped {
+        width: min(100%, calc(54vh * var(--shot-ar, 1.78)));
+    }
+    .classroom-slide-top.has-media .classroom-chart,
+    .classroom-slide-top.has-media .classroom-chart.dots,
+    .classroom-slide-top.has-media .classroom-chart.hbars,
+    .classroom-slide-top.has-media .classroom-chart.line,
+    .classroom-slide-top.has-media .classroom-chart.donut,
+    .classroom-slide-top.has-media .classroom-chart.clock { width: 100%; }
+
+    /* A photo AND a map is already a two-up; stacking them inside one
+       column is what keeps both readable there. */
+    .classroom-slide-top.has-media .classroom-evidence-pair { flex-direction: column; }
+}
+
 .classroom-stage-body {
     flex: 1; overflow-y: auto;
     display: flex; flex-direction: column; align-items: center;
@@ -4782,6 +4839,13 @@
 .classroom-choices > .classroom-choice:nth-child(3) { --cc-accent: #f59e0b; }
 .classroom-choices > .classroom-choice:nth-child(4) { --cc-accent: #a78bfa; }
 
+/* Those four accents are assigned by POSITION, not by meaning. On a question
+   about colour that makes the first option red and the second blue whatever
+   they say — which, on "is red warm or cool", is the question answered
+   wrongly in paint next to the right answer in words. Where the answers
+   carry their own swatch, the chrome goes neutral and the swatch speaks. */
+.classroom-choices.swatched > .classroom-choice { --cc-accent: var(--color-gray-500); }
+
 /* Purple rather than green in fourth place on purpose. Green is what the
    reveal uses for "right", and a fourth option permanently wearing the
    correct-answer color is a hint on every single question. */
@@ -4822,7 +4886,12 @@
     text-align: center;
 }
 .classroom-intro p {
-    font-size: clamp(1rem, 2.5vmin, 1.7rem);
+    /* Was clamp(1rem, 2.5vmin, 1.7rem) and read as the small print on a
+       slide whose question is 5vmin. Flagged from a lesson: "the question
+       and answers are clear, but the paragraph in the middle is too small."
+       It is the part being read ALOUD, so it is the last thing that should
+       be shrinking. */
+    font-size: clamp(1.15rem, 3.2vmin, 2.1rem);
     line-height: 1.45;
     margin: 0 0 0.7vmin;
     color: var(--color-gray-900);

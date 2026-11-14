@@ -1646,10 +1646,46 @@ function cmSpeciesSeries(s, limit) {
  * actually solve it. The options are one press away when they are stuck,
  * which is also what a teacher wants when thirty children are waiting.
  */
+/**
+ * The top half of a slide: what the class is looking at, and what it is
+ * being asked.
+ *
+ * Stacked, these two compete for one column of height — and the picture
+ * always loses, because the question has to stay readable. Three flags from
+ * one morning said the same thing in three different words: "the graph is
+ * too small", "the chart is too small", "the photo could be larger by moving
+ * it to top left quadrant, and question to top right."
+ *
+ * Side by side, the media gets its own column and roughly twice the height,
+ * and nothing had to be taken from the question to pay for it. The layout is
+ * a wide-screen one only — a projector is 16:9, which is exactly the shape
+ * that has width to spare and none to spare in height. Narrow screens, and
+ * any slide with nothing to show, stay the single centred column.
+ */
+function classroomSlideTopHtml(S, q) {
+    const ask = `${classroomIntroHtml(q)}
+            <h1 class="classroom-prompt">${esc(q.prompt)}</h1>`;
+
+    const media = classroomEvidenceHtml(q, S.revealed);
+    if (!media) return `<div class="classroom-slide-top">${ask}</div>`;
+
+    return `
+        <div class="classroom-slide-top has-media">
+            <div class="classroom-slide-media">${media}</div>
+            <div class="classroom-slide-ask">${ask}</div>
+        </div>`;
+}
+
 function classroomChoicesBlock(S, q, choices) {
     const shown = S.choicesShownFor === S.index;
+    // A question whose answers carry their own colour drops the decorative
+    // A/B/C/D accents. Those are fixed — red, blue, amber, purple, by
+    // position — and on a colour question they are a second, contradictory
+    // colour on the same button. The swatch is the one that means something.
+    const swatched = q.choices.some(c => c && c.swatch);
     if (!q.guess_first || S.revealed || shown) {
-        return `<div class="classroom-choices ${q.choices.length > 3 ? 'four' : ''}">${choices}</div>`;
+        return `<div class="classroom-choices ${q.choices.length > 3 ? 'four' : ''}${
+                swatched ? ' swatched' : ''}">${choices}</div>`;
     }
     return `
         <div class="classroom-guess-first">
@@ -3669,14 +3705,21 @@ const CLASSROOM_TEMPLATES = [
         const jumbled = cmJumble(pick.short, rng);
         if (!jumbled) return null;
 
+        // Excluded by SHORT NAME, not by species. The puzzle only ever shows
+        // the short name, so "Mourning Dove" and "Eurasian Collared-Dove" are
+        // one word — DOVE — and offering both makes two options correct.
+        // Flagged from a lesson: "all 3 were doves so they all are correct."
         const built = cmChoices(pick.species,
             cmLengthMatchedDistractors(
                 s.species.map(x => ({ species: x.species, short: cmShortName(x.species) }))
-                         .filter(x => x.species !== pick.species),
+                         .filter(x => x.short !== pick.short),
                 pick.short.length, rng, band === 'k-2' ? 2 : 3).map(x => x.species), rng);
         if (!built) return null;
         return {
-            prompt: `Which bird is this? ${jumbled.split('').join(' ')}`,
+            // "Which bird is this?" in front of a row of letters reads as an
+            // identification question with the photo missing. Say the task.
+            prompt: `Unscramble the bird’s name:
+${jumbled.split('').join(' ')}`,
             ...built,
             explain: `${jumbled} unscrambles to ${pick.short} — the ${pick.species}. `
                    + `It came ${s.bySpecies.get(pick.species)} time(s) this week.`,
@@ -3710,7 +3753,7 @@ const CLASSROOM_TEMPLATES = [
         const masked = letters.map((ch, i) => (hidden.has(i) ? '_' : ch)).join(' ');
 
         const built = cmChoices(pick.species,
-            cmLengthMatchedDistractors(pool.filter(x => x.species !== pick.species),
+            cmLengthMatchedDistractors(pool.filter(x => x.short !== pick.short),
                                        pick.short.length, rng, 3).map(x => x.species), rng);
         if (!built) return null;
         return {
@@ -3784,7 +3827,7 @@ const CLASSROOM_TEMPLATES = [
             .map(ch => PUZZLE_ALPHABET.indexOf(ch) + 1).join(' - ');
 
         const built = cmChoices(pick.species,
-            cmLengthMatchedDistractors(pool.filter(x => x.species !== pick.species),
+            cmLengthMatchedDistractors(pool.filter(x => x.short !== pick.short),
                                        pick.short.length, rng, 3).map(x => x.species), rng);
         if (!built) return null;
         return {
@@ -3816,7 +3859,7 @@ const CLASSROOM_TEMPLATES = [
         }).join('');
 
         const built = cmChoices(pick.species,
-            cmLengthMatchedDistractors(pool.filter(x => x.species !== pick.species),
+            cmLengthMatchedDistractors(pool.filter(x => x.short !== pick.short),
                                        pick.short.length, rng, 3).map(x => x.species), rng);
         if (!built) return null;
         return {
@@ -4028,7 +4071,15 @@ const CLASSROOM_TEMPLATES = [
         const pick = cmShuffle(pool, rng)[0];
         const warm = WARM_COLORS.includes(pick.look.color);
         const answer = warm ? 'Warm' : 'Cool';
-        const built = cmChoices(answer, [warm ? 'Cool' : 'Warm'], rng);
+        // Swatched, and therefore drawn without the decorative A/B accents.
+        // Those accents are red for the first option and blue for the second
+        // whatever the options say, which on THIS question is the question
+        // itself answered wrongly in paint: flagged from a K-2 lesson as "the
+        // A selection is Red, but the text is cool, and the B text is blue,
+        // and it warm". A six-year-old reads the colour, not the word.
+        const built = cmSwatchChoices(
+            cmChoices(answer, [warm ? 'Cool' : 'Warm'], rng),
+            label => (label === 'Warm' ? '#f97316' : '#3b82f6'));
         if (!built) return null;
 
         const photo = cmShotFor(s, pick.species);
@@ -4124,11 +4175,35 @@ const CLASSROOM_TEMPLATES = [
             label => COLOR_WORD_HEX[label]);
         if (!built) return null;
 
+        // The chart used to be species counts, which asks the class to know
+        // what colour a Tufted Titmouse is before they can answer. Flagged
+        // in a lesson: "difficult to answer without seeing photos of the
+        // birds that visited the feeder." Charting the COLOURS instead puts
+        // the evidence for this question on the board — each bar is a colour,
+        // labelled and painted, so "which one is missing" is readable from
+        // the back of the room without knowing a single species.
+        const byColor = new Map();
+        cmColorfulSpecies(s).forEach(x => {
+            byColor.set(x.look.color, (byColor.get(x.look.color) || 0) + x.n);
+        });
+        // `color` is honoured per row by cmChart, so each bar is painted the
+        // colour it stands for. That is the whole point here: a bar chart of
+        // colour words drawn in the default palette would be one more thing
+        // to decode.
+        const series = [...byColor.entries()]
+            .sort((a, b) => b[1] - a[1])
+            .map(([color, n]) => ({
+                label: color.charAt(0).toUpperCase() + color.slice(1),
+                value: n,
+                color: COLOR_WORD_HEX[color] || undefined,
+            }));
+
         return {
             prompt: 'Which of these colors did NOT come to our feeder this week?',
             ...built,
-            chart: cmChart('Birds that came this week', cmSpeciesSeries(s), { band }),
-            explain: `No ${answer} birds this week.`,
+            chart: cmChart('The colors that DID come this week', series, { band }),
+            explain: `No ${answer} birds this week. `
+                   + `We saw ${series.map(x => x.label.toLowerCase()).join(', ')}.`,
         };
     },
 },
@@ -4232,7 +4307,7 @@ const CLASSROOM_TEMPLATES = [
     },
 },
 
-// ── Maths across the bands ───────────────────────────────────────
+// ── Math across the bands ───────────────────────────────────────
 //
 // The curriculum a K-8 class is actually working through, asked against this
 // week's feeder. The feeder supplies the numbers; the skill being practised
@@ -4241,8 +4316,8 @@ const CLASSROOM_TEMPLATES = [
 {
     id: 'count-one-day',
     category: 'math',
-    // Not "Counting": the picker lists this under Maths, directly below a
-    // whole subject called Counting, and "Maths > Counting" reads as either
+    // Not "Counting": the picker lists this under Math, directly below a
+    // whole subject called Counting, and "Math > Counting" reads as either
     // a mistake or a duplicate. The only title in all 104 that collided with
     // a subject name.
     title: 'Birds on one day',
@@ -6982,7 +7057,7 @@ function renderClassroomPartnerChecks() {
 
 const CLASSROOM_CATEGORY_LABELS = {
     counting:       'Counting',
-    math:           'Maths',
+    math:           'Math',
     comparison:     'Comparing',
     analysis:       'Reading data',
     prediction:     'Predicting',
@@ -8181,9 +8256,7 @@ function renderClassroomStage() {
 
         <div class="classroom-stage-body">
           <div class="classroom-fit">
-            ${classroomEvidenceHtml(q, S.revealed)}
-            ${classroomIntroHtml(q)}
-            <h1 class="classroom-prompt">${esc(q.prompt)}</h1>
+            ${classroomSlideTopHtml(S, q)}
             ${classroomChoicesBlock(S, q, choices)}
             ${reveal}
           </div>
@@ -8390,9 +8463,23 @@ function classroomFitShrinkPhoto(fit, available, natural) {
     const imgH = img.getBoundingClientRect().height;
     if (!imgH) return natural;
 
-    // Never below roughly a quarter of the slide: past that the photograph
-    // stops being a photograph and the uniform scale may as well take over.
-    const floor = Math.min(imgH, Math.max(120, available * 0.26));
+    // Once the answer is up, the photograph has done its job and the words
+    // have not. A reveal adds an explanation, sometimes a fact and a "read
+    // more" button to a slide that already fitted, and with the same floor
+    // as before there was nothing left to give: the uniform scale ran out at
+    // its own limit and the stage scrolled. Flagged exactly so — "when I
+    // answered the question, the screen got taller and required scrolling.
+    // It should always fit on the screen."
+    //
+    // So the floor drops on reveal. The picture is still there to point at;
+    // it is just no longer the thing being read.
+    const revealed = !!fit.querySelector('.classroom-reveal');
+
+    // Never below roughly a quarter of the slide while the photo IS the
+    // question: past that it stops being a photograph and the uniform scale
+    // may as well take over.
+    const share = revealed ? 0.14 : 0.26;
+    const floor = Math.min(imgH, Math.max(revealed ? 70 : 120, available * share));
     const give  = Math.min(natural - available, imgH - floor);
     if (give <= 1) return natural;
 
