@@ -224,7 +224,14 @@ begin
            count(a.id) filter (where a.is_correct)                  as correct,
            count(a.id) filter (where a.pending_check is not null
                                  and a.resolved_at is null)         as waiting,
-           count(distinct s.id)                                     as lessons,
+           -- Sessions that ASKED SOMETHING. The session row is created the
+           -- moment the board goes up — it has to be, because a join code
+           -- and every answer hang off it — so a teacher who opens one and
+           -- is interrupted leaves a row behind with nothing in it. Counting
+           -- those would put a class that taught once and was interrupted
+           -- twice on the board as having taught three lessons, in front of
+           -- the whole school.
+           count(distinct s.id) filter (where a.id is not null)      as lessons,
            case when count(a.id) filter (where a.is_correct is not null) > 0
                 then round(100.0 * count(a.id) filter (where a.is_correct)
                                  / count(a.id) filter (where a.is_correct is not null))

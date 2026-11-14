@@ -140,6 +140,20 @@ begin
     (select (json_array_elements(st->'standings')->>'name') limit 1) = 'Room B');
 
   raise notice '';
+  raise notice '── B2. An abandoned session is not a lesson ──';
+  -- The board went up and nothing was asked. Room A should still read 1.
+  insert into classroom_sessions (classroom_id, started_by, started_at)
+    values (rA, t1_id, now());
+  insert into classroom_sessions (classroom_id, started_by, started_at)
+    values (rA, t1_id, now());
+  st := classroom_challenge_standings(ch);
+  select e into row_a from json_array_elements(st->'standings') e where e->>'name' = 'Room A';
+  perform t_ok('two abandoned sessions do not become two lessons',
+    (row_a->>'lessons')::int = 1);
+  perform t_ok('…and the score is unchanged',
+    (row_a->>'answered')::int = 3 and (row_a->>'pct')::int = 67);
+
+  raise notice '';
   raise notice '── C. Pending never counts against a class ──';
   -- Give Room D one settled right answer; it should now appear on 100%.
   insert into classroom_session_answers (session_id, template_id, category, grade_band, prompt, is_correct)
