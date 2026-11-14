@@ -5780,7 +5780,16 @@ function buildClassroomQuestions(room, data, opts) {
         // values, which is the case where printing them answers the question.
         if (q.chart && !q.chart.showValues) {
             const plotted = new Set(q.chart.series.map(r => String(r.value)));
-            const givesItAway = (q.choices || []).some(c =>
+            // Except on a clock, whose answers are TIMES. "7 o'clock" carries a
+            // 7 that is an hour, not a count, so matching it against the
+            // plotted counts was a coincidence detector — and a busy hour of
+            // 3 to 12 visits makes the coincidence routine. Measured at four
+            // weeks in six. Each one sent the clock down the branch below and
+            // replaced it with bars, so a K-2 class was told "Look at the
+            // clock — what time is it?" with no clock on the board, and the
+            // 3–5 reveal-only hands never drew. Printing the counts does not
+            // name the hour; finding it on the dial is still the question.
+            const givesItAway = q.chart.kind !== 'clock' && (q.choices || []).some(c =>
                 (String(c.label).match(/\d+/g) || []).some(num => plotted.has(num)));
             if (!givesItAway) {
                 q.chart.showValues = true;
