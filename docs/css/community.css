@@ -3840,6 +3840,94 @@
 }
 .classroom-history-session { margin-bottom: 0.7rem; font-size: 0.83rem; }
 
+/* ── Previous lessons: a tree, not a wall ──────────────────────────
+   Three nested <details> — lesson, right/wrong, question. Native
+   elements rather than click handlers, so toggling, the keyboard and
+   the screen reader all come free. The indent is deliberately small:
+   at three levels a generous one would push the actual question text
+   off the right of a 480px column. */
+.classroom-hsummary {
+    display: flex; flex-wrap: wrap; gap: 0.6rem;
+    margin: 0.2rem 0 0.5rem;
+}
+.classroom-hstat {
+    flex: 1 1 5.5rem; min-width: 5.5rem;
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 0.45rem 0.6rem; background: var(--bg-card);
+}
+.classroom-hstat strong { display: block; font-size: 1.15rem; color: var(--color-gray-900); }
+.classroom-hstat span   { font-size: 0.72rem; color: var(--color-gray-500); line-height: 1.3; }
+.classroom-hcats { font-size: 0.76rem; margin: 0 0 0.6rem; }
+
+.classroom-hlesson {
+    border: 1px solid var(--border); border-radius: 8px;
+    margin-bottom: 0.45rem; background: var(--bg-card);
+}
+.classroom-hlesson > summary {
+    cursor: pointer; padding: 0.45rem 0.6rem; font-size: 0.83rem;
+    display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: baseline;
+}
+.classroom-hlesson > summary strong { color: var(--color-gray-900); }
+.classroom-hlesson[open] > summary { border-bottom: 1px solid var(--border); }
+
+.classroom-hgroup { margin: 0.35rem 0.6rem; }
+.classroom-hgroup > summary {
+    cursor: pointer; font-size: 0.8rem; font-weight: 600;
+    color: var(--color-gray-700); padding: 2px 0;
+}
+.classroom-hq { margin: 0.2rem 0 0.2rem 1rem; }
+.classroom-hq > summary {
+    cursor: pointer; font-size: 0.78rem; color: var(--color-gray-500);
+    padding: 2px 0; line-height: 1.45;
+}
+.classroom-hq[open] > summary { color: var(--color-gray-900); font-weight: 600; }
+
+.cc-hq-choices { list-style: none; margin: 0.3rem 0 0.3rem 0.4rem; padding: 0; }
+.cc-hq-choice {
+    font-size: 0.78rem; padding: 2px 0; line-height: 1.5;
+    color: var(--color-gray-500);
+}
+/* The right answer and the class's answer are different facts and need
+   different marks: on a miss BOTH are shown, because "what they said"
+   without "what it was" is only half the lesson. */
+.cc-hq-choice.right        { color: var(--color-gray-900); }
+.cc-hq-choice.picked-wrong { color: #c0392b; }
+.cc-hq-mark  { display: inline-block; width: 1.3em; }
+.cc-hq-tag {
+    font-size: 0.68rem; color: var(--color-gray-500);
+    border: 1px solid var(--border); border-radius: 9px;
+    padding: 0 6px; margin-left: 6px; vertical-align: middle;
+}
+.cc-hq-actual { font-size: 0.78rem; margin: 0.2rem 0; }
+.cc-hq-meta   { font-size: 0.7rem; margin: 0.15rem 0 0; }
+
+.classroom-hexport { display: flex; gap: 6px; flex-wrap: wrap; margin: 0.2rem 0 0.7rem; }
+
+/* ── Printing a lesson history ─────────────────────────────────────
+   A teacher filing results, or handing them to a head of year, wants
+   paper or a PDF — and every browser's "Save as PDF" is already a PDF
+   writer, so this needs a stylesheet rather than a library.
+
+   `visibility` rather than `display` on the ancestors: the history box
+   sits inside a positioned modal, and display:none-ing its parents
+   collapses the box along with them. */
+@media print {
+    body.cc-printing * { visibility: hidden; }
+    body.cc-printing #classroom-history,
+    body.cc-printing #classroom-history * { visibility: visible; }
+    body.cc-printing #classroom-history {
+        position: absolute; left: 0; top: 0; width: 100%;
+        border: 0; padding: 0; background: #fff; color: #000;
+    }
+    body.cc-printing #classroom-history .classroom-btn,
+    body.cc-printing .classroom-hexport { display: none !important; }
+    /* Keep a lesson and its questions on one sheet where they fit. */
+    body.cc-printing .classroom-hlesson { break-inside: avoid; border-color: #999; }
+    body.cc-printing .classroom-hstat   { border-color: #999; }
+}
+.cc-print-head { display: none; }
+@media print { .cc-print-head { display: block; margin-bottom: 0.6rem; } }
+
 /* ── Reviewing questions and flagging them ─────────────────────────
    Admin-panel sizing, not projector sizing: this is read on a laptop by
    one person going through a lesson, so it is dense on purpose — the

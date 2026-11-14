@@ -6123,7 +6123,7 @@ function renderClassroomActions() {
             <div class="classroom-group-title">Between lessons</div>
             <div class="classroom-group-row">
                 <button class="classroom-btn" onclick="reviewClassroomQuestions('${escJs(r.id)}')">🔍 Review questions</button>
-                <button class="classroom-btn" onclick="showClassroomHistory('${escJs(r.id)}')">📊 Results</button>
+                <button class="classroom-btn" onclick="showClassroomHistory('${escJs(r.id)}')">📊 Previous lessons</button>
             </div>
         </div>
 
@@ -7457,38 +7457,268 @@ async function cmResolvePendingPredictions(room) {
 
 // ── Session history ──────────────────────────────────────
 
+// ── Previous lessons ─────────────────────────────────────────────
+//
+// Was "Results", and was a flat wall: ten lessons expanded at once, every
+// question listed with a tick or a cross and nothing else. Two problems with
+// that. Thirty lessons in it is unreadable, and — worse — it showed that a
+// question was MISSED without showing what the class actually said, which is
+// the only part a teacher can teach from. "Wrong" is not a finding; "they
+// said Tuesday and it was Thursday" is.
+//
+// Now a tree, built from native <details> rather than click handlers and
+// state: lesson → right/wrong → question → the question itself. The browser
+// handles the toggling, the keyboard and the screen reader for free.
+//
+// MISSED OPENS BY DEFAULT and Correct does not. Three expands to reach the
+// thing you came for is too many, and nobody opens Results to re-read what
+// the class already knows.
+
+// What Previous lessons is currently showing, so the exports match the screen
+// rather than re-fetching and possibly disagreeing with it.
+let classroomHistoryShown = null;
+
+/** Percentage, or null where nothing has been settled yet. */
+function cmPct(correct, answered) {
+    return answered > 0 ? Math.round((correct / answered) * 100) : null;
+}
+
+/**
+ * One question, opened: the prompt, every choice it offered, and which one
+ * the class picked against which one was right.
+ *
+ * The original explanation sentence is NOT shown, because it is not stored —
+ * classroom_session_answers keeps the prompt, the choices and the indexes,
+ * but the worked line ("9 − 3 = 6") is generated at lesson time and thrown
+ * away. Showing the choices with both marks says the same thing for a
+ * multiple-choice question, so this is a gap worth knowing about rather than
+ * one worth faking.
+ */
+function cmHistoryQuestionHtml(q) {
+    const choices = Array.isArray(q.choices) ? q.choices : [];
+    const rows = choices.map((c, i) => {
+        const label = esc(c && c.label != null ? c.label : String(c));
+        const picked  = i === q.class_index;
+        const correct = q.correct_index != null && i === q.correct_index;
+        let mark = '', cls = '';
+        if (correct) { mark = '✅'; cls = ' right'; }
+        if (picked && !correct) { mark = '❌'; cls = ' picked-wrong'; }
+        if (picked && correct)  { mark = '✅'; cls = ' right picked'; }
+        return `<li class="cc-hq-choice${cls}">
+                    <span class="cc-hq-mark">${mark || '·'}</span>${label}
+                    ${picked ? '<span class="cc-hq-tag">the class said this</span>' : ''}
+                </li>`;
+    }).join('');
+
+    // A prediction that has since settled carries what the birds actually
+    // did. That number is the whole point of having asked, so it is not
+    // buried with the rest of the metadata.
+    const actual = (q.resolved_actual != null)
+        ? `<p class="cc-hq-actual">What actually happened: <strong>${esc(String(q.resolved_actual))}</strong></p>`
+        : (q.pending ? '<p class="cc-hq-actual">Still waiting on the birds to settle this one.</p>' : '');
+
+    return `<ul class="cc-hq-choices">${rows || '<li class="classroom-muted">No choices recorded.</li>'}</ul>
+            ${actual}
+            ${q.category ? `<p class="classroom-muted cc-hq-meta">${esc(q.category)}</p>` : ''}`;
+}
+
+/** A group of questions inside one lesson — Missed, Correct, or Waiting. */
+function cmHistoryGroupHtml(label, icon, items, open) {
+    if (!items.length) return '';
+    return `
+    <details class="classroom-hgroup"${open ? ' open' : ''}>
+        <summary>${icon} ${label} <span class="classroom-pill">${items.length}</span></summary>
+        ${items.map(q => `
+            <details class="classroom-hq">
+                <summary>${esc(q.prompt)}</summary>
+                ${cmHistoryQuestionHtml(q)}
+            </details>`).join('')}
+    </details>`;
+}
+
 async function showClassroomHistory(id) {
     const box = document.getElementById('classroom-history');
     if (!box) return;
     box.style.display = '';
-    box.innerHTML = '<div class="classroom-muted">Loading results…</div>';
+    box.innerHTML = '<div class="classroom-muted">Loading previous lessons…</div>';
 
+    // 50 rather than 10. The list is collapsed now, so a long history costs a
+    // row each instead of a screenful each, and a class past a fortnight of
+    // daily lessons used to lose its early weeks with nothing saying so.
     const { data, error } = await sbRpc('classroom_session_history',
-        { p_classroom_id: id, p_limit: 10 }, true);
+        { p_classroom_id: id, p_limit: 50 }, true);
     if (error) {
-        box.innerHTML = `<div class="classroom-error">${esc(error.message || 'Could not load results.')}</div>`;
+        box.innerHTML = `<div class="classroom-error">${esc(error.message || 'Could not load previous lessons.')}</div>`
+                      + '<button class="classroom-btn" onclick="hideClassroomHistory()">Close</button>';
         return;
     }
     const sessions = Array.isArray(data) ? data : [];
     if (!sessions.length) {
-        box.innerHTML = '<div class="classroom-muted">No sessions yet.</div>'
+        box.innerHTML = '<div class="classroom-muted">No lessons yet. Once you have run one, '
+                      + 'it appears here with every question the class answered.</div>'
                       + '<button class="classroom-btn" onclick="hideClassroomHistory()">Close</button>';
         return;
     }
 
-    box.innerHTML = `<h4 class="classroom-h">Recent classes</h4>` + sessions.map(s => {
+    // ── Totals across everything on screen ──
+    //
+    // Counted from the questions rather than the sessions' own tallies: a
+    // prediction is neither right nor wrong until it settles, and including
+    // unsettled ones in the denominator would quietly depress the average of
+    // any class that asks them.
+    let answered = 0, correct = 0, pending = 0;
+    const byCat = new Map();
+    for (const s of sessions) {
+        for (const q of (s.questions || [])) {
+            if (q.pending) { pending++; continue; }
+            if (q.is_correct == null) continue;
+            answered++;
+            if (q.is_correct) correct++;
+            const c = byCat.get(q.category) || { n: 0, ok: 0 };
+            c.n++; if (q.is_correct) c.ok++;
+            byCat.set(q.category, c);
+        }
+    }
+    const overall = cmPct(correct, answered);
+
+    // Only categories with enough questions to mean anything. Three right out
+    // of three says nothing about a class; it says they met that topic once.
+    const cats = [...byCat.entries()]
+        .filter(([, v]) => v.n >= 4)
+        .map(([k, v]) => ({ cat: k, n: v.n, pct: cmPct(v.ok, v.n) }))
+        .sort((a, b) => a.pct - b.pct);
+
+    const summary = `
+    <div class="classroom-hsummary">
+        <div class="classroom-hstat"><strong>${sessions.length}</strong><span>lesson${sessions.length === 1 ? '' : 's'}</span></div>
+        <div class="classroom-hstat"><strong>${answered}</strong><span>questions answered</span></div>
+        ${overall != null ? `<div class="classroom-hstat"><strong>${overall}%</strong><span>correct overall</span></div>` : ''}
+        ${pending ? `<div class="classroom-hstat"><strong>${pending}</strong><span>still waiting</span></div>` : ''}
+    </div>
+    ${cats.length >= 2 ? `<p class="classroom-muted classroom-hcats">
+        Hardest so far: ${cats.slice(0, 2).map(c => `${esc(c.cat)} (${c.pct}%)`).join(', ')}
+        · Easiest: ${cats.slice(-1).map(c => `${esc(c.cat)} (${c.pct}%)`).join('')}
+    </p>` : ''}`;
+
+    const lessons = sessions.map((s, idx) => {
         const when = new Date(s.started_at)
             .toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
-        const qs = (s.questions || []).map(q => `
-            <li class="${q.pending ? 'pending' : (q.is_correct ? 'ok' : 'miss')}">
-                ${q.pending ? '⏳' : (q.is_correct ? '✅' : '❌')} ${esc(q.prompt)}
-            </li>`).join('');
+        const qs = s.questions || [];
+        const missed  = qs.filter(q => !q.pending && q.is_correct === false);
+        const right   = qs.filter(q => !q.pending && q.is_correct === true);
+        const waiting = qs.filter(q => q.pending);
+        const pct = cmPct(right.length, right.length + missed.length);
+
         return `
-        <div class="classroom-history-session">
-            <div><strong>${esc(when)}</strong> — ${s.correct_count} of ${s.asked_count} correct</div>
-            <ul class="classroom-history-qs">${qs}</ul>
-        </div>`;
-    }).join('') + '<button class="classroom-btn" onclick="hideClassroomHistory()">Close</button>';
+        <details class="classroom-hlesson"${idx === 0 ? ' open' : ''}>
+            <summary>
+                <strong>${esc(when)}</strong>
+                <span class="classroom-muted">${right.length} of ${right.length + missed.length} correct${
+                    pct != null ? ` · ${pct}%` : ''}${waiting.length ? ` · ${waiting.length} waiting` : ''}</span>
+            </summary>
+            ${cmHistoryGroupHtml('Missed', '❌', missed, true)}
+            ${cmHistoryGroupHtml('Correct', '✅', right, false)}
+            ${cmHistoryGroupHtml('Waiting on the birds', '⏳', waiting, false)}
+            ${qs.length ? '' : '<p class="classroom-muted">No questions were recorded for this lesson.</p>'}
+        </details>`;
+    }).join('');
+
+    // Kept for the exports, so a print or a CSV is exactly what is on screen
+    // rather than a second fetch that might disagree with it.
+    const room = classroomList.find(r => r.id === id);
+    classroomHistoryShown = { id, name: room ? room.name : 'Class', sessions };
+
+    box.innerHTML = '<h4 class="classroom-h">Previous lessons</h4>'
+                  + `<div class="cc-print-head"><strong>${esc(classroomHistoryShown.name)}</strong>`
+                  + ` — previous lessons, printed ${esc(new Date().toLocaleDateString())}</div>`
+                  + `<div class="classroom-hexport">
+                        <button class="classroom-btn" onclick="printClassroomHistory()">🖨 Print / Save as PDF</button>
+                        <button class="classroom-btn" onclick="exportClassroomHistoryCsv()">⬇ CSV</button>
+                     </div>`
+                  + summary + lessons
+                  + '<button class="classroom-btn" onclick="hideClassroomHistory()">Close</button>';
+}
+
+/**
+ * Print, which is also how you get a PDF.
+ *
+ * Every browser's print dialog can write a PDF, so this needs a stylesheet
+ * and not a PDF library — a vendored one would be a few hundred KB to
+ * reproduce, worse, something the platform already does.
+ *
+ * Every <details> is forced open first and put back afterwards: an unopened
+ * one prints as a bare summary line, so a teacher would get a sheet of dates
+ * and no questions, which is the opposite of the point.
+ */
+function printClassroomHistory() {
+    const box = document.getElementById('classroom-history');
+    if (!box) return;
+
+    const opened = [...box.querySelectorAll('details:not([open])')];
+    opened.forEach(d => { d.open = true; });
+    document.body.classList.add('cc-printing');
+
+    const restore = () => {
+        document.body.classList.remove('cc-printing');
+        opened.forEach(d => { d.open = false; });
+        window.removeEventListener('afterprint', restore);
+    };
+    window.addEventListener('afterprint', restore);
+    window.print();
+    // Safari fires afterprint unreliably; this costs nothing when it did.
+    setTimeout(restore, 3000);
+}
+
+/**
+ * One row per QUESTION, not per lesson.
+ *
+ * A lesson-level row would say "6 of 8" and lose the thing worth exporting.
+ * The point of having this in a spreadsheet is to sort by category, or to
+ * find every question a class has ever missed.
+ */
+function exportClassroomHistoryCsv() {
+    const h = classroomHistoryShown;
+    if (!h || !h.sessions.length) { showToast('Nothing to export yet.'); return; }
+
+    const labelAt = (q, i) => {
+        const c = Array.isArray(q.choices) ? q.choices[i] : null;
+        if (i == null || !c) return '';
+        return c.label != null ? c.label : String(c);
+    };
+
+    const cols = ['lesson_date', 'asked_at', 'category', 'question',
+                  'class_answer', 'correct_answer', 'result', 'actual_outcome'];
+    const rows = [];
+    for (const s of h.sessions) {
+        const day = new Date(s.started_at).toISOString().slice(0, 10);
+        for (const q of (s.questions || [])) {
+            rows.push([
+                day,
+                q.asked_at || '',
+                q.category || '',
+                q.prompt || '',
+                labelAt(q, q.class_index),
+                labelAt(q, q.correct_index),
+                q.pending ? 'waiting' : (q.is_correct === true ? 'correct'
+                                      : q.is_correct === false ? 'missed' : ''),
+                q.resolved_actual != null ? q.resolved_actual : '',
+            ]);
+        }
+    }
+    if (!rows.length) { showToast('No questions recorded yet.'); return; }
+
+    const csv = [cols.join(',')].concat(
+        rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
+    ).join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `classroom-${(h.name || 'class').toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+               + `-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
 }
 
 function hideClassroomHistory() {
