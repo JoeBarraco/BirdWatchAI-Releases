@@ -2106,34 +2106,41 @@ function classroomLineHtml(chart, revealed) {
     const step = cmNiceStep(chart.max);
     const top = Math.ceil(chart.max / step) * step;
     const n = chart.series.length;
-    const x = i => padL + (n < 2 ? plotW / 2 : (i / (n - 1)) * plotW);
+
+    // The points are INSET from the axis rather than touching it.
+    //
+    // With the first point at x = padL it sits on the y-axis, and three
+    // things go wrong at once: its marker is half-clipped by the axis line,
+    // its value label lands in the axis column, and the last point's label
+    // runs at the edge of the viewBox. The first of those is what produced
+    // "54" on a projector — the axis tick "5" and the first value "4", four
+    // pixels apart on the same baseline, because a value about four fifths
+    // of a step below a gridline puts its label exactly there.
+    //
+    // Moving the labels was not enough: twelve pixels of daylight between
+    // two digits of the same size, on the same line, still reads as one
+    // number. The fix is for the data not to start on the axis at all, which
+    // is also how every other chart here is laid out.
+    const inset = 34;
+    const innerW = plotW - inset * 2;
+    const x = i => padL + inset + (n < 2 ? innerW / 2 : (i / (n - 1)) * innerW);
     const y = v => padT + plotH - (v / top) * plotH;
 
     const grid = cmGridHtml(top, step, padL, W - padR, y);
 
     const pts = chart.series.map((s, i) => `${x(i)},${y(s.value)}`).join(' ');
-    const area = `${padL},${y(0)} ${pts} ${x(n - 1)},${y(0)}`;
+    const area = `${x(0)},${y(0)} ${pts} ${x(n - 1)},${y(0)}`;
 
     // A fat dot per reading, in that reading's own color, so the line is
     // also a row of colored markers rather than one undifferentiated stroke.
     const marks = chart.series.map((s, i) => {
         const on = chart.highlight && s.key === chart.highlight;
 
-        // The first point sits ON the y-axis, so a centred value label lands
-        // in the axis column: four pixels from the tick label, at the same
-        // size, and — whenever the value falls about four fifths of a step
-        // below a gridline — on the same baseline to within a pixel. On the
-        // slide that showed this up, the axis "5" and Monday's "4" read as
-        // "54". Anchoring the end labels inward moves them out of that column
-        // entirely; the halo below handles every other overlap.
-        const edge = i === 0 ? 'start' : (i === n - 1 ? 'end' : 'middle');
-        const vx   = x(i) + (edge === 'start' ? 8 : edge === 'end' ? -8 : 0);
-
         return `<circle cx="${x(i)}" cy="${y(s.value)}" r="${on ? 16 : 11}"
                         fill="${s.color}" class="cc-point${on ? ' on' : ''}"/>`
              + (revealed
-                 ? `<text x="${vx}" y="${y(s.value) - 24}" class="cc-val"
-                          text-anchor="${edge}">${s.value}</text>`
+                 ? `<text x="${x(i)}" y="${y(s.value) - 24}" class="cc-val"
+                          text-anchor="middle">${s.value}</text>`
                  : '')
              + `<text x="${x(i)}" y="${H - padB + 34}" class="cc-label"
                       text-anchor="middle">${esc(cmShorten(String(s.label), 10))}</text>`;
