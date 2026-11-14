@@ -269,6 +269,17 @@
                     <h3>100% Private</h3>
                     <p>BirdWatchAI does all its processing on your own computer. It never uploads your camera feed or your data.</p>
                 </div>
+
+                <!-- Classroom. Worth its own card rather than a line under
+                     Communities: it is the only feature here aimed at someone
+                     who is not the person who owns the feeder. The privacy
+                     sentence is not a boast, it is the first question a school
+                     asks, so it goes in the card rather than the small print. -->
+                <div class="feature-card" role="listitem">
+                    <div class="feature-icon">🎓</div>
+                    <h3>Classroom Lessons</h3>
+                    <p>Turn the feeder into a lesson. Questions are built from what your own birds actually did this week — put one on the projector, poll the room, and tap what the class decided. No student logins, no student accounts, and nothing about a child is stored.</p>
+                </div>
             </div>
         </div>
     </section>
@@ -539,11 +550,11 @@
                      people pick the right size first time — guessing low is what
                      creates upgrade requests, and an upgrade is a manual job today.
                      See TODO.MD. -->
-                <h4 class="fullnest-group" id="opt-community"><span aria-hidden="true">🏫</span> Communities <span>— optional, for groups of feeders</span></h4>
-                <div class="opt-cards opt-cards-1">
+                <h4 class="fullnest-group" id="opt-community"><span aria-hidden="true">🏫</span> Communities <span>— optional, for groups of feeders and for schools</span></h4>
+                <div class="opt-cards opt-cards-2">
                     <div class="opt-card">
                         <h5>Your own community</h5>
-                        <p>Group several feeders under one name and decide whether the group is public or private. Built for a school, a nature centre, a bird club, or a family with feeders in different towns. Members get the group's own feed, gallery, statistics and leaderboard.</p>
+                        <p>Group several feeders under one name and decide whether the group is public or private. Built for a nature centre, a bird club, or a family with feeders in different towns. Members get the group's own feed, gallery, statistics and leaderboard. <em>Teaching with it? See the school option alongside.</em></p>
 
                         <table class="community-price-table">
                             <thead>
@@ -570,6 +581,42 @@
                             <strong>Pick by how many feeders will join, not how many you own today.</strong>
                             Each feeder still needs its own BirdWatchAI license, and this doesn't
                             include cloud photo storage.
+                            <a href="docs/community.html">Buy from the dashboard →</a>
+                        </p>
+                    </div>
+
+                    <!-- Schools. Sized by CLASSES, not feeders, because a school's
+                         cost tracks how much teaching it does — one of ours runs
+                         three classes off a single feeder. Both numbers are shown
+                         because the second year is the one people are surprised by,
+                         and a surprise there is a cancellation. -->
+                    <div class="opt-card">
+                        <h5>For a school</h5>
+                        <p>Everything in a community, plus <strong>Classroom</strong> — interactive lessons built from your own feeders' live data, for a whole class at once. Priced by how many classes you run; every size includes 25 feeders.</p>
+
+                        <table class="community-price-table">
+                            <thead>
+                                <tr><th scope="col">Classes</th><th scope="col">First year</th><th scope="col">Renews at</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><th scope="row">Up&nbsp;to&nbsp;5</th>  <td><strong>$99</strong></td>  <td>$49/yr</td></tr>
+                                <tr><th scope="row">Up&nbsp;to&nbsp;25</th> <td><strong>$249</strong></td> <td>$199/yr</td></tr>
+                                <tr><th scope="row">Unlimited</th>          <td><strong>$499</strong></td> <td>$449/yr</td></tr>
+                            </tbody>
+                        </table>
+
+                        <ul class="pricing-features">
+                            <li><span class="check">✓</span> Questions built from this week's real detections, not a textbook</li>
+                            <li><span class="check">✓</span> On the projector, or on students' own devices with a join code</li>
+                            <li><span class="check">✓</span> No student logins — nothing about a child is stored</li>
+                            <li><span class="check">✓</span> Teachers choose the topics and grade bands beforehand</li>
+                            <li><span class="check">✓</span> Results and history are never deleted, even if you stop renewing</li>
+                        </ul>
+
+                        <p class="opt-note">
+                            <strong>The first year includes the community itself; after that you renew only Classroom.</strong>
+                            Renewing early adds to whatever is left of the year rather than restarting it.
+                            Already have a community? Add Classroom to it from its own settings instead of buying another.
                             <a href="docs/community.html">Buy from the dashboard →</a>
                         </p>
                     </div>
@@ -1036,6 +1083,15 @@ docker compose up -d</code></pre>
                     <h3>Do I need an internet connection?</h3>
                     <p><strong>In practice yes &mdash; because of the camera, not the software.</strong> BirdWatchAI identifies birds entirely on your own machine and keeps detecting with the internet unplugged. It only reaches out for push notifications, email alerts, weather, update checks, and community sharing if you turn it on.</p>
                     <p>The camera is the catch. Most consumer Wi-Fi cameras &mdash; including the <strong>Tapo C113</strong> we recommend &mdash; hold a connection to the manufacturer's service and <strong>stop serving their RTSP stream when they lose internet</strong>. If your connection drops, video stops arriving and there is nothing for BirdWatchAI to look at. That is the camera's behavior, not ours. If a genuinely offline setup matters to you, a wired PoE camera that streams RTSP without a cloud account will keep running on a network with no internet at all.</p>
+                </div>
+
+                <!-- The first question every school asks, answered before they
+                     have to ask it. Written as what is NOT collected, because
+                     that is the thing a district has to be able to verify. -->
+                <div class="faq-item">
+                    <h3>Can we use this with a class? What about student privacy?</h3>
+                    <p><strong>No student accounts, and nothing about a child is stored.</strong> A teacher signs in; students never do. A lesson runs on the projector, and the teacher taps what the class decided &mdash; or students answer from their own devices with a join code and a nickname they pick, which is deleted when the lesson ends.</p>
+                    <p>Questions are generated from your own feeders' detections that week, so the data is birds, not children. Teachers can look over the questions beforehand and choose which topics and grade bands come up. Classroom is sold per school, priced by how many classes you run; see <a href="#opt-community">Communities</a> above. If you stop renewing, lessons pause but every result your classes recorded stays exactly where it is.</p>
                 </div>
             </div>
         </div>
