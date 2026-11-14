@@ -672,18 +672,22 @@ async function handleCodeSale(s: {
   }
 
   if (g.product === 'school') {
-    await sendSchoolRenewalEmail(s.email, s.name, code, g.months);
+    await sendSchoolRenewalEmail(s.email, s.name, code, g.months, g.classrooms);
   } else {
-    await sendCommunityCodeEmail(s.email, s.name, code, g.tier, g.schoolMonths);
+    await sendCommunityCodeEmail(s.email, s.name, code, g.tier, g.schoolMonths,
+                                 g.classrooms);
   }
   return new Response(
     JSON.stringify({ ok: true, product: g.product, code_sent: true }),
     { status: 200 });
 }
 
+// `classrooms` follows the same three-way convention as everywhere else:
+// a number is that allowance, null is unlimited, undefined means the product
+// says nothing about classes (a plain community).
 async function sendCommunityCodeEmail(
   email: string, name: string, code: string, tier: string,
-  schoolMonths?: number,
+  schoolMonths?: number, classrooms?: number | null,
 ): Promise<void> {
   if (!RESEND_API_KEY) {
     console.warn(`RESEND_API_KEY unset — community code ${code} stored but NOT emailed to ${email}`);
@@ -691,6 +695,17 @@ async function sendCommunityCodeEmail(
   }
   const feeders = TIER_FEEDERS[tier] ?? 5;
   const isSchool = !!schoolMonths;
+
+  // The class allowance is the thing a school is actually paying for, so the
+  // email has to say it. The first test purchase of the 5-class product
+  // produced a code whose email mentioned only feeders — which are now fixed
+  // at 25 on every school product and therefore the one number that does NOT
+  // vary between them.
+  const classPhrase = !isSchool || classrooms === undefined
+    ? ''
+    : classrooms === null
+      ? 'unlimited classes and '
+      : `up to ${classrooms} class${classrooms === 1 ? '' : 'es'} and `;
 
   // The school paragraph goes in the middle rather than at the end. A school
   // that has just paid for classroom mode needs to know the term is already
@@ -721,8 +736,8 @@ Your unlock code is:
 
     ${code}
 
-It creates one community with room for up to ${feeders} feeders, and you choose
-whether that community is public or private.
+It creates one community with room for ${classPhrase}up to ${feeders} feeders, and you
+choose whether that community is public or private.
 ${schoolPara}
 To use it:
 
@@ -763,6 +778,7 @@ If anything goes wrong, write to support@birdwatchai.com from this address.
  */
 async function sendSchoolRenewalEmail(
   email: string, name: string, code: string, months: number,
+  classrooms?: number | null,
 ): Promise<void> {
   if (!RESEND_API_KEY) {
     console.warn(`RESEND_API_KEY unset — school code ${code} stored but NOT emailed to ${email}`);
@@ -784,7 +800,14 @@ Your renewal code is:
 
     ${code}
 
-It adds ${months} months of Classroom mode to a community you already own.
+It adds ${months} months of Classroom mode to a community you already own${
+  classrooms === undefined ? ', keeping\nwhatever class allowance that community is already on'
+  : classrooms === null ? ', with no\nlimit on the number of classes'
+  : `, covering up to\n${classrooms} class${classrooms === 1 ? '' : 'es'}`}.${
+  typeof classrooms === 'number' ? `
+
+Applying it SETS the allowance to ${classrooms}. If your school is currently on a
+larger plan, use the matching renewal instead, or you will lose the difference.` : ''}
 
 To use it:
 
