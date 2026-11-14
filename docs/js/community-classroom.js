@@ -7573,12 +7573,20 @@ function cmChallengeBoardHtml(rows) {
     }
     const medal = i => ['🥇', '🥈', '🥉'][i] || `${i + 1}.`;
 
-    return bands.map(g => `
+    return bands.map(g => {
+        // A medal needs somebody to have been beaten. A school with one class
+        // per band would otherwise award three golds and no contest, which on
+        // a screen in front of the whole school reads as a participation
+        // prize and makes the board hard to take seriously. Seen on real
+        // data the first time this was pointed at three classes.
+        const contested = g.rows.length > 1;
+        return `
         <div class="cc-board">
-            <div class="cc-board-band">${esc(GRADE_BAND_LABELS[g.band] || g.band)}</div>
+            <div class="cc-board-band">${esc(GRADE_BAND_LABELS[g.band] || g.band)}${
+                contested ? '' : ' <span class="classroom-muted">— only class in this band</span>'}</div>
             ${g.rows.map((r, i) => `
-                <div class="cc-board-row${i === 0 ? ' lead' : ''}">
-                    <span class="cc-board-rank">${medal(i)}</span>
+                <div class="cc-board-row${contested && i === 0 ? ' lead' : ''}">
+                    <span class="cc-board-rank">${contested ? medal(i) : '•'}</span>
                     <span class="cc-board-name">${esc(r.name)}
                         <span class="classroom-muted">${esc(r.teacher_label || '')}</span></span>
                     <span class="cc-board-pct">${r.pct != null ? r.pct + '%' : '—'}</span>
@@ -7586,7 +7594,8 @@ function cmChallengeBoardHtml(rows) {
                         · ${r.lessons} lesson${Number(r.lessons) === 1 ? '' : 's'}${
                         Number(r.waiting) ? ` · ${r.waiting} waiting` : ''}</span>
                 </div>`).join('')}
-        </div>`).join('');
+        </div>`;
+    }).join('');
 }
 
 /** Moderator controls: start one, or clear the one that is running. */
