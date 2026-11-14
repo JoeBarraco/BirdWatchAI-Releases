@@ -56,9 +56,10 @@ There are six suites, each needing the migrations it builds on applied first:
 | `challenge-rooms.test.sql` | + challenge rooms | 20 |
 | `challenge-questions.test.sql` | + challenge questions | 16 |
 | `history-lessons.test.sql` | subscription + history lessons | 13 |
+| `feedback-instant.test.sql` | feedback digest + feedback instant | 16 |
 
 Every check prints `PASS` or `FAIL ***`. Grep for `FAIL`. As of the last run:
-219 checks, 0 failures.
+235 checks, 0 failures.
 
 The challenge suites need `setup-school-subscription.sql` applied even though
 they test neither subscriptions nor money: its trigger refuses to create a
@@ -150,3 +151,14 @@ migration, not while running a test, which is the confusing way round.
 When a migration will not apply here but is fine in production, suspect the
 stub before the migration. Add the column, say in a comment that the real
 table has it, and carry on.
+
+## A suite that passes when the migration did not apply
+
+`feedback-instant.test.sql` once reported PASS on two of its sections
+against a database where the migration had silently failed to copy in.
+"Nothing was queued" and "the insert survived" are both trivially true when
+there is no trigger at all.
+
+It now asserts the trigger exists first and raises if it does not, so the
+run stops instead of reassuring you. Any suite whose assertions could hold
+in the absence of the thing under test wants the same guard.
