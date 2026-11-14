@@ -3903,6 +3903,46 @@
 
 .classroom-hexport { display: flex; gap: 6px; flex-wrap: wrap; margin: 0.2rem 0 0.7rem; }
 
+/* ── The school scoreboard ─────────────────────────────────────────
+   Grouped by band with medals inside each group, never across them: a
+   K-2 class counting dots and a 6-8 class predicting did not sit the
+   same paper, and one board ranking both would hand the youngest
+   children every medal. Three bands, three winners, honestly.
+
+   Sized to be read from the back of a room — this is the one classroom
+   screen likely to be shown to a whole school rather than one teacher
+   at a laptop. */
+.cc-board { margin: 0.3rem 0 0.8rem; }
+.cc-board-band {
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em;
+    text-transform: uppercase; color: var(--color-gray-500);
+    margin-bottom: 0.3rem;
+}
+.cc-board-row {
+    display: grid;
+    grid-template-columns: 2.1rem 1fr auto;
+    grid-template-areas: "rank name pct" ".   sub  sub";
+    gap: 1px 8px; align-items: baseline;
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 0.4rem 0.6rem; margin-bottom: 0.3rem;
+    background: var(--bg-card);
+}
+.cc-board-row.lead {
+    border-color: var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 7%, transparent);
+}
+.cc-board-rank { grid-area: rank; font-size: 1.05rem; }
+.cc-board-name {
+    grid-area: name; font-size: 0.88rem; font-weight: 600;
+    color: var(--color-gray-900);
+}
+.cc-board-name span { font-weight: 400; font-size: 0.75rem; margin-left: 6px; }
+.cc-board-pct {
+    grid-area: pct; font-size: 1.15rem; font-weight: 700;
+    color: var(--color-gray-900);
+}
+.cc-board-sub { grid-area: sub; font-size: 0.72rem; }
+
 /* ── Printing a lesson history ─────────────────────────────────────
    A teacher filing results, or handing them to a head of year, wants
    paper or a PDF — and every browser's "Save as PDF" is already a PDF

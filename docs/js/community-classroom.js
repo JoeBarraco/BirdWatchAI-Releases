@@ -7478,6 +7478,167 @@ async function cmResolvePendingPredictions(room) {
 // rather than re-fetching and possibly disagreeing with it.
 let classroomHistoryShown = null;
 
+// ── The school challenge ─────────────────────────────────────────
+//
+// A moderator names a week; every class teaches its normal lessons; the
+// board compares them. Nothing a teacher has to opt into on the day —
+// a challenge is a window of dates, not a kind of lesson, so a class is
+// in it by having taught.
+//
+// The board groups by GRADE BAND and does not rank across bands. A K-2
+// class counts dots; a 6-8 class reads a distribution and predicts.
+// Ranking those together would put the six-year-olds top every week and
+// the oldest class would stop entering, which is the one outcome that
+// kills a scoreboard.
+
+/** Monday and Friday of the current week, as yyyy-mm-dd. */
+function cmThisSchoolWeek() {
+    const now = new Date();
+    const dow = now.getDay();                 // 0 Sun … 6 Sat
+    const mon = new Date(now);
+    mon.setDate(now.getDate() - ((dow + 6) % 7));
+    const fri = new Date(mon);
+    fri.setDate(mon.getDate() + 4);
+    const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+                   + `-${String(d.getDate()).padStart(2, '0')}`;
+    return { from: iso(mon), to: iso(fri) };
+}
+
+function cmDateLabel(ymd) {
+    const [y, m, d] = String(ymd).split('-').map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString(undefined,
+        { month: 'short', day: 'numeric' });
+}
+
+async function showClassroomChallenge() {
+    const box = document.getElementById('classroom-review');
+    if (!box) return;
+    hideClassroomHistory();
+    box.style.display = '';
+    box.innerHTML = '<div class="classroom-muted">Loading the challenge…</div>';
+
+    const { data, error } = await sbRpc('classroom_challenge_list',
+        { p_community_id: classroomCommunityId }, true);
+    if (error) {
+        const missing = error.code === 'PGRST202'
+            || /could not find the function|does not exist/i.test(error.message || '');
+        box.innerHTML = missing
+            ? '<div class="classroom-muted">Challenges are not set up on this site yet.</div>'
+            : `<div class="classroom-error">${esc(error.message || 'Could not load.')}</div>`;
+        box.innerHTML += '<button class="classroom-btn" onclick="hideClassroomReview()">Close</button>';
+        return;
+    }
+
+    const items  = (data && data.items) || [];
+    const manage = !!(data && data.can_manage);
+    const live   = items.find(c => c.is_current) || items[0] || null;
+
+    let board = '';
+    if (live) {
+        const { data: sd, error: se } = await sbRpc('classroom_challenge_standings',
+            { p_id: live.id }, true);
+        board = se
+            ? `<div class="classroom-error">${esc(se.message || 'Could not load the scoreboard.')}</div>`
+            : cmChallengeBoardHtml((sd && sd.standings) || []);
+    }
+
+    box.innerHTML = `
+        <h4 class="classroom-h">🏆 ${live ? esc(live.name) : 'School challenge'}</h4>
+        ${live
+            ? `<p class="classroom-muted">${esc(cmDateLabel(live.starts_on))} – ${esc(cmDateLabel(live.ends_on))}${
+                  live.is_current ? ' · running now' : (live.is_over ? ' · finished' : ' · not started yet')}</p>`
+            : '<p class="classroom-muted">No challenge set. Every class still has its own results under '
+              + 'Previous lessons — a challenge just puts them side by side for a week.</p>'}
+        ${board}
+        ${manage ? cmChallengeAdminHtml(items, live) : ''}
+        <button class="classroom-btn" onclick="hideClassroomReview()">Close</button>`;
+}
+
+/**
+ * The board itself, grouped by band.
+ *
+ * Medals inside each band, not across the school. Three bands means three
+ * winners, which is also the honest answer: they did not sit the same paper.
+ */
+function cmChallengeBoardHtml(rows) {
+    if (!rows.length) {
+        return '<p class="classroom-muted">No lessons taught in this window yet. '
+             + 'The board fills in as classes teach.</p>';
+    }
+    const bands = [];
+    for (const r of rows) {
+        let g = bands.find(b => b.band === r.grade_band);
+        if (!g) { g = { band: r.grade_band, rows: [] }; bands.push(g); }
+        g.rows.push(r);
+    }
+    const medal = i => ['🥇', '🥈', '🥉'][i] || `${i + 1}.`;
+
+    return bands.map(g => `
+        <div class="cc-board">
+            <div class="cc-board-band">${esc(GRADE_BAND_LABELS[g.band] || g.band)}</div>
+            ${g.rows.map((r, i) => `
+                <div class="cc-board-row${i === 0 ? ' lead' : ''}">
+                    <span class="cc-board-rank">${medal(i)}</span>
+                    <span class="cc-board-name">${esc(r.name)}
+                        <span class="classroom-muted">${esc(r.teacher_label || '')}</span></span>
+                    <span class="cc-board-pct">${r.pct != null ? r.pct + '%' : '—'}</span>
+                    <span class="cc-board-sub classroom-muted">${r.correct}/${r.answered}
+                        · ${r.lessons} lesson${Number(r.lessons) === 1 ? '' : 's'}${
+                        Number(r.waiting) ? ` · ${r.waiting} waiting` : ''}</span>
+                </div>`).join('')}
+        </div>`).join('');
+}
+
+/** Moderator controls: start one, or clear the one that is running. */
+function cmChallengeAdminHtml(items, live) {
+    const wk = cmThisSchoolWeek();
+    return `
+    <details class="classroom-details">
+        <summary>Set a challenge</summary>
+        <div class="classroom-form-row">
+            <input type="text" id="cc-chal-name" placeholder="Name it — e.g. Bird Week"
+                   maxlength="80" style="flex:2;min-width:150px;">
+            <input type="date" id="cc-chal-from" value="${esc(wk.from)}" style="flex:1;">
+            <input type="date" id="cc-chal-to"   value="${esc(wk.to)}"   style="flex:1;">
+        </div>
+        <div class="classroom-form-actions">
+            <button class="classroom-btn" onclick="createClassroomChallenge()">Start it</button>
+            ${live ? `<button class="classroom-btn-danger"
+                        onclick="deleteClassroomChallenge('${escJs(live.id)}','${escJs(live.name)}')">
+                        Clear "${esc(live.name)}"</button>` : ''}
+        </div>
+        <p class="classroom-muted">Clearing a challenge removes the window only. Every lesson,
+            and every result, stays exactly where it is.</p>
+        <div id="cc-chal-status" class="classroom-status"></div>
+    </details>`;
+}
+
+async function createClassroomChallenge() {
+    const name = (document.getElementById('cc-chal-name') || {}).value || '';
+    const from = (document.getElementById('cc-chal-from') || {}).value || '';
+    const to   = (document.getElementById('cc-chal-to')   || {}).value || '';
+    const out  = document.getElementById('cc-chal-status');
+    const say  = (msg, bad) => { if (out) { out.style.color = bad ? '#c0392b' : 'var(--color-gray-500)';
+                                            out.textContent = msg; } };
+
+    if (!name.trim()) { say('Give it a name first.', true); return; }
+    if (!from || !to) { say('Pick both dates.', true); return; }
+
+    say('Starting…');
+    const { error } = await sbRpc('classroom_challenge_create',
+        { p_community_id: classroomCommunityId, p_name: name.trim(),
+          p_starts_on: from, p_ends_on: to }, true);
+    if (error) { say(error.message || 'Could not start it.', true); return; }
+    await showClassroomChallenge();
+}
+
+async function deleteClassroomChallenge(id, name) {
+    if (!window.confirm(`Clear "${name}"?\n\nThe scoreboard goes; every lesson and result stays.`)) return;
+    const { error } = await sbRpc('classroom_challenge_delete', { p_id: id }, true);
+    if (error) { showToast(error.message || 'Could not clear it.'); return; }
+    await showClassroomChallenge();
+}
+
 /** Percentage, or null where nothing has been settled yet. */
 function cmPct(correct, answered) {
     return answered > 0 ? Math.round((correct / answered) * 100) : null;

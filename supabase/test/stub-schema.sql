@@ -96,6 +96,29 @@ create table community_unlock_codes (
     revoked_reason     text
 );
 
+-- One row per question a class answered. Only the columns the migrations
+-- under test read; the real table carries more (see setup-classrooms.sql).
+create table if not exists classroom_session_answers (
+    id              uuid primary key default gen_random_uuid(),
+    session_id      uuid not null references classroom_sessions(id) on delete cascade,
+    asked_at        timestamptz not null default now(),
+    template_id     text not null,
+    category        text not null,
+    grade_band      text not null,
+    scope           text not null default 'home',
+    prompt          text not null,
+    choices         jsonb not null default '[]'::jsonb,
+    correct_index   int,
+    class_index     int,
+    is_correct      boolean,
+    source_feeder_id uuid,
+    detection_id    uuid,
+    pending_check   jsonb,
+    resolve_after   timestamptz,
+    resolved_at     timestamptz,
+    resolved_actual double precision
+);
+
 -- Only the columns classroom_feedback_list reads.
 create table if not exists classroom_question_feedback (
     id            uuid primary key default gen_random_uuid(),
