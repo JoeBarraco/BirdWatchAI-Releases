@@ -4175,7 +4175,15 @@
         align-items: center;
         gap: 3.4vmin;
     }
-    .classroom-slide-media { min-width: 0; display: flex; justify-content: center; }
+    .classroom-slide-media {
+        min-width: 0; display: flex; justify-content: center; align-items: center;
+        /* The axis labels at either end of a chart sit right on its viewBox
+           edge. Centred with slack on both sides that never showed; filling
+           a column, the last label lands flush against the question's column
+           and reads as clipped. A little inset gives the ends their room
+           back without shrinking the chart. */
+        padding-inline: 0.8rem;
+    }
     .classroom-slide-ask   { min-width: 0; }
 
     /* Left-aligned beside a picture. Centred text next to a left-aligned
