@@ -12,6 +12,15 @@
 -- What is actually being proved: ONE INSERT STATEMENT IS ONE POKE, and a
 -- run of separate inserts produces ONE EMAIL rather than one each, because
 -- the first delivery claims every unnotified row.
+--
+-- ⚠ READ SECTION C NARROWLY. It drains the queue only AFTER all five
+-- inserts, so every row exists before the first delivery runs - which is
+-- the concurrent case, and the only one that collapses. Production is not
+-- so tidy: the real function answers in about two seconds, so inserts
+-- further apart than that each get their own email. Three filed 1.2s apart
+-- produced two emails live. This suite cannot see that, because it decides
+-- when the worker runs; do not read a PASS here as "bursts always
+-- collapse".
 
 create or replace function t_ok(label text, cond boolean) returns void
 language plpgsql as $$

@@ -13,13 +13,23 @@
 --  is already exactly right for an instant send. This file only invokes it
 --  sooner. Same URL, same Vault key, same email.
 --
---  A BURST COLLAPSES BY ITSELF.
---  A teacher working down a review panel can file five flags in a minute,
---  and this fires five times. The first call claims all five rows and
---  stamps notified_at; the other four find nothing and send nothing. The
---  marker that stops the daily mail repeating itself is the same thing that
---  turns a burst into one email. A race can still produce two rather than
---  one — it cannot produce five.
+--  A BURST COLLAPSES ONLY WHILE IT IS ACTUALLY CONCURRENT. ⚠
+--  Rows that already exist when a delivery runs are claimed together: the
+--  call stamps notified_at on all of them and later calls find nothing to
+--  send. That is real, and it is what makes a multi-row INSERT one email.
+--
+--  It does NOT hold across a gap, and the gap is small. Measured against
+--  production on 14 Nov 2026: a suggestion filed at 06:47:29 was mailed at
+--  06:47:31. Three filed 1.2 seconds apart produced TWO emails, not one,
+--  because the function finishes between them.
+--
+--  So a teacher clicking "Something is wrong" on five questions, fifteen
+--  seconds apart, gets five emails. An earlier version of this comment
+--  claimed otherwise on the strength of an in-database test that only ever
+--  exercised the concurrent case. If that volume becomes a nuisance the fix
+--  is not a cleverer trigger: drop this file and change the cron in
+--  setup-classroom-feedback-digest.sql to '*/2 * * * *'. Two minutes is
+--  still "while you are reading it", and a window batches properly.
 --
 --  THE DAILY CRON STAYS, as a backstop. A trigger that fails tells nobody:
 --  pg_net down, the function erroring, Resend rejecting the message. This
