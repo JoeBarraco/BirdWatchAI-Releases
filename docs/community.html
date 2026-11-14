@@ -967,17 +967,25 @@
                  owner/moderator only, shown from refreshClassroomPanel: a
                  teacher files it, but reading the pile and deciding what to
                  do about it belongs to whoever runs the community. -->
-            <div class="classroom-toolbar-row classroom-panel-foot">
-                <button type="button" class="classroom-btn"
-                        onclick="openClassroomSuggest()">💡 Suggest a question</button>
-                <button type="button" id="classroom-feedback-btn" style="display:none;"
-                        class="classroom-btn" onclick="showClassroomFeedback()">💬 Question feedback</button>
-                <!-- School-wide, so it sits with the other community-level
-                     buttons rather than on one class. Visible to teachers as
-                     well as moderators: a teacher is often the person putting
-                     the board on the screen. -->
-                <button type="button" class="classroom-btn"
-                        onclick="showClassroomChallenge()">🏆 Challenge</button>
+            <!-- Labelled, like every group in the right-hand pane. Without a
+                 title these three sat under a rule with nothing above them
+                 and read as footer chrome rather than things you can press —
+                 the only unlabelled controls on the panel. The title also
+                 does the second job: it says these act on the SCHOOL, not on
+                 the class selected on the left, which is the one thing a
+                 teacher could otherwise get wrong here. -->
+            <div class="classroom-panel-foot">
+                <div class="classroom-group-title">Across the whole school</div>
+                <div class="classroom-group-row">
+                    <button type="button" class="classroom-btn"
+                            onclick="openClassroomSuggest()">💡 Suggest a question</button>
+                    <button type="button" id="classroom-feedback-btn" style="display:none;"
+                            class="classroom-btn" onclick="showClassroomFeedback()">💬 Question feedback</button>
+                    <!-- Visible to teachers as well as moderators: a teacher is
+                         often the person putting the board on the screen. -->
+                    <button type="button" class="classroom-btn"
+                            onclick="showClassroomChallenge()">🏆 Challenge</button>
+                </div>
             </div>
         </div>
 
