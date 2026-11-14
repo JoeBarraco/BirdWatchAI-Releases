@@ -188,18 +188,31 @@ function matchCommunityTier(
 // Postgres refuses the cross-product mistake either way: a renewal code is
 // rejected by community_redeem_unlock_code, and a creation code is rejected
 // by community_apply_school_code. Neither is spent on the wrong path.
+// `classes` is the classroom allowance, and null means UNLIMITED — matching
+// communities.classroom_limit, where null is the top of the ladder rather
+// than an oversight. Schools are sized by classes, not feeders, so every
+// school product carries the same medium (25) feeder tier.
 type SchoolProduct =
-  | { kind: 'renewal'; months: number }
-  | { kind: 'community'; tier: 'small' | 'medium' | 'large'; months: number };
+  | { kind: 'renewal'; months: number; classes: number | null }
+  | { kind: 'community'; tier: 'small' | 'medium' | 'large'; months: number;
+      classes: number | null };
 
-// Permalink → product. EMPTY until the Gumroad products exist; fill these in
-// when they do, the way COMMUNITY_TIERS is filled in, so the mapping is
-// reviewable in the diff rather than living in an env var that can silently
-// lose an entry.
+// Permalink → product. Hard-coded rather than an env var for the reason the
+// tier map already gives: an env var that silently loses an entry drops a
+// paid sale, and the failure looks like nothing happening. A constant is
+// reviewable in the diff and moves with the code.
 //
-//   zzzzzz: { kind: 'renewal',   months: 12 },
-//   yyyyyy: { kind: 'community', tier: 'small', months: 12 },
-const SCHOOL_PRODUCTS: Record<string, SchoolProduct> = {};
+//   5 classes        $99 / $49 renewal
+//   25 classes      $249 / $199
+//   unlimited       $499 / $449
+const SCHOOL_PRODUCTS: Record<string, SchoolProduct> = {
+  'bwa-school-5':            { kind: 'community', tier: 'medium', months: 12, classes: 5 },
+  'bwa-school-25':           { kind: 'community', tier: 'medium', months: 12, classes: 25 },
+  'bwa-school-unlimited':    { kind: 'community', tier: 'medium', months: 12, classes: null },
+  'bwa-classroom-5':         { kind: 'renewal',   months: 12, classes: 5 },
+  'bwa-classroom-25':        { kind: 'renewal',   months: 12, classes: 25 },
+  'bwa-classroom-unlimited': { kind: 'renewal',   months: 12, classes: null },
+};
 
 // Until then, and for the opaque product_ids Gumroad assigns to products made
 // after Jan 2023, the same escape hatch COMMUNITY_TIERS_EXTRA uses:
@@ -213,17 +226,31 @@ const SCHOOL_PRODUCTS_EXTRA: Record<string, SchoolProduct> = Object.fromEntries(
       const bits = (v ?? '').split(':').map(x => x.trim());
       if (!k || bits.length < 2) return ['', null];
 
+      // An optional trailing class count; absent or "unlimited" means null.
+      // Written so an override added in a hurry cannot accidentally sell an
+      // unlimited plan by leaving the field off: a missing count is the TOP
+      // tier, so it is spelled out rather than defaulted silently.
+      const classesOf = (s: string | undefined) => {
+        if (s === undefined || s === 'unlimited') return null;
+        const n = Number(s);
+        return (Number.isInteger(n) && n > 0) ? n : undefined;   // undefined = malformed
+      };
+
       if (bits[0] === 'renewal') {
         const months = Number(bits[1]);
+        const classes = classesOf(bits[2]);
         if (!Number.isInteger(months) || months < 1 || months > 60) return ['', null];
-        return [normalizeProductRef(k), { kind: 'renewal', months }];
+        if (classes === undefined) return ['', null];
+        return [normalizeProductRef(k), { kind: 'renewal', months, classes }];
       }
-      if (bits[0] === 'community' && bits.length === 3) {
+      if (bits[0] === 'community' && bits.length >= 3) {
         const tier = bits[1];
         const months = Number(bits[2]);
+        const classes = classesOf(bits[3]);
         if (!['small', 'medium', 'large'].includes(tier)) return ['', null];
         if (!Number.isInteger(months) || months < 1 || months > 60) return ['', null];
-        return [normalizeProductRef(k), { kind: 'community', tier, months }];
+        if (classes === undefined) return ['', null];
+        return [normalizeProductRef(k), { kind: 'community', tier, months, classes }];
       }
       return ['', null];
     })
@@ -513,8 +540,9 @@ support@birdwatchai.com from this address and we will send it again.
 // function rather than getting a copy each: two copies of the revoke path is
 // how the two drift until one of them stops revoking.
 type CodeGrant =
-  | { product: 'community'; tier: 'small' | 'medium' | 'large'; schoolMonths?: number }
-  | { product: 'school'; months: number };
+  | { product: 'community'; tier: 'small' | 'medium' | 'large';
+      schoolMonths?: number; classrooms?: number | null }
+  | { product: 'school'; months: number; classrooms?: number | null };
 
 /**
  * Mint (or revoke) an unlock code for one Gumroad sale.
@@ -592,13 +620,23 @@ async function handleCodeSale(s: {
   } else {
     // The DB owns the cap; mirror it in the row so a later tier-table change
     // can't retroactively shrink somebody's purchase.
+    // classroom_limit is only written when this product has an opinion about
+    // it. A plain community sale must leave the column alone — `undefined`
+    // is omitted from the insert, while an explicit `null` is the unlimited
+    // tier and IS written. The difference matters: on a renewal, null-the-
+    // value means unlimited and no-value-at-all means "keep what they have".
     const payload = g.product === 'school'
-      ? { product: 'school', school_months: g.months }
+      ? {
+          product: 'school',
+          school_months: g.months,
+          ...(g.classrooms !== undefined ? { classroom_limit: g.classrooms } : {}),
+        }
       : {
           product: 'community',
           tier: g.tier,
           feeder_limit: TIER_FEEDERS[g.tier],
           school_months: g.schoolMonths ?? null,
+          ...(g.classrooms !== undefined ? { classroom_limit: g.classrooms } : {}),
         };
     // Retry on the astronomically-unlikely code collision rather than 500.
     for (let attempt = 0; attempt < 5 && !code; attempt++) {
@@ -835,9 +873,11 @@ Deno.serve(async (req) => {
   const schoolProduct = matchSchoolProduct(p, productId, permalink);
   if (schoolProduct) {
     const grant: CodeGrant = schoolProduct.kind === 'renewal'
-      ? { product: 'school', months: schoolProduct.months }
+      ? { product: 'school', months: schoolProduct.months,
+          classrooms: schoolProduct.classes }
       : { product: 'community', tier: schoolProduct.tier,
-          schoolMonths: schoolProduct.months };
+          schoolMonths: schoolProduct.months,
+          classrooms: schoolProduct.classes };
     return await handleCodeSale({
       grant, saleId, productId, permalink, email, name,
       isTest, isRefund, isDispute, disputeWon,

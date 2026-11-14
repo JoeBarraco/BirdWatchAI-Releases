@@ -657,14 +657,44 @@ function syncCommunitySchoolUI(cid) {
 // (supabase/functions/gumroad-license-webhook/index.ts). When you create the
 // products, both ends need the permalink: that file to mint the right code,
 // this one to link to the right page.
+// Sized by CLASSES, not feeders — a school's cost tracks how much teaching it
+// does, not how many feeders it owns. Every school product carries the same
+// 25-feeder allowance, so classes are the only dial. `classes: null` is the
+// unlimited tier, matching classroom_limit null in Postgres.
 const SCHOOL_BUY = {
     community: [
-        { size: 'Up to 5 feeders',   price: '', url: '' },
-        { size: 'Up to 25 feeders',  price: '', url: '' },
-        { size: 'Up to 100 feeders', price: '', url: '' },
+        { classes: 5,    size: 'Up to 5 classes',   price: '$99',
+          url: 'https://birdbrainllc.gumroad.com/l/bwa-school-5' },
+        { classes: 25,   size: 'Up to 25 classes',  price: '$249',
+          url: 'https://birdbrainllc.gumroad.com/l/bwa-school-25' },
+        { classes: null, size: 'Unlimited classes', price: '$499',
+          url: 'https://birdbrainllc.gumroad.com/l/bwa-school-unlimited' },
     ],
-    renewal: { price: '', url: '' },
+    renewal: [
+        { classes: 5,    price: '$49',
+          url: 'https://birdbrainllc.gumroad.com/l/bwa-classroom-5' },
+        { classes: 25,   price: '$199',
+          url: 'https://birdbrainllc.gumroad.com/l/bwa-classroom-25' },
+        { classes: null, price: '$449',
+          url: 'https://birdbrainllc.gumroad.com/l/bwa-classroom-unlimited' },
+    ],
 };
+
+/**
+ * The renewal that matches what this community is already on.
+ *
+ * Sending a 25-class school to the 5-class renewal would quietly DOWNGRADE
+ * them: the code carries an allowance, and applying it sets that allowance.
+ * So the link is chosen from their current limit rather than being one fixed
+ * URL. An unknown limit falls back to the unlimited tier, which is the only
+ * safe guess — it is the one renewal that cannot shrink anybody.
+ */
+function schoolRenewalFor(limit) {
+    const want = (limit === undefined) ? null : limit;
+    return SCHOOL_BUY.renewal.find(r => r.classes === want)
+        || SCHOOL_BUY.renewal.find(r => r.classes === null)
+        || null;
+}
 
 /**
  * The school tiers inside the buy box, or nothing.
@@ -687,7 +717,8 @@ function renderSchoolBuyOptions() {
         </h4>
         <p style="font-size:0.78rem;color:var(--color-gray-500);margin:0 0 0.6rem;line-height:1.45;">
             Everything above, plus Classroom — questions about your own feeders on
-            the projector, for a whole class. Renewed yearly; the rest of the
+            the projector, for a whole class. Priced by how many classes you run;
+            every one includes 25 feeders. Renewed yearly; the rest of the
             community is still a one-time purchase.
         </p>
         <div class="community-tier-list">
@@ -714,10 +745,9 @@ function renderCommunitySchoolBuy() {
     const box = document.getElementById('community-school-buy');
     if (!box) return;
 
-    const r = SCHOOL_BUY.renewal;
-    if (!r.url) { box.innerHTML = ''; return; }
-
     const t = communitySchoolTerm;
+    const r = schoolRenewalFor(t && t.classrooms ? t.classrooms.limit : undefined);
+    if (!r || !r.url) { box.innerHTML = ''; return; }
     // "Add" before there is a term, "Renew" once there is one. The same link
     // either way — the product is the same — but an owner who has never had
     // Classroom should not be invited to "renew" it.
