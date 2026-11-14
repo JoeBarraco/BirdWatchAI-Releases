@@ -3864,6 +3864,35 @@
 .cc-tgroup > summary .classroom-row-meta { margin-left: 6px; }
 .cc-tgroup .cc-roster-row { padding-left: 0.8rem; }
 
+/* What the policy would leave each class. Three states rather than a single
+   warning: "enough", "short" and "nothing at all" are different decisions —
+   the first is fine, the second is a judgement call, the third is a class
+   that cannot teach for the whole window. */
+.cc-reach {
+    margin: 0.6rem 0 0.2rem; padding: 0.5rem 0.6rem;
+    border-radius: 8px; border: 1px solid var(--border);
+}
+.cc-reach.warn { border-color: #e8c07a; background: color-mix(in srgb, #f0b429 10%, transparent); }
+.cc-reach.bad  { border-color: #e3a0a0; background: color-mix(in srgb, #e74c3c 10%, transparent); }
+.cc-reach-row {
+    display: flex; align-items: baseline; gap: 8px;
+    font-size: 0.82rem; padding: 0.15rem 0;
+}
+.cc-reach-row strong { margin-left: auto; font-variant-numeric: tabular-nums; }
+.cc-reach-row.warn strong { color: #8a5a00; }
+.cc-reach-row.bad  strong { color: #9b2c2c; }
+.cc-reach p { margin: 0.4rem 0 0; font-size: 0.76rem; }
+
+/* A standing fact about this lesson, not a failure: quieter than a warning
+   and louder than body text. */
+.classroom-note {
+    margin: 0.3rem 0 0.7rem; padding: 0.5rem 0.65rem;
+    border-radius: 8px; font-size: 0.82rem; line-height: 1.45;
+    border: 1px solid var(--border);
+    background: color-mix(in srgb, var(--color-primary) 7%, transparent);
+}
+
+
 
 .classroom-details summary {
     cursor: pointer; font-size: 0.82rem; font-weight: 600;

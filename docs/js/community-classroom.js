@@ -6385,8 +6385,20 @@ async function reviewClassroomQuestions(roomId) {
     }
 
     const band = GRADE_BAND_LABELS[room.grade_band] || room.grade_band;
+    // Say it before the list, not after: a teacher seeing three questions
+    // where they expect eight should learn why in the same glance.
+    const narrowed = challenge && challenge.question_mode !== 'any';
+    const challengeNote = !narrowed ? '' : `
+        <p class="classroom-note">🏆 “${esc(challenge.name)}” is running, so this
+           class is asking ${esc(cmChallengeQuestionLabel(challenge))} this week rather
+           than its own list.${questions.length < CLASSROOM_QUESTIONS_PER_SESSION
+             ? ` That leaves ${questions.length} question${questions.length === 1 ? '' : 's'}
+                 today, short of the ${CLASSROOM_QUESTIONS_PER_SESSION} a lesson asks.`
+             : ''}</p>`;
+
     box.innerHTML = `
         <h4 class="classroom-h">Questions for ${esc(room.name)} — ${esc(band)}</h4>
+        ${challengeNote}
         <p class="classroom-muted">
             All ${built} question${built === 1 ? '' : 's'} this band can build from
             ${esc(source.name)}${source.isHome ? '' : ' (a partner feeder)'} today,
@@ -7910,10 +7922,79 @@ function cmChallengeQuestionsHtml() {
             <span><strong>Exact questions</strong> — choose them one by one</span>
         </label>
 
-        <div id="cc-chal-cats" class="cc-chips" style="display:none;">${catBoxes}</div>
-        <div id="cc-chal-tmpls" class="cc-tlist" style="display:none;">${tmplGroups}</div>
+        <div id="cc-chal-cats" class="cc-chips" style="display:none;"
+             onchange="ccChalReach()">${catBoxes}</div>
+        <div id="cc-chal-tmpls" class="cc-tlist" style="display:none;"
+             onchange="ccChalReach()">${tmplGroups}</div>
         <p class="classroom-muted" id="cc-chal-qnote"></p>
+        <div id="cc-chal-reach"></div>
     </div>`;
+}
+
+/**
+ * What this policy would leave each class to ask.
+ *
+ * Counted in TEMPLATES, not in questions, and said so on screen. A template
+ * only becomes a question if this week's data can carry it — the 6-8 word
+ * puzzles need several species with short enough names, for instance — so
+ * the real number on the day is this one or lower, never higher. An upper
+ * bound is the honest thing to show before a challenge exists, and it is
+ * enough to catch the mistake worth catching: narrowing to a subject that
+ * barely exists for a band.
+ *
+ * Found by setting a real challenge to Art and Puzzles and watching a 6-8
+ * class drop from 31 questions to 2, with nothing anywhere saying why.
+ */
+function ccChalReach() {
+    const q = ccChalQuestionArgs();
+    const box = document.getElementById('cc-chal-reach');
+    if (!box) return;
+
+    if (!q || q.mode === 'any') { box.innerHTML = ''; return; }
+
+    const allowed = q.mode === 'categories'
+        ? new Set(CLASSROOM_TEMPLATES.filter(t => q.categories.includes(t.category)).map(t => t.id))
+        : new Set(q.templates);
+
+    // Only the classes the challenge actually covers. Warning about a class
+    // that is not in it would be noise, and worse, misleading.
+    const roomBoxes = [...document.querySelectorAll('.cc-chal-room')];
+    const picked = roomBoxes.length
+        ? new Set(roomBoxes.filter(b => b.checked).map(b => b.value))
+        : null;
+    const rooms = classroomList.filter(r => !r.archived_at && (!picked || picked.has(r.id)));
+    if (!rooms.length) { box.innerHTML = ''; return; }
+
+    const want = CLASSROOM_QUESTIONS_PER_SESSION;
+    const rows = rooms.map(r => {
+        const band = r.grade_band || 'k-2';
+        const n = CLASSROOM_TEMPLATES.filter(t =>
+            allowed.has(t.id) && t.bands.includes(band)).length;
+        // Thin rather than empty is still worth saying: a lesson that wanted
+        // eight questions and can only reach four is a short lesson.
+        const level = n === 0 ? 'bad' : n < want ? 'warn' : 'ok';
+        return { name: r.name, band, n, level };
+    });
+
+    const worst = rows.some(r => r.level === 'bad') ? 'bad'
+                : rows.some(r => r.level === 'warn') ? 'warn' : 'ok';
+
+    box.innerHTML = `
+        <div class="cc-reach ${worst}">
+            ${rows.map(r => `
+                <div class="cc-reach-row ${r.level}" data-room="${esc(r.name)}">
+                    <span>${esc(r.name)}</span>
+                    <span class="classroom-row-meta">${esc(GRADE_BAND_LABELS[r.band] || r.band)}</span>
+                    <strong>${r.n === 0 ? 'nothing to ask' : `up to ${r.n}`}</strong>
+                </div>`).join('')}
+            <p class="classroom-muted">
+                ${worst === 'bad'
+                    ? 'A class with nothing to ask cannot run a lesson in this challenge. Add a subject.'
+                  : worst === 'warn'
+                    ? `A lesson asks ${want}. Where the number is lower the class gets a short lesson.`
+                    : `Enough for a full lesson everywhere. The number on the day can still be lower \u2014 a question only runs if the week\u2019s data can carry it.`}
+            </p>
+        </div>`;
 }
 
 function ccChalMode(mode) {
@@ -7922,6 +8003,7 @@ function ccChalMode(mode) {
     const note  = document.getElementById('cc-chal-qnote');
     if (cats)  cats.style.display  = mode === 'categories' ? '' : 'none';
     if (tmpls) tmpls.style.display = mode === 'templates'  ? '' : 'none';
+    ccChalReach();
     if (note) {
         note.textContent =
             mode === 'categories'
@@ -7973,7 +8055,7 @@ function cmChallengeAdminHtml(items, live) {
     // classes there is nothing to choose between, so the list stays away.
     const rooms = classroomList.filter(r => !r.archived_at);
     const roster = rooms.length < 2 ? '' : `
-        <div class="cc-roster">
+        <div class="cc-roster" onchange="ccChalReach()">
             <div class="classroom-group-title">Who is in it</div>
             ${rooms.map(r => `
                 <label class="cc-roster-row">
@@ -8020,6 +8102,17 @@ async function createClassroomChallenge() {
 
     const q = ccChalQuestionArgs();
     if (!q) { say('Pick at least one, or choose Anything.', true); return; }
+
+    // A class with no template at all cannot teach a lesson for the whole
+    // window, which is a worse outcome than being told to widen the subject
+    // now. Thin is allowed — that is a judgement call, and the count beside
+    // the form has already shown it.
+    const starved = [...document.querySelectorAll('#cc-chal-reach .cc-reach-row.bad')]
+        .map(e => e.dataset.room);
+    if (starved.length) {
+        say(`${starved.join(', ')} would have no questions at all. Add a subject.`, true);
+        return;
+    }
 
     say('Starting…');
     const args = { p_community_id: classroomCommunityId, p_name: name.trim(),
@@ -8428,15 +8521,30 @@ async function startClassroomSession(id, mode) {
         buildClassroomQuestions(room, data, { recent, challenge });
 
     if (!questions.length) {
-        stage.innerHTML = `
-            <div class="classroom-stage-loading">
+        // A challenge narrows the question pool, so when the pool is empty the
+        // challenge is the likeliest reason and blaming the feeder would send
+        // a teacher to fix the wrong thing. The teacher who hits this is
+        // usually not the moderator who set the challenge.
+        const narrowed = challenge && challenge.question_mode !== 'any';
+        stage.innerHTML = narrowed
+            ? `<div class="classroom-stage-loading">
+                <h2>Nothing to ask in this challenge</h2>
+                <p>“${esc(challenge.name)}” limits this week to
+                   ${esc(cmChallengeQuestionLabel(challenge))}, and this class has no
+                   question of that kind it can build from
+                   ${esc(room.home_feeder_name || 'its feeder')} today.</p>
+                <p class="classroom-muted">Whoever set the challenge can widen it, or
+                   clear it and the class goes back to its own questions.</p>
+                <button class="classroom-btn-primary" onclick="closeClassroomStage()">Close</button>
+              </div>`
+            : `<div class="classroom-stage-loading">
                 <h2>Not enough data yet</h2>
                 <p>${esc(room.home_feeder_name || 'This feeder')} hasn't logged enough visits
                    in the last two weeks to build a lesson from.</p>
                 <p class="classroom-muted">Add a partner feeder to the class as a backup,
                    or give the feeder a week to get going.</p>
                 <button class="classroom-btn-primary" onclick="closeClassroomStage()">Close</button>
-            </div>`;
+              </div>`;
         return;
     }
 
