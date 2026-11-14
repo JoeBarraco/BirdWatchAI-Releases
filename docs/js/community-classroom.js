@@ -5724,8 +5724,14 @@ async function refreshClassroomPanel() {
         return;
     }
     classroomList = Array.isArray(data) ? data : [];
+    // Shown to teachers too, not just owners and moderators. Filing feedback
+    // you can never see again reads as dropping it into a hole: no sign it
+    // arrived, no sign it was dealt with, no sign three colleagues already
+    // flagged the same question. People stop bothering, and the question bank
+    // loses far more than the privacy that gate was protecting. The server
+    // decides what a teacher may DO with the list — see can_resolve below.
     const fbBtn = document.getElementById('classroom-feedback-btn');
-    if (fbBtn) fbBtn.style.display = classroomCanAssign() ? '' : 'none';
+    if (fbBtn) fbBtn.style.display = '';
     renderClassroomList();
     renderClassroomForm();
     classroomList.forEach(r => cmResolvePendingPredictions(r));
@@ -6456,9 +6462,23 @@ async function sendClassroomSuggestion() {
 
 // ── Reading the feedback back ────────────────────────────────────
 //
-// Owner and moderator only, matching the RPC. The counts by template come
-// first because the actionable question is which TEMPLATE keeps drawing
-// complaints, not which question drew one.
+// Everyone who can open the classroom panel can read this, teachers
+// included. What a teacher cannot do is resolve anything, and the server
+// says so in can_resolve rather than the client re-deriving the rule and
+// drifting from it.
+//
+// The counts by template come first because the actionable question is which
+// TEMPLATE keeps drawing complaints, not which question drew one.
+
+// Handled items are off by default — the open pile is the work. The toggle
+// exists because for a TEACHER the handled ones are the whole point: they are
+// the only evidence that flagging a question led anywhere.
+let classroomFeedbackShowHandled = false;
+
+function toggleClassroomFeedbackHandled() {
+    classroomFeedbackShowHandled = !classroomFeedbackShowHandled;
+    showClassroomFeedback();
+}
 
 async function showClassroomFeedback() {
     const box = document.getElementById('classroom-review');
@@ -6468,7 +6488,8 @@ async function showClassroomFeedback() {
     box.innerHTML = '<div class="classroom-muted">Loading feedback…</div>';
 
     const { data, error } = await sbRpc('classroom_feedback_list',
-        { p_community_id: classroomCommunityId, p_include_resolved: false }, true);
+        { p_community_id: classroomCommunityId,
+          p_include_resolved: classroomFeedbackShowHandled }, true);
     if (error) {
         box.innerHTML = `<div class="classroom-error">${esc(error.message || 'Could not load.')}</div>`
                       + '<button class="classroom-btn" onclick="hideClassroomReview()">Close</button>';
@@ -6477,10 +6498,27 @@ async function showClassroomFeedback() {
 
     const items = (data && data.items) || [];
     const byTemplate = (data && data.by_template) || [];
+
+    // undefined means a database that has not had
+    // setup-classroom-feedback-teachers.sql run against it yet, where the old
+    // rule still holds. Falling back to it keeps this correct in the window
+    // between the page shipping and the SQL being applied.
+    const canResolve = (data && typeof data.can_resolve === 'boolean')
+        ? data.can_resolve
+        : classroomCanAssign();
+
+    const handledToggle = `<button class="classroom-btn" onclick="toggleClassroomFeedbackHandled()">${
+        classroomFeedbackShowHandled ? '← Open only' : '🗂 Show handled'}</button>`;
+
     if (!items.length) {
-        box.innerHTML = '<div class="classroom-muted">No open feedback. '
-                      + 'Use "Review questions" on a class to go through a lesson and flag anything that reads badly.</div>'
-                      + '<button class="classroom-btn" onclick="hideClassroomReview()">Close</button>';
+        box.innerHTML = '<div class="classroom-muted">'
+                      + (classroomFeedbackShowHandled
+                          ? 'Nothing here yet, handled items included.'
+                          : 'No open feedback. Use "Review questions" on a class to go '
+                          + 'through a lesson and flag anything that reads badly.')
+                      + '</div>'
+                      + `<div class="classroom-form-actions">${handledToggle}`
+                      + '<button class="classroom-btn" onclick="hideClassroomReview()">Close</button></div>';
         return;
     }
 
@@ -6489,16 +6527,24 @@ async function showClassroomFeedback() {
                       bad_visual: 'photo or chart', improvement: 'would be better',
                       idea: 'new question idea', other: 'other' };
 
-    // Kept so the bulk action acts on exactly what is on screen.
-    classroomFeedbackShown = items.map(f => f.id);
+    // Kept so the bulk action acts on exactly what is on screen — and only on
+    // what is still open, since "show handled" puts already-resolved items on
+    // screen too and re-resolving one would overwrite the note explaining
+    // what was done about it the first time.
+    classroomFeedbackShown = items.filter(f => !f.resolved_at).map(f => f.id);
 
     box.innerHTML = `
-        <h4 class="classroom-h">Question feedback (${items.length} open)</h4>
+        <h4 class="classroom-h">Question feedback (${items.length}${
+            classroomFeedbackShowHandled ? '' : ' open'})</h4>
         <p class="classroom-muted">Most flagged templates:
             ${byTemplate.slice(0, 5).map(t => `<code>${esc(t.template_id)}</code> ×${t.n}`).join(' · ')}</p>
+        ${canResolve ? '' : '<p class="classroom-muted">You can read these and add '
+            + 'your own. Marking them handled is for whoever runs the community.</p>'}
         <div class="classroom-form-actions">
-            <button class="classroom-btn" onclick="resolveAllClassroomFeedback()">
-                ✓ Mark all ${items.length} as addressed</button>
+            ${canResolve && classroomFeedbackShown.length
+                ? `<button class="classroom-btn" onclick="resolveAllClassroomFeedback()">
+                ✓ Mark all ${classroomFeedbackShown.length} as addressed</button>` : ''}
+            ${handledToggle}
         </div>
         <div class="classroom-review-list">
         ${items.map(f => `
@@ -6514,7 +6560,15 @@ async function showClassroomFeedback() {
                 </div>
                 <p class="classroom-review-prompt">${esc(f.prompt)}</p>
                 ${f.comment ? `<p class="classroom-flag-note">“${esc(f.comment)}”</p>` : ''}
-                <button class="classroom-btn" onclick="resolveClassroomFeedback('${esc(f.id)}')">Mark handled</button>
+                ${f.resolved_at
+                    ? `<p class="classroom-muted">✓ Handled ${esc(
+                        new Date(f.resolved_at).toLocaleDateString(undefined,
+                            { month: 'short', day: 'numeric' }))}${
+                        f.resolved_note ? ` — ${esc(f.resolved_note)}` : ''}</p>`
+                    : ''}
+                ${canResolve && !f.resolved_at
+                    ? `<button class="classroom-btn" onclick="resolveClassroomFeedback('${esc(f.id)}')">Mark handled</button>`
+                    : ''}
             </div>`).join('')}
         </div>
         <button class="classroom-btn" onclick="hideClassroomReview()">Close</button>`;

@@ -96,6 +96,29 @@ create table community_unlock_codes (
     revoked_reason     text
 );
 
+-- Only the columns classroom_feedback_list reads.
+create table if not exists classroom_question_feedback (
+    id            uuid primary key default gen_random_uuid(),
+    community_id  uuid not null references communities(id) on delete cascade,
+    classroom_id  uuid references classrooms(id) on delete set null,
+    kind          text not null default 'flag',
+    reason        text,
+    comment       text,
+    template_id   text,
+    category      text,
+    grade_band    text,
+    prompt        text,
+    choices       jsonb,
+    correct_index int,
+    explain       text,
+    chart_kind    text,
+    created_by    uuid,
+    created_at    timestamptz not null default now(),
+    resolved_at   timestamptz,
+    resolved_by   uuid,
+    resolved_note text
+);
+
 create or replace function community_role(p_community_id uuid, p_user_id uuid)
 returns text language sql stable security definer set search_path = public as $$
   select role from community_members
