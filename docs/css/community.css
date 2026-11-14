@@ -3718,11 +3718,14 @@
     position: sticky;
     top: -2rem;
     align-self: flex-start;
-    /* Its own scrollbar if a school has more classes than fit the screen.
-       The alternative is a column taller than the viewport, which cannot
-       stick and puts Close out of reach again — the exact bug. */
+    /* Capped so it can never outgrow the viewport — a column taller than
+       the screen cannot stick, which would put Close out of reach again.
+       But the scrollbar belongs to the LIST, not to the column: putting it
+       here pushed Close below the column's own fold, which is the same bug
+       wearing a different hat. Caught on screen after shipping it.
+       The list scrolls; the title and Close do not. */
     max-height: calc(80vh - 4rem);
-    overflow-y: auto;
+    overflow: visible;
     /* So the right pane's content never shows through while it scrolls past. */
     background: var(--bg-card);
     padding-top: 2rem;
@@ -3730,9 +3733,20 @@
     z-index: 1;
 }
 
+/* The part that gives way when a school has more classes than fit. min-height
+   0 is what lets a flex item shrink below its content size — without it the
+   list refuses to shrink, the column grows past its cap, and nothing sticks. */
+#classroom-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex; flex-direction: column; gap: 0.4rem;
+}
+
 /* Close is in the column so it is always reachable, but it is not one of the
    choices: it never lights up, and it sits apart from them. */
 .classroom-row-close {
+    flex: 0 0 auto;
     margin-top: 0.5rem;
     color: var(--color-gray-500);
     justify-content: center;
