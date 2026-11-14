@@ -7678,6 +7678,12 @@ function cmThisSchoolWeek() {
     const dow = now.getDay();                 // 0 Sun … 6 Sat
     const mon = new Date(now);
     mon.setDate(now.getDate() - ((dow + 6) % 7));
+    // On a Saturday or Sunday "this school week" is the one that has just
+    // finished, so the form opened on a weekend offered a window already in
+    // the past and the challenge appeared marked "finished" the moment it
+    // was created. Nobody sets up a contest for last Tuesday: at the weekend
+    // the week being planned is the one ahead.
+    if (dow === 0 || dow === 6) mon.setDate(mon.getDate() + 7);
     const fri = new Date(mon);
     fri.setDate(mon.getDate() + 4);
     const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
