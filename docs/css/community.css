@@ -3742,7 +3742,40 @@
     display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
 }
 
-.classroom-new-btn { margin-top: 0.2rem; }
+/* A school-wide action, in the same column and the same shape as a class.
+
+   Same base rule on purpose. The whole point of the column is that one
+   press lights one row and fills the pane beside it, and that reads as a
+   single mechanism only if the rows look like one kind of thing. What
+   separates them is the heading above, the icon, and a tint — not a
+   different control. */
+.classroom-row-act .classroom-row-name { font-weight: 600; }
+.classroom-row-act {
+    background: color-mix(in srgb, var(--color-gray-500) 5%, var(--bg-card));
+}
+.classroom-row-act.on {
+    background: color-mix(in srgb, var(--color-primary) 12%, var(--bg-card));
+}
+
+/* Disabled means the server would refuse it — the term has lapsed, or the
+   plan's classes are all used. It stays in the column rather than
+   disappearing: a row that vanishes leaves a teacher wondering where "New
+   class" went, where a greyed one with a title on it says why. */
+.classroom-row-act:disabled {
+    cursor: not-allowed; opacity: 0.55;
+}
+.classroom-row-act:disabled:hover { border-color: var(--border); }
+
+/* Second heading in the left column. Spaced and ruled, because it is the
+   line that says "everything below here acts on the SCHOOL, not on the
+   class you have selected" — the one thing a teacher could otherwise get
+   wrong in this panel. */
+.classroom-pane-subtitle {
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--color-gray-500);
+    margin-top: 0.5rem; padding-top: 0.6rem;
+    border-top: 1px solid var(--border);
+}
 
 .classroom-actions-head {
     display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
@@ -3781,12 +3814,6 @@
     background: color-mix(in srgb, #e74c3c 12%, transparent);
 }
 .classroom-term strong { font-weight: 700; }
-
-/* Community-wide, so it sits under both panes rather than inside one. */
-.classroom-panel-foot {
-    margin-top: 1rem; padding-top: 0.7rem;
-    border-top: 1px solid var(--border);
-}
 
 .classroom-details { margin: 0.4rem 0 0.7rem; }
 .classroom-details summary {

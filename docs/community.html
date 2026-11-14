@@ -13,7 +13,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="BirdWatchAI">
-    <link rel="stylesheet" href="css/community.css?v=f0d54763">
+    <link rel="stylesheet" href="css/community.css?v=6ab4d645">
 </head>
 <body>
 <!-- Top navbar with auth controls -->
@@ -949,10 +949,12 @@
             <div class="classroom-panes">
                 <div class="classroom-pane-left">
                     <div class="classroom-pane-title" id="classroom-pane-title">Classes</div>
+                    <!-- Every control on this side is built by
+                         renderClassroomList: the classes first, then the
+                         school-wide actions under their own heading. One
+                         column of buttons, one of them lit, and the right
+                         pane showing whatever that one is. -->
                     <div id="classroom-list"></div>
-                    <button type="button" id="classroom-new-btn"
-                            class="classroom-btn classroom-new-btn"
-                            onclick="newClassroom()">+ New class</button>
                 </div>
 
                 <div class="classroom-pane-right">
@@ -963,30 +965,6 @@
                 </div>
             </div>
 
-            <!-- Acts on the whole question set, not on one class. Feedback is
-                 owner/moderator only, shown from refreshClassroomPanel: a
-                 teacher files it, but reading the pile and deciding what to
-                 do about it belongs to whoever runs the community. -->
-            <!-- Labelled, like every group in the right-hand pane. Without a
-                 title these three sat under a rule with nothing above them
-                 and read as footer chrome rather than things you can press —
-                 the only unlabelled controls on the panel. The title also
-                 does the second job: it says these act on the SCHOOL, not on
-                 the class selected on the left, which is the one thing a
-                 teacher could otherwise get wrong here. -->
-            <div class="classroom-panel-foot">
-                <div class="classroom-group-title">Across the whole school</div>
-                <div class="classroom-group-row">
-                    <button type="button" class="classroom-btn"
-                            onclick="openClassroomSuggest()">💡 Suggest a question</button>
-                    <button type="button" id="classroom-feedback-btn" style="display:none;"
-                            class="classroom-btn" onclick="showClassroomFeedback()">💬 Question feedback</button>
-                    <!-- Visible to teachers as well as moderators: a teacher is
-                         often the person putting the board on the screen. -->
-                    <button type="button" class="classroom-btn"
-                            onclick="showClassroomChallenge()">🏆 Challenge</button>
-                </div>
-            </div>
         </div>
 
         <div class="mod-btn-row" style="margin-top:1.25rem;">
@@ -1187,7 +1165,7 @@
 <script src="js/community-bird-photos.js?v=75bfa8a8"></script>
 <script src="js/community-bird-pairs.js?v=fde6b7cd"></script>
 <script src="js/community-us-map.js?v=7260cdca"></script>
-<script src="js/community-classroom.js?v=1e252274"></script>
+<script src="js/community-classroom.js?v=a0487098"></script>
 <!-- Interactive chart runtime: crosshair tooltips on the trend chart, per-species hover rows on
      the Activity / Calendar / Rarity Mix charts. No-op until a [data-bw-chart] element appears. -->
 <script src="js/community-charts.js?v=2b12e881"></script>

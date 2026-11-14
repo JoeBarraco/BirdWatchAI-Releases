@@ -5760,34 +5760,16 @@ async function refreshClassroomPanel() {
 
     renderClassroomTerm();
 
-    // Two separate reasons the trigger on classrooms would refuse the insert,
-    // and they need different words: a lapsed term is a renewal, a full plan
-    // is an upgrade or an archive. Either way the button says so here rather
-    // than letting somebody fill in the whole form and lose it to an error.
-    //
-    // The term is checked first because the trigger checks it first — telling
-    // a lapsed school to archive a class would send them to do something that
-    // still would not work.
+    // "Classes 3 of 5" where there is a limit. The reasons a new class can be
+    // refused — a lapsed term, a full plan — now live on the New class row
+    // itself, rendered by renderClassroomList, so there is one place that
+    // decides rather than a button here and a row there.
     const rooms = classroomSchool && classroomSchool.classrooms;
-    const full  = !!(rooms && rooms.room === false);
-
     const title = document.getElementById('classroom-pane-title');
     if (title) {
         title.textContent = (rooms && rooms.limit)
             ? `Classes ${rooms.used} of ${rooms.limit}`
             : 'Classes';
-    }
-
-    const newBtn = document.getElementById('classroom-new-btn');
-    if (newBtn) {
-        const blocked = classroomTermBlocks() || full;
-        newBtn.disabled = blocked;
-        newBtn.title = classroomTermBlocks()
-            ? 'This school’s subscription has ended'
-            : full
-                ? `This school’s plan covers ${rooms.limit} ` +
-                  `class${rooms.limit === 1 ? '' : 'es'} — archive one, or upgrade`
-                : '';
     }
 
     // Purge nicknames and tokens left behind by a session nobody closed —
@@ -5804,14 +5786,6 @@ async function refreshClassroomPanel() {
         return;
     }
     classroomList = Array.isArray(data) ? data : [];
-    // Shown to teachers too, not just owners and moderators. Filing feedback
-    // you can never see again reads as dropping it into a hole: no sign it
-    // arrived, no sign it was dealt with, no sign three colleagues already
-    // flagged the same question. People stop bothering, and the question bank
-    // loses far more than the privacy that gate was protecting. The server
-    // decides what a teacher may DO with the list — see can_resolve below.
-    const fbBtn = document.getElementById('classroom-feedback-btn');
-    if (fbBtn) fbBtn.style.display = '';
     renderClassroomList();
     renderClassroomForm();
     classroomList.forEach(r => cmResolvePendingPredictions(r));
@@ -5991,14 +5965,62 @@ function classroomPicked() {
  * class's name is a quietly wrong answer rather than an obviously missing
  * one.
  */
+// ── One column of things you can click ───────────────────────────
+//
+// The left column used to list only classes, and the school-wide actions sat
+// in a footer under everything else — far enough down that they were below
+// the fold on a laptop and simply never found.
+//
+// Now every clickable thing in the panel is in the one column, in the one
+// visual language, and the right-hand side is always "whatever is selected
+// on the left". Nothing is hidden under a scroll, and the association between
+// what you pressed and what you are looking at is a highlight rather than a
+// thing to remember.
+//
+// Classes stay a separate group from school actions. They are different in
+// kind — one acts on a class, the other on the school — and the panel's whole
+// logic is that distinction. Merging them into a flat list would save a
+// heading and lose the point.
+//
+// kind: 'class' | 'new' | 'challenge' | 'feedback' | 'suggest'
+let classroomLeftPick = { kind: 'class' };
+
+function classroomPickIs(kind, id) {
+    if (classroomLeftPick.kind !== kind) return false;
+    return kind !== 'class' || id === classroomPicked();
+}
+
 function selectClassroom(id) {
+    classroomLeftPick = { kind: 'class' };
     classroomSelectedId = id;
     hideClassroomReview();
     hideClassroomHistory();
     classroomEditingId = null;
+    classroomFormOpen = false;
     renderClassroomList();
     renderClassroomActions();
     renderClassroomForm();
+}
+
+/**
+ * A school-wide action, picked from the same column as the classes.
+ *
+ * The class action panel is hidden rather than left underneath: two things
+ * on the right at once is exactly the confusion this layout exists to end.
+ */
+function pickClassroomAction(kind) {
+    classroomLeftPick = { kind };
+    classroomEditingId = null;
+    classroomFormOpen = (kind === 'new');
+    hideClassroomReview();
+    hideClassroomHistory();
+    renderClassroomList();
+    renderClassroomActions();
+    renderClassroomForm();
+
+    if (kind === 'challenge') showClassroomChallenge();
+    if (kind === 'feedback')  showClassroomFeedback();
+    if (kind === 'suggest')   openClassroomSuggest();
 }
 
 // The form is a MODE, not furniture. It used to sit at the bottom of the
@@ -6007,12 +6029,10 @@ function selectClassroom(id) {
 // half-filled "New classroom" form underneath it at all times.
 let classroomFormOpen = false;
 
+// Kept as a name because other code calls it; the behaviour is now just
+// "pick the New class row", so there is one path into the form.
 function newClassroom() {
-    classroomEditingId = null;
-    classroomFormOpen = true;
-    hideClassroomReview();
-    hideClassroomHistory();
-    renderClassroomForm();
+    pickClassroomAction('new');
     document.getElementById('classroom-form')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
@@ -6020,15 +6040,66 @@ function renderClassroomList() {
     const list = document.getElementById('classroom-list');
     if (!list) return;
 
+    const picked = classroomPicked();
+
+    // The school-wide actions, in the same column and the same language as
+    // the classes. "+ New class" lives here too: it is a thing you pick that
+    // fills the right-hand side, exactly like picking a class is.
+    // Everyone who can open this panel is staff, and the model is the same
+    // for all of them — one column, one selection. What differs is which
+    // rows are in it, and that follows what the SERVER will actually allow,
+    // so nobody is offered a button that answers with a permission error.
+    //
+    //   New class        teacher, moderator, owner  (classroom_create)
+    //   School challenge everyone can read the board; only owner and
+    //                    moderator get the controls, inside the panel
+    //   Suggest          teacher, moderator, owner  (classroom_suggest_question)
+    //   Question feedback everyone, since teachers were given read access
+    //
+    // Two states can block a new class even where the role allows it: the
+    // term has lapsed, or the plan's class limit is used up. Both say so on
+    // the row rather than letting somebody fill in a form and lose it.
+    const rooms   = classroomSchool && classroomSchool.classrooms;
+    const full    = !!(rooms && rooms.room === false);
+    const lapsed  = classroomTermBlocks();
+    const newWhy  = lapsed ? 'This school’s subscription has ended'
+                  : full   ? `This school’s plan covers ${rooms.limit} `
+                           + `class${rooms.limit === 1 ? '' : 'es'} — archive one, or upgrade`
+                  : '';
+
+    const schoolRows = [
+        { kind: 'new',       icon: '✚',  label: 'New class',
+          meta: newWhy || 'Name it, pick its feeder and grade',
+          disabled: !!newWhy },
+        { kind: 'challenge', icon: '🏆', label: 'School challenge',
+          meta: classroomCanAssign() ? 'Set a week and compare every class'
+                                     : 'How the classes compare this week' },
+        { kind: 'suggest',   icon: '💡', label: 'Suggest a question',
+          meta: 'An idea for the question bank' },
+        { kind: 'feedback',  icon: '💬', label: 'Question feedback',
+          meta: classroomCanAssign() ? 'What teachers have flagged'
+                                     : 'What has been flagged, and what was done' },
+    ].map(a => `
+        <button type="button" class="classroom-row classroom-row-act${
+                classroomPickIs(a.kind) ? ' on' : ''}"${a.disabled ? ' disabled' : ''}
+                ${a.disabled ? `title="${esc(a.meta)}"` : ''}
+                onclick="pickClassroomAction('${a.kind}')">
+            <span class="classroom-row-name">${a.icon} ${esc(a.label)}</span>
+            <span class="classroom-row-meta">${esc(a.meta)}</span>
+        </button>`).join('');
+
+    const schoolGroup = `
+        <div class="classroom-pane-subtitle">Across the whole school</div>
+        ${schoolRows}`;
+
     if (!classroomList.length) {
-        list.innerHTML = '<div class="classroom-muted">No classes yet. '
-                       + 'Make one with the button below — it takes a name, the feeder '
-                       + 'your class watches, and a grade band.</div>';
+        list.innerHTML = '<div class="classroom-muted">No classes yet — start with '
+                       + '<strong>New class</strong> below. It takes a name, the feeder '
+                       + 'your class watches, and a grade band.</div>'
+                       + schoolGroup;
         renderClassroomActions();
         return;
     }
-
-    const picked = classroomPicked();
 
     // Every class, always. The list is short, it is the only selector, and
     // hiding the others behind a toggle was what made choosing one confusing.
@@ -6041,14 +6112,15 @@ function renderClassroomList() {
             : '<span class="classroom-warn">No feeder</span>';
 
         return `
-        <button type="button" class="classroom-row${r.id === picked ? ' on' : ''}"
+        <button type="button" class="classroom-row${
+                classroomPickIs('class', r.id) && r.id === picked ? ' on' : ''}"
                 data-room="${esc(r.id)}" onclick="selectClassroom('${escJs(r.id)}')">
             <span class="classroom-row-name">${esc(r.name)}</span>
             <span class="classroom-row-meta">
                 ${esc(GRADE_BAND_LABELS[r.grade_band] || r.grade_band)} · ${feeder}
             </span>
         </button>`;
-    }).join('');
+    }).join('') + schoolGroup;
 
     renderClassroomActions();
 }
@@ -6066,6 +6138,11 @@ function renderClassroomList() {
 function renderClassroomActions() {
     const box = document.getElementById('classroom-actions');
     if (!box) return;
+
+    // Only a class fills this pane. When a school action is picked the right
+    // side belongs to that instead — two things on the right at once is the
+    // confusion this layout exists to remove.
+    if (classroomLeftPick.kind !== 'class') { box.innerHTML = ''; return; }
 
     const id = classroomPicked();
     const r  = id ? classroomList.find(x => x.id === id) : null;
@@ -6189,7 +6266,7 @@ async function reviewClassroomQuestions(roomId) {
         box.innerHTML = `<div class="classroom-muted">
             ${esc(room.home_feeder_name || 'This feeder')} hasn't logged enough
             visits to build a lesson from, so there is nothing to review yet.</div>
-            <button class="classroom-btn" onclick="hideClassroomReview()">Close</button>`;
+            <button class="classroom-btn" onclick="closeClassroomRight()">Close</button>`;
         return;
     }
 
@@ -6211,7 +6288,7 @@ async function reviewClassroomQuestions(roomId) {
         <div class="classroom-review-list">
             ${questions.map((q, i) => classroomReviewItem(q, i)).join('')}
         </div>
-        <button class="classroom-btn" onclick="hideClassroomReview()">Close</button>`;
+        <button class="classroom-btn" onclick="closeClassroomRight()">Close</button>`;
 }
 
 function classroomReviewItem(q, i) {
@@ -6450,6 +6527,26 @@ function hideClassroomReview() {
 }
 
 /**
+ * What every Close button on the right-hand side does.
+ *
+ * hideClassroomReview only empties the box. That was enough when the things
+ * on the right were opened from a footer, but now each of them is a LIT ROW
+ * on the left, and a lit row with an empty pane beside it is a lie about
+ * what you are looking at. Closing therefore falls back to the selected
+ * class — the panel's resting state, and the thing a teacher came here for.
+ */
+function closeClassroomRight() {
+    hideClassroomReview();
+    hideClassroomHistory();
+    classroomLeftPick = { kind: 'class' };
+    classroomFormOpen = false;
+    classroomEditingId = null;
+    renderClassroomList();
+    renderClassroomActions();
+    renderClassroomForm();
+}
+
+/**
  * A teacher proposing a question that does not exist yet.
  *
  * Separate from flagging, because they are different acts: a flag says "this
@@ -6498,7 +6595,7 @@ function openClassroomSuggest() {
         </div>
         <div class="classroom-form-actions">
             <button class="classroom-btn-primary" onclick="sendClassroomSuggestion()">Send suggestion</button>
-            <button class="classroom-btn" onclick="hideClassroomReview()">Cancel</button>
+            <button class="classroom-btn" onclick="closeClassroomRight()">Cancel</button>
         </div>
         <div class="classroom-status" id="classroom-suggest-status"></div>`;
     document.getElementById('classroom-suggest-idea').focus();
@@ -6536,7 +6633,7 @@ async function sendClassroomSuggestion() {
            question you will meet it in a lesson.</p>
         <div class="classroom-form-actions">
             <button class="classroom-btn" onclick="openClassroomSuggest()">Suggest another</button>
-            <button class="classroom-btn" onclick="hideClassroomReview()">Close</button>
+            <button class="classroom-btn" onclick="closeClassroomRight()">Close</button>
         </div>`;
 }
 
@@ -6572,7 +6669,7 @@ async function showClassroomFeedback() {
           p_include_resolved: classroomFeedbackShowHandled }, true);
     if (error) {
         box.innerHTML = `<div class="classroom-error">${esc(error.message || 'Could not load.')}</div>`
-                      + '<button class="classroom-btn" onclick="hideClassroomReview()">Close</button>';
+                      + '<button class="classroom-btn" onclick="closeClassroomRight()">Close</button>';
         return;
     }
 
@@ -6598,7 +6695,7 @@ async function showClassroomFeedback() {
                           + 'through a lesson and flag anything that reads badly.')
                       + '</div>'
                       + `<div class="classroom-form-actions">${handledToggle}`
-                      + '<button class="classroom-btn" onclick="hideClassroomReview()">Close</button></div>';
+                      + '<button class="classroom-btn" onclick="closeClassroomRight()">Close</button></div>';
         return;
     }
 
@@ -6651,7 +6748,7 @@ async function showClassroomFeedback() {
                     : ''}
             </div>`).join('')}
         </div>
-        <button class="classroom-btn" onclick="hideClassroomReview()">Close</button>`;
+        <button class="classroom-btn" onclick="closeClassroomRight()">Close</button>`;
 }
 
 // The ids currently on screen, so "mark all" cannot quietly resolve
@@ -7223,6 +7320,12 @@ function editClassroom(id) {
 function cancelClassroomEdit() {
     classroomEditingId = null;
     classroomFormOpen = false;
+    // Cancelling "New class" has to put the highlight back on a class as
+    // well as close the form, or the left column goes on claiming it is
+    // showing a form that is no longer there.
+    if (classroomLeftPick.kind === 'new') classroomLeftPick = { kind: 'class' };
+    renderClassroomList();
+    renderClassroomActions();
     renderClassroomForm();
 }
 
@@ -7329,6 +7432,9 @@ async function saveClassroom() {
     if (roomId) classroomSelectedId = roomId;
     classroomEditingId = null;
     classroomFormOpen = false;
+    // ...and the left column should land on it too, rather than leaving
+    // "New class" lit over the panel for the class you just made.
+    classroomLeftPick = { kind: 'class' };
     say('Saved.', true);
     await refreshClassroomPanel();
 }
@@ -7525,7 +7631,7 @@ async function showClassroomChallenge() {
         box.innerHTML = missing
             ? '<div class="classroom-muted">Challenges are not set up on this site yet.</div>'
             : `<div class="classroom-error">${esc(error.message || 'Could not load.')}</div>`;
-        box.innerHTML += '<button class="classroom-btn" onclick="hideClassroomReview()">Close</button>';
+        box.innerHTML += '<button class="classroom-btn" onclick="closeClassroomRight()">Close</button>';
         return;
     }
 
@@ -7551,7 +7657,7 @@ async function showClassroomChallenge() {
               + 'Previous lessons — a challenge just puts them side by side for a week.</p>'}
         ${board}
         ${manage ? cmChallengeAdminHtml(items, live) : ''}
-        <button class="classroom-btn" onclick="hideClassroomReview()">Close</button>`;
+        <button class="classroom-btn" onclick="closeClassroomRight()">Close</button>`;
 }
 
 /**
