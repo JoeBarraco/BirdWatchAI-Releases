@@ -7600,6 +7600,13 @@ async function showClassroomHistory(id) {
         · Easiest: ${cats.slice(-1).map(c => `${esc(c.cat)} (${c.pct}%)`).join('')}
     </p>` : ''}`;
 
+    // Open the newest lesson THAT HAS QUESTIONS, not simply the newest.
+    // A session started and closed without asking anything is a real row —
+    // somebody put the board up and the bell went — but auto-opening it
+    // shows an empty panel while every lesson with content stays shut, which
+    // is exactly backwards. Found by opening this on a real class.
+    const firstWithQs = sessions.findIndex(s => (s.questions || []).length > 0);
+
     const lessons = sessions.map((s, idx) => {
         const when = new Date(s.started_at)
             .toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
@@ -7610,7 +7617,7 @@ async function showClassroomHistory(id) {
         const pct = cmPct(right.length, right.length + missed.length);
 
         return `
-        <details class="classroom-hlesson"${idx === 0 ? ' open' : ''}>
+        <details class="classroom-hlesson"${idx === firstWithQs ? ' open' : ''}>
             <summary>
                 <strong>${esc(when)}</strong>
                 <span class="classroom-muted">${right.length} of ${right.length + missed.length} correct${
