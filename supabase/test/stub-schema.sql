@@ -72,6 +72,11 @@ create table classroom_sessions (
     started_by    uuid,
     join_code     text,
     voting_open   boolean not null default false,
+    -- Both counters, as the real table has them. asked_count was missing
+    -- here and classroom_session_history selects it, so the history
+    -- migration could not be tested at all until it was added — exactly the
+    -- drift this file's own README warns about.
+    asked_count   int not null default 0,
     correct_count int not null default 0,
     started_at    timestamptz not null default now(),
     ended_at      timestamptz

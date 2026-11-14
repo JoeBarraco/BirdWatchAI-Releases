@@ -55,9 +55,10 @@ There are six suites, each needing the migrations it builds on applied first:
 | `challenges.test.sql` | subscription + challenges | 24 |
 | `challenge-rooms.test.sql` | + challenge rooms | 20 |
 | `challenge-questions.test.sql` | + challenge questions | 16 |
+| `history-lessons.test.sql` | subscription + history lessons | 13 |
 
 Every check prints `PASS` or `FAIL ***`. Grep for `FAIL`. As of the last run:
-206 checks, 0 failures.
+219 checks, 0 failures.
 
 The challenge suites need `setup-school-subscription.sql` applied even though
 they test neither subscriptions nor money: its trigger refuses to create a
@@ -137,3 +138,15 @@ on the repaired schema.
 **Apply the newest migration that mentions a function, not the file that
 first created it.** When in doubt, grep the migrations for the function name
 and run the last one.
+
+## The stub drifts, and it hides bugs by omission
+
+`classroom_sessions` in `stub-schema.sql` was missing `asked_count`, which
+the real table has and `classroom_session_history` selects. The history
+migration therefore could not be applied against the stub at all — and the
+failure arrived as `column s.asked_count does not exist` while running the
+migration, not while running a test, which is the confusing way round.
+
+When a migration will not apply here but is fine in production, suspect the
+stub before the migration. Add the column, say in a comment that the real
+table has it, and carry on.

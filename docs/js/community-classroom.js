@@ -6381,6 +6381,8 @@ async function reviewClassroomQuestions(roomId) {
     if (!room || !box) return;
 
     hideClassroomHistory();
+    closeClassroomForm();
+    renderClassroomList();
     box.style.display = '';
     box.innerHTML = '<div class="classroom-muted">Building a lesson from the feeder…</div>';
 
@@ -8311,6 +8313,10 @@ function cmHistoryGroupHtml(label, icon, items, open) {
 async function showClassroomHistory(id) {
     const box = document.getElementById('classroom-history');
     if (!box) return;
+    // This is now the one thing on the right.
+    hideClassroomReview();
+    closeClassroomForm();
+    renderClassroomList();
     box.style.display = '';
     box.innerHTML = '<div class="classroom-muted">Loading previous lessons…</div>';
 
@@ -8324,7 +8330,16 @@ async function showClassroomHistory(id) {
                       + '<button class="classroom-btn" onclick="hideClassroomHistory()">Close</button>';
         return;
     }
-    const all = Array.isArray(data) ? data : [];
+    // Two shapes on purpose. A server without
+    // setup-classroom-history-lessons.sql returns a bare array of sessions,
+    // empties included; one with it returns { lessons, empty_count } already
+    // filtered, so that 50-row limit counts LESSONS rather than being spent
+    // on abandoned boards. Accepting both means neither deploy order breaks
+    // the other.
+    const payload = data;
+    const all = Array.isArray(payload) ? payload
+              : ((payload && payload.lessons) || []);
+    const serverEmpty = (payload && !Array.isArray(payload) && payload.empty_count) || 0;
 
     // A SESSION IS NOT A LESSON UNTIL SOMETHING IS ASKED.
     //
@@ -8340,8 +8355,11 @@ async function showClassroomHistory(id) {
     // They are counted and said, not silently dropped. "You opened the board
     // and taught nothing four times" is worth knowing once; it is not worth
     // four rows that look like lessons with no results.
+    // Kept as a filter even once the server does it: it costs nothing, and
+    // it is what makes the old shape work. The two counts are summed rather
+    // than chosen between, because exactly one of them is ever non-zero.
     const sessions = all.filter(x => (x.questions || []).length > 0);
-    const emptied  = all.length - sessions.length;
+    const emptied  = serverEmpty + (all.length - sessions.length);
 
     if (!sessions.length) {
         box.innerHTML = '<div class="classroom-muted">No lessons yet. Once you have run one, '
@@ -8528,6 +8546,24 @@ function exportClassroomHistoryCsv() {
                + `-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+}
+
+/**
+ * Close the new/edit form, without disturbing anything else.
+ *
+ * The right-hand pane holds four things that are all "the one thing you are
+ * looking at": the class's action panel, a review, previous lessons, and
+ * this form. Three of them already stood each other down. The form did not,
+ * because it lives in its own div BELOW the others rather than replacing
+ * them — so opening Previous lessons with the form up left a New classroom
+ * form hanging under the lesson list, which is exactly the confusion the
+ * left-hand column was built to end.
+ */
+function closeClassroomForm() {
+    classroomFormOpen = false;
+    classroomEditingId = null;
+    if (classroomLeftPick.kind === 'new') classroomLeftPick = { kind: 'class' };
+    renderClassroomForm();
 }
 
 function hideClassroomHistory() {
