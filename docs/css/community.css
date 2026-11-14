@@ -3829,6 +3829,42 @@
 .cc-roster-name { font-weight: 600; font-size: 0.88rem; }
 .cc-roster-row .classroom-row-meta { margin-left: auto; }
 
+/* The question chooser. Three radios, then whichever list the chosen one
+   needs — the other stays out of the way rather than greyed, because a
+   greyed list of fifty questions is still fifty rows of noise. */
+.cc-qmode { margin: 0.7rem 0 0.2rem; }
+.cc-radio {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 0.3rem 0.1rem; cursor: pointer; font-size: 0.84rem;
+}
+.cc-radio input { margin-top: 2px; cursor: pointer; }
+.cc-radio strong { color: var(--color-gray-900); }
+
+.cc-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0.5rem 0; }
+.cc-chip {
+    display: flex; align-items: center; gap: 6px; cursor: pointer;
+    padding: 0.3rem 0.55rem; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--bg-card);
+    font-size: 0.8rem;
+}
+.cc-chip:hover { border-color: var(--color-primary-light); }
+.cc-chip .classroom-row-meta { font-size: 0.68rem; }
+
+/* Capped and scrollable: the full question list is longer than the panel,
+   and a form you have to scroll the whole modal to get past is one people
+   abandon halfway. */
+.cc-tlist {
+    max-height: 260px; overflow-y: auto; margin: 0.5rem 0;
+    border: 1px solid var(--border); border-radius: 8px; padding: 0.4rem 0.55rem;
+}
+.cc-tgroup > summary {
+    cursor: pointer; font-size: 0.8rem; font-weight: 600;
+    padding: 0.25rem 0; color: var(--color-primary);
+}
+.cc-tgroup > summary .classroom-row-meta { margin-left: 6px; }
+.cc-tgroup .cc-roster-row { padding-left: 0.8rem; }
+
+
 .classroom-details summary {
     cursor: pointer; font-size: 0.82rem; font-weight: 600;
     color: var(--color-primary);

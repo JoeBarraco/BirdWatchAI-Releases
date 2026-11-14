@@ -160,6 +160,23 @@ begin
   end if;
 end $$;
 
+-- Real one lives in setup-classrooms.sql §2. Same rule: the room's own
+-- teacher, or anyone running the community. Same deliberate lie, too —
+-- "Classroom not found" for a room that exists but is not yours, so this
+-- cannot be used to enumerate a school's classrooms.
+create or replace function classroom_require_manage(p_classroom_id uuid)
+returns classrooms language plpgsql security definer set search_path = public as $$
+declare room classrooms%rowtype; r text;
+begin
+  if auth.uid() is null then raise exception 'Sign-in required'; end if;
+  select * into room from classrooms where id = p_classroom_id;
+  if room.id is null then raise exception 'Classroom not found'; end if;
+  if room.teacher_user_id = auth.uid() then return room; end if;
+  r := community_role(room.community_id, auth.uid());
+  if r in ('owner', 'moderator') then return room; end if;
+  raise exception 'Classroom not found';
+end $$;
+
 -- Real one lives in setup-community-tiers.sql §1.
 create or replace function community_tier_limit(p_tier text)
 returns int language sql immutable as $$

@@ -5544,7 +5544,7 @@ function buildDataFreeQuestions(room, o) {
     const seed = `${room.id}|${cmDayKey(new Date())}|nodata`;
     cmChartRotation = 0;
 
-    const picked = classroomPickSet(room);
+    const picked = classroomPickSet(room, o.challenge);
 
     const out = [];
     for (const t of CLASSROOM_TEMPLATES) {
@@ -5611,10 +5611,45 @@ const CM_EMPTY_SUMMARY = {
  * last box has not asked for a lesson with no questions in it, and the server
  * collapses the two cases for the same reason — one case to handle, not two.
  */
-function classroomPickSet(room) {
+function classroomPickSet(room, challenge) {
+    // A live challenge OVERRIDES the class's own list rather than narrowing
+    // it. Narrowing would give each class a different pool, which is the one
+    // thing a challenge exists to stop, and a class whose curated list missed
+    // the challenge's subject would get no questions at all.
+    //
+    // Safe because the band filter is separate: classroomTemplateAllowed
+    // still asks whether the template exists for this class's grade band, so
+    // a K-2 room in a challenge built from 6-8 questions gets the K-2 ones,
+    // not an impossible lesson.
+    const ch = challenge;
+    if (ch && ch.question_mode === 'templates' && Array.isArray(ch.template_picks)
+        && ch.template_picks.length) {
+        return new Set(ch.template_picks);
+    }
+    if (ch && ch.question_mode === 'categories' && Array.isArray(ch.categories)
+        && ch.categories.length) {
+        const want = new Set(ch.categories);
+        return new Set(CLASSROOM_TEMPLATES.filter(t => want.has(t.category)).map(t => t.id));
+    }
+
     const picks = room && room.template_picks;
     if (!Array.isArray(picks) || !picks.length) return null;
     return new Set(picks);
+}
+
+/**
+ * The challenge a class is in right now, or null.
+ *
+ * Null on ANY failure, including a site that has not had the migration
+ * applied. A lesson must never fail to start because the scoreboard had
+ * nothing to say, and "no challenge today" is the ordinary case rather than
+ * an error worth showing a teacher in front of a room.
+ */
+async function classroomActiveChallenge(roomId) {
+    const { data, error } = await sbRpc('classroom_active_challenge',
+        { p_classroom_id: roomId }, true);
+    if (error || !data) return null;
+    return data;
 }
 
 /**
@@ -5662,7 +5697,7 @@ function buildClassroomQuestions(room, data, opts) {
     cmChartRotation = 0;
     const feeder = source.name;
 
-    const picked = classroomPickSet(room);
+    const picked = classroomPickSet(room, o.challenge);
 
     const out = [];
     for (const t of CLASSROOM_TEMPLATES) {
@@ -6332,8 +6367,12 @@ async function reviewClassroomQuestions(roomId) {
     box.innerHTML = '<div class="classroom-muted">Building a lesson from the feeder…</div>';
 
     const data = await loadClassroomData(room);
+    // Reviewing shows what the class WILL be asked, so it has to honour a
+    // live challenge exactly as the lesson will. A review that disagreed
+    // with the board would be worse than no review.
+    const challenge = await classroomActiveChallenge(roomId);
     const { questions, source, built, offered } =
-        buildClassroomQuestions(room, data, { all: true });
+        buildClassroomQuestions(room, data, { all: true, challenge });
     classroomReviewRoom = room;
     classroomReviewQuestions = questions;
 
@@ -7749,7 +7788,8 @@ async function showClassroomChallenge() {
         ${live
             ? `<p class="classroom-muted">${esc(cmDateLabel(live.starts_on))} – ${esc(cmDateLabel(live.ends_on))}${
                   live.is_current ? ' · running now' : (live.is_over ? ' · finished' : ' · not started yet')}
-                 · ${inIt ? esc(inIt.join(', ')) : 'every class'}</p>`
+                 · ${inIt ? esc(inIt.join(', ')) : 'every class'}
+                 · ${esc(cmChallengeQuestionLabel(live))}</p>`
             : '<p class="classroom-muted">No challenge set. Every class still has its own results under '
               + 'Previous lessons — a challenge just puts them side by side for a week.</p>'}
         ${board}
@@ -7813,6 +7853,118 @@ function cmChallengeBoardHtml(rows) {
  * the thing it acts on is, and this disclosure says which of its two jobs it
  * is doing.
  */
+/**
+ * Which questions a challenge is about.
+ *
+ * Three modes rather than one list, because there are three intentions and
+ * flattening them loses the useful one. "Randomize" is the default and means
+ * no restriction at all — every class keeps its own curated list, which is
+ * what a challenge meant before it could say otherwise.
+ *
+ * "By subject" is deliberately NOT stored as the templates in those
+ * categories: named by subject, a question written next month joins the
+ * challenge without anybody editing it.
+ */
+function cmChallengeQuestionsHtml() {
+    const cats = [...new Set(CLASSROOM_TEMPLATES.map(t => t.category))]
+        .map(c => ({ id: c, label: CLASSROOM_CATEGORY_LABELS[c] || c,
+                     n: CLASSROOM_TEMPLATES.filter(t => t.category === c).length }))
+        .sort((a, b) => a.label.localeCompare(b.label));
+
+    const catBoxes = cats.map(c => `
+        <label class="cc-chip">
+            <input type="checkbox" class="cc-chal-cat" value="${esc(c.id)}">
+            <span>${esc(c.label)}</span><span class="classroom-row-meta">${c.n}</span>
+        </label>`).join('');
+
+    // Grouped by subject, because fifty-odd question titles in one column is
+    // a list nobody reads to the end of. Not filtered by band: a challenge
+    // spans the school, and the band filter happens at lesson time anyway.
+    const tmplGroups = cats.map(c => `
+        <details class="cc-tgroup">
+            <summary>${esc(c.label)} <span class="classroom-row-meta">${c.n}</span></summary>
+            ${CLASSROOM_TEMPLATES.filter(t => t.category === c.id).map(t => `
+                <label class="cc-roster-row">
+                    <input type="checkbox" class="cc-chal-tmpl" value="${esc(t.id)}">
+                    <span class="cc-roster-name">${esc(t.title || t.id)}</span>
+                    <span class="classroom-row-meta">${esc(t.bands.join(', '))}</span>
+                </label>`).join('')}
+        </details>`).join('');
+
+    return `
+    <div class="cc-qmode">
+        <div class="classroom-group-title">Which questions</div>
+        <label class="cc-radio">
+            <input type="radio" name="cc-chal-mode" value="any" checked
+                   onchange="ccChalMode('any')">
+            <span><strong>Anything</strong> — each class keeps its own list</span>
+        </label>
+        <label class="cc-radio">
+            <input type="radio" name="cc-chal-mode" value="categories"
+                   onchange="ccChalMode('categories')">
+            <span><strong>By subject</strong> — the whole school works on the same topics</span>
+        </label>
+        <label class="cc-radio">
+            <input type="radio" name="cc-chal-mode" value="templates"
+                   onchange="ccChalMode('templates')">
+            <span><strong>Exact questions</strong> — choose them one by one</span>
+        </label>
+
+        <div id="cc-chal-cats" class="cc-chips" style="display:none;">${catBoxes}</div>
+        <div id="cc-chal-tmpls" class="cc-tlist" style="display:none;">${tmplGroups}</div>
+        <p class="classroom-muted" id="cc-chal-qnote"></p>
+    </div>`;
+}
+
+function ccChalMode(mode) {
+    const cats  = document.getElementById('cc-chal-cats');
+    const tmpls = document.getElementById('cc-chal-tmpls');
+    const note  = document.getElementById('cc-chal-qnote');
+    if (cats)  cats.style.display  = mode === 'categories' ? '' : 'none';
+    if (tmpls) tmpls.style.display = mode === 'templates'  ? '' : 'none';
+    if (note) {
+        note.textContent =
+            mode === 'categories'
+                ? 'Every class in the challenge asks from these subjects for the week, '
+                + 'whatever its own list says. Questions it has no version of for its '
+                + 'grade band are simply skipped.'
+          : mode === 'templates'
+                ? 'Exactly these, for every class in the challenge. A class only gets '
+                + 'the ones written for its grade band.'
+          : '';
+    }
+}
+
+/** What the form is asking for, as the three arguments the RPC wants. */
+function ccChalQuestionArgs() {
+    const picked = document.querySelector('input[name="cc-chal-mode"]:checked');
+    const mode   = picked ? picked.value : 'any';
+    const vals   = sel => [...document.querySelectorAll(sel)].filter(b => b.checked)
+                                                             .map(b => b.value);
+    if (mode === 'categories') {
+        const cats = vals('.cc-chal-cat');
+        return cats.length ? { mode, categories: cats, templates: null } : null;
+    }
+    if (mode === 'templates') {
+        const ts = vals('.cc-chal-tmpl');
+        return ts.length ? { mode, categories: null, templates: ts } : null;
+    }
+    return { mode: 'any', categories: null, templates: null };
+}
+
+/** One line saying what a challenge is about, for the board. */
+function cmChallengeQuestionLabel(ch) {
+    if (!ch) return '';
+    if (ch.question_mode === 'categories' && Array.isArray(ch.categories) && ch.categories.length) {
+        return ch.categories.map(c => CLASSROOM_CATEGORY_LABELS[c] || c).join(', ');
+    }
+    if (ch.question_mode === 'templates' && Array.isArray(ch.template_picks) && ch.template_picks.length) {
+        const n = ch.template_picks.length;
+        return `${n} chosen question${n === 1 ? '' : 's'}`;
+    }
+    return 'any question';
+}
+
 function cmChallengeAdminHtml(items, live) {
     const wk = cmThisSchoolWeek();
 
@@ -7843,6 +7995,7 @@ function cmChallengeAdminHtml(items, live) {
             <input type="date" id="cc-chal-to"   value="${esc(wk.to)}"   style="flex:1;">
         </div>
         ${roster}
+        ${cmChallengeQuestionsHtml()}
         <div class="classroom-form-actions">
             <button class="classroom-btn" onclick="createClassroomChallenge()">Start it</button>
         </div>
@@ -7865,24 +8018,38 @@ async function createClassroomChallenge() {
     const picked = boxes.filter(b => b.checked).map(b => b.value);
     if (boxes.length && !picked.length) { say('Tick at least one class.', true); return; }
 
+    const q = ccChalQuestionArgs();
+    if (!q) { say('Pick at least one, or choose Anything.', true); return; }
+
     say('Starting…');
     const args = { p_community_id: classroomCommunityId, p_name: name.trim(),
                    p_starts_on: from, p_ends_on: to };
-    let { error } = await sbRpc('classroom_challenge_create',
-        boxes.length ? { ...args, p_classroom_ids: picked } : args, true);
+    const full = { ...args };
+    if (boxes.length) full.p_classroom_ids = picked;
+    if (q.mode !== 'any') {
+        full.p_question_mode = q.mode;
+        if (q.categories) full.p_categories   = q.categories;
+        if (q.templates)  full.p_template_ids = q.templates;
+    }
+    let { error } = await sbRpc('classroom_challenge_create', full, true);
 
     // A site that has not had setup-classroom-challenge-rooms.sql applied
     // still has the four-argument function, and PostgREST answers a call
     // carrying an extra named argument with "no such function". Falling back
     // to the whole school beats refusing to start a challenge at all — but
     // say so when it was not what was asked for.
-    const noRoster = error && (error.code === 'PGRST202'
+    const tooOld = error && (error.code === 'PGRST202'
         || /could not find the function|does not exist/i.test(error.message || ''));
-    if (noRoster && boxes.length) {
+    if (tooOld) {
         ({ error } = await sbRpc('classroom_challenge_create', args, true));
-        if (!error && picked.length !== boxes.length) {
-            showToast('Challenge started for every class — choosing which classes '
-                    + 'needs a database update on this site.');
+        if (!error) {
+            const lost = [];
+            if (boxes.length && picked.length !== boxes.length) lost.push('which classes are in it');
+            if (q.mode !== 'any') lost.push('which questions it covers');
+            if (lost.length) {
+                showToast(`Challenge started, but ${lost.join(' and ')} `
+                        + 'needs a database update on this site.');
+            }
         }
     }
     if (error) { say(error.message || 'Could not start it.', true); return; }
@@ -8252,11 +8419,13 @@ async function startClassroomSession(id, mode) {
 
     // Both in parallel: the recent-template list is a nicety and should not
     // add a round trip to the wait a class is watching.
-    const [data, recent] = await Promise.all([
+    const [data, recent, challenge] = await Promise.all([
         loadClassroomData(room),
         loadClassroomRecentTemplates(room.id),
+        classroomActiveChallenge(room.id),
     ]);
-    const { questions, source, no_data } = buildClassroomQuestions(room, data, { recent });
+    const { questions, source, no_data } =
+        buildClassroomQuestions(room, data, { recent, challenge });
 
     if (!questions.length) {
         stage.innerHTML = `
