@@ -5871,6 +5871,33 @@ function closeClassroomPanel() {
     document.getElementById('classroom-panel-modal')?.classList.remove('open');
 }
 
+/**
+ * Escape closes the panel, as it does everywhere else on this page.
+ *
+ * Three guards, each for a real case:
+ *
+ *  - A lesson on the stage has its OWN Escape, which ends the session. The
+ *    stage sits above the panel, so Escape must reach one of them and not
+ *    both; the one in front wins.
+ *  - Typing in a field is not a request to throw the field away. Somebody
+ *    half way through naming a class and reaching for Escape to clear the
+ *    input should not lose the form.
+ *  - A confirm() is modal to the browser and Escape is its own cancel.
+ */
+document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    const modal = document.getElementById('classroom-panel-modal');
+    if (!modal || !modal.classList.contains('open')) return;
+
+    const stage = document.getElementById('classroom-stage');
+    if (stage && getComputedStyle(stage).display !== 'none') return;
+
+    if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
+    if (e.target.isContentEditable) return;
+
+    closeClassroomPanel();
+});
+
 async function onClassroomCommunityChange() {
     classroomCommunityId = document.getElementById('classroom-community-select').value;
     classroomEditingId = null;

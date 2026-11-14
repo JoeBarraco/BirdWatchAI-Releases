@@ -3705,12 +3705,54 @@
 .classroom-pane-left {
     flex: 0 0 210px; min-width: 0;
     display: flex; flex-direction: column; gap: 0.4rem;
+
+    /* Stays put while the right-hand side scrolls.
+       `.mod-admin-box` is the scroll container (max-height 80vh,
+       overflow-y auto) and this pane is inside it, so sticky resolves
+       against that box rather than the page. align-self: flex-start is
+       required: in a flex row the default `stretch` makes this item as tall
+       as the tallest sibling, and an element the full height of the scroller
+       has nowhere to stick to.
+       -2rem cancels the box's own 2rem padding so the column's top edge
+       lands at the top of the scrolled area rather than 32px down. */
+    position: sticky;
+    top: -2rem;
+    align-self: flex-start;
+    /* Its own scrollbar if a school has more classes than fit the screen.
+       The alternative is a column taller than the viewport, which cannot
+       stick and puts Close out of reach again — the exact bug. */
+    max-height: calc(80vh - 4rem);
+    overflow-y: auto;
+    /* So the right pane's content never shows through while it scrolls past. */
+    background: var(--bg-card);
+    padding-top: 2rem;
+    margin-top: -2rem;
+    z-index: 1;
 }
+
+/* Close is in the column so it is always reachable, but it is not one of the
+   choices: it never lights up, and it sits apart from them. */
+.classroom-row-close {
+    margin-top: 0.5rem;
+    color: var(--color-gray-500);
+    justify-content: center;
+}
+.classroom-row-close .classroom-row-name {
+    font-weight: 600; font-size: 0.82rem; color: var(--color-gray-500);
+}
+.classroom-row-close:hover { border-color: var(--color-gray-500); }
+.classroom-row-close:hover .classroom-row-name { color: var(--color-gray-900); }
 .classroom-pane-right { flex: 1 1 auto; min-width: 0; }
 
 @media (max-width: 720px) {
     .classroom-panes { flex-direction: column; }
-    .classroom-pane-left { flex: 1 1 auto; width: 100%; }
+    .classroom-pane-left {
+        flex: 1 1 auto; width: 100%;
+        /* Stacked, there is nothing to sit beside: a sticky column here
+           would pin itself over the pane it is meant to introduce. */
+        position: static; max-height: none; overflow: visible;
+        padding-top: 0; margin-top: 0;
+    }
     .classroom-pane-right { width: 100%; }
 }
 
