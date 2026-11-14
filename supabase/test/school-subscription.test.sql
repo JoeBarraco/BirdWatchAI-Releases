@@ -1,4 +1,4 @@
--- Behaviour tests for setup-school-subscription.sql.
+-- Behavior tests for setup-school-subscription.sql.
 -- Each check reports PASS/FAIL; expected failures are caught, not fatal.
 
 \set QUIET on

@@ -13,7 +13,7 @@
 // ────────────────
 // The source SVG tags each state with class="xx" (its postal code) and a
 // <title> holding the full name. Those are pulled out into a plain map of
-// code -> path data, so the renderer can draw the states itself and colour
+// code -> path data, so the renderer can draw the states itself and color
 // any subset. Embedding the SVG as an <img> would have been less code and
 // would not allow highlighting, which is the entire point of putting a map
 // on a question.

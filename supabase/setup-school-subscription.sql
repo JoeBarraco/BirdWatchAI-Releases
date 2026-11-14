@@ -483,7 +483,7 @@ grant  execute on function community_set_kind(uuid, text) to authenticated;
 -- ── 8. Status, for the panel ────────────────────────────────────────
 --
 -- Readable by staff, not just the owner. A teacher who finds "▶ On the
--- board" greyed out needs to be told why by the screen in front of
+-- board" grayed out needs to be told why by the screen in front of
 -- them, otherwise the first thing that happens is a phone call to the
 -- person who owns the community, during a lesson.
 

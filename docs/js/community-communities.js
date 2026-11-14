@@ -77,7 +77,7 @@ async function loadCommunityKinds() {
         if (!res.ok) {
             const err = await res.json().catch(() => ({}));
             if (err && err.code === '42703') {
-                // Migration not applied yet — pre-change behaviour.
+                // Migration not applied yet — pre-change behavior.
                 myCommunities.forEach(c => { c.kind = 'school'; });
             }
             return;
@@ -152,7 +152,7 @@ function communityFilterExcludes(d) {
     // No entry means the community genuinely has no approved feeders. That is
     // an answer, not a failure: exclude everything. Previously this fell open
     // and an empty community displayed the whole feed — a scope filter that
-    // shows MORE than asked for when it doesn't recognise its own target.
+    // shows MORE than asked for when it doesn't recognize its own target.
     if (!members) return true;
     return !members.has(d.feeder_id);
 }
@@ -1115,7 +1115,7 @@ async function decideFeeder(communityId, feederId, decision) {
  *     RPC's, and it cannot be used to mail people you could not invite;
  *   - if the function is unreachable, fall back to the RPC directly. The
  *     invite lands and the panel says plainly that no email went out, which
- *     is the old behaviour and still works.
+ *     is the old behavior and still works.
  */
 async function inviteToCommunity() {
     const cid   = document.getElementById('community-panel-select').value;

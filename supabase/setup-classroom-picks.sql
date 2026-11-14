@@ -22,7 +22,7 @@
 -- ───────────
 -- A nullable array of template ids on the classroom. NULL — the default,
 -- and what every existing classroom has — means "no restriction", which
--- is exactly the behaviour that was there before. A non-empty array
+-- is exactly the behavior that was there before. A non-empty array
 -- means "only these". There is deliberately no third state.
 --
 -- The ids themselves are CLIENT-SIDE constants (CLASSROOM_TEMPLATES in
@@ -66,7 +66,7 @@ end $$;
 comment on column classrooms.template_picks is
   'Which question templates this classroom may ask, by client-side '
   'template id. NULL means no restriction, which is the default and the '
-  'behaviour every classroom had before this column existed.';
+  'behavior every classroom had before this column existed.';
 
 
 -- ────────────────────────────────────────────────────────────────────

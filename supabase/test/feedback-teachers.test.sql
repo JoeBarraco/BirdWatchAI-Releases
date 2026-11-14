@@ -1,4 +1,4 @@
--- Behaviour tests for setup-classroom-feedback-teachers.sql.
+-- Behavior tests for setup-classroom-feedback-teachers.sql.
 -- Needs stub-schema.sql and that migration applied.
 
 create or replace function t_ok(label text, cond boolean) returns void

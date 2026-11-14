@@ -246,7 +246,7 @@ update feeders f
        );
 
 -- New feeders auto-join the public community, preserving today's
--- behaviour: a fresh install appears on the public feed without the
+-- behavior: a fresh install appears on the public feed without the
 -- owner doing anything. They can leave it later to go private-only.
 create or replace function feeders_autojoin_public_trg()
 returns trigger
@@ -466,7 +466,7 @@ $$;
 -- simply adding a new one alongside.
 --
 -- WRITE policies are deliberately left at qual=true, exactly matching
--- today's behaviour. Tightening them would break the server's own
+-- today's behavior. Tightening them would break the server's own
 -- writes to its private rows (ShareClipAsync / UpdateImageAsync PATCH
 -- via the anon key) and every deployed WinForms install. The follow-up
 -- is to route those writes through the device_key RPCs in section 7 and

@@ -1,6 +1,6 @@
 -- Minimal stand-in for the parts of the BirdWatchAI schema that
 -- setup-school-subscription.sql touches. Not the real schema — just enough
--- shape for the migration to compile against and for its behaviour to be
+-- shape for the migration to compile against and for its behavior to be
 -- exercised.
 
 create extension if not exists pgcrypto;

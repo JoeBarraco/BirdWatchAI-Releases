@@ -28,7 +28,7 @@
 // version 4 symbol is 1,089 of them; redrawing that on a projector is
 // visible. The renderer below emits one path, which is the reason it was
 // worth keeping. The 4-module quiet zone is kept too: scanners genuinely
-// fail without it, and a QR flush against a coloured panel is a common way
+// fail without it, and a QR flush against a colored panel is a common way
 // to produce one nobody can read.
 //
 // CORRECTNESS

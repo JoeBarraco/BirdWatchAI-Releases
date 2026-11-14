@@ -16,8 +16,8 @@
 
             /* The tally-chart mark: a perched songbird, drawn from four
                primitives so it stays readable at 16px and cannot be a
-               mangled path. Used as a MASK, so the colour comes from whatever
-               the element's background is — which is the species' own colour.
+               mangled path. Used as a MASK, so the color comes from whatever
+               the element's background is — which is the species' own color.
                Kept here rather than inline in the rule so the dark theme and
                any later variant share one definition. */
             --cc-bird-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cg fill='black'%3E%3Cpolygon points='2,7 13,16 2,23'/%3E%3Cellipse cx='16' cy='17' rx='9' ry='7.2'/%3E%3Ccircle cx='23' cy='10.5' r='5.2'/%3E%3Cpolygon points='27.5,8.9 31.5,10.4 27.5,12'/%3E%3C/g%3E%3C/svg%3E");
@@ -1683,7 +1683,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            padding-left: 3px;   /* optically centre the triangle */
+            padding-left: 3px;   /* optically center the triangle */
             backdrop-filter: blur(3px);
             transition: background 0.15s, transform 0.15s;
             pointer-events: none;
@@ -3356,7 +3356,7 @@
         .badge-tile.earned {
             border-color: var(--color-primary);
             /* Faint primary wash so an earned tile reads as filled-in at a
-               glance rather than relying on the icon's colour alone. */
+               glance rather than relying on the icon's color alone. */
             background: color-mix(in srgb, var(--color-primary) 8%, var(--bg-card));
         }
         .badge-tile.locked { opacity: 0.62; }
@@ -3517,7 +3517,7 @@
     white-space: nowrap;
 }
 
-/* Feeder usage earns colour: at the cap, approving the next one fails, and
+/* Feeder usage earns color: at the cap, approving the next one fails, and
    that should be visible before the owner tries. */
 .community-stat.is-full   .community-stat-value { color: #e74c3c; }
 .community-stat.is-nearly .community-stat-value { color: #d97706; }
@@ -3762,7 +3762,7 @@
    Above both panes, because it governs both: the left pane's "+ New
    class" and the right pane's start buttons go dead together.
 
-   Amber for grace and red for lapsed, rather than one colour for
+   Amber for grace and red for lapsed, rather than one color for
    "there is a billing problem". They are different situations — one
    is a reminder while lessons still run, the other is lessons
    stopped — and a teacher reading it mid-morning needs to know which
@@ -3969,7 +3969,7 @@
        Flagged mid-lesson on the cardinal-range slide, which pairs a photo
        with the US map and is the tallest thing the stage ever draws: "the
        images are cut off the top of screen." The map was painting 24px above
-       the visible area. `safe center` centres while it fits and falls back to
+       the visible area. `safe center` centers while it fits and falls back to
        flex-start when it does not, which is what the `center top` transform
        origin already assumes. */
     justify-content: safe center; gap: 2.2vmin;
@@ -3987,7 +3987,7 @@
        past the scroll origin, so it is both invisible and unreachable. A
        question with a chart and a reveal block hit exactly that: the top of
        the chart sat 77px above the visible area with scrollTop pinned at 0.
-       `safe center` centres while it fits and falls back to flex-start when
+       `safe center` centers while it fits and falls back to flex-start when
        it does not. */
     justify-content: safe center;
     gap: 2.2vmin;
@@ -4345,9 +4345,9 @@
 }
 
 /* NO fill here. Each bar carries its own fill="..." from the renderer — the
-   species' real colour — and a fill in this rule would override every one of
+   species' real color — and a fill in this rule would override every one of
    them, because a presentation attribute loses to any stylesheet rule. */
-/* Nearly full strength: distinguishing the bars is the colours' job now, so
+/* Nearly full strength: distinguishing the bars is the colors' job now, so
    opacity is free to just make them bright. It used to carry both and had to
    sit at 0.55, which on a projector read as washed out. */
 .cc-bar    { opacity: 0.88; transition: opacity 0.15s ease; }
@@ -4364,7 +4364,7 @@
 
 /* ── The bird beside its name ──────────────────────────────────────
    A K-2 class is the band least able to read "Carolina Chickadee" and most
-   able to recognise the bird, so for them the picture is the label and the
+   able to recognize the bird, so for them the picture is the label and the
    words are the caption.
 
    THE CROP IS NOT DECORATION. Every snapshot has the species name burned
@@ -4427,11 +4427,11 @@
 /* Each tally mark is a bird, not a bubble.
    Asked for on the busiest-day slide — "might be nice instead of each bubble
    show a bird icon" — and it costs nothing: the mark already carries the
-   species' own colour as its background, so masking it to a bird silhouette
+   species' own color as its background, so masking it to a bird silhouette
    keeps every bit of that and only changes the outline. A pictograph whose
    picture is the thing being counted is the whole idea of a pictograph.
 
-   Behind @supports so that a browser without CSS masking keeps the coloured
+   Behind @supports so that a browser without CSS masking keeps the colored
    circles rather than rendering a row of squares. */
 @supports (mask-image: url("")) or (-webkit-mask-image: url("")) {
     .cc-dot {
@@ -4507,7 +4507,7 @@
 
 /* ── Review: two doors, and two ways a question can be marked ──────
    A flagged question is a defect to fix; a suggestion is a better idea.
-   Different colours so a review pass can be read at a glance. */
+   Different colors so a review pass can be read at a glance. */
 .classroom-review-actions {
     display: flex;
     flex-wrap: wrap;
@@ -4596,8 +4596,8 @@
     font-variant-numeric: tabular-nums;
 }
 
-/* ── Colour-coded answers ──────────────────────────────────────────
-   Four colours, one per position, the way every quiz game a child has met
+/* ── Color-coded answers ──────────────────────────────────────────
+   Four colors, one per position, the way every quiz game a child has met
    does it. It also gives the room a way to vote that does not depend on
    reading: "put your hand up for the blue one" works in a K-2 class where
    "put your hand up for C" does not.
@@ -4629,7 +4629,7 @@
 
 /* Purple rather than green in fourth place on purpose. Green is what the
    reveal uses for "right", and a fourth option permanently wearing the
-   correct-answer colour is a hint on every single question. */
+   correct-answer color is a hint on every single question. */
 
 /* The reveal has to beat the accent, so it takes the whole button. */
 .classroom-choice.correct {
@@ -4645,7 +4645,7 @@
 .classroom-choice.correct::before,
 .classroom-choice.chosen-wrong::before { display: none; }
 
-/* A colour answer shows the colour. A K-2 class that cannot yet read
+/* A color answer shows the color. A K-2 class that cannot yet read
    "orange" can still match a patch to a photograph, which is the whole
    reason the art questions are worth asking at that age. */
 .classroom-swatch {
@@ -4731,7 +4731,7 @@
 
 /* ── A map as evidence ─────────────────────────────────────────────
    Unlit states are visible but recede; the highlighted ones are the point.
-   Borders in the page background colour so the states read as separate
+   Borders in the page background color so the states read as separate
    shapes without drawing a grid over the map. */
 .classroom-map { margin: 0; width: min(100%, 820px); flex-shrink: 0; }
 .classroom-map svg { width: 100%; height: auto; display: block; }

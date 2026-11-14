@@ -339,7 +339,7 @@ grant  execute on function community_apply_school_code(text, uuid) to authentica
 --
 -- Replaces community_school_status from setup-school-subscription.sql
 -- §8, adding the classroom usage so the panel can say "3 of 5" and
--- grey out "+ New class" BEFORE somebody fills in the form.
+-- gray out "+ New class" BEFORE somebody fills in the form.
 
 create or replace function community_school_status(p_community_id uuid)
 returns json

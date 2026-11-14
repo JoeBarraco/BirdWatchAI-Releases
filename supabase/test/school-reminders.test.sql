@@ -1,4 +1,4 @@
--- Behaviour tests for setup-school-reminders.sql.
+-- Behavior tests for setup-school-reminders.sql.
 -- Needs stub-schema.sql, setup-school-subscription.sql and this file's
 -- migration already applied. Reuses t_ok/t_raises/t_runs from
 -- school-subscription.test.sql, and defines them if run alone.

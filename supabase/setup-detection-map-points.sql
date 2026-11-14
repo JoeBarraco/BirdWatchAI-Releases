@@ -51,7 +51,7 @@
 --
 --  Two of the map's filters cannot be expressed on grouped data, and the client
 --  falls back to fetching raw rows when either is active:
---    * favourites-only -- keyed on per-detection reaction ids.
+--    * favorites-only -- keyed on per-detection reaction ids.
 --    * free-text search -- searches `notes`, which is per detection.
 --  Everything else (species, rarity, feeder, community scope, radius, zip,
 --  period) is answerable from the columns below.

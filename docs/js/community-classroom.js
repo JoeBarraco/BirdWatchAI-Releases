@@ -299,7 +299,7 @@ const SPECIES_FACTS = {
         'up':   'Chickadees hide thousands of seeds each autumn and remember where they put them.',
     },
     'Tufted Titmouse': {
-        'k-2':  'The titmouse has a little grey hat called a crest that it can raise up.',
+        'k-2':  'The titmouse has a little gray hat called a crest that it can raise up.',
         'up':   'Titmice often grab one seed, carry it to a branch, and hammer it open while holding it with their feet.',
     },
     'Carolina Wren': {
@@ -308,7 +308,7 @@ const SPECIES_FACTS = {
     },
     'House Finch': {
         'k-2':  'Boy house finches have red on their heads and chests.',
-        'up':   'The red on a male House Finch comes from pigments in the food he eats, so his colour reports how well he has fed.',
+        'up':   'The red on a male House Finch comes from pigments in the food he eats, so his color reports how well he has fed.',
     },
     'American Goldfinch': {
         'k-2':  'Goldfinches turn bright yellow in summer and dull brown in winter.',
@@ -347,7 +347,7 @@ const SPECIES_FACTS = {
         'up':   'Robins find worms largely by sight and sound, not smell — the head tilt is listening and looking, not sniffing.',
     },
     'Dark-eyed Junco': {
-        'k-2':  'Juncos are grey on top and white underneath, like a little snowball.',
+        'k-2':  'Juncos are gray on top and white underneath, like a little snowball.',
         'up':   'Juncos are often called "snowbirds" because in much of the country they only show up for the winter.',
     },
     'Northern Mockingbird': {
@@ -358,14 +358,14 @@ const SPECIES_FACTS = {
 
 // ── What each bird looks like (design notes §2, the K–2 line) ──────
 //
-// "Colour/shape matching to identify birds" is the first thing the notes ask
+// "Color/shape matching to identify birds" is the first thing the notes ask
 // for at K–2, and it is the one thing the detection data cannot supply: the
-// model reports a species and a time, never a colour. So this is a small
+// model reports a species and a time, never a color. So this is a small
 // hand-written table about the birds themselves.
 //
-// `color` is the ONE colour a five-year-old would say if asked, not an
+// `color` is the ONE color a five-year-old would say if asked, not an
 // ornithologically complete description — a Blue Jay is blue even though it
-// is also white, black and grey. Questions below only ever ask about a colour
+// is also white, black and gray. Questions below only ever ask about a color
 // exactly one of the offered birds has, so "which is blue?" never has two
 // defensible answers.
 //
@@ -373,25 +373,25 @@ const SPECIES_FACTS = {
 // ask, which is most of the feeder regulars and a good discussion either way.
 //
 // Only species the feeders actually see, matching SPECIES_FACTS. A bird with
-// no entry here simply never appears in a colour question.
+// no entry here simply never appears in a color question.
 const SPECIES_LOOKS = {
     'Northern Cardinal':      { color: 'red',             female: 'soft brown with a little red', feature: 'a pointy crest on its head' },
     'Carolina Chickadee':     { color: 'black and white', feature: 'a black cap and a black bib' },
     'Black-capped Chickadee': { color: 'black and white', feature: 'a black cap and a black bib' },
-    'Tufted Titmouse':        { color: 'grey',            feature: 'a little grey crest' },
+    'Tufted Titmouse':        { color: 'gray',            feature: 'a little gray crest' },
     'Carolina Wren':          { color: 'brown',           feature: 'a white stripe over its eye and a tail that points up' },
     'House Finch':            { color: 'red',             female: 'streaky brown', feature: 'a red head and chest' },
     'American Goldfinch':     { color: 'yellow',          feature: 'black wings with white bars' },
     'Blue Jay':               { color: 'blue',            feature: 'a blue crest and a black necklace' },
-    'Mourning Dove':          { color: 'grey',            feature: 'a long pointed tail' },
+    'Mourning Dove':          { color: 'gray',            feature: 'a long pointed tail' },
     'Downy Woodpecker':       { color: 'black and white', female: 'the same, but with no red patch', feature: 'a chisel beak for tapping wood' },
     'Red-bellied Woodpecker': { color: 'black and white', feature: 'a red cap and zebra stripes on its back' },
-    'White-breasted Nuthatch':{ color: 'grey',            feature: 'walking DOWN the tree head first' },
-    'House Sparrow':          { color: 'brown',           feature: 'a grey cap and a black bib' },
+    'White-breasted Nuthatch':{ color: 'gray',            feature: 'walking DOWN the tree head first' },
+    'House Sparrow':          { color: 'brown',           feature: 'a gray cap and a black bib' },
     'European Starling':      { color: 'black',           feature: 'shiny feathers with little white spots' },
     'American Robin':         { color: 'orange',          feature: 'an orange tummy' },
-    'Dark-eyed Junco':        { color: 'grey',            feature: 'grey on top and white underneath' },
-    'Northern Mockingbird':   { color: 'grey',            feature: 'white flashes in its wings when it flies' },
+    'Dark-eyed Junco':        { color: 'gray',            feature: 'gray on top and white underneath' },
+    'Northern Mockingbird':   { color: 'gray',            feature: 'white flashes in its wings when it flies' },
 };
 
 function speciesLook(species) {
@@ -740,7 +740,7 @@ const BIRD_WONDERS = [
     {
         id: 'wonder-flamingo-pink', subject: 'science', bands: ['k-2', '3-5'],
         bird: 'Flamingo',
-        intro: ['Flamingo chicks hatch out grey. The pink arrives later.',
+        intro: ['Flamingo chicks hatch out gray. The pink arrives later.',
                 'A flamingo in a zoo that is fed the wrong food turns pale and white.'],
         prompt: 'Where does a flamingo’s pink come from?',
         answer: 'The food it eats',
@@ -799,9 +799,9 @@ const BIRD_WONDERS = [
     {
         id: 'wonder-robin-egg', subject: 'art', bands: ['k-2', '3-5'],
         bird: 'American Robin',
-        intro: ['"Robin’s egg blue" is a colour name used by paint companies and '
+        intro: ['"Robin’s egg blue" is a color name used by paint companies and '
               + 'crayon makers, because a robin’s egg really is that blue.',
-                'The colour is not painted on. It is made inside the mother.'],
+                'The color is not painted on. It is made inside the mother.'],
         prompt: 'Why might a robin’s egg be blue rather than white?',
         answer: 'Blue shields the chick from sun',
         distractors: ['To match the sky', 'Because robins eat blueberries', 'To look like a stone'],
@@ -900,17 +900,17 @@ function speciesFact(species, band) {
 // how a question set becomes boring no matter how good the questions are.
 //
 // These are not data questions wearing a smock. Warm and cool, the primary
-// colours, and what mixes to make orange are the actual beginning of a
+// colors, and what mixes to make orange are the actual beginning of a
 // primary art curriculum, and the birds supply the examples - a cardinal, a
 // goldfinch and a jay really are red, yellow and blue, which is a free and
 // surprisingly rare demonstration that the three primaries exist in nature
 // and turned up at the school feeder in the same week.
 
-// The plain colour words from SPECIES_LOOKS, as paint.
+// The plain color words from SPECIES_LOOKS, as paint.
 //
-// Separate from SPECIES_COLORS: that table pulls the greys apart so chart
+// Separate from SPECIES_COLORS: that table pulls the grays apart so chart
 // bars stay distinguishable, which is right for a chart and wrong for a
-// swatch. A swatch has to be the colour the WORD means, or matching the word
+// swatch. A swatch has to be the color the WORD means, or matching the word
 // to the patch stops being possible.
 const COLOR_WORD_HEX = {
     'red':             '#e23b3b',
@@ -918,24 +918,24 @@ const COLOR_WORD_HEX = {
     'yellow':          '#f5d324',
     'brown':           '#9c6b43',
     'blue':            '#3b7fe2',
-    'grey':            '#9aa3ad',
+    'gray':            '#9aa3ad',
     'black':           '#2f3338',
     'black and white': '#d9dee4',
 };
 
-// Artists' warm/cool split. Only the colours it is honestly defined for -
+// Artists' warm/cool split. Only the colors it is honestly defined for -
 // black, white and the black-and-white birds sit outside it, and a question
 // that forced them to one side would be teaching something untrue.
 const WARM_COLORS = ['red', 'orange', 'yellow', 'brown'];
-const COOL_COLORS = ['blue', 'grey'];
+const COOL_COLORS = ['blue', 'gray'];
 
 // Red, yellow and blue. The feeder regularly supplies all three.
 const PRIMARY_COLORS = ['red', 'yellow', 'blue'];
 
 /**
- * Paint a colour swatch onto each answer.
+ * Paint a color swatch onto each answer.
  *
- * The answers to a colour question have to BE the colours - a K-2 class that
+ * The answers to a color question have to BE the colors - a K-2 class that
  * cannot yet read "orange" can still match a patch to a photograph, and that
  * is the whole point of asking them.
  */
@@ -948,7 +948,7 @@ function cmSwatchChoices(built, hexOf) {
     return built;
 }
 
-// The species seen this week that have a colour we can talk about.
+// The species seen this week that have a color we can talk about.
 function cmColorfulSpecies(s, allow) {
     return s.species
         .map(x => ({ species: x.species, n: x.n, look: speciesLook(x.species) }))
@@ -984,7 +984,7 @@ function cmShortName(species) {
  * could easily tell WREN, without actually moving letters." Every puzzle here
  * shows the answer's length - a jumble, a cipher, a row of blanks - so if
  * only one option is that long the puzzle is already solved. Prefers same
- * length, then nearest, so it degrades to the old behaviour rather than
+ * length, then nearest, so it degrades to the old behavior rather than
  * returning nothing when the feeder has only a handful of species.
  */
 function cmLengthMatchedDistractors(pool, answerLen, rng, count) {
@@ -1289,22 +1289,22 @@ const DOTS_MAX_ROWS  = 7;      // a week
 //
 // So the templates whose answer is computed FROM the numbers pass
 // showValues and print them from the start.
-// ── Colour ────────────────────────────────────────────────────────
+// ── Color ────────────────────────────────────────────────────────
 //
 // Every bar used to be the same green, separated only by opacity. On a
 // projector that reads as a spreadsheet, and the feedback from an actual
-// classroom was blunt: kids love colour, and there wasn't any.
+// classroom was blunt: kids love color, and there wasn't any.
 //
-// Colour here is not decoration, which is why it is a hand-written table
-// rather than a generated ramp. Each species gets the colour a child would
+// Color here is not decoration, which is why it is a hand-written table
+// rather than a generated ramp. Each species gets the color a child would
 // say that bird is, so the cardinal's bar is red and the jay's is blue, and
 // the chart quietly teaches identification every time it is shown. By the
 // third lesson "the red one" and "the cardinal" are the same thought.
 //
-// Where plumage would collide - five of these birds are honestly just grey -
-// the greys are pulled apart along the shades they really do differ by: a
-// nuthatch IS blue-grey above, a dove IS pinkish, a junco IS charcoal. So the
-// bars stay distinguishable without the colours becoming a lie.
+// Where plumage would collide - five of these birds are honestly just gray -
+// the grays are pulled apart along the shades they really do differ by: a
+// nuthatch IS blue-gray above, a dove IS pinkish, a junco IS charcoal. So the
+// bars stay distinguishable without the colors becoming a lie.
 //
 // Tuned for a dark projector in a lit room: mid-to-light tones, nothing below
 // about 45% lightness, because a dark bar on a dark slide is a missing bar at
@@ -1318,11 +1318,11 @@ const SPECIES_COLORS = {
     'Carolina Wren':           '#c08457',  // warm brown
     'House Sparrow':           '#a8926f',  // duller brown than the wren
     'Blue Jay':                '#3b82f6',
-    'White-breasted Nuthatch': '#7dd3fc',  // genuinely blue-grey above
+    'White-breasted Nuthatch': '#7dd3fc',  // genuinely blue-gray above
     'Tufted Titmouse':         '#a5b4cf',  // soft slate, and it is a slate bird
-    'Mourning Dove':           '#d8b4a0',  // doves really are pinkish-grey
+    'Mourning Dove':           '#d8b4a0',  // doves really are pinkish-gray
     'Dark-eyed Junco':         '#8b93a7',  // charcoal, lifted enough to read
-    'Northern Mockingbird':    '#cbd5e1',  // pale grey
+    'Northern Mockingbird':    '#cbd5e1',  // pale gray
     'Carolina Chickadee':      '#e8eef5',  // black and white, so near-white
     'Black-capped Chickadee':  '#dbe4ee',
     'Downy Woodpecker':        '#f1f5f9',  // the other black-and-white
@@ -1331,7 +1331,7 @@ const SPECIES_COLORS = {
 
 // For series that are not species - days of the week, hours of the day. A
 // run of related hues keeps the order readable left to right while still
-// being a row of colours rather than a row of grey.
+// being a row of colors rather than a row of gray.
 const CHART_SPECTRUM = [
     '#60a5fa', '#38bdf8', '#2dd4bf', '#4ade80', '#a3e635',
     '#fde047', '#fbbf24', '#fb923c', '#f87171', '#f472b6',
@@ -1341,9 +1341,9 @@ const CHART_SPECTRUM = [
  * Cold blue to warm red, for a temperature.
  *
  * `t` is 0 (the coldest day in view) to 1 (the warmest). Deliberately not a
- * full rainbow: blue-to-red is the one colour ramp almost everybody already
+ * full rainbow: blue-to-red is the one color ramp almost everybody already
  * reads as cold-to-hot without a legend, which is the whole point of using
- * colour rather than another axis.
+ * color rather than another axis.
  */
 function cmHeatColor(t) {
     const stops = [[103, 183, 240], [150, 190, 210], [222, 196, 150], [240, 134, 74]];
@@ -1355,7 +1355,7 @@ function cmHeatColor(t) {
 }
 
 /**
- * The colour for one row of a chart.
+ * The color for one row of a chart.
  *
  * `mode` is decided once in cmChart and baked onto each row, so the renderers
  * never have to know what a series is about.
@@ -1421,15 +1421,15 @@ function cmChart(caption, series, opts) {
         ? o.kind
         : candidates[cmChartRotation++ % candidates.length];
 
-    // Species series colour by species; everything else runs the spectrum.
+    // Species series color by species; everything else runs the spectrum.
     // `plain` is the opt-out, and it is not cosmetic: a question that ASKS
-    // about colour ("which of these birds is blue?") must not be shown a
+    // about color ("which of these birds is blue?") must not be shown a
     // chart that has already answered it in the bars.
     const mode = o.plain ? 'plain'
                : trimmed.every(r => SPECIES_COLORS[r.key]) ? 'species'
                : 'spectrum';
-    // A row may bring its own colour, which is how a chart encodes a SECOND
-    // variable in the bars themselves - height for one, colour for the other
+    // A row may bring its own color, which is how a chart encodes a SECOND
+    // variable in the bars themselves - height for one, color for the other
     // - instead of spending an axis or a label line on it.
     trimmed.forEach((r, i) => {
         if (!r.color) r.color = cmRowColor(r, i, trimmed.length, mode);
@@ -1552,7 +1552,7 @@ function cmDaySeries(s) {
  * The clearest photo this feeder has of each species, for the chart labels.
  *
  * A K-2 class is the band least able to read "Carolina Chickadee" off a chart
- * and most able to recognise the bird, so the picture is doing the real work
+ * and most able to recognize the bird, so the picture is doing the real work
  * of the label for them. The best shot is the highest-confidence one, which
  * snapshots is already sorted by.
  *
@@ -1589,7 +1589,7 @@ function cmShotFor(s, species) {
  * courtesy, it is the condition under which we are allowed to show it at all.
  */
 /**
- * A male/female photo pair, or null when the catalogue has not loaded.
+ * A male/female photo pair, or null when the catalog has not loaded.
  *
  * Rotates with the lesson's seed so a class meeting this twice in a fortnight
  * gets a different species the second time — the point is that the pattern
@@ -1734,13 +1734,13 @@ function cmNiceStep(max) {
  * one below it. That is how squared paper works and children already read it.
  *
  * Returns 0 when the labelled lines are already one apart, or when every
- * value would mean so many lines that the chart turns into a grey wash.
+ * value would mean so many lines that the chart turns into a gray wash.
  */
 function cmMinorStep(top, step) {
     if (step <= 1) return 0;                  // already a line at every value
     // Finest first: a line at EVERY value is what was actually asked for, and
     // anything coarser still leaves some bar sitting in a gap. Only when that
-    // would mean more than forty lines — at which point the plot is a grey
+    // would mean more than forty lines — at which point the plot is a gray
     // wash and nobody counts them anyway — does it fall back to a fraction of
     // the labelled step.
     for (const d of [1, step / 5, step / 4, step / 2]) {
@@ -1790,7 +1790,7 @@ function classroomBarsHtml(chart, revealed) {
     // Two bars should not sit at opposite ends of the canvas with a chasm
     // between them - "bars should be closer together" was a flag on the
     // week-over-week chart, which has exactly two. Below five bars the slot
-    // is capped and the whole group is centred instead of spread.
+    // is capped and the whole group is centerd instead of spread.
     const barW   = Math.min(slot * 0.62, 96);
     const group  = Math.min(slot, 200);
     const originX = padL + (plotW - group * n) / 2;
@@ -1933,7 +1933,7 @@ function classroomDotsHtml(chart, revealed) {
  * A US map with some states picked out.
  *
  * Drawn from the state outlines rather than embedded as a picture, because
- * the only reason to put a map on a question is to colour part of it — "these
+ * the only reason to put a map on a question is to color part of it — "these
  * seven states" is a fact you can see in two seconds and cannot get from a
  * list of seven names read aloud.
  *
@@ -2078,8 +2078,8 @@ function classroomLineHtml(chart, revealed) {
     const pts = chart.series.map((s, i) => `${x(i)},${y(s.value)}`).join(' ');
     const area = `${padL},${y(0)} ${pts} ${x(n - 1)},${y(0)}`;
 
-    // A fat dot per reading, in that reading's own colour, so the line is
-    // also a row of coloured markers rather than one undifferentiated stroke.
+    // A fat dot per reading, in that reading's own color, so the line is
+    // also a row of colored markers rather than one undifferentiated stroke.
     const marks = chart.series.map((s, i) => {
         const on = chart.highlight && s.key === chart.highlight;
         return `<circle cx="${x(i)}" cy="${y(s.value)}" r="${on ? 16 : 11}"
@@ -2172,7 +2172,7 @@ function classroomDonutHtml(chart, revealed) {
  *
  * Twelve positions, so morning and afternoon land on the same mark. That is a
  * property of real clocks and not a thing to paper over, so the two are drawn
- * in different colours with a legend, which is also the honest way to show a
+ * in different colors with a legend, which is also the honest way to show a
  * feeder that is busy at 8am and quiet at 8pm.
  */
 function classroomClockHtml(chart, revealed) {
@@ -2192,8 +2192,8 @@ function classroomClockHtml(chart, revealed) {
 
     // The same flag's first half: "the bubbles of frequency fall off the
     // screen." They did. A blob sits (R + 46) out with a radius up to 42, so
-    // the drawing reaches 258 below centre while the canvas was 460 tall
-    // with its centre at 240 — the bottom blob was cut in half by the edge.
+    // the drawing reaches 258 below center while the canvas was 460 tall
+    // with its center at 240 — the bottom blob was cut in half by the edge.
     // Height now follows from that reach rather than being a guess.
     const W = 1000;
     const H = hands ? 420 : 560;
@@ -2242,8 +2242,8 @@ function classroomClockHtml(chart, revealed) {
     }
 
     // One blob per hour that had birds, out beyond the numbers, sized by how
-    // busy that hour was. Size rather than colour carries the quantity,
-    // because colour is already carrying am/pm.
+    // busy that hour was. Size rather than color carries the quantity,
+    // because color is already carrying am/pm.
     const blobs = chart.series.map(s => {
         const hour24 = s.hour != null ? s.hour : parseInt(s.key, 10);
         if (!isFinite(hour24)) return '';
@@ -2714,21 +2714,21 @@ const CLASSROOM_TEMPLATES = [
             correct_index: opts.indexOf(answer),
             // Labelled with each day's temperature, in date order, so the
             // class has to put the two variables together themselves.
-            // Temperature is carried by the BAR'S COLOUR \u2014 not a second axis,
+            // Temperature is carried by the BAR'S COLOR \u2014 not a second axis,
             // and not the label.
             //
-            // Height is visits, colour is temperature, so a single mark holds
+            // Height is visits, color is temperature, so a single mark holds
             // both variables and the chart gains no extra furniture. Cold
             // blue to warm red is the one ramp nearly everybody reads without
             // a legend, so the relationship the question actually asks about
             // \u2014 do the warm days have the taller bars? \u2014 is visible before
             // anyone has read a number.
             //
-            // The degrees stay in small type under each date. Once colour is
+            // The degrees stay in small type under each date. Once color is
             // carrying the PATTERN, the number is supporting detail rather
             // than something that has to be decoded, and a 6\u20138 class needs
             // the real values to justify an answer.
-            chart: cmChart('Visits each day \u2014 bar colour is that day\u2019s temperature',
+            chart: cmChart('Visits each day \u2014 bar color is that day\u2019s temperature',
                            days.slice().sort((x, y) => x.day.localeCompare(y.day))
                                .map(d => ({
                                    label: cmDayAxisLabel(d.day),
@@ -3309,7 +3309,7 @@ const CLASSROOM_TEMPLATES = [
     },
 },
 
-// ── Colour and shape, for K–2 ────────────────────────────────────
+// ── Color and shape, for K–2 ────────────────────────────────────
 //
 // These ask about the birds rather than about the numbers, which is the
 // point: a five-year-old who cannot yet read a bar chart can absolutely tell
@@ -3319,10 +3319,10 @@ const CLASSROOM_TEMPLATES = [
 {
     id: 'which-bird-is-color',
     category: 'identification',
-    title: 'Which bird is this colour?',
+    title: 'Which bird is this color?',
     bands: ['k-2'],
     build({ s, band, rng }) {
-        // Only a colour exactly ONE of the birds on offer has, or the
+        // Only a color exactly ONE of the birds on offer has, or the
         // question has two right answers and the class is right to argue.
         const known = s.species
             .map(x => ({ species: x.species, look: speciesLook(x.species) }))
@@ -3357,7 +3357,7 @@ const CLASSROOM_TEMPLATES = [
 {
     id: 'what-color-is',
     category: 'identification',
-    title: 'What colour is it?',
+    title: 'What color is it?',
     bands: ['k-2'],
     build({ s, band, rng }) {
         const known = s.species.map(x => x.species).filter(sp => speciesLook(sp));
@@ -3370,7 +3370,7 @@ const CLASSROOM_TEMPLATES = [
         const built = cmChoices(look.color, cmShuffle(others, rng).slice(0, 2), rng);
         if (!built) return null;
         return {
-            prompt: `What colour is a ${species}?`,
+            prompt: `What color is a ${species}?`,
             ...built,
             // No chart: this one is about the bird, not the data, and a chart
             // of visit counts beside it would only suggest the answer is in
@@ -3389,7 +3389,7 @@ const CLASSROOM_TEMPLATES = [
     title: 'Which bird has this?',
     bands: ['k-2'],
     build({ s, band, rng }) {
-        // The "shape" half of colour/shape matching. Features are written so
+        // The "shape" half of color/shape matching. Features are written so
         // that only one bird on offer could have each.
         const known = s.species.map(x => x.species).filter(sp => speciesLook(sp));
         if (known.length < 3) return null;
@@ -3585,7 +3585,7 @@ const CLASSROOM_TEMPLATES = [
 {
     id: 'word-jumble',
     category: 'puzzle',
-    // The whole point is to solve it, not to recognise it in a list.
+    // The whole point is to solve it, not to recognize it in a list.
     guessFirst: true,
     title: 'Unscramble the bird',
     bands: ['k-2', '3-5'],
@@ -3626,7 +3626,7 @@ const CLASSROOM_TEMPLATES = [
 {
     id: 'missing-letters',
     category: 'puzzle',
-    // The whole point is to solve it, not to recognise it in a list.
+    // The whole point is to solve it, not to recognize it in a list.
     guessFirst: true,
     title: 'Fill in the blanks',
     bands: ['3-5'],
@@ -3663,7 +3663,7 @@ const CLASSROOM_TEMPLATES = [
 {
     id: 'hidden-bird',
     category: 'puzzle',
-    // The whole point is to solve it, not to recognise it in a list.
+    // The whole point is to solve it, not to recognize it in a list.
     guessFirst: true,
     title: 'Find the hidden bird',
     bands: ['3-5', '6-8'],
@@ -3705,7 +3705,7 @@ const CLASSROOM_TEMPLATES = [
 {
     id: 'letter-code',
     category: 'puzzle',
-    // The whole point is to solve it, not to recognise it in a list.
+    // The whole point is to solve it, not to recognize it in a list.
     guessFirst: true,
     title: 'Crack the code',
     bands: ['6-8'],
@@ -3736,7 +3736,7 @@ const CLASSROOM_TEMPLATES = [
 {
     id: 'caesar-bird',
     category: 'puzzle',
-    // The whole point is to solve it, not to recognise it in a list.
+    // The whole point is to solve it, not to recognize it in a list.
     guessFirst: true,
     title: 'Shifted letters',
     bands: ['6-8'],
@@ -3925,7 +3925,7 @@ const CLASSROOM_TEMPLATES = [
 {
     id: 'art-color-match',
     category: 'art',
-    title: 'Match the colour',
+    title: 'Match the color',
     bands: ['k-2'],
     build({ s, band, rng }) {
         // A photo and four patches of paint. No reading required, which is
@@ -3945,7 +3945,7 @@ const CLASSROOM_TEMPLATES = [
         if (!built) return null;
 
         return {
-            prompt: 'Which colour matches this bird?',
+            prompt: 'Which color matches this bird?',
             ...built,
             image: photo,
             explain: `This is a ${pick.species}, and it is ${pick.look.color}.`,
@@ -3971,13 +3971,13 @@ const CLASSROOM_TEMPLATES = [
 
         const photo = cmShotFor(s, pick.species);
         return {
-            prompt: 'Artists call red, orange and yellow WARM colours, and blue '
-                  + `and grey COOL colours. The ${pick.species} is `
+            prompt: 'Artists call red, orange and yellow WARM colors, and blue '
+                  + `and gray COOL colors. The ${pick.species} is `
                   + `${pick.look.color}. Is that warm or cool?`,
             ...built,
             image: photo || null,
             chart: photo ? null : undefined,
-            explain: `${pick.look.color} is a ${answer.toLowerCase()} colour.`,
+            explain: `${pick.look.color} is a ${answer.toLowerCase()} color.`,
             fact: speciesFact(pick.species, band),
         };
     },
@@ -3986,7 +3986,7 @@ const CLASSROOM_TEMPLATES = [
 {
     id: 'art-primary-color',
     category: 'art',
-    title: 'Primary colours',
+    title: 'Primary colors',
     bands: ['3-5'],
     build({ s, band, rng }) {
         // Needs at least two primaries actually present, or "which is not a
@@ -4003,9 +4003,9 @@ const CLASSROOM_TEMPLATES = [
         if (!built) return null;
 
         return {
-            prompt: 'Artists call red, yellow and blue the PRIMARY colours — '
+            prompt: 'Artists call red, yellow and blue the PRIMARY colors — '
                   + 'you cannot mix any other paints to make them. Which of these '
-                  + 'birds is NOT wearing a primary colour?',
+                  + 'birds is NOT wearing a primary color?',
             ...built,
             explain: `The ${answer.species} is ${answer.look.color}, which is not `
                    + `red, yellow or blue. The others are.`,
@@ -4032,7 +4032,7 @@ const CLASSROOM_TEMPLATES = [
         const photo = cmShotFor(s, orange.species);
         return {
             prompt: `The ${orange.species} came to our feeder this week. Its `
-                  + 'orange is not a primary colour — which two paints would '
+                  + 'orange is not a primary color — which two paints would '
                   + 'you mix to make it?',
             ...built,
             image: photo || null,
@@ -4046,7 +4046,7 @@ const CLASSROOM_TEMPLATES = [
 {
     id: 'art-missing-color',
     category: 'art',
-    title: 'The colour that stayed away',
+    title: 'The color that stayed away',
     bands: ['k-2', '3-5'],
     build({ s, band, rng }) {
         const here = new Set(cmColorfulSpecies(s).map(x => x.look.color));
@@ -4063,7 +4063,7 @@ const CLASSROOM_TEMPLATES = [
         if (!built) return null;
 
         return {
-            prompt: 'Which of these colours did NOT come to our feeder this week?',
+            prompt: 'Which of these colors did NOT come to our feeder this week?',
             ...built,
             chart: cmChart('Birds that came this week', cmSpeciesSeries(s), { band }),
             explain: `No ${answer} birds this week.`,
@@ -4731,7 +4731,7 @@ const CLASSROOM_TEMPLATES = [
     build({ rng }) {
         const built = cmChoices('She sits on the nest and must not be seen',
             ['She is younger than the male',
-             'She cannot make bright colours',
+             'She cannot make bright colors',
              'Brown feathers are warmer'], rng);
         if (!built) return null;
 
@@ -4746,7 +4746,7 @@ const CLASSROOM_TEMPLATES = [
             prompt: pair
                 ? `Here is a male and a female ${pair.species}. The male is bright `
                 + 'and the female is plain brown. Why would being dull be an ADVANTAGE?'
-                : 'In many birds the male is brightly coloured and the female is '
+                : 'In many birds the male is brightly colored and the female is '
                 + 'plain brown. Why would being dull be an ADVANTAGE?',
             ...built,
             pair,
@@ -5297,16 +5297,16 @@ const CLASSROOM_TEMPLATES = [
 {
     id: 'art-complementary',
     category: 'art',
-    title: 'Complementary colours',
+    title: 'Complementary colors',
     bands: ['6-8'],
     needsData: false,
     build({ rng }) {
         const built = cmChoices('Green', ['Blue', 'Orange', 'Yellow'], rng);
         if (!built) return null;
         return {
-            prompt: 'On the colour wheel, complementary colours sit opposite each '
+            prompt: 'On the color wheel, complementary colors sit opposite each '
                   + 'other and make each other look brighter. A cardinal is red — '
-                  + 'which colour is its complement?',
+                  + 'which color is its complement?',
             ...built,
             explain: 'Green. It is exactly why a cardinal looks so startling against '
                    + 'summer leaves, and why photographers wait for that background.',
@@ -5506,7 +5506,7 @@ function buildClassroomQuestions(room, data, opts) {
     // A feeder with nothing on it used to mean no lesson at all: the function
     // gave up here and the stage said "not enough data yet". That was true
     // when every question was computed from detections. It is not true now -
-    // the fact slides, the colour and language questions and the state-bird
+    // the fact slides, the color and language questions and the state-bird
     // map need no feeder data whatsoever, and a new feeder that birds have
     // not found yet is EXACTLY when a class needs them.
     //
@@ -5827,7 +5827,7 @@ let classroomSchool = null;
  * file ships to GitHub Pages the moment it is pushed, while the SQL is pasted
  * into Supabase by hand some minutes later — so for that window every school
  * in the world would otherwise be told its subscription had lapsed, and the
- * start buttons would go grey on a database that has no subscriptions in it
+ * start buttons would go gray on a database that has no subscriptions in it
  * at all. Treat "the feature does not exist here" as "nothing to enforce".
  *
  * Any OTHER error leaves the status null, which renders no banner and gates
@@ -6190,7 +6190,7 @@ function classroomReviewItem(q, i) {
 // What each kind of feedback asks for.
 //
 // Two kinds, because most of what a careful reviewer notices is not a fault.
-// "The bars are too far apart and maybe should be different colours" is worth
+// "The bars are too far apart and maybe should be different colors" is worth
 // more than most flags, and filing it as a defect either dilutes the real
 // defects in the queue or gets it closed unread. A teacher who has to call
 // their idea a fault will often just not file it, which loses exactly the
@@ -6219,7 +6219,7 @@ const CLASSROOM_FEEDBACK_KINDS = {
             ['other',       'Something else'],
         ],
         placeholder: 'What would make it better? Nothing has to be wrong with '
-                   + 'it \u2014 spacing, colours, wording all count.',
+                   + 'it \u2014 spacing, colors, wording all count.',
         send: 'Send suggestion',
     },
 };

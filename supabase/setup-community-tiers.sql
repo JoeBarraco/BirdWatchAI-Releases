@@ -239,7 +239,7 @@ grant  execute on function community_redeem_unlock_code(text, text, text, text) 
 
 -- ── 4. Enforce the cap when a feeder is approved ────────────────────
 --
--- Replaces community_decide_feeder. Same signature and same behaviour, plus
+-- Replaces community_decide_feeder. Same signature and same behavior, plus
 -- the cap. Enforced here rather than at request time so a full community
 -- shows its owner a pending queue and a clear error, instead of silently
 -- rejecting joins the feeder owner thinks are still pending.

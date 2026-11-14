@@ -77,7 +77,7 @@ The four files have been applied and exercised against Postgres 15.19 in Docker,
 using a scaffold that mirrors Supabase (the `anon` / `authenticated` /
 `service_role` roles, pgcrypto in `extensions`, an `auth.users` table, and stubs
 for `feeders` / `community_detections`). All four apply with no errors on a clean
-database and are clean on a second run. 60 behavioural checks pass, covering
+database and are clean on a second run. 60 behavioral checks pass, covering
 token minting and hashing, expiry and the sliding idle window, the 24h cap,
 logout, change-password, reset, cascade-on-delete, admin gating, and every
 converted RPC. What that scaffold does *not* cover is the real base schema — the
@@ -155,7 +155,7 @@ select id, email, role, must_change_password, created_at
   from moderators order by created_at;
 ```
 
-  Any account you do not recognise is the thing to look for.
+  Any account you do not recognize is the thing to look for.
 
 - **`community_create` had the same defect** and is fixed here too (in
   `setup-communities.sql`). It is a SECURITY DEFINER helper with no

@@ -1,4 +1,4 @@
--- Behaviour tests for setup-school-classroom-limits.sql.
+-- Behavior tests for setup-school-classroom-limits.sql.
 -- Needs stub-schema.sql, setup-school-subscription.sql,
 -- setup-school-purchase.sql and this file's migration applied.
 
