@@ -2492,6 +2492,68 @@ const CLASSROOM_TEMPLATES = [
     },
 },
 {
+    // Asked for by a Roland Park teacher: "Questions that compare how many
+    // more on one day then another". That question already existed — but as
+    // `day-difference`, which is 3–5 only, so a K-2 class never met it.
+    //
+    // This is a SEPARATE template rather than 'k-2' added to that one, because
+    // the 3–5 version is deliberately built to defeat the shortcut a six-year-
+    // old needs: it picks two MIDDLING days precisely so the only route is
+    // reading the axis. Here both days are NAMED in the prompt and their
+    // values are printed on the bars, so no searching is involved — the
+    // exercise is the subtraction and nothing else.
+    //
+    // Which is why the pair is chosen by ARITHMETIC rather than by position.
+    // Anchoring on busiest-versus-quietest reads well but fails on a busy
+    // feeder: at around forty visits a day that gap is almost always wider
+    // than ten, and the question simply never builds — measured at 9% of
+    // weeks, against 96% on a feeder doing six a day. A teacher at a busy
+    // school would have gone on never seeing the thing she asked for.
+    //
+    // So: keep the tallest bar, and walk outward for the furthest day that
+    // still leaves a countable answer. A six-year-old asked for 31 − 12 is
+    // being tested on something this slide is not for.
+    id: 'day-difference-k2',
+    category: 'comparison',
+    title: 'How many more on the busy day?',
+    bands: ['k-2'],
+    build({ s, band, rng }) {
+        if (s.days.length < 3) return null;
+
+        const sorted = s.days.slice().sort((x, y) => y.n - x.n);
+        const a = sorted[0];
+        if (!a) return null;
+
+        // From the quietest day upward: the first partner whose difference is
+        // small enough to count is also the largest countable difference,
+        // which is the easiest to see on the chart.
+        let b = null;
+        for (let i = sorted.length - 1; i > 0; i--) {
+            const d = a.n - sorted[i].n;
+            if (d >= 2 && d <= 10) { b = sorted[i]; break; }
+        }
+        if (!b) return null;
+
+        const diff = a.n - b.n;
+
+        const built = cmChoices(String(diff),
+                                cmNumberDistractors(diff, rng, 3).map(String), rng);
+        if (!built) return null;
+
+        return {
+            prompt: `How many more visits were there on ${cmDayAxisLabel(a.day)} `
+                  + `than on ${cmDayAxisLabel(b.day)}?`,
+            ...built,
+            // showValues so the two numbers are on the bars to be subtracted.
+            // Without them this becomes a bar-height estimation question,
+            // which is the 3–5 skill and not this one.
+            chart: cmChart('Visits each day this week', cmDaySeries(s),
+                           { band, showValues: true }),
+            explain: `${a.n} − ${b.n} = ${diff}.`,
+        };
+    },
+},
+{
     id: 'week-over-week',
     category: 'comparison',
     title: 'Busier than last week?',
