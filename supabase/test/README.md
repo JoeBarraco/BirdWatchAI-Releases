@@ -53,10 +53,11 @@ There are six suites, each needing the migrations it builds on applied first:
 | `classroom-limits.test.sql` | + classroom limits | 25 |
 | `feedback-teachers.test.sql` | feedback-teachers only | 18 |
 | `challenges.test.sql` | subscription + challenges | 24 |
-| `challenge-rooms.test.sql` | + challenge rooms | 18 |
+| `challenge-rooms.test.sql` | + challenge rooms | 20 |
+| `challenge-questions.test.sql` | + challenge questions | 16 |
 
 Every check prints `PASS` or `FAIL ***`. Grep for `FAIL`. As of the last run:
-190 checks, 0 failures.
+206 checks, 0 failures.
 
 The challenge suites need `setup-school-subscription.sql` applied even though
 they test neither subscriptions nor money: its trigger refuses to create a
@@ -112,3 +113,27 @@ the real table agrees.
 in with `set_config('test.uid', '<uuid>', false)`. `moderator_session_role`
 accepts the literal token `ADMIN-OK`. Neither resembles how Supabase does it;
 they only need to return the same shape.
+
+## Re-running an EARLIER migration is not safe just because it is idempotent
+
+Each file is idempotent against itself. That is not the same as being safe to
+re-run once a later migration has redefined something in it.
+`setup-classroom-challenges.sql` was re-run against production after the two
+that follow it, and put back the four-argument `classroom_challenge_create`
+beside the five-argument one, the old `classroom_challenge_list` without
+`classroom_ids`, and the old `classroom_challenge_standings` without the
+roster filter. PostgREST then answered a four-argument call with
+
+    PGRST203: Could not choose the best candidate function between: ...
+
+which is a school unable to create a challenge at all, not a warning.
+
+`fix-challenge-functions.sql` repairs it: both later migrations in one
+transaction, drops first, with a check at the foot that raises unless
+`classroom_challenge_create` ends with exactly one signature. It was written
+against a container in the broken state, and the three challenge suites pass
+on the repaired schema.
+
+**Apply the newest migration that mentions a function, not the file that
+first created it.** When in doubt, grep the migrations for the function name
+and run the last one.
