@@ -1452,6 +1452,9 @@ function cmChart(caption, series, opts) {
              // blob per hour. Carried through here so the template that knows
              // WHICH time is being asked about can say so.
              hands: o.hands != null ? o.hands : null,
+             // The same, held back until the answer is up: for a clock whose
+             // question is which hour, hands drawn early would be the answer.
+             revealHands: o.revealHands != null ? o.revealHands : null,
              total: trimmed.reduce((a, r) => a + r.value, 0) };
 }
 
@@ -1716,7 +1719,11 @@ function classroomEvidenceHtml(q, revealed) {
     // whole job is to be compared. It comes first because a question that has
     // one cannot be answered from anything else.
     if (q.pair) return classroomPairHtml(q.pair);
-    const shot = q.image ? classroomShotHtml(q, revealed) : '';
+    // image_on_reveal: a photo that would answer the question, held back until
+    // the answer is up. Before then the slide falls through to whatever else
+    // it has, which for a puzzle is nothing — the letters are the evidence.
+    const showImage = q.image && (revealed || !q.image_on_reveal);
+    const shot = showImage ? classroomShotHtml(q, revealed) : '';
     const map  = q.map   ? classroomMapHtml(q.map, revealed) : '';
 
     // Both: the bird beside the places. Side by side on a projector, stacked
@@ -1737,7 +1744,10 @@ function classroomChartHtml(chart, revealed) {
         case 'hbars': return classroomHBarsHtml(chart, withValues);
         case 'line':  return classroomLineHtml(chart, withValues);
         case 'donut': return classroomDonutHtml(chart, withValues);
-        case 'clock': return classroomClockHtml(chart, withValues);
+        // The clock also needs the REAL reveal, not just "show the values":
+        // its reveal-only hands point at the answer, and showValues is
+        // switched on before the reveal whenever the counts are safe to print.
+        case 'clock': return classroomClockHtml(chart, withValues, revealed);
         default:      return classroomBarsHtml(chart, withValues);
     }
 }
@@ -2229,7 +2239,7 @@ function classroomDonutHtml(chart, revealed) {
  * in different colors with a legend, which is also the honest way to show a
  * feeder that is busy at 8am and quiet at 8pm.
  */
-function classroomClockHtml(chart, revealed) {
+function classroomClockHtml(chart, withValues, revealed) {
     // Two clocks, not one.
     //
     // `hands` draws a real clock reading a real time and nothing else: the
@@ -2273,23 +2283,28 @@ function classroomClockHtml(chart, revealed) {
         }
     }
 
-    if (hands) {
-        const hour24 = Number(hands.hour != null ? hands.hour : hands);
-        const minute = Number(hands.minute || 0);
+    // Hands and pin as one piece, because two clocks now draw them: the K-2
+    // dial from the start, and the blob clock once its answer is revealed.
+    const handsSvg = spec => {
+        const hour24 = Number(spec.hour != null ? spec.hour : spec);
+        const minute = Number(spec.minute || 0);
         const ha = ((hour24 % 12) + minute / 60) / 12 * Math.PI * 2 - Math.PI / 2;
         const ma = (minute / 60) * Math.PI * 2 - Math.PI / 2;
         const hand = (ang, len, cls) =>
             `<line x1="${cx}" y1="${cy}"
                    x2="${(cx + len * Math.cos(ang)).toFixed(1)}"
                    y2="${(cy + len * Math.sin(ang)).toFixed(1)}" class="${cls}"/>`;
+        return hand(ma, R * 0.80, 'cc-clock-hand minute')
+             + hand(ha, R * 0.52, 'cc-clock-hand hour')
+             + `<circle cx="${cx}" cy="${cy}" r="10" class="cc-clock-pin"/>`;
+    };
 
+    if (hands) {
         return `
         <figure class="classroom-chart clock">
             <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(chart.caption)}">
                 ${face}
-                ${hand(ma, R * 0.80, 'cc-clock-hand minute')}
-                ${hand(ha, R * 0.52, 'cc-clock-hand hour')}
-                <circle cx="${cx}" cy="${cy}" r="10" class="cc-clock-pin"/>
+                ${handsSvg(hands)}
             </svg>
             <figcaption>${esc(chart.caption)}</figcaption>
         </figure>`;
@@ -2311,7 +2326,7 @@ function classroomClockHtml(chart, revealed) {
         return `<circle cx="${bx.toFixed(1)}" cy="${by.toFixed(1)}" r="${r.toFixed(1)}"
                         fill="${am ? '#fbbf24' : '#60a5fa'}"
                         class="cc-clock-blob${on ? ' on' : ''}"/>`
-             + (revealed
+             + (withValues
                  ? `<text x="${bx.toFixed(1)}" y="${(by + 9).toFixed(1)}"
                           class="cc-clock-val" text-anchor="middle">${s.value}</text>`
                  : '');
@@ -2322,6 +2337,7 @@ function classroomClockHtml(chart, revealed) {
             <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(chart.caption)}">
                 ${face}
                 ${blobs}
+                ${revealed && chart.revealHands ? handsSvg(chart.revealHands) : ''}
                 <circle cx="60" cy="34" r="14" fill="#fbbf24"/>
                 <text x="86" y="42" class="cc-label" text-anchor="start">morning</text>
                 <circle cx="260" cy="34" r="14" fill="#60a5fa"/>
@@ -3739,6 +3755,16 @@ const CLASSROOM_TEMPLATES = [
             prompt: `Unscramble the bird’s name:
 ${jumbled.split('').join(' ')}`,
             ...built,
+            // The bird, but only once it has been unscrambled. Flagged: "would
+            // be nice to show a photo of the bird". Shown with the question, a
+            // child who knows a dove reads DOVE off the picture and never
+            // touches the letters — the guessFirst gate above exists to stop
+            // exactly that. At the reveal it is the payoff instead: the word
+            // they worked out, and the bird it belongs to, at their feeder.
+            // Uncropped there, because by then the caption's name is the answer
+            // already on the board.
+            image: cmShotFor(s, pick.species),
+            image_on_reveal: true,
             explain: `${jumbled} unscrambles to ${pick.short} — the ${pick.species}. `
                    + `It came ${s.bySpecies.get(pick.species)} time(s) this week.`,
             fact: speciesFact(pick.species, band),
@@ -4471,9 +4497,16 @@ ${jumbled.split('').join(' ')}`,
                 ? 'The birds were busiest at this time.\nLook at the clock — what time is it?'
                 : 'Look at the clock. What time were the birds busiest?',
             ...built,
+            // The older band's hands arrive with the answer, not before. Flagged
+            // on the 3–5 version: "Should show clock hands as well?" — but on
+            // this slide the hands would point at the answer, and the question
+            // is to FIND that hour among the blobs. Drawn at the reveal, they
+            // turn "the biggest blob" back into a time on a clock, which is
+            // the bit of the K-2 slide this one was missing.
             chart: cmChart(dial ? 'What time is it?' : 'When the birds came', series,
                            { band, hours: true, kind: 'clock',
-                             hands: dial ? { hour: busiest.h, minute: 0 } : null }),
+                             hands: dial ? { hour: busiest.h, minute: 0 } : null,
+                             revealHands: dial ? null : { hour: busiest.h, minute: 0 } }),
             // Always the full phrase, even where the question dropped am/pm:
             // the reveal is where "7 o'clock" becomes "7 in the morning".
             explain: `${busiest.n} visits at ${h12} o’clock ${ampm}.`,
@@ -6628,7 +6661,9 @@ async function sendClassroomFlag(i) {
         choices:          q.choices,
         correct_index:    q.correct_index,
         explain:          q.explain || null,
-        chart_kind:       q.image ? 'photo' : (q.chart ? q.chart.kind : null),
+        // A reveal-only photo is not what the class was asked about.
+        chart_kind:       (q.image && !q.image_on_reveal) ? 'photo'
+                        : (q.chart ? q.chart.kind : null),
         source_feeder_id: q.source_feeder_id,
     };
 
@@ -9179,7 +9214,9 @@ function skipClassroomQuestion() {
                 choices:          q.choices,
                 correct_index:    q.correct_index,
                 explain:          q.explain || null,
-                chart_kind:       q.image ? 'photo' : (q.chart ? q.chart.kind : null),
+                // A reveal-only photo is not what the class was asked about.
+                chart_kind:       (q.image && !q.image_on_reveal) ? 'photo'
+                                : (q.chart ? q.chart.kind : null),
                 source_feeder_id: q.source_feeder_id,
             },
         }, true).then(({ error }) => {
