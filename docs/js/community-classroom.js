@@ -7974,6 +7974,17 @@ function cmLessonClock(s) {
                       + 'next sweep tidies it up.' };
     }
 
+    // Nothing was ever asked, so there is no lesson to measure and nothing
+    // to anchor the end to — the board went up and the bell went, and the
+    // row was closed whenever somebody or the sweep got to it. These are the
+    // rows that read "11:31 AM – 6:12 PM · 6 h 41 min", which is not a
+    // seven-hour lesson, it is an empty one left open over lunch.
+    if (!last) {
+        return { text: `${t(start)} · nothing asked`,
+                 title: `The board was opened at ${t(start)} and no question was `
+                      + `put up. The session was closed at ${t(end)}.` };
+    }
+
     // Half an hour past the last question is not a lesson still running, it
     // is a lesson nobody closed.
     const SWEPT = 30 * 60 * 1000;
