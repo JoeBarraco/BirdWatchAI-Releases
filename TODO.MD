@@ -197,6 +197,13 @@ Technical
 - Add a public read-only API for detections to enable community integrations (eBird-style).
 - ~~Refactor community.html (6000+ lines) — split JS/CSS into modules for maintainability.~~ DONE (CSS extracted to docs/css/community.css, JS split into docs/js/community-core.js, community-views.js, community-social.js, community-auth.js. HTML reduced from 7400+ to ~540 lines.)
 
+CLASSROOM (added 2026-11-14)
+- Tell anitabloom (Roland Park K-8, K-2) that the question she asked for on 2026-11-13 — "how many more on one day than another" — is live as `day-difference-k2`. And tell teachers generally that they can now write their own questions for a class (✍️ My questions, under Between lessons) and that lessons can include feeder clips.
+- A poll counts against the class score. The clip question "What is it doing?" has no right answer, but it still counts as asked, so a class that answers everything right still sees "0 / 1" after one. Predictions have always worked the same way. A fix needs two places: the stage's `S.asked++` (teacher-led and join-code) and `classroom_session_record`, which bumps `asked_count` for every answer, so the history and the board agree.
+- The daily digest labels standalone suggestions "a new question they would like" even when they're not about a question — e.g. "Maths should be Math". A small wording change in the `classroom-feedback-digest` edge function, then redeploy it.
+- Keep the lesson test harness. The clock-turning-into-bars bug (fixed 2026-11-14) only showed up by building a dozen synthetic weeks and comparing them against the previous code. The scripts that do this (build lessons with no browser or login, diff every question against the last commit) could live in `tools/check-classroom.js` and run before each classroom commit.
+- Catch stale asset stamps automatically. On 2026-11-14 the committed `docs/community.html` was found pointing at an out-of-date `community.css` hash. A pre-commit hook that runs `node tools/stamp-assets.js` and refuses the commit if anything is stale would stop that recurring.
+
 COMPETITIVE TEARDOWN — BIRD BUDDY (report dated 2026-08-21, triaged 2026-08-22)
 
 Site-facing items from a Bird Buddy / Birdfy comparison. The report was written from the public site and the manual rather than from the server codebase, so most of its *product* recommendations were already stale — those were triaged separately into `docs/ROADMAP.md` in the private server repo, including the finding it ranked first ("serve a web UI on the device"), which has been shipped for months. What follows is what survived for the website, plus the recommendations that were **declined**, recorded so they don't get re-proposed.
