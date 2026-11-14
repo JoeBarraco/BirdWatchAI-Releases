@@ -4891,6 +4891,40 @@
     background: rgba(240, 165, 0, 0.06);
 }
 
+/* ── A teacher's own questions ("My questions") ───────────────────
+   Built from the review list's pieces so it reads as the same kind of
+   screen: a card per question, the right answer in green. What is new is
+   the photo beside each card and the editor's photo strip. */
+
+.cc-own-item { display: flex; gap: 0.7rem; align-items: flex-start; }
+.cc-own-item.off { opacity: 0.6; }   /* kept, not asked */
+.cc-own-body { flex: 1 1 auto; min-width: 0; }
+.cc-own-thumb {
+    flex: 0 0 96px; width: 96px; height: 72px;
+    object-fit: cover; border-radius: 6px;
+}
+
+/* Radio then text box on one line, so "tick the right one" is read
+   straight across rather than hunted for under each box. */
+.cc-own-answers { display: grid; gap: 0.35rem; margin-bottom: 0.5rem; }
+@media (min-width: 560px) { .cc-own-answers { grid-template-columns: 1fr 1fr; } }
+.cc-own-answer { display: flex; align-items: center; gap: 6px; }
+.cc-own-answer input[type="text"] { flex: 1 1 auto; min-width: 0; margin: 0; }
+.cc-own-explain { width: 100%; box-sizing: border-box; margin-bottom: 0.5rem; }
+
+/* The photo strip. Wraps rather than scrolls sideways: sixteen thumbnails
+   fit in three rows, and a horizontal scroller inside a modal is a control
+   most people never find the end of. */
+.cc-own-photos { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 0.6rem; }
+.cc-own-photo {
+    width: 84px; height: 63px; padding: 0; cursor: pointer;
+    border: 2px solid transparent; border-radius: 6px; overflow: hidden;
+    background: var(--bg-page); font-family: inherit; font-size: 0.72rem;
+    color: var(--color-gray-500);
+}
+.cc-own-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cc-own-photo.on { border-color: var(--color-primary); }
+
 /* ── Chart kinds beyond bars and dots ──────────────────────────────
    A class that meets the same bar chart forty times stops looking at it.
    Each of these is the shape that suits a particular question: a line for

@@ -60,6 +60,9 @@ create table classrooms (
     community_id    uuid not null references communities(id) on delete cascade,
     name            text not null,
     grade_band      text,
+    -- Read by setup-classroom-teacher-questions.sql, which checks that a
+    -- question's photo came from this classroom's own feeders.
+    home_feeder_id  uuid,
     teacher_user_id uuid,
     archived_at     timestamptz,
     created_at      timestamptz not null default now()
@@ -145,6 +148,23 @@ create table if not exists classroom_question_feedback (
     resolved_at   timestamptz,
     resolved_by   uuid,
     resolved_note text
+);
+
+-- The partner feeders and the detections, cut to what
+-- setup-classroom-teacher-questions.sql reads: which feeders belong to a
+-- classroom, and which feeder took a given photo.
+create table if not exists classroom_partner_feeders (
+    classroom_id uuid not null references classrooms(id) on delete cascade,
+    feeder_id    uuid not null,
+    primary key (classroom_id, feeder_id)
+);
+
+create table if not exists community_detections (
+    id          uuid primary key default gen_random_uuid(),
+    feeder_id   uuid not null,
+    species     text,
+    image_url   text,
+    detected_at timestamptz not null default now()
 );
 
 create or replace function community_role(p_community_id uuid, p_user_id uuid)

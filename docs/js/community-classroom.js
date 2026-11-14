@@ -5622,7 +5622,12 @@ function buildDataFreeQuestions(room, o) {
         });
     }
 
-    const ordered = cmShuffle(out, cmRng(seed + '|order'));
+    // The teacher's own questions need no feeder data either, so a quiet
+    // feeder is no reason to drop them — if anything it is when a class most
+    // needs a question that is about something it did this week.
+    const own = cmOwnLessonQuestions(room, o, band, seed);
+    const ordered = own.front.concat(
+        cmShuffle(out.concat(own.pool), cmRng(seed + '|order')));
     const offered = CLASSROOM_TEMPLATES.filter(t =>
         classroomTemplateAllowed(t, band, picked)).length;
     return {
@@ -5720,6 +5725,99 @@ function classroomQuizSize(room, o) {
     return Number.isFinite(n) && n >= 1 && n <= 20
         ? Math.round(n)
         : CLASSROOM_QUESTIONS_PER_SESSION;
+}
+
+// ── Questions a teacher writes for their own class ───────────
+//
+// Until these existed a teacher could only SUGGEST a question, and the
+// suggestion waited in the digest for somebody to turn it into a template.
+// That is still the path for a question every class should get. It is the
+// wrong path for "we read about owls this morning — ask them which bird
+// hunts at night", which is for one class, this week, and should not wait
+// on anybody. setup-classroom-teacher-questions.sql has the server side.
+
+/**
+ * This classroom's own questions, with their photos ready to show.
+ *
+ * Never fatal. A database without the migration, or a network hiccup,
+ * means a lesson made of the usual questions — not no lesson.
+ */
+async function loadClassroomOwnQuestions(roomId) {
+    const { data, error } = await sbRpc('classroom_teacher_questions_list',
+        { p_classroom_id: roomId }, true);
+    if (error || !Array.isArray(data)) return [];
+    // A private school feeder's photo arrives as a private:// marker, exactly
+    // like the lesson's other snapshots, and needs the same signing before it
+    // can go in an <img>.
+    if (typeof signPrivateMedia === 'function') {
+        try { await signPrivateMedia(data); } catch { /* shown unsigned, or not at all */ }
+    }
+    return data;
+}
+
+/**
+ * Turn a classroom's switched-on questions into lesson questions, split into
+ * the ones that go to the FRONT of the lesson and the ones that take their
+ * turn with everything else.
+ *
+ * The rule a teacher can predict: a question they have just written comes
+ * up in the next lesson. After that it is a question like any other — the
+ * recent-repeat logic sends it to the back for a fortnight, so a class does
+ * not meet "which bird hunts at night?" every morning until somebody
+ * remembers to switch it off.
+ *
+ * The front is capped at half the lesson. A teacher who writes eight
+ * questions on a Sunday gets a lesson that is still mostly about the
+ * feeder; the rest wait their turn in the pool rather than being lost.
+ *
+ * Left out entirely while a school challenge is running. A challenge is a
+ * scoreboard across classes, and a class answering its own teacher's
+ * questions is not playing the same game as the class next door.
+ */
+function cmOwnLessonQuestions(room, o, band, seed) {
+    const none = { front: [], pool: [] };
+    if (o.challenge) return none;
+
+    const own = (Array.isArray(o.own) ? o.own : []).filter(x =>
+        x && x.active && Array.isArray(x.choices) && x.choices.length >= 2
+          && x.correct_index != null && x.choices[x.correct_index] != null);
+    if (!own.length) return none;
+
+    const qs = own.map(x => {
+        const right = String(x.choices[x.correct_index]);
+        // Shuffled like every other question. A teacher types the right
+        // answer first more often than not, and "it's always A" is a pattern
+        // a class finds by the third question.
+        const built = cmChoices(right,
+            x.choices.filter((_, i) => i !== x.correct_index).map(String),
+            cmRng(seed + '|own|' + x.id));
+        if (!built) return null;
+        return {
+            template_id: 'teacher:' + x.id,
+            category: 'teacher', title: 'Your question',
+            grade_band: band, scope: 'none', from_partner: false,
+            prompt: x.prompt,
+            ...built,
+            explain: x.explain || null,
+            image: x.image_url ? { url: x.image_url, detection_id: x.detection_id } : null,
+            detection_id: x.detection_id || null,
+            // The feeder burns the species name into the bottom of every
+            // snapshot. A teacher asking "who is this?" over their own photo
+            // would be handing out the answer, so the caption is cropped
+            // until the reveal, as it is on the identification questions.
+            crop_caption: true,
+            // The "read more" button on the reveal, when the right answer is a
+            // bird this file knows — the same rule the templates use.
+            about_bird: SPECIES_LOOKS[right] ? right : null,
+            own: true,
+        };
+    }).filter(Boolean);
+
+    const recent = new Set(Array.isArray(o.recent) ? o.recent : []);
+    const fresh = qs.filter(q => !recent.has(q.template_id));
+    const seen  = qs.filter(q =>  recent.has(q.template_id));
+    const cap   = Math.max(1, Math.floor(classroomQuizSize(room, o) / 2));
+    return { front: fresh.slice(0, cap), pool: fresh.slice(cap).concat(seen) };
 }
 
 function buildClassroomQuestions(room, data, opts) {
@@ -5834,9 +5932,15 @@ function buildClassroomQuestions(room, data, opts) {
         });
     }
 
+    // The teacher's own: the new ones go straight after the opening
+    // identification question; the rest join the pool, where the recent-repeat
+    // ordering below treats them exactly like any template.
+    const own = cmOwnLessonQuestions(room, o, band, seed);
+
     const rng = cmRng(seed + '|order');
     const ident = out.filter(q => q.category === 'identification');
-    let   rest  = cmShuffle(out.filter(q => q.category !== 'identification'), rng);
+    let   rest  = cmShuffle(out.filter(q => q.category !== 'identification')
+                               .concat(own.pool), rng);
 
     // A class running this daily meets the whole set in a fortnight, and the
     // second time it meets Tuesday's question on Wednesday it has worked out
@@ -5854,7 +5958,7 @@ function buildClassroomQuestions(room, data, opts) {
         rest = fresh.concat(seen);
     }
 
-    const ordered = ident.concat(rest);
+    const ordered = ident.concat(own.front, rest);
 
     // How many templates this band HAS, against how many could say anything
     // about this week. The gap is the useful number: a band that offers forty
@@ -6398,6 +6502,8 @@ function renderClassroomActions() {
             <div class="classroom-group-row">
                 <button class="classroom-btn" onclick="reviewClassroomQuestions('${escJs(r.id)}')">🔍 Review questions</button>
                 <button class="classroom-btn" onclick="showClassroomHistory('${escJs(r.id)}')">📊 Previous lessons</button>
+                <button class="classroom-btn" onclick="showClassroomOwnQuestions('${escJs(r.id)}')"
+                        title="Questions you write for this class">✍️ My questions</button>
             </div>
         </div>
 
@@ -6412,6 +6518,272 @@ function renderClassroomActions() {
         </div>
 
         <div class="classroom-pending" id="classroom-pending-${esc(r.id)}"></div>`;
+}
+
+// ── "My questions": writing a class its own questions ────────────
+//
+// Lives in the right-hand pane like Review and Previous lessons, because
+// it is something done to ONE class between lessons. The list is the
+// resting state; writing or editing a question replaces it with the form,
+// and saving goes back to the list — one thing on the right at a time.
+//
+// State is kept here rather than re-read on every click: the list is a
+// handful of rows, and a teacher switching three questions off should not
+// watch the pane reload three times.
+
+let classroomOwn = { roomId: null, items: [], editing: null, photos: null, photo: null };
+
+async function showClassroomOwnQuestions(roomId) {
+    const room = classroomList.find(r => r.id === roomId);
+    const box = document.getElementById('classroom-review');
+    if (!room || !box) return;
+
+    hideClassroomReview();
+    hideClassroomHistory();
+    closeClassroomForm();
+    renderClassroomList();
+    box.style.display = '';
+    box.innerHTML = '<div class="classroom-muted">Loading this class’s questions…</div>';
+
+    // Read directly rather than through loadClassroomOwnQuestions, because
+    // here a failure has to be SAID: an empty list on the one screen whose
+    // job is showing the list would look like the questions had gone.
+    const { data, error } = await sbRpc('classroom_teacher_questions_list',
+        { p_classroom_id: roomId }, true);
+    if (error) {
+        box.innerHTML = `<div class="classroom-error">${esc(error.message || 'Could not load the questions.')}</div>
+            <button class="classroom-btn" onclick="closeClassroomRight()">Close</button>`;
+        return;
+    }
+    const items = Array.isArray(data) ? data : [];
+    if (typeof signPrivateMedia === 'function') {
+        try { await signPrivateMedia(items); } catch { /* thumbnails may not show */ }
+    }
+    // The photo choices survive a reload of the list for the same class:
+    // fetching a fortnight of detections again because a question was
+    // switched off would be the slow part of a fast screen.
+    classroomOwn = {
+        roomId, items, editing: null, photo: null,
+        photos: classroomOwn.roomId === roomId ? classroomOwn.photos : null,
+    };
+    renderClassroomOwnList();
+}
+
+function renderClassroomOwnList() {
+    const box = document.getElementById('classroom-review');
+    const room = classroomList.find(r => r.id === classroomOwn.roomId);
+    if (!box || !room) return;
+
+    const items = classroomOwn.items;
+    const on = items.filter(x => x.active).length;
+    const rows = items.map(x => {
+        const answers = (x.choices || []).map((c, i) => {
+            const right = i === x.correct_index;
+            return `<li class="${right ? 'right' : ''}">${esc(c)}${right ? ' ✓' : ''}</li>`;
+        }).join('');
+        return `
+        <div class="classroom-review-q cc-own-item${x.active ? '' : ' off'}">
+            ${x.image_url ? `<img class="cc-own-thumb" src="${esc(x.image_url)}" alt="">` : ''}
+            <div class="cc-own-body">
+                <p class="classroom-review-prompt">${esc(x.prompt)}</p>
+                <ol class="classroom-review-choices">${answers}</ol>
+                ${x.explain ? `<p class="classroom-muted">On reveal: ${esc(x.explain)}</p>` : ''}
+                <div class="classroom-review-actions">
+                    <button class="classroom-btn" onclick="toggleClassroomOwnQuestion('${escJs(x.id)}')"
+                            title="${x.active ? 'Keep it, but stop asking it' : 'Start asking it again'}">
+                        ${x.active ? '⏸ Switch off' : '▶ Switch on'}</button>
+                    <button class="classroom-btn" onclick="openClassroomOwnForm('${escJs(x.id)}')">✏️ Edit</button>
+                    <button class="classroom-btn-danger" onclick="deleteClassroomOwnQuestion('${escJs(x.id)}')">🗑 Delete</button>
+                    ${x.active ? '' : '<span class="classroom-muted">Switched off</span>'}
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+
+    box.innerHTML = `
+        <h4 class="classroom-h">${esc(room.name)}: your own questions</h4>
+        <p class="classroom-muted">
+            Questions you write here are asked in this class only. A new one comes
+            up in the next lesson; after that it takes its turn with the others.
+            Switch one off to keep it for another time. They sit out while a
+            school challenge is running, so every class plays the same game.
+        </p>
+        <div class="classroom-form-actions">
+            <button class="classroom-btn-primary" onclick="openClassroomOwnForm(null)">＋ Write a question</button>
+            <button class="classroom-btn" onclick="closeClassroomRight()">Close</button>
+        </div>
+        ${items.length
+            ? `<p class="classroom-muted">${items.length} question${items.length === 1 ? '' : 's'}, ${on} switched on.</p>
+               <div class="classroom-review-list">${rows}</div>`
+            : '<p class="classroom-muted">None yet.</p>'}`;
+}
+
+/**
+ * The form, for a new question (id null) or an existing one.
+ *
+ * Four answer boxes, always. The first two are required and the last two
+ * are optional, which is easier to read than buttons that add and remove
+ * rows — and a teacher who wants a yes/no question just leaves two blank.
+ */
+function openClassroomOwnForm(id) {
+    const box = document.getElementById('classroom-review');
+    if (!box) return;
+    const x = id ? classroomOwn.items.find(q => q.id === id) : null;
+    classroomOwn.editing = x ? x.id : null;
+    classroomOwn.photo = x && x.detection_id
+        ? { id: x.detection_id, url: x.image_url } : null;
+
+    const choices = x ? x.choices.slice() : [];
+    const right = x ? x.correct_index : 0;
+    const answerRows = [0, 1, 2, 3].map(i => `
+        <label class="cc-own-answer">
+            <input type="radio" name="cc-own-right" value="${i}"${i === right ? ' checked' : ''}
+                   title="This is the right answer">
+            <input type="text" id="cc-own-a${i}" maxlength="80"
+                   value="${esc(choices[i] || '')}"
+                   placeholder="${i < 2 ? `Answer ${i + 1}` : `Answer ${i + 1} (optional)`}">
+        </label>`).join('');
+
+    box.innerHTML = `
+        <h4 class="classroom-h">${x ? 'Edit question' : 'Write a question'}</h4>
+        <textarea id="cc-own-prompt" rows="2" maxlength="300"
+                  placeholder="e.g. Which of these birds hunts at night?">${esc(x ? x.prompt : '')}</textarea>
+        <p class="classroom-muted">Answers — tick the right one:</p>
+        <div class="cc-own-answers">${answerRows}</div>
+        <input type="text" id="cc-own-explain" maxlength="400" class="cc-own-explain"
+               value="${esc(x && x.explain ? x.explain : '')}"
+               placeholder="Optional: a line to show when the answer is revealed">
+        <p class="classroom-muted">A photo from your feeder (optional). Its name label stays
+           hidden until the answer is shown.</p>
+        <div class="cc-own-photos" id="cc-own-photos">
+            <div class="classroom-muted">Loading this fortnight’s photos…</div>
+        </div>
+        <div class="classroom-form-actions">
+            <button class="classroom-btn-primary" onclick="saveClassroomOwnQuestion()">Save</button>
+            <button class="classroom-btn" onclick="renderClassroomOwnList()">Cancel</button>
+        </div>
+        <div class="classroom-status" id="cc-own-status"></div>`;
+    document.getElementById('cc-own-prompt').focus();
+    loadClassroomOwnPhotos();
+}
+
+/**
+ * The photos a teacher can pick from: the best shot of each species the
+ * class's feeders have seen in the last fortnight. One per species, because
+ * thirty near-identical chickadees is not a choice, it is a scroll.
+ *
+ * Only these, and the server checks it: a question can only ever show a
+ * picture the class's own camera took.
+ */
+async function loadClassroomOwnPhotos() {
+    const room = classroomList.find(r => r.id === classroomOwn.roomId);
+    if (!room) return;
+    if (!classroomOwn.photos) {
+        const data = await loadClassroomData(room);
+        const best = new Map();
+        // Snapshots arrive highest-confidence first, so the first seen per
+        // species is its clearest picture.
+        (data.all || []).forEach(s => s.snapshots.forEach(r => {
+            if (!best.has(r.species)) best.set(r.species, r);
+        }));
+        classroomOwn.photos = [...best.values()].slice(0, 16)
+            .map(r => ({ id: r.id, url: r.image_url, species: r.species }));
+    }
+    renderClassroomOwnPhotos();
+}
+
+function renderClassroomOwnPhotos() {
+    const box = document.getElementById('cc-own-photos');
+    if (!box) return;
+    const pick = classroomOwn.photo;
+    const list = (classroomOwn.photos || []).slice();
+    // A question saved with an older photo keeps it on offer, even though it
+    // has dropped out of the fortnight the picker shows.
+    if (pick && !list.some(p => p.id === pick.id)) {
+        list.unshift({ id: pick.id, url: pick.url, species: 'Current photo' });
+    }
+
+    box.innerHTML = `
+        <button type="button" class="cc-own-photo none${pick ? '' : ' on'}"
+                onclick="pickClassroomOwnPhoto(null)">No photo</button>
+        ${list.map(p => `
+            <button type="button" class="cc-own-photo${pick && pick.id === p.id ? ' on' : ''}"
+                    onclick="pickClassroomOwnPhoto('${escJs(p.id)}')" title="${esc(p.species || '')}">
+                <img src="${esc(p.url || '')}" alt="${esc(p.species || '')}">
+            </button>`).join('')}
+        ${list.length ? '' : '<span class="classroom-muted">No photos from your feeders in the last two weeks.</span>'}`;
+}
+
+function pickClassroomOwnPhoto(id) {
+    if (!id) { classroomOwn.photo = null; renderClassroomOwnPhotos(); return; }
+    const all = (classroomOwn.photos || []).concat(classroomOwn.photo ? [classroomOwn.photo] : []);
+    const p = all.find(x => x.id === id);
+    classroomOwn.photo = p ? { id: p.id, url: p.url } : null;
+    renderClassroomOwnPhotos();
+}
+
+async function saveClassroomOwnQuestion() {
+    const status = document.getElementById('cc-own-status');
+    const say = (msg, bad) => {
+        status.style.color = bad ? '#e74c3c' : 'var(--color-gray-500)';
+        status.textContent = msg;
+    };
+    const prompt = document.getElementById('cc-own-prompt').value.trim();
+    const rightBox = document.querySelector('input[name="cc-own-right"]:checked');
+    const rightAt = rightBox ? Number(rightBox.value) : 0;
+
+    // Blank boxes are dropped HERE, with the right answer's position moved to
+    // match, because the server refuses a blank answer rather than guessing
+    // what was meant. A tick on an empty box is the one thing that cannot be
+    // fixed up, so it is said plainly.
+    const raw = [0, 1, 2, 3].map(i => document.getElementById('cc-own-a' + i).value.trim());
+    if (!prompt)       { say('Write the question first.', true); return; }
+    if (!raw[rightAt]) { say('The answer ticked as right is empty.', true); return; }
+    const choices = [];
+    let correct = -1;
+    raw.forEach((v, i) => {
+        if (!v) return;
+        if (i === rightAt) correct = choices.length;
+        choices.push(v);
+    });
+    if (choices.length < 2) { say('A question needs at least two answers.', true); return; }
+
+    say('Saving…');
+    const { error } = await sbRpc('classroom_teacher_question_save', {
+        p_classroom_id:  classroomOwn.roomId,
+        p_id:            classroomOwn.editing,
+        p_prompt:        prompt,
+        p_choices:       choices,
+        p_correct_index: correct,
+        p_explain:       document.getElementById('cc-own-explain').value.trim() || null,
+        p_detection_id:  classroomOwn.photo ? classroomOwn.photo.id : null,
+    }, true);
+    if (error) { say(error.message || 'Could not save that.', true); return; }
+    showToast(classroomOwn.editing ? 'Question saved' : 'Saved — it comes up in the next lesson');
+    showClassroomOwnQuestions(classroomOwn.roomId);
+}
+
+async function toggleClassroomOwnQuestion(id) {
+    const x = classroomOwn.items.find(q => q.id === id);
+    if (!x) return;
+    const { error } = await sbRpc('classroom_teacher_question_set_active',
+        { p_id: id, p_active: !x.active }, true);
+    if (error) { showToast(error.message || 'Could not change that.'); return; }
+    x.active = !x.active;
+    renderClassroomOwnList();
+}
+
+async function deleteClassroomOwnQuestion(id) {
+    const x = classroomOwn.items.find(q => q.id === id);
+    if (!x) return;
+    // "Switch off" is offered as the alternative because it is nearly always
+    // what is meant: a question finished with for now, not one never wanted.
+    if (!confirm(`Delete "${x.prompt}"?\n\nThis cannot be undone. To keep it for `
+               + 'another time, use "Switch off" instead.')) return;
+    const { error } = await sbRpc('classroom_teacher_question_delete', { p_id: id }, true);
+    if (error) { showToast(error.message || 'Could not delete that.'); return; }
+    classroomOwn.items = classroomOwn.items.filter(q => q.id !== id);
+    renderClassroomOwnList();
 }
 
 // ── Reviewing the questions (and saying what is wrong with them) ──
@@ -6455,13 +6827,17 @@ async function reviewClassroomQuestions(roomId) {
     box.style.display = '';
     box.innerHTML = '<div class="classroom-muted">Building a lesson from the feeder…</div>';
 
-    const data = await loadClassroomData(room);
     // Reviewing shows what the class WILL be asked, so it has to honour a
-    // live challenge exactly as the lesson will. A review that disagreed
+    // live challenge exactly as the lesson will — and include the teacher's
+    // own questions exactly as the lesson will. A review that disagreed
     // with the board would be worse than no review.
-    const challenge = await classroomActiveChallenge(roomId);
+    const [data, challenge, own] = await Promise.all([
+        loadClassroomData(room),
+        classroomActiveChallenge(roomId),
+        loadClassroomOwnQuestions(roomId),
+    ]);
     const { questions, source, built, offered } =
-        buildClassroomQuestions(room, data, { all: true, challenge });
+        buildClassroomQuestions(room, data, { all: true, challenge, own });
     classroomReviewRoom = room;
     classroomReviewQuestions = questions;
 
@@ -6522,7 +6898,7 @@ function classroomReviewItem(q, i) {
     return `
         <div class="classroom-review-q" data-q="${i}">
             <div class="classroom-review-head">
-                <span class="classroom-pill">${esc(q.category)}</span>
+                <span class="classroom-pill">${esc(q.own ? 'your question' : q.category)}</span>
                 <code class="classroom-review-tid">${esc(q.template_id)}</code>
                 ${q.from_partner ? '<span class="classroom-pill partner">partner data</span>' : ''}
             </div>
@@ -7213,6 +7589,10 @@ const CLASSROOM_CATEGORY_LABELS = {
     identification: 'Identifying birds',
     puzzle:         'Puzzles',
     wonder:         'Fun facts',
+    // Not a template category and deliberately not in CLASSROOM_CATEGORY_ORDER:
+    // it labels a teacher's own questions wherever a category is shown, and
+    // must never appear as something to pick in a template or challenge list.
+    teacher:        'Your questions',
 };
 
 // Teaching order rather than alphabetical: a teacher scanning this list is
@@ -8663,13 +9043,14 @@ async function startClassroomSession(id, mode) {
 
     // Both in parallel: the recent-template list is a nicety and should not
     // add a round trip to the wait a class is watching.
-    const [data, recent, challenge] = await Promise.all([
+    const [data, recent, challenge, own] = await Promise.all([
         loadClassroomData(room),
         loadClassroomRecentTemplates(room.id),
         classroomActiveChallenge(room.id),
+        loadClassroomOwnQuestions(room.id),
     ]);
     const { questions, source, no_data } =
-        buildClassroomQuestions(room, data, { recent, challenge });
+        buildClassroomQuestions(room, data, { recent, challenge, own });
 
     if (!questions.length) {
         // A challenge narrows the question pool, so when the pool is empty the
@@ -8925,7 +9306,9 @@ function classroomPairHtml(pair) {
 
 function classroomShotHtml(q, revealed) {
     if (!q.image || !q.image.url) return '';
-    const hideCaption = q.category === 'identification' && !revealed;
+    // crop_caption: a teacher's own question over a feeder photo, which may
+    // well be "who is this?" — see cmOwnLessonQuestions.
+    const hideCaption = (q.category === 'identification' || q.crop_caption) && !revealed;
 
     // CC BY and CC BY-SA require the author and the licence wherever the
     // image appears. Small, because it is a legal notice rather than part of

@@ -44,7 +44,7 @@ docker exec bwai-pgtest psql -U postgres -q -f /tmp/reminders-schema.sql
 docker exec bwai-pgtest psql -U postgres -q -f /tmp/school-reminders.test.sql
 ```
 
-There are six suites, each needing the migrations it builds on applied first:
+There are ten suites, each needing the migrations it builds on applied first:
 
 | Suite | Needs | Checks |
 |---|---|---|
@@ -57,6 +57,7 @@ There are six suites, each needing the migrations it builds on applied first:
 | `challenge-questions.test.sql` | + challenge questions | 16 |
 | `history-lessons.test.sql` | subscription + history lessons | 13 |
 | `feedback-instant.test.sql` | feedback digest + feedback instant | 16 |
+| `teacher-questions.test.sql` | teacher questions only | 49 |
 
 Every check prints `PASS` or `FAIL ***`. Grep for `FAIL`. As of the last run:
 235 checks, 0 failures.
