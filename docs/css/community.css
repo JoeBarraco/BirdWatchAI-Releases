@@ -3816,6 +3816,19 @@
 .classroom-term strong { font-weight: 700; }
 
 .classroom-details { margin: 0.4rem 0 0.7rem; }
+
+/* The roster inside "Set a challenge". A plain column of checkboxes: the
+   list is as long as the school has classes, and a school with thirty would
+   rather scroll a column than read a grid. */
+.cc-roster { margin: 0.6rem 0; }
+.cc-roster-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 0.35rem 0.1rem; cursor: pointer;
+}
+.cc-roster-row input { width: 16px; height: 16px; cursor: pointer; }
+.cc-roster-name { font-weight: 600; font-size: 0.88rem; }
+.cc-roster-row .classroom-row-meta { margin-left: auto; }
+
 .classroom-details summary {
     cursor: pointer; font-size: 0.82rem; font-weight: 600;
     color: var(--color-primary);

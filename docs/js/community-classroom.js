@@ -7723,11 +7723,27 @@ async function showClassroomChallenge() {
             : cmChallengeBoardHtml((sd && sd.standings) || []);
     }
 
+    // Who is in it. A limited challenge has to say so on the board itself:
+    // a class that is simply not taking part looks exactly like a class that
+    // has taught nothing all week, and the teacher of that class is the one
+    // person guaranteed to notice.
+    const inIt = (live && Array.isArray(live.classroom_ids) && live.classroom_ids.length)
+        ? live.classroom_ids
+              .map(id => (classroomList.find(r => r.id === id) || {}).name)
+              .filter(Boolean)
+        : null;
+
     box.innerHTML = `
-        <h4 class="classroom-h">🏆 ${live ? esc(live.name) : 'School challenge'}</h4>
+        <div class="classroom-actions-head">
+            <h4 class="classroom-h">🏆 ${live ? esc(live.name) : 'School challenge'}</h4>
+            ${(live && manage) ? `<button class="classroom-btn-danger"
+                    onclick="deleteClassroomChallenge('${escJs(live.id)}','${escJs(live.name)}')">
+                    🗑 Clear this challenge</button>` : ''}
+        </div>
         ${live
             ? `<p class="classroom-muted">${esc(cmDateLabel(live.starts_on))} – ${esc(cmDateLabel(live.ends_on))}${
-                  live.is_current ? ' · running now' : (live.is_over ? ' · finished' : ' · not started yet')}</p>`
+                  live.is_current ? ' · running now' : (live.is_over ? ' · finished' : ' · not started yet')}
+                 · ${inIt ? esc(inIt.join(', ')) : 'every class'}</p>`
             : '<p class="classroom-muted">No challenge set. Every class still has its own results under '
               + 'Previous lessons — a challenge just puts them side by side for a week.</p>'}
         ${board}
@@ -7780,25 +7796,50 @@ function cmChallengeBoardHtml(rows) {
 }
 
 /** Moderator controls: start one, or clear the one that is running. */
+/**
+ * The moderator's half: start one, and choose who is in it.
+ *
+ * The summary used to read "Set a challenge" whether or not one was running,
+ * and the only way to clear the running one was to open it and find a button
+ * under a heading about starting. Reported as exactly that: "it wasn't
+ * obvious to me that I need to click Set a challenge to clear one that was
+ * already existing." Clearing now has its own button beside the title, where
+ * the thing it acts on is, and this disclosure says which of its two jobs it
+ * is doing.
+ */
 function cmChallengeAdminHtml(items, live) {
     const wk = cmThisSchoolWeek();
+
+    // Every class ticked by default, which is what a challenge meant before
+    // it could be narrowed. Unticking is the deliberate act. Below two
+    // classes there is nothing to choose between, so the list stays away.
+    const rooms = classroomList.filter(r => !r.archived_at);
+    const roster = rooms.length < 2 ? '' : `
+        <div class="cc-roster">
+            <div class="classroom-group-title">Who is in it</div>
+            ${rooms.map(r => `
+                <label class="cc-roster-row">
+                    <input type="checkbox" class="cc-chal-room" value="${esc(r.id)}" checked>
+                    <span class="cc-roster-name">${esc(r.name)}</span>
+                    <span class="classroom-row-meta">${esc(GRADE_BAND_LABELS[r.grade_band] || r.grade_band)}</span>
+                </label>`).join('')}
+            <p class="classroom-muted">Leave them all ticked and the challenge covers the whole
+                school, including any class you add while it is running.</p>
+        </div>`;
+
     return `
     <details class="classroom-details">
-        <summary>Set a challenge</summary>
+        <summary>${live ? 'Replace this challenge with another' : 'Set a challenge'}</summary>
         <div class="classroom-form-row">
             <input type="text" id="cc-chal-name" placeholder="Name it — e.g. Bird Week"
                    maxlength="80" style="flex:2;min-width:150px;">
             <input type="date" id="cc-chal-from" value="${esc(wk.from)}" style="flex:1;">
             <input type="date" id="cc-chal-to"   value="${esc(wk.to)}"   style="flex:1;">
         </div>
+        ${roster}
         <div class="classroom-form-actions">
             <button class="classroom-btn" onclick="createClassroomChallenge()">Start it</button>
-            ${live ? `<button class="classroom-btn-danger"
-                        onclick="deleteClassroomChallenge('${escJs(live.id)}','${escJs(live.name)}')">
-                        Clear "${esc(live.name)}"</button>` : ''}
         </div>
-        <p class="classroom-muted">Clearing a challenge removes the window only. Every lesson,
-            and every result, stays exactly where it is.</p>
         <div id="cc-chal-status" class="classroom-status"></div>
     </details>`;
 }
@@ -7814,16 +7855,38 @@ async function createClassroomChallenge() {
     if (!name.trim()) { say('Give it a name first.', true); return; }
     if (!from || !to) { say('Pick both dates.', true); return; }
 
+    const boxes  = [...document.querySelectorAll('.cc-chal-room')];
+    const picked = boxes.filter(b => b.checked).map(b => b.value);
+    if (boxes.length && !picked.length) { say('Tick at least one class.', true); return; }
+
     say('Starting…');
-    const { error } = await sbRpc('classroom_challenge_create',
-        { p_community_id: classroomCommunityId, p_name: name.trim(),
-          p_starts_on: from, p_ends_on: to }, true);
+    const args = { p_community_id: classroomCommunityId, p_name: name.trim(),
+                   p_starts_on: from, p_ends_on: to };
+    let { error } = await sbRpc('classroom_challenge_create',
+        boxes.length ? { ...args, p_classroom_ids: picked } : args, true);
+
+    // A site that has not had setup-classroom-challenge-rooms.sql applied
+    // still has the four-argument function, and PostgREST answers a call
+    // carrying an extra named argument with "no such function". Falling back
+    // to the whole school beats refusing to start a challenge at all — but
+    // say so when it was not what was asked for.
+    const noRoster = error && (error.code === 'PGRST202'
+        || /could not find the function|does not exist/i.test(error.message || ''));
+    if (noRoster && boxes.length) {
+        ({ error } = await sbRpc('classroom_challenge_create', args, true));
+        if (!error && picked.length !== boxes.length) {
+            showToast('Challenge started for every class — choosing which classes '
+                    + 'needs a database update on this site.');
+        }
+    }
     if (error) { say(error.message || 'Could not start it.', true); return; }
     await showClassroomChallenge();
 }
 
 async function deleteClassroomChallenge(id, name) {
-    if (!window.confirm(`Clear "${name}"?\n\nThe scoreboard goes; every lesson and result stays.`)) return;
+    if (!window.confirm(`Clear "${name}"?\n\nThe scoreboard goes. Every lesson, and every `
+                      + `result, stays exactly where it is — a challenge is only a window `
+                      + `of dates laid over them.`)) return;
     const { error } = await sbRpc('classroom_challenge_delete', { p_id: id }, true);
     if (error) { showToast(error.message || 'Could not clear it.'); return; }
     await showClassroomChallenge();

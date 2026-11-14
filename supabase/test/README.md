@@ -44,7 +44,7 @@ docker exec bwai-pgtest psql -U postgres -q -f /tmp/reminders-schema.sql
 docker exec bwai-pgtest psql -U postgres -q -f /tmp/school-reminders.test.sql
 ```
 
-There are four suites, each needing the migrations it builds on applied first:
+There are six suites, each needing the migrations it builds on applied first:
 
 | Suite | Needs | Checks |
 |---|---|---|
@@ -52,9 +52,21 @@ There are four suites, each needing the migrations it builds on applied first:
 | `school-reminders.test.sql` | + reminders | 37 |
 | `classroom-limits.test.sql` | + classroom limits | 25 |
 | `feedback-teachers.test.sql` | feedback-teachers only | 18 |
+| `challenges.test.sql` | subscription + challenges | 24 |
+| `challenge-rooms.test.sql` | + challenge rooms | 18 |
 
 Every check prints `PASS` or `FAIL ***`. Grep for `FAIL`. As of the last run:
-148 checks, 0 failures.
+190 checks, 0 failures.
+
+The challenge suites need `setup-school-subscription.sql` applied even though
+they test neither subscriptions nor money: its trigger refuses to create a
+classroom in a school with no live term, so without it the seed fails on a
+missing column and the failure looks like a challenge bug.
+
+**In `classroom_challenge_rooms`, no rows means EVERY class**, not none. Every
+challenge created before that migration has no rows, so absence has to be the
+permissive case; `challenge-rooms.test.sql` section A exists to keep it that
+way, because the day it inverts, every existing scoreboard silently empties.
 
 **Run `school-subscription.test.sql` again after any migration that touches a
 function it covers.** The classroom-limit work added a parameter to two mint
