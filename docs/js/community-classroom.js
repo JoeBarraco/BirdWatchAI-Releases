@@ -7943,6 +7943,69 @@ function cmHistoryQuestionHtml(q) {
 }
 
 /** A group of questions inside one lesson — Missed, Correct, or Waiting. */
+/**
+ * When a lesson ran: the clock times, and how long it took.
+ *
+ * ENDED_AT IS NOT ALWAYS WHEN TEACHING STOPPED. A session that nobody
+ * finished is closed by classroom_sweep, which stamps ended_at with the
+ * moment the SWEEP ran — so a twenty-minute lesson whose laptop lid went
+ * down at the bell comes back as four hours long. Printing that next to a
+ * real lesson would make the whole column untrustworthy.
+ *
+ * So the end is believed only while it is close to the last question asked.
+ * Past that the lesson is reported as running to its last question, and
+ * labelled "left open", which is both true and the thing a teacher would
+ * want to know.
+ */
+function cmLessonClock(s) {
+    const start = s.started_at ? new Date(s.started_at) : null;
+    if (!start || isNaN(start)) return { text: '', title: '' };
+
+    const t = d => d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+
+    const qs   = (s.questions || []).map(q => q.asked_at && new Date(q.asked_at))
+                                    .filter(d => d && !isNaN(d));
+    const last = qs.length ? new Date(Math.max(...qs)) : null;
+    const end  = s.ended_at ? new Date(s.ended_at) : null;
+
+    if (!end || isNaN(end) || end <= start) {
+        return { text: `${t(start)} · not finished`,
+                 title: 'This lesson was never closed. It stays open until the '
+                      + 'next sweep tidies it up.' };
+    }
+
+    // Half an hour past the last question is not a lesson still running, it
+    // is a lesson nobody closed.
+    const SWEPT = 30 * 60 * 1000;
+    const swept = last && (end - last) > SWEPT;
+    const real  = swept ? last : end;
+
+    // "9:05 AM – 9:38 AM" says AM twice. Where both ends carry the same
+    // trailing marker — AM/PM, or whatever the locale uses — it belongs once,
+    // at the end. Compared rather than assumed, so a 24-hour locale (which
+    // has no marker) and a lesson that crosses noon are both left alone.
+    const span = (a, b) => {
+        const A = t(a), B = t(b);
+        const mark = B.replace(/^[\d:.\s ]+/, '');
+        return (mark && A.endsWith(mark))
+            ? `${A.slice(0, -mark.length).trim()} – ${B}`
+            : `${A} – ${B}`;
+    };
+
+    const mins = Math.round((real - start) / 60000);
+    const dur  = mins < 1   ? ''
+               : mins < 60  ? ` · ${mins} min`
+               : ` · ${Math.floor(mins / 60)} h ${mins % 60} min`;
+
+    return {
+        text: `${span(start, real)}${dur}${swept ? ' · left open' : ''}`,
+        title: swept
+            ? `Last question at ${t(real)}. The lesson was not closed, so the `
+            + `session stayed open until ${t(end)} and was tidied up then.`
+            : `Started ${t(start)}, finished ${t(end)}.`,
+    };
+}
+
 function cmHistoryGroupHtml(label, icon, items, open) {
     if (!items.length) return '';
     return `
@@ -8036,10 +8099,14 @@ async function showClassroomHistory(id) {
         const waiting = qs.filter(q => q.pending);
         const pct = cmPct(right.length, right.length + missed.length);
 
+        const clock = cmLessonClock(s);
+
         return `
         <details class="classroom-hlesson"${idx === firstWithQs ? ' open' : ''}>
             <summary>
                 <strong>${esc(when)}</strong>
+                ${clock.text ? `<span class="classroom-hclock" title="${esc(clock.title)}">${
+                    esc(clock.text)}</span>` : ''}
                 <span class="classroom-muted">${right.length} of ${right.length + missed.length} correct${
                     pct != null ? ` · ${pct}%` : ''}${waiting.length ? ` · ${waiting.length} waiting` : ''}</span>
             </summary>

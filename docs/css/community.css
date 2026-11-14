@@ -3908,6 +3908,13 @@
     display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: baseline;
 }
 .classroom-hlesson > summary strong { color: var(--color-gray-900); }
+/* The clock sits between the date and the score, and is deliberately quieter
+   than both: a teacher scanning the list is looking for a day first and a
+   result second. It carries a title because "left open" needs a sentence. */
+.classroom-hclock {
+    font-size: 0.76rem; color: var(--color-gray-500);
+    font-variant-numeric: tabular-nums; cursor: help;
+}
 .classroom-hlesson[open] > summary { border-bottom: 1px solid var(--border); }
 
 .classroom-hgroup { margin: 0.35rem 0.6rem; }
