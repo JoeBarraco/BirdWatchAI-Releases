@@ -21,6 +21,16 @@
 //  week's data cannot carry it. Throwing is not. Only throwing fails the
 //  run; --nulls lists the rest if you want to see which guards fired.
 //
+//  IT ALSO RUNS buildClassroomQuestions ITSELF, which is not the same
+//  thing as running every build(). That function does work of its own on
+//  each question AFTER the template returns — deciding whether printing a
+//  chart's values would answer it, rewriting an unreadable chart kind —
+//  and that work is OUTSIDE the per-template try/catch. A chart missing a
+//  field it reads does not lose its question, it takes the whole lesson
+//  down. Exactly that shipped: the new scatter and box charts had no
+//  `series`, every build() passed, and a 6-8 lesson threw before it drew
+//  anything.
+//
 //  THE DATA IS SYNTHETIC AND TIDY, which means a template that builds here
 //  can still return null on a real quiet feeder. This checks that the code
 //  runs, not that a lesson is full.
@@ -120,7 +130,25 @@ for(const t of T){
     }
   }
 }
+// ── The whole pipeline, per band, which is where the last bug lived ──
+const buildAll = vm.runInContext('buildClassroomQuestions', ctx);
+let lessons = 0;
+for (const band of ['k-2', '3-5', '6-8']) {
+  for (const [label, src] of [['single', s14], ['pool', pool]]) {
+    const data = { home: src, partners: [], all: [src], each: src.feeders || [src],
+                   pooled: src.isPool ? src : null, scope: src.isPool ? 'community' : 'home' };
+    try {
+      const res = buildAll({ id: 'r1', grade_band: band, name: 'Room A' }, data, { all: true });
+      if (!res || !Array.isArray(res.questions)) throw new Error('no questions array');
+      lessons++;
+    } catch (e) {
+      threw++; problems.push(`buildClassroomQuestions/${band}/${label}: ${e.message}`);
+    }
+  }
+}
+
 console.log(`built ${built}  returned-null ${nulled}  THREW ${threw}`);
+console.log(`full lessons assembled: ${lessons} of 6`);
 console.log('chart kinds rendered: '+[...kinds].sort().join(', '));
 if(problems.length){ console.log('\nERRORS:'); problems.forEach(p=>console.log('  '+p)); }
 if(process.argv.includes('--nulls')&&nulls.length){ console.log('\nnull:'); nulls.forEach(n=>console.log('  '+n)); }

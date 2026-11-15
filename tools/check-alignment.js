@@ -28,7 +28,15 @@ const path = require('path');
 const vm = require('vm');
 
 const root = path.join(__dirname, '..');
-const read = p => fs.readFileSync(path.join(root, p), 'utf8');
+// Line endings normalised on the way in, ALWAYS. This repo commits with
+// core.autocrlf on, so the working copy carries CRLF, and the template
+// split below matches a newline-brace-newline sequence that CRLF breaks.
+// It stopped matching, the parse found zero templates, and the guard in
+// templates() correctly refused to run — but the cause took longer to find
+// than it should have. Reading a source file is not the place to be clever
+// about platforms.
+const read = p => fs.readFileSync(path.join(root, p), 'utf8')
+                     .split(String.fromCharCode(13)).join('');
 
 // ── Pull id + bands out of the template list ────────────────────────
 function templates() {

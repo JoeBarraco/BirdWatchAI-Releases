@@ -1578,7 +1578,22 @@ function cmChart(caption, series, opts) {
  * scale at all, and a clock's blobs encode roughly-how-busy by area — both
  * are fine for "which is biggest?" and useless for "how many?".
  */
-const CHART_KINDS_READABLE = new Set(['bars', 'hbars', 'line', 'dots']);
+const CHART_KINDS_READABLE = new Set(['bars', 'hbars', 'line', 'dots',
+                                      // box and scatter both carry a labelled,
+                                      // gridded numeric axis — a class reads Q1
+                                      // off a box plot the same way it reads a
+                                      // bar off a bar chart. picto is readable
+                                      // to the nearest half symbol via its key,
+                                      // which is what its question asks for.
+                                      //
+                                      // ⚠ LEAVING THEM OUT IS NOT A MISSING
+                                      // FEATURE, IT IS A SWAP: the branch that
+                                      // uses this set rewrites an unreadable
+                                      // chart to 'bars', so a box-plot question
+                                      // would have been shown a bar chart of
+                                      // the raw daily values with the question
+                                      // still asking for a quartile.
+                                      'box', 'scatter', 'picto']);
 
 // Whether a requested chart kind is honest for this data.
 //
@@ -2533,6 +2548,13 @@ function cmScatter(caption, points, opts) {
     }
 
     return { kind: 'scatter', caption, points: pts, fit,
+             // ⚠ EVERY CHART MUST CARRY `series`. buildClassroomQuestions
+             // reads chart.series.map to decide whether printing the values
+             // would answer the question, OUTSIDE the per-template try/catch
+             // — so a chart without it does not lose its question, it takes
+             // the whole lesson down. These are the plotted y-values, which
+             // is exactly what that check is looking for.
+             series: pts.map(p => ({ label: String(p.x), value: p.y, key: String(p.x) })),
              xLabel: o.xLabel || '', yLabel: o.yLabel || '',
              xMin, xMax, yMin, yMax,
              // Held back until the reveal: on "is there a pattern here?"
@@ -2635,6 +2657,12 @@ function cmBoxPlot(caption, values, opts) {
     if (five.q1 === five.q3) return null;
 
     return { kind: 'box', caption, five, values: v,
+             // The five-number summary, not the raw values: those ARE the
+             // answers to the box-plot question, so this is what must stop
+             // the values being printed before the reveal. See the note in
+             // cmScatter about why `series` is not optional.
+             series: [five.min, five.q1, five.med, five.q3, five.max]
+                 .map(x => ({ label: String(x), value: x, key: String(x) })),
              xLabel: o.xLabel || '', showValues: !!o.showValues };
 }
 
