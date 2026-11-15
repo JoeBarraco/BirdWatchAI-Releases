@@ -2614,6 +2614,48 @@ function cmGridHtml(top, step, x1, x2, y) {
     return out;
 }
 
+/**
+ * Break a chart label across at most `maxLines`, preferring real words.
+ *
+ * ⚠ HYPHENS COUNT AS BREAK POINTS. "Common Wood-Pigeon" split only on
+ * spaces leaves "Wood-Pigeon" — eleven characters in a slot built for
+ * about seven — which is the overlap that was reported. Splitting on the
+ * hyphen too gives "Common" / "Wood-" / "Pigeon", and the hyphen stays
+ * on the first part because a word broken without one reads as a typo.
+ *
+ * Returns the label whole when it is short enough, because almost every
+ * label is: days and hours never need this at all.
+ */
+function cmWrapLabel(label, maxLines) {
+    const max = maxLines || 2;
+    if (label.length <= 12) return [label];
+
+    // Split on spaces, then on hyphens, keeping the hyphen with the part
+    // before it.
+    const words = [];
+    label.split(' ').forEach(w => {
+        const bits = w.split('-');
+        bits.forEach((b, i) => words.push(i < bits.length - 1 ? b + '-' : b));
+    });
+
+    // Greedy fill, aiming for even line lengths rather than one long line
+    // and one short one.
+    const target = Math.ceil(label.length / Math.min(max, words.length || 1));
+    const lines = [];
+    let cur = '';
+    words.forEach(w => {
+        const join = cur && !cur.endsWith('-') ? ' ' : '';
+        if (!cur) { cur = w; return; }
+        if ((cur + join + w).length <= Math.max(target, 8) || lines.length === max - 1) {
+            cur += join + w;
+        } else {
+            lines.push(cur); cur = w;
+        }
+    });
+    if (cur) lines.push(cur);
+    return lines.slice(0, max);
+}
+
 function classroomBarsHtml(chart, revealed) {
     const hasPhotos = chart.series.some(x => x.image);
     const n = chart.series.length;
@@ -2643,7 +2685,9 @@ function classroomBarsHtml(chart, revealed) {
     // Under the axis: the photo, a gap, then up to two lines of label.
     const labelDrop = hasPhotos ? thumbH + 12 : 0;
     const hasSub = chart.series.some(r => r.sub);
-    const padB = 56 + labelDrop + 52 + (hasSub ? 30 : 0);
+    // Three label lines rather than two, since cmWrapLabel may use all
+    // three on a name like "Common Wood-Pigeon".
+    const padB = 56 + labelDrop + 78 + (hasSub ? 30 : 0);
     const H = padT + 300 + padB;
     const plotH = H - padT - padB;
 
@@ -2668,13 +2712,27 @@ function classroomBarsHtml(chart, revealed) {
         const cx = cxOf(i);
         const h = Math.max(1, (s.value / top) * plotH);
         const on = chart.highlight && s.key === chart.highlight;
-        // Long species names on a 1000-unit canvas need two lines; days and
-        // hours never do.
+        // ⚠ SPECIES NAMES OVERLAP, and wrapping alone does not fix it.
+        // Reported as "the x-axis labels are the bird species usually have
+        // the text overlap". The old rule split at the LAST space and
+        // stopped: "Common Wood-Pigeon" became "Common" / "Wood-Pigeon",
+        // and an eleven-character word in a 155-unit slot still runs into
+        // its neighbours. "White-tipped Dove" is worse.
+        //
+        // So: break on hyphens as well as spaces, allow three lines, and
+        // then SHRINK the text to whatever actually fits the slot. The
+        // shrink is the part that makes it reliable — wrapping can only
+        // help where there is somewhere to wrap, and some bird names are
+        // one long word.
         const label = String(s.label);
-        const parts = label.length > 12 ? label.split(' ') : [label];
-        const lines = parts.length > 1
-            ? [parts.slice(0, -1).join(' '), parts[parts.length - 1]]
-            : [label];
+        const lines = cmWrapLabel(label, 3);
+        // 0.55em per character is the usual approximation for a
+        // proportional face; the floor keeps it readable from the back of
+        // a room even when that means a little overlap on the very worst
+        // name.
+        const longest = Math.max(...lines.map(l => l.length), 1);
+        const labelSize = Math.max(17, Math.min(30, (group * 0.92) / (longest * 0.55)));
+        const lineStep = Math.round(labelSize * 0.92);
 
         // An explicit second line, for a series that carries two facts per
         // bar. Flagged on the weather chart: "the x-axis labels need to be on
@@ -2683,7 +2741,7 @@ function classroomBarsHtml(chart, revealed) {
         // wherever the string happened to be long enough, which is not the
         // same thing as putting it where the meaning changes.
         const subLine = s.sub
-            ? `<text x="${cx}" y="${H - padB + 28 + labelDrop + lines.length * 26}"
+            ? `<text x="${cx}" y="${H - padB + 28 + labelDrop + lines.length * lineStep}"
                      class="cc-sublabel" text-anchor="middle"
                      ${s.subColor ? `fill="${s.subColor}"` : ''}>${esc(s.sub)}</text>`
             : '';
@@ -2713,7 +2771,8 @@ function classroomBarsHtml(chart, revealed) {
                           text-anchor="middle">?</text>`
                  + thumb
                  + lines.map((ln, k) =>
-                     `<text x="${cx}" y="${H - padB + 28 + labelDrop + k * 26}" class="cc-label"
+                     `<text x="${cx}" y="${H - padB + 28 + labelDrop + k * lineStep}"
+                            class="cc-label" font-size="${labelSize.toFixed(1)}"
                             text-anchor="middle">${esc(ln)}</text>`).join('');
         }
 
@@ -2724,7 +2783,8 @@ function classroomBarsHtml(chart, revealed) {
                  : '')
              + thumb
              + lines.map((ln, k) =>
-                 `<text x="${cx}" y="${H - padB + 28 + labelDrop + k * 26}" class="cc-label"
+                 `<text x="${cx}" y="${H - padB + 28 + labelDrop + k * lineStep}"
+                        class="cc-label" font-size="${labelSize.toFixed(1)}"
                         text-anchor="middle">${esc(ln)}</text>`).join('')
              + subLine;
     }).join('');
