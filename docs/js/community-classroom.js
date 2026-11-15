@@ -10742,8 +10742,11 @@ function buildDataFreeQuestions(room, o) {
     // has nothing. A teacher's chart has nothing to draw either, so
     // cmOwnChart returns null and the question goes up without one.
     const own = cmOwnLessonQuestions(room, o, band, seed, null);
-    const ordered = own.front.concat(
-        cmShuffle(out.concat(own.pool), cmRng(seed + '|order')));
+    // A quiet feeder is when a class leans hardest on this small set, so the
+    // teacher's thumbs matter more here, not less.
+    const ordered = own.front.concat(classroomRatingOrder(
+        cmShuffle(out.concat(own.pool), cmRng(seed + '|order')),
+        classroomRatingsFor(o), new Set(Array.isArray(o.recent) ? o.recent : [])));
     const offered = CLASSROOM_TEMPLATES.filter(t =>
         classroomTemplateAllowed(t, band, picked)).length;
     return {
@@ -11244,7 +11247,15 @@ function buildClassroomQuestions(room, data, opts) {
         rest = fresh.concat(seen);
     }
 
-    const ordered = ident.concat(own.front, rest);
+    // The teacher's thumbs, last, so they act on the order above rather
+    // than being undone by it. The opening identification questions are
+    // reordered among themselves but keep their place at the front: that
+    // opener is a design decision, not a preference a thumb should undo.
+    // own.front is left alone — those are questions the teacher has just
+    // written, and they asked for them by writing them.
+    const ratings = classroomRatingsFor(o);
+    const ordered = classroomRatingOrder(ident, ratings, new Set(recent))
+        .concat(own.front, classroomRatingOrder(rest, ratings, new Set(recent)));
 
     // How many templates this band HAS, against how many could say anything
     // about this week. The gap is the useful number: a band that offers forty
@@ -11285,7 +11296,10 @@ function openClassroomPanel() {
     // A teacher almost always belongs to exactly one school, and a dropdown
     // with one entry is a control that can only be set to what it already
     // says. Hide it rather than make them look at it before every lesson.
-    sel.style.display = mine.length > 1 ? '' : 'none';
+    // The wrapper, not the select: the picker carries its own label now,
+    // and a "Community" heading over nothing is worse than no heading.
+    const pick = document.getElementById('classroom-community-pick');
+    (pick || sel).style.display = mine.length > 1 ? '' : 'none';
 
     const empty = document.getElementById('classroom-panel-empty');
     if (empty) empty.style.display = mine.length ? 'none' : '';
@@ -12652,6 +12666,147 @@ async function loadClassroomRecentTemplates(roomId) {
     return (!error && Array.isArray(data)) ? data : [];
 }
 
+// ── A teacher's thumbs up or down ─────────────────────────────────────
+//
+// "It would be nice if teachers could vote/rate a question, both live or
+// when reviewing and then the system can rank the questions and use that
+// for candidates for review or use in next sessions."
+//
+// The two reactions a teacher already had were both too heavy for the
+// common case: unticking a template in the picker removes it for good, and
+// flagging files a report somebody has to read. A thumb is the light
+// version of each. It REORDERS this classroom's lessons and nothing else —
+// it never removes a question (that is what the picker is for) and it never
+// touches another class (ranking across a school needs rules about whose
+// rating counts, and those should come from real ratings, not a guess).
+
+/**
+ * This classroom's ratings, as { template_id: 1 | -1 }.
+ *
+ * Never fatal, exactly like the recent-template list: before
+ * setup-classroom-ratings.sql is applied the call fails with PGRST202, and
+ * a lesson must never fail to start because a nicety had nothing to say.
+ */
+async function loadClassroomRatings(roomId) {
+    const { data, error } = await sbRpc('classroom_template_ratings',
+        { p_classroom_id: roomId }, true);
+    return (!error && data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
+}
+
+/**
+ * The ratings a lesson should honour, or null for none.
+ *
+ * ⚠ NOT DURING A NARROWED CHALLENGE. A challenge that names its questions
+ * has chosen them for every class taking part; one teacher's private
+ * thumbs-down quietly sending the challenge's question past the end of
+ * their lesson would opt that class out of part of the contest without
+ * anyone seeing it happen. An 'any' challenge names nothing, so ratings
+ * still apply there.
+ */
+function classroomRatingsFor(o) {
+    const r = o && o.ratings;
+    if (!r || !Object.keys(r).length) return null;
+    const ch = o.challenge;
+    if (ch && ch.question_mode && ch.question_mode !== 'any') return null;
+    return r;
+}
+
+/**
+ * Reorder a list of questions by rating, keeping everything else's order.
+ *
+ * Thumbs-down goes to the very back — behind even the recent repeats,
+ * because a repeat of a question the teacher is happy with is a better
+ * fourth question than one they said they did not want. It stays in the
+ * list rather than leaving it: on a thin week it may be the only thing
+ * left to fill a session, and a short lesson is worse than a weak question.
+ *
+ * Thumbs-up comes to the front, but only if it has NOT been asked
+ * recently. Variety still wins over preference: a class that gets its
+ * teacher's favourite every single morning has worked out the lesson is on
+ * rails by Thursday, which is the problem the recent ordering exists to
+ * solve. A liked question that was just asked keeps its place among the
+ * repeats.
+ */
+function classroomRatingOrder(list, ratings, recentIds) {
+    if (!ratings || !list.length) return list;
+    const r = q => ratings[q.template_id] || 0;
+    const recent = recentIds || new Set();
+    const up   = list.filter(q => r(q) > 0 && !recent.has(q.template_id));
+    const down = list.filter(q => r(q) < 0);
+    const mid  = list.filter(q => !up.includes(q) && !down.includes(q));
+    return up.concat(mid, down);
+}
+
+// Review and the live stage each keep their own copy of the ratings,
+// because each has its own room and its own question list.
+let classroomReviewRatings = {};
+
+function classroomRateButtonsHtml(where, i, current) {
+    // aria-pressed rather than a class alone, so a screen reader announces
+    // which thumb is down — the visual state is the whole message here.
+    const btn = (value, face, tip) => `<button type="button"
+        class="classroom-btn classroom-rate-btn${current === value ? ' on' : ''}"
+        aria-pressed="${current === value}" title="${tip}"
+        onclick="rateClassroomQuestion('${where}', ${i}, ${value})">${face}</button>`;
+    return btn(1, '👍', 'More of this one: it comes up sooner in this class’s lessons. Press again to clear.')
+         + btn(-1, '👎', 'Less of this one: it goes to the back of this class’s lessons. '
+                       + 'To stop it altogether, untick it in the question picker. Press again to clear.');
+}
+
+/**
+ * A thumb pressed, in review or mid-lesson.
+ *
+ * Pressing the thumb that is already down clears it, so there is no third
+ * "neutral" button to find. Shown at once and put back if the save fails:
+ * mid-lesson, a button that waits on the network looks broken to a room
+ * that is watching it.
+ */
+async function rateClassroomQuestion(where, i, value) {
+    let room, q, map, boxId;
+    if (where === 'live') {
+        const S = classroomSession;
+        if (!S) return;
+        room = S.room; q = S.questions[S.index];
+        S.ratings = S.ratings || {};
+        map = S.ratings; boxId = 'classroom-stage-rate';
+    } else {
+        room = classroomReviewRoom; q = classroomReviewQuestions[i];
+        map = classroomReviewRatings; boxId = `classroom-rate-${i}`;
+    }
+    if (!room || !q || !q.template_id) return;
+
+    const tid = q.template_id;
+    const before = map[tid] || 0;
+    const next = before === value ? 0 : value;
+    const paint = () => {
+        // The teacher may press Next before the save comes back, and the
+        // stage's thumbs then belong to a different question. The map is
+        // still right; only the drawing would be wrong.
+        if (where === 'live' && (!classroomSession
+            || classroomSession.questions[classroomSession.index] !== q)) return;
+        const box = document.getElementById(boxId);
+        if (box) box.innerHTML = classroomRateButtonsHtml(where, i, map[tid] || 0);
+    };
+    if (next) map[tid] = next; else delete map[tid];
+    paint();
+
+    const { data, error } = await sbRpc('classroom_rate_template', {
+        p_classroom_id: room.id, p_template_id: tid, p_rating: next,
+    }, true);
+    if (error) {
+        if (before) map[tid] = before; else delete map[tid];
+        paint();
+        const notYet = error.code === 'PGRST202'
+            || /does not exist|schema cache/i.test(error.message || '');
+        showToast(notYet ? 'Rating questions needs the database update first.'
+                         : 'Rating not saved: ' + (error.message || 'network error'));
+        return;
+    }
+    // The database's answer, not the page's guess.
+    if (data) map[tid] = data; else delete map[tid];
+    paint();
+}
+
 async function reviewClassroomQuestions(roomId) {
     const room = classroomList.find(r => r.id === roomId);
     const box = document.getElementById('classroom-review');
@@ -12667,15 +12822,19 @@ async function reviewClassroomQuestions(roomId) {
     // live challenge exactly as the lesson will — and include the teacher's
     // own questions exactly as the lesson will. A review that disagreed
     // with the board would be worse than no review.
-    const [data, challenge, own] = await Promise.all([
+    // Ratings too, both to order the list the way the lesson will and so
+    // each question's thumbs show what this class already said about it.
+    const [data, challenge, own, ratings] = await Promise.all([
         loadClassroomData(room),
         classroomActiveChallenge(roomId),
         loadClassroomOwnQuestions(roomId),
+        loadClassroomRatings(roomId),
     ]);
     const { questions, source, built, offered } =
-        buildClassroomQuestions(room, data, { all: true, challenge, own });
+        buildClassroomQuestions(room, data, { all: true, challenge, own, ratings });
     classroomReviewRoom = room;
     classroomReviewQuestions = questions;
+    classroomReviewRatings = ratings;
 
     if (!questions.length) {
         box.innerHTML = `<div class="classroom-muted">
@@ -12883,6 +13042,8 @@ function classroomReviewItem(q, i) {
             <div class="classroom-review-actions">
                 <button class="classroom-btn" onclick="openClassroomFlag(${i}, 'flag')">⚑ Something is wrong</button>
                 <button class="classroom-btn" onclick="openClassroomFlag(${i}, 'suggestion')">💡 Suggest an improvement</button>
+                <span class="classroom-rate" id="classroom-rate-${i}">${
+                    classroomRateButtonsHtml('review', i, classroomReviewRatings[q.template_id] || 0)}</span>
             </div>
             <div class="classroom-flag-form" id="classroom-flag-${i}"></div>
         </div>`;
@@ -15451,14 +15612,15 @@ async function startClassroomSession(id, mode) {
 
     // Both in parallel: the recent-template list is a nicety and should not
     // add a round trip to the wait a class is watching.
-    const [data, recent, challenge, own] = await Promise.all([
+    const [data, recent, challenge, own, ratings] = await Promise.all([
         loadClassroomData(room),
         loadClassroomRecentTemplates(room.id),
         classroomActiveChallenge(room.id),
         loadClassroomOwnQuestions(room.id),
+        loadClassroomRatings(room.id),
     ]);
     const { questions, source, no_data } =
-        buildClassroomQuestions(room, data, { recent, challenge, own });
+        buildClassroomQuestions(room, data, { recent, challenge, own, ratings });
 
     if (!questions.length) {
         // A challenge narrows the question pool, so when the pool is empty the
@@ -15517,6 +15679,8 @@ async function startClassroomSession(id, mode) {
         // Join-code only: the open question's row id, the live tally, and
         // the poll timers. Null throughout a teacher-led session.
         answerId: null, tally: null, joined: [], pollTimer: null,
+        // So the stage's thumbs show what this class already said.
+        ratings,
     };
     closeClassroomPanel();
     document.addEventListener('keydown', classroomStageKeys);
@@ -15652,6 +15816,8 @@ function renderClassroomStage() {
         <div class="classroom-stage-foot">
             ${classroomFootControls(S, last, joinMode)}
             <button class="classroom-btn" onclick="skipClassroomQuestion()">Skip</button>
+            <span class="classroom-rate" id="classroom-stage-rate">${
+                classroomRateButtonsHtml('live', S.index, (S.ratings || {})[q.template_id] || 0)}</span>
         </div>`;
 
     // After layout, not during: scrollHeight is meaningless until the browser

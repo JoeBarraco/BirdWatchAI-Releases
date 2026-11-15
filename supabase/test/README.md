@@ -44,7 +44,7 @@ docker exec bwai-pgtest psql -U postgres -q -f /tmp/reminders-schema.sql
 docker exec bwai-pgtest psql -U postgres -q -f /tmp/school-reminders.test.sql
 ```
 
-There are twelve suites, each needing the migrations it builds on applied first:
+There are thirteen suites, each needing the migrations it builds on applied first:
 
 | Suite | Needs | Checks |
 |---|---|---|
@@ -60,9 +60,10 @@ There are twelve suites, each needing the migrations it builds on applied first:
 | `teacher-questions.test.sql` | teacher questions only | 49 |
 | `history-standards.test.sql` | subscription + history lessons + history standards | 16 |
 | `teacher-questions-2.test.sql` | subscription + teacher questions + teacher questions 2 | 28 |
+| `classroom-ratings.test.sql` | classroom ratings only | 20 |
 
 Every check prints `PASS` or `FAIL ***`. Grep for `FAIL`. As of the last run:
-279 checks, 0 failures.
+299 checks, 0 failures.
 
 **Sharing a teacher's question has four conditions and they all have to
 hold at once** — shared, same community, same grade band, not your own.
