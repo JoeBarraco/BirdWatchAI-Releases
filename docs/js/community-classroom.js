@@ -1321,6 +1321,20 @@ function cmConfPct(r) {
 const CM_CONF_LABEL = 65;
 const CM_CONF_SHOW  = 55;
 
+/**
+ * The rarity label, Title Cased, or '' where the feeder sent none.
+ *
+ * Production sends "Common"; the test fixture sent "common". The question
+ * that asks how many sightings were "something other than Common" then
+ * answered ALL OF THEM - a clean reversal of its own meaning, from one
+ * capital letter. One definition, used by the summary and by the questions,
+ * so there is no second place for the casing to drift.
+ */
+function cmRarityLabel(r) {
+    const x = String((r && r.rarity) || '').trim();
+    return x ? x.charAt(0).toUpperCase() + x.slice(1).toLowerCase() : '';
+}
+
 function cmSummarize(feederId, name, rows, isHome, windowDays) {
     // Scientific names become common ones and the non-birds go, before a
     // single count is taken - so every number downstream, every chart and
@@ -1381,11 +1395,8 @@ function cmSummarize(feederId, name, rows, isHome, windowDays) {
         // "something other than Common" then answered ALL OF THEM - a clean
         // reversal of its own meaning, from a capital letter. Whatever the
         // feeder sends, it means the same three words.
-        const rar = String(r.rarity || '').trim();
-        if (rar) {
-            const key = rar.charAt(0).toUpperCase() + rar.slice(1).toLowerCase();
-            byRarity.set(key, (byRarity.get(key) || 0) + 1);
-        }
+        const rar = cmRarityLabel(r);
+        if (rar) byRarity.set(rar, (byRarity.get(rar) || 0) + 1);
 
         if (r.image_url && !isPrivateMedia(r.image_url)) snapshots.push(r);
         if (r.video_url && !isPrivateMedia(r.video_url)) clips.push(r);
@@ -9871,13 +9882,23 @@ ${jumbled.split('').join(' ')}`,
 },
 
 {
-    // MA.7.DP.1.2 — two groups, a measure of center each, a comparison and a
-    // conclusion. The groups are species and the measure is the mean of the
-    // camera's own confidence figures, so the child is comparing real
-    // populations of real measurements.
-    id: 'confidence-by-species',
+    // This started life as "which species was the camera least sure about,
+    // on average", tagged MA.7.DP.1.2. Production killed it: the species
+    // means on a real feeder come out 46.7, 51.2, 63.0, 65.3, 66.4, 67.7 and
+    // 85.8, and the two lowest are 4.5 points apart with three sightings
+    // each. A question resting on that gap would be teaching a class to read
+    // noise as a finding, which is the opposite of the point.
+    //
+    // The spread WITHIN one species is where the signal actually is, and it
+    // is enormous: 177 Northern Cardinals from 38% to 97%, 60 Mourning Doves
+    // from 36% to 95%. Same bird, same feeder, same camera. So the camera's
+    // uncertainty is mostly about the PHOTOGRAPH, not about the species -
+    // which is both the honest reading and the more useful lesson.
+    //
+    // MA.6.DP.1.4: given a histogram, describe and interpret the spread.
+    id: 'confidence-same-bird',
     category: 'science',
-    title: 'The bird it keeps squinting at',
+    title: 'The same bird, twice',
     bands: ['6-8'],
     build({ s14, band, rng }) {
         const by = new Map();
@@ -9888,43 +9909,53 @@ ${jumbled.split('').join(' ')}`,
             by.get(r.species).push(c);
         });
 
-        // Three sightings before a species gets an average at all. One
-        // blurry photograph is not a measure of center, it is a photograph.
-        const avg = [...by.entries()]
-            .filter(([, v]) => v.length >= 3)
-            .map(([sp, v]) => ({ sp, n: v.length,
-                                 m: v.reduce((a, b) => a + b, 0) / v.length }))
-            .sort((a, b) => a.m - b.m);
-        if (avg.length < 3) return null;
+        // Enough sightings for a spread to be a spread, and a spread wide
+        // enough to be worth explaining. Most sightings of one species, to
+        // give the histogram something to show.
+        const pick = [...by.entries()]
+            .map(([sp, v]) => ({ sp, v, n: v.length,
+                                 lo: Math.min(...v), hi: Math.max(...v) }))
+            .filter(x => x.n >= 10 && x.hi - x.lo >= 30)
+            .sort((a, b) => b.n - a.n)[0];
+        if (!pick) return null;
 
-        // A gap worth asking about. Two species a point apart is a question
-        // about rounding, not about the camera.
-        const least = avg[0];
-        if (avg[1].m - least.m < 5) return null;
-
-        const built = cmChoices(least.sp, avg.slice(1, 4).map(x => x.sp), rng);
+        const built = cmChoices(
+            'How clear each photo happened to be — the angle, the light, how much '
+            + 'of the bird showed',
+            ['The birds later in the fortnight were easier to recognise',
+             'The low-scoring ones were probably a different species',
+             'The camera gets less sure as its battery runs down'], rng);
         if (!built) return null;
 
+        const bins = [];
+        for (let b = 30; b < 100; b += 10) {
+            bins.push({ label: `${b}\u2013${b + 9}`,
+                        value: pick.v.filter(c => c >= b && c < b + 10).length });
+        }
+
         return {
-            prompt: 'Our camera records how sure it was about every single sighting. '
-                  + 'Take the AVERAGE of those figures for each bird. Which species '
-                  + 'was it least sure about?',
+            prompt: `Our camera recorded ${pick.n} sightings of the ${pick.sp} this `
+                  + `fortnight. It was ${Math.round(pick.hi)}% sure about one of them `
+                  + `and only ${Math.round(pick.lo)}% sure about another — the same `
+                  + 'species, the same feeder, the same camera. Look at how spread out '
+                  + 'those figures are. What best explains it?',
             ...built,
-            // Sorted least-sure first, so the answer is the left-hand bar and
-            // cannot be trimmed off its own chart.
-            chart: cmChart('Average confidence by species, %',
-                avg.map(x => ({ label: x.sp, value: Math.round(x.m) })), { band }),
-            explain: `The ${least.sp}, averaging ${Math.round(least.m)}% across `
-                   + `${least.n} sightings, against ${Math.round(avg[avg.length - 1].m)}% `
-                   + `for the ${avg[avg.length - 1].sp}. A computer is not equally good `
-                   + 'at every bird: it is surer about the ones it saw most often while '
-                   + 'it was being trained, and about the ones that look like nothing '
-                   + 'else. Researchers found the same thing testing BirdNET and '
-                   + 'concluded that one threshold for all species works poorly — each '
-                   + 'species really needs its own. Which means the honest reading of '
-                   + `this chart is not "the camera is bad at the ${least.sp}" but "we `
-                   + `should check the ${least.sp} ourselves."`,
-            about_bird: least.sp,
+            image: cmShotFor(s14, pick.sp),
+            image_on_reveal: true,
+            chart: cmChart(`How sure the camera was about the ${pick.sp}, %`,
+                bins, { band, ordered: true }),
+            explain: `The photograph, not the bird. All ${pick.n} of these were the `
+                   + `same species, and the camera's confidence still ran from `
+                   + `${Math.round(pick.lo)}% to ${Math.round(pick.hi)}% — a spread of `
+                   + `${Math.round(pick.hi - pick.lo)} points. A bird half behind a `
+                   + 'branch, facing away, in bad light or caught mid-flap looks much '
+                   + 'less like the pictures the computer learned from than one sitting '
+                   + 'square on the perch in the sun. The people who build these models '
+                   + 'report the same thing: accuracy that swings from around 97% down '
+                   + 'to about 60% depending on conditions. So a low score is usually a '
+                   + 'complaint about the photo rather than a doubt about the species — '
+                   + 'and it still does not prove the high-scoring one was right.',
+            about_bird: pick.sp,
         };
     },
 },
@@ -9993,41 +10024,52 @@ ${jumbled.split('').join(' ')}`,
     title: 'What counts as rare',
     bands: ['6-8'],
     build({ s14, rng }) {
-        const byR = s14.byRarity;
-        if (!byR || !byR.size) return null;
-        const total = [...byR.values()].reduce((a, b) => a + b, 0);
-        if (total < 20) return null;
+        // Counted off the rows rather than the summary tally, because the
+        // question wants to NAME the unusual birds, and four sightings that
+        // are four different species is not "this bird".
+        const labelled = s14.rows.filter(r => cmRarityLabel(r));
+        if (labelled.length < 20) return null;
+        const odd   = labelled.filter(r => cmRarityLabel(r) !== 'Common');
+        const oddSp = [...new Set(odd.map(r => r.species))];
 
-        const common = byR.get('Common') || 0;
-        const odd    = total - common;
-
-        // Two directions, because a fortnight that saw nothing unusual is the
-        // commoner case by far and has a better question in it than a null.
-        if (odd > 0) {
+        // Two directions, because a fortnight that saw nothing unusual is
+        // the commoner case by far and has a better question in it than a
+        // null.
+        if (odd.length) {
+            const many = odd.length > 1;
+            const subj = many ? 'these birds' : 'this bird';
+            const names = oddSp.length === 1 ? `the ${oddSp[0]}`
+                        : oddSp.length === 2 ? `the ${oddSp[0]} and the ${oddSp[1]}`
+                        : oddSp.length <= 4
+                            ? oddSp.slice(0, -1).map(x => `the ${x}`).join(', ')
+                              + `, and the ${oddSp[oddSp.length - 1]}`
+                            : '';
             const built = cmChoices(
-                'That this bird is not often seen around HERE — and one sighting is a '
-                + 'start, not a finding',
-                ['That this bird is rare everywhere in the world',
+                `That ${subj} ${many ? 'are' : 'is'} not often seen around HERE \u2014 and `
+                + `${many ? 'a few sightings are' : 'one sighting is'} a start, not a `
+                + 'finding',
+                [`That ${subj} ${many ? 'are' : 'is'} rare everywhere in the world`,
                  'That the camera made a mistake',
                  'That no one else has ever recorded one'], rng);
             if (!built) return null;
             return {
                 prompt: 'Our camera labels every sighting Common, Uncommon or Rare for '
-                      + `this area. Out of ${total} sightings this fortnight, `
-                      + `${odd} ${odd === 1 ? 'was' : 'were'} labelled something other `
-                      + 'than Common. What does that actually tell us?',
+                      + `this area. Of the ${labelled.length} sightings it labelled this `
+                      + `fortnight, ${odd.length} ${many ? 'were' : 'was'} not Common`
+                      + (names ? ` \u2014 ${names}` : '') + '. What does that actually '
+                      + 'tell us?',
                 ...built,
                 explain: 'Rarity labels are LOCAL. eBird, the biggest record of bird '
                        + 'sightings there is, decides what to flag using a filter kept '
-                       + 'for each region by reviewers who live there — not one '
-                       + 'national list — so the same species can be routine in one '
+                       + 'for each region by reviewers who live there \u2014 not one '
+                       + 'national list \u2014 so the same species can be routine in one '
                        + 'county and flagged in the next, and a bird can be flagged '
                        + 'simply for turning up out of season. Those filters are built '
                        + 'from years of records by thousands of people. Our one camera, '
-                       + `at one feeder, over ${total} sightings in a fortnight, is a `
-                       + 'very small piece of that. It is worth recording and it is not '
-                       + 'enough to conclude anything on its own, which is what makes it '
-                       + 'evidence rather than proof.',
+                       + `at one feeder, over ${labelled.length} labelled sightings in a `
+                       + 'fortnight, is a very small piece of that. It is worth '
+                       + 'recording and it is not enough to conclude anything on its '
+                       + 'own, which is what makes it evidence rather than proof.',
             };
         }
 
@@ -10039,12 +10081,12 @@ ${jumbled.split('').join(' ')}`,
         if (!built) return null;
         return {
             prompt: 'Our camera labels every sighting Common, Uncommon or Rare for this '
-                  + `area. All ${total} of our sightings this fortnight came back `
-                  + 'Common. What does that tell us?',
+                  + `area. All ${labelled.length} of the sightings it labelled this `
+                  + 'fortnight came back Common. What does that tell us?',
             ...built,
             explain: 'Not much about the neighbourhood, and quite a lot about our '
                    + 'sample. One camera pointed at one feeder for two weeks sees the '
-                   + 'birds that use that feeder, at that time of year — and the '
+                   + 'birds that use that feeder, at that time of year \u2014 and the '
                    + 'commonest birds are common precisely because they turn up most. '
                    + 'An unusual bird is unusual: a fortnight is nowhere near long '
                    + 'enough to say it is not around. This is why rarity filters are '

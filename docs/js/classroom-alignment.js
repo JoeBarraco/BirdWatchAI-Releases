@@ -394,18 +394,24 @@ const CLASSROOM_TEMPLATE_STANDARDS = {
     // word: two stated figures, which is likelier, say why. The camera
     // supplies the two numbers and the two birds.
     //
-    // confidence-by-species claims MA.7.DP.1.2 because the child compares a
-    // measure of center between groups and draws a conclusion — the groups
-    // being species and the measurements being the camera's own confidence
-    // figures. MA.6.DP.1.2 rides along for computing the mean itself.
+    // confidence-same-bird and confidence-threshold both claim MA.6.DP.1.4,
+    // "given a histogram ... qualitatively describe and interpret the spread
+    // and distribution", and in both the histogram is the question rather
+    // than decoration. One asks what a 59-point spread within a SINGLE
+    // species means; the other asks what cutting that distribution off at
+    // 80% would cost. Neither is tagged to a Nature of Science benchmark,
+    // though both carry a Nature of Science lesson in the explanation: the
+    // child is reading a distribution, not explaining what evidence is, and
+    // the tag has to describe what they DO.
     //
-    // confidence-threshold claims MA.6.DP.1.4 and nothing else. The child is
-    // given a histogram and has to read its spread to see what cutting it at
-    // 80 would cost. It is NOT tagged to a Nature of Science benchmark: the
-    // trade-off is the lesson, but the child is not explaining what evidence
-    // is, they are reading a distribution.
+    // confidence-same-bird was first written as "which species was the
+    // camera least sure about, on average" and tagged MA.7.DP.1.2. Real data
+    // retired it: the species means cluster within a few points of each
+    // other on three sightings apiece, so the question would have rested on
+    // noise. The spread inside one species is the real signal and the
+    // honest question.
     'confidence-compare':    ['MA.7.DP.2.2'],
-    'confidence-by-species': ['MA.7.DP.1.2', 'MA.6.DP.1.2'],
+    'confidence-same-bird':  ['MA.6.DP.1.4'],
     'confidence-threshold':  ['MA.6.DP.1.4'],
 
     // SC.7.N.1.6 is "empirical evidence is the CUMULATIVE body of

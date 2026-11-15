@@ -98,12 +98,18 @@ function makeRows(seed){
       const tm=new Date(day); tm.setHours(6+(i*3)%12, (i*13)%60, 0, 0);
       rows.push({id:'det'+seed+'-'+(++id), feeder_id:'f1',
         species:SP[(d+i+seed)%SP.length],
-        // 0-100, which is what the detector actually reports, and varying
-        // BY SPECIES as well as by row. This fixture used to say 0.7-0.9 on
-        // a 0-1 scale, which matched the `>= 0.65` thresholds that had been
-        // broken since they were written and so reported them working. Test
-        // data that agrees with the bug is worse than no test data.
-        confidence: 38 + ((d+i+seed)%SP.length)*6 + ((i*17)%22),
+        // 0-100, which is what the detector actually reports. This fixture
+        // used to say 0.7-0.9 on a 0-1 scale, which matched the `>= 0.65`
+        // thresholds that had been broken since they were written and so
+        // reported them working. Test data that agrees with the bug is worse
+        // than no test data.
+        //
+        // The spread is wide WITHIN a species, because that is what real
+        // data does: 177 Northern Cardinals at one feeder ran from 38% to
+        // 97%, since the camera's confidence is mostly about how clear the
+        // photograph was rather than which bird it is. A fixture whose
+        // species each sat in a tidy 20-point band hid that entirely.
+        confidence: 36 + ((i*17 + d*11)%55) + ((d+i+seed)%SP.length),
         detected_at:tm.toISOString(),
         image_url:'https://example.invalid/s'+id+'.jpg',
         video_url: i%9===0 ? 'https://example.invalid/v'+id+'.mp4' : null,
