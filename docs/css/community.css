@@ -4928,6 +4928,39 @@
     color: var(--color-gray-500); font-style: italic;
 }
 
+/* ── The question builder's media picker ────────────────────────────
+   Photos and clips are two tabs over one grid rather than two grids, so
+   the choice stays one row of thumbnails whichever kind you are after. */
+.cc-own-media-tabs { display: flex; gap: 0.4rem; margin-bottom: 0.5rem; }
+.cc-own-media-tabs .classroom-btn.on {
+    background: var(--color-primary); color: #fff; border-color: var(--color-primary);
+}
+
+/* A clip thumbnail is a muted video with a play glyph over it. preload
+   is metadata only: twenty-four clips preloading in a picker would cost
+   more than the lesson they are being chosen for. */
+.cc-own-photo video {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.cc-own-photo { position: relative; }
+.cc-own-play {
+    position: absolute; inset: 0; display: flex;
+    align-items: center; justify-content: center;
+    font-size: 1.4rem; color: #fff; text-shadow: 0 1px 6px rgba(0,0,0,0.7);
+    pointer-events: none;
+}
+
+/* A tagged benchmark, with the ✕ that drops it. */
+.cc-std-drop { cursor: pointer; font-family: inherit; }
+.cc-std-drop:hover { border-color: #e74c3c; color: #e74c3c; }
+
+.cc-own-share {
+    display: flex; gap: 0.6rem; align-items: flex-start;
+    margin: 0.75rem 0; font-size: 0.85rem; color: var(--color-gray-700);
+    line-height: 1.4;
+}
+.cc-own-share input { margin-top: 0.2rem; flex: 0 0 auto; }
+
 /* ── Bird song ──────────────────────────────────────────────────────
    A control sized for a projector and an interactive whiteboard, not for
    a mouse six inches from a laptop screen. The native <audio controls>

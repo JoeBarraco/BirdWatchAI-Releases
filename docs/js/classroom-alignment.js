@@ -399,6 +399,20 @@ function classroomTemplateIdOf(recordedId) {
 function classroomStandardsFor(items) {
     const seen = new Set();
     (items || []).forEach(q => {
+        // A question may carry its OWN benchmarks rather than inheriting
+        // them from a template — that is how a teacher's hand-written
+        // question gets counted. classroomTemplateIdOf returns null for
+        // 'teacher:…' precisely because there is no template to look up,
+        // so without this branch every teacher question in a lesson would
+        // report as unaligned no matter how carefully it was tagged.
+        if (q && Array.isArray(q.standards) && q.standards.length) {
+            const band0 = q.grade_band || q.band;
+            q.standards.forEach(c => {
+                const s = CLASSROOM_STANDARDS[c];
+                if (!band0 || !s || s.bands.includes(band0)) seen.add(c);
+            });
+            return;
+        }
         const id   = classroomTemplateIdOf(q && (q.template_id || q.templateId || q.id));
         const band = q && (q.grade_band || q.band);
         (CLASSROOM_TEMPLATE_STANDARDS[id] || []).forEach(c => {

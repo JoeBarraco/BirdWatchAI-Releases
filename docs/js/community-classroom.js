@@ -8490,7 +8490,10 @@ function buildDataFreeQuestions(room, o) {
     // The teacher's own questions need no feeder data either, so a quiet
     // feeder is no reason to drop them — if anything it is when a class most
     // needs a question that is about something it did this week.
-    const own = cmOwnLessonQuestions(room, o, band, seed);
+    // No source here — this is the data-free path, taken when the feeder
+    // has nothing. A teacher's chart has nothing to draw either, so
+    // cmOwnChart returns null and the question goes up without one.
+    const own = cmOwnLessonQuestions(room, o, band, seed, null);
     const ordered = own.front.concat(
         cmShuffle(out.concat(own.pool), cmRng(seed + '|order')));
     const offered = CLASSROOM_TEMPLATES.filter(t =>
@@ -8640,7 +8643,55 @@ async function loadClassroomOwnQuestions(roomId) {
  * scoreboard across classes, and a class answering its own teacher's
  * questions is not playing the same game as the class next door.
  */
-function cmOwnLessonQuestions(room, o, band, seed) {
+/**
+ * The chart a teacher asked their question to carry.
+ *
+ * ⚠ THE SPEC IS STORED; THE NUMBERS ARE NOT. A question saved in October
+ * that kept its October bar chart would be showing a class last term's
+ * week — the chart is evidence for a question about THIS week, so the
+ * spec says which shape over which series and the data is whatever the
+ * feeder holds when the lesson runs.
+ *
+ * Null whenever the source has nothing to draw, which is an ordinary
+ * outcome: the question still works, it simply has no chart beside it.
+ */
+function cmOwnChart(spec, source, band) {
+    if (!spec || !spec.kind || !source) return null;
+
+    const s = cmWindow(source, 7);
+    let series = null, caption = '';
+    if (spec.source === 'days') {
+        series = cmDaySeries(s);
+        caption = 'Visits each day this week';
+    } else if (spec.source === 'species') {
+        series = cmSpeciesSeries(s, 6);
+        caption = 'Visits by species this week';
+    } else if (spec.source === 'hours') {
+        series = s.byHour.map((n, h) => ({ label: fmtHourShort(h), value: n, key: String(h) }))
+                         .filter(r => r.value > 0);
+        caption = 'When the birds came';
+    }
+    if (!series || series.length < 2) return null;
+
+    if (spec.kind === 'picto') {
+        return cmPictograph(caption, series, { band });
+    }
+    return cmChart(caption, series, {
+        band, kind: spec.kind,
+        ordered: spec.source === 'days' || spec.source === 'hours',
+        hours:   spec.source === 'hours',
+    });
+}
+
+// Short hour label for a teacher's hour chart. cmChart's own clock path
+// wants real hours; this is just an axis label.
+function fmtHourShort(h) {
+    if (h === 0)  return '12a';
+    if (h === 12) return '12p';
+    return h < 12 ? h + 'a' : (h - 12) + 'p';
+}
+
+function cmOwnLessonQuestions(room, o, band, seed, source) {
     const none = { front: [], pool: [] };
     if (o.challenge) return none;
 
@@ -8660,18 +8711,36 @@ function cmOwnLessonQuestions(room, o, band, seed) {
         if (!built) return null;
         return {
             template_id: 'teacher:' + x.id,
-            category: 'teacher', title: 'Your question',
+            // The teacher's own subject when they picked one. It drives the
+            // pill on the review card and the grouping in the picker, so a
+            // science question they wrote reads as science rather than as
+            // the catch-all "teacher".
+            category: x.category || 'teacher',
+            title: x.owned === false ? 'A shared question' : 'Your question',
             grade_band: band, scope: 'none', from_partner: false,
             prompt: x.prompt,
             ...built,
             explain: x.explain || null,
             image: x.image_url ? { url: x.image_url, detection_id: x.detection_id } : null,
             detection_id: x.detection_id || null,
+            // A clip the teacher chose. Same shape the template clips use,
+            // so classroomClipHtml needs no special case.
+            video: x.video_url
+                ? { url: x.video_url, detection_id: x.clip_detection_id } : null,
+            // A chart over the class's own data, built here rather than
+            // stored: the spec says which shape over which series, and the
+            // numbers are whatever this week actually holds.
+            chart: cmOwnChart(x.chart_spec, source, band),
             // The feeder burns the species name into the bottom of every
             // snapshot. A teacher asking "who is this?" over their own photo
             // would be handing out the answer, so the caption is cropped
             // until the reveal, as it is on the identification questions.
             crop_caption: true,
+            // The benchmarks the teacher tagged it with, carried onto the
+            // question so the coverage report counts it like any other.
+            // Without this a lesson's report silently omits whatever the
+            // teacher wrote themselves, which under-sells the lesson.
+            standards: Array.isArray(x.standards) ? x.standards : [],
             // The "read more" button on the reveal, when the right answer is a
             // bird this file knows — the same rule the templates use.
             about_bird: SPECIES_LOOKS[right] ? right : null,
@@ -8813,7 +8882,7 @@ function buildClassroomQuestions(room, data, opts) {
     // The teacher's own: the new ones go straight after the opening
     // identification question; the rest join the pool, where the recent-repeat
     // ordering below treats them exactly like any template.
-    const own = cmOwnLessonQuestions(room, o, band, seed);
+    const own = cmOwnLessonQuestions(room, o, band, seed, source);
 
     const rng = cmRng(seed + '|order');
     const ident = out.filter(q => q.category === 'identification');
@@ -9464,19 +9533,45 @@ function renderClassroomOwnList() {
             const right = i === x.correct_index;
             return `<li class="${right ? 'right' : ''}">${esc(c)}${right ? ' ✓' : ''}</li>`;
         }).join('');
+        // `owned` only exists once the sharing migration is applied. Before
+        // then every question in this list is the class's own, which is
+        // what `!== false` means here — absent is not borrowed.
+        const mine = x.owned !== false;
         return `
         <div class="classroom-review-q cc-own-item${x.active ? '' : ' off'}">
             ${x.image_url ? `<img class="cc-own-thumb" src="${esc(x.image_url)}" alt="">` : ''}
             <div class="cc-own-body">
+                <div class="classroom-review-head">
+                    ${x.category ? `<span class="classroom-pill">${
+                        esc(CLASSROOM_CATEGORY_LABELS[x.category] || x.category)}</span>` : ''}
+                    ${mine ? '' : `<span class="classroom-pill">from ${
+                        esc(x.from_classroom || 'another class')}</span>`}
+                    ${x.shared ? '<span class="classroom-pill">shared</span>' : ''}
+                    ${x.video_url ? '<span class="classroom-pill">clip</span>' : ''}
+                    ${x.chart_spec ? '<span class="classroom-pill">chart</span>' : ''}
+                </div>
                 <p class="classroom-review-prompt">${esc(x.prompt)}</p>
+                ${(x.standards && x.standards.length) ? `<div class="cc-stds">${
+                    x.standards.map(c => `<a class="cc-std" target="_blank" rel="noopener"
+                        href="${esc(classroomStandardUrl(c))}"
+                        title="${esc(((typeof CLASSROOM_STANDARDS !== 'undefined'
+                                   && CLASSROOM_STANDARDS[c]) || {}).text || c)}">${esc(c)}</a>`).join('')}</div>` : ''}
                 <ol class="classroom-review-choices">${answers}</ol>
                 ${x.explain ? `<p class="classroom-muted">On reveal: ${esc(x.explain)}</p>` : ''}
                 <div class="classroom-review-actions">
+                    ${mine ? `
                     <button class="classroom-btn" onclick="toggleClassroomOwnQuestion('${escJs(x.id)}')"
                             title="${x.active ? 'Keep it, but stop asking it' : 'Start asking it again'}">
                         ${x.active ? '⏸ Switch off' : '▶ Switch on'}</button>
                     <button class="classroom-btn" onclick="openClassroomOwnForm('${escJs(x.id)}')">✏️ Edit</button>
-                    <button class="classroom-btn-danger" onclick="deleteClassroomOwnQuestion('${escJs(x.id)}')">🗑 Delete</button>
+                    <button class="classroom-btn-danger" onclick="deleteClassroomOwnQuestion('${escJs(x.id)}')">🗑 Delete</button>`
+                    : `
+                    <!-- Borrowed. Editing it would change it under the teacher
+                         who wrote it, and deleting it is not this class's call;
+                         all this class may do is stop using it. -->
+                    <button class="classroom-btn" onclick="classroomDropShared('${escJs(x.id)}')">
+                        ✕ Stop using it</button>
+                    <span class="classroom-muted">Written by another class — only they can edit it.</span>`}
                     ${x.active ? '' : '<span class="classroom-muted">Switched off</span>'}
                 </div>
             </div>
@@ -9493,6 +9588,7 @@ function renderClassroomOwnList() {
         </p>
         <div class="classroom-form-actions">
             <button class="classroom-btn-primary" onclick="openClassroomOwnForm(null)">＋ Write a question</button>
+            <button class="classroom-btn" onclick="showClassroomSharedQuestions()">🤝 From other classes</button>
             <button class="classroom-btn" onclick="closeClassroomRight()">Close</button>
         </div>
         ${items.length
@@ -9512,9 +9608,15 @@ function openClassroomOwnForm(id) {
     const box = document.getElementById('classroom-review');
     if (!box) return;
     const x = id ? classroomOwn.items.find(q => q.id === id) : null;
+    const room0 = classroomList.find(r => r.id === classroomOwn.roomId);
     classroomOwn.editing = x ? x.id : null;
     classroomOwn.photo = x && x.detection_id
         ? { id: x.detection_id, url: x.image_url } : null;
+
+    classroomOwn.clip = x && x.clip_detection_id
+        ? { id: x.clip_detection_id, url: x.video_url } : null;
+    classroomOwn.chart = (x && x.chart_spec) ? { ...x.chart_spec } : null;
+    classroomOwn.standards = (x && Array.isArray(x.standards)) ? x.standards.slice() : [];
 
     const choices = x ? x.choices.slice() : [];
     const right = x ? x.correct_index : 0;
@@ -9536,17 +9638,98 @@ function openClassroomOwnForm(id) {
         <input type="text" id="cc-own-explain" maxlength="400" class="cc-own-explain"
                value="${esc(x && x.explain ? x.explain : '')}"
                placeholder="Optional: a line to show when the answer is revealed">
-        <p class="classroom-muted">A photo from your feeder (optional). Its name label stays
-           hidden until the answer is shown.</p>
-        <div class="cc-own-photos" id="cc-own-photos">
-            <div class="classroom-muted">Loading this fortnight’s photos…</div>
-        </div>
+        <details class="classroom-details" open>
+            <summary>Something to look at</summary>
+            <p class="classroom-muted">
+                A photo or a clip from any feeder in this community — not just this
+                class's own. The species label burnt into the bottom stays hidden
+                until the answer is shown, so "who is this?" still works.
+            </p>
+            <div class="cc-own-media-tabs">
+                <button type="button" class="classroom-btn" id="cc-own-tab-photo"
+                        onclick="classroomOwnMediaTab('photo')">Photos</button>
+                <button type="button" class="classroom-btn" id="cc-own-tab-clip"
+                        onclick="classroomOwnMediaTab('clip')">Clips</button>
+            </div>
+            <div class="cc-own-photos" id="cc-own-photos">
+                <div class="classroom-muted">Loading this fortnight’s media…</div>
+            </div>
+        </details>
+
+        <details class="classroom-details">
+            <summary>A chart from the class's data</summary>
+            <p class="classroom-muted">
+                Drawn fresh each lesson from whatever the feeders have recorded that
+                week — the shape is saved, the numbers never are. A chart saved in
+                October would otherwise still be showing October in March.
+            </p>
+            <div class="classroom-form-row">
+                <label class="classroom-field">
+                    <span>Shape</span>
+                    <select id="cc-own-chart-kind" onchange="classroomOwnChartChanged()">
+                        <option value="">No chart</option>
+                        <option value="bars">Bar chart</option>
+                        <option value="hbars">Bars, lying down</option>
+                        <option value="line">Line</option>
+                        <option value="dots">Tally (one mark per visit)</option>
+                        <option value="picto">Picture graph with a key</option>
+                        <option value="donut">Circle, for shares of a whole</option>
+                    </select>
+                </label>
+                <label class="classroom-field">
+                    <span>Over what</span>
+                    <select id="cc-own-chart-source" onchange="classroomOwnChartChanged()">
+                        <option value="days">Each day this week</option>
+                        <option value="species">Each species</option>
+                        <option value="hours">Each hour of the day</option>
+                    </select>
+                </label>
+            </div>
+        </details>
+
+        <details class="classroom-details">
+            <summary>Subject and Florida standards</summary>
+            <p class="classroom-muted">
+                Optional, and worth doing: a lesson's coverage report counts only
+                what is tagged, so an untagged question of yours makes the report
+                under-sell the lesson you actually taught.
+            </p>
+            <label class="classroom-field">
+                <span>Subject</span>
+                <select id="cc-own-category">
+                    <option value="">Not set</option>
+                    ${[...new Set(CLASSROOM_TEMPLATES.map(c => c.category))]
+                        .sort((a, b) => (CLASSROOM_CATEGORY_LABELS[a] || a)
+                                 .localeCompare(CLASSROOM_CATEGORY_LABELS[b] || b))
+                        .map(c => `<option value="${esc(c)}"${
+                            x && x.category === c ? ' selected' : ''}>${
+                            esc(CLASSROOM_CATEGORY_LABELS[c] || c)}</option>`).join('')}
+            </select>
+            </label>
+            <div id="cc-own-standards"></div>
+        </details>
+
+        <label class="cc-own-share">
+            <input type="checkbox" id="cc-own-shared"${x && x.shared ? ' checked' : ''}>
+            <span>Offer this question to the other ${esc(GRADE_BAND_LABELS[room0 && room0.grade_band]
+                  || (room0 && room0.grade_band) || '')} classes in this community.
+                  They choose whether to use it; nothing lands in their lesson
+                  unless their teacher takes it.</span>
+        </label>
+
         <div class="classroom-form-actions">
             <button class="classroom-btn-primary" onclick="saveClassroomOwnQuestion()">Save</button>
             <button class="classroom-btn" onclick="renderClassroomOwnList()">Cancel</button>
         </div>
         <div class="classroom-status" id="cc-own-status"></div>`;
+    const kindEl = document.getElementById('cc-own-chart-kind');
+    const srcEl  = document.getElementById('cc-own-chart-source');
+    if (kindEl && classroomOwn.chart) kindEl.value = classroomOwn.chart.kind || '';
+    if (srcEl  && classroomOwn.chart) srcEl.value  = classroomOwn.chart.source || 'days';
+
     document.getElementById('cc-own-prompt').focus();
+    classroomOwn.mediaTab = 'photo';
+    renderClassroomOwnStandards();
     loadClassroomOwnPhotos();
 }
 
@@ -9562,48 +9745,167 @@ async function loadClassroomOwnPhotos() {
     const room = classroomList.find(r => r.id === classroomOwn.roomId);
     if (!room) return;
     if (!classroomOwn.photos) {
-        const data = await loadClassroomData(room);
-        const best = new Map();
-        // Snapshots arrive highest-confidence first, so the first seen per
-        // species is its clearest picture.
-        (data.all || []).forEach(s => s.snapshots.forEach(r => {
-            if (!best.has(r.species)) best.set(r.species, r);
-        }));
-        classroomOwn.photos = [...best.values()].slice(0, 16)
+        // ⚠ THE WHOLE COMMUNITY, not just this class's feeders. Asked for:
+        // "you should be able to choose photos/clips from any feeder
+        // accessible to the teacher on the community site." Loading the
+        // room with question_scope forced to 'community' reuses the pooling
+        // path rather than writing a second way to reach the same rows —
+        // and the server checks the detection independently anyway, so this
+        // widening is a convenience, not the permission.
+        const data = await loadClassroomData({ ...room, question_scope: 'community' });
+
+        const bestShot = new Map(), bestClip = new Map();
+        // Snapshots and clips arrive highest-confidence first, so the first
+        // seen per species is its clearest.
+        (data.all || []).concat(data.each || []).forEach(s => {
+            (s.snapshots || []).forEach(r => {
+                if (!bestShot.has(r.species)) bestShot.set(r.species, r);
+            });
+            (s.clips || []).forEach(r => {
+                if (!bestClip.has(r.species)) bestClip.set(r.species, r);
+            });
+        });
+        classroomOwn.photos = [...bestShot.values()].slice(0, 24)
             .map(r => ({ id: r.id, url: r.image_url, species: r.species }));
+        classroomOwn.clips = [...bestClip.values()].slice(0, 24)
+            .map(r => ({ id: r.id, url: r.video_url, poster: r.image_url, species: r.species }));
     }
     renderClassroomOwnPhotos();
+}
+
+function classroomOwnMediaTab(which) {
+    classroomOwn.mediaTab = which;
+    renderClassroomOwnPhotos();
+}
+
+/**
+ * The benchmarks a teacher may tag their question with.
+ *
+ * Only this class's grade band, for the same reason the picker in the
+ * classroom form filters: offering a 6-8 code to a K-2 class produces a
+ * claim that is wrong on its face, and the coverage report filters by
+ * band anyway so it would simply vanish.
+ */
+function renderClassroomOwnStandards() {
+    const box = document.getElementById('cc-own-standards');
+    if (!box) return;
+    if (typeof CLASSROOM_STANDARDS === 'undefined') { box.innerHTML = ''; return; }
+
+    const room = classroomList.find(r => r.id === classroomOwn.roomId);
+    const band = room ? room.grade_band : null;
+    const picked = classroomOwn.standards || [];
+
+    const codes = Object.keys(CLASSROOM_STANDARDS)
+        .filter(c => !band || CLASSROOM_STANDARDS[c].bands.includes(band));
+
+    const bySubject = new Map();
+    codes.forEach(c => {
+        const s = CLASSROOM_STANDARDS[c].subject;
+        if (!bySubject.has(s)) bySubject.set(s, []);
+        bySubject.get(s).push(c);
+    });
+
+    box.innerHTML = `
+        ${picked.length ? `<div class="cc-stds">${picked.map(c => `
+            <button type="button" class="cc-std cc-std-drop"
+                    onclick="classroomOwnDropStandard('${escJs(c)}')"
+                    title="${esc((CLASSROOM_STANDARDS[c] || {}).text || c)}">${esc(c)} ✕</button>`).join('')}</div>`
+          : '<p class="classroom-muted">No standards tagged yet.</p>'}
+        <select id="cc-own-std-add" onchange="classroomOwnAddStandard(this.value)">
+            <option value="">＋ Add a benchmark…</option>
+            ${[...bySubject.entries()].map(([subj, cs]) => `
+                <optgroup label="${esc(subj)}">
+                    ${cs.filter(c => !picked.includes(c)).map(c => `
+                        <option value="${esc(c)}">${esc(c)} — ${
+                            esc(CLASSROOM_STANDARDS[c].text.slice(0, 70))}${
+                            CLASSROOM_STANDARDS[c].text.length > 70 ? '…' : ''}</option>`).join('')}
+                </optgroup>`).join('')}
+        </select>`;
+}
+
+function classroomOwnAddStandard(code) {
+    if (!code) return;
+    classroomOwn.standards = classroomOwn.standards || [];
+    // Eight is the table's own limit; stopping here gives a reason rather
+    // than an error from the server after the save is attempted.
+    if (classroomOwn.standards.length >= 8) {
+        const s = document.getElementById('cc-own-status');
+        if (s) { s.style.color = '#e74c3c'; s.textContent = 'Eight benchmarks is the limit.'; }
+        return;
+    }
+    if (!classroomOwn.standards.includes(code)) classroomOwn.standards.push(code);
+    renderClassroomOwnStandards();
+}
+
+function classroomOwnDropStandard(code) {
+    classroomOwn.standards = (classroomOwn.standards || []).filter(c => c !== code);
+    renderClassroomOwnStandards();
+}
+
+function classroomOwnChartChanged() {
+    const kind = document.getElementById('cc-own-chart-kind').value;
+    const src  = document.getElementById('cc-own-chart-source').value;
+    classroomOwn.chart = kind ? { kind, source: src || 'days' } : null;
 }
 
 function renderClassroomOwnPhotos() {
     const box = document.getElementById('cc-own-photos');
     if (!box) return;
-    const pick = classroomOwn.photo;
-    const list = (classroomOwn.photos || []).slice();
-    // A question saved with an older photo keeps it on offer, even though it
+
+    const clips = classroomOwn.mediaTab === 'clip';
+    const pick  = clips ? classroomOwn.clip : classroomOwn.photo;
+    const list  = (clips ? classroomOwn.clips : classroomOwn.photos || []).slice();
+
+    // A question saved with older media keeps it on offer, even though it
     // has dropped out of the fortnight the picker shows.
     if (pick && !list.some(p => p.id === pick.id)) {
-        list.unshift({ id: pick.id, url: pick.url, species: 'Current photo' });
+        list.unshift({ id: pick.id, url: pick.url, species: clips ? 'Current clip' : 'Current photo' });
     }
 
+    ['photo', 'clip'].forEach(k => {
+        const b = document.getElementById('cc-own-tab-' + k);
+        if (b) b.classList.toggle('on', classroomOwn.mediaTab === k);
+    });
+
+    const none = clips ? 'No clip' : 'No photo';
     box.innerHTML = `
         <button type="button" class="cc-own-photo none${pick ? '' : ' on'}"
-                onclick="pickClassroomOwnPhoto(null)">No photo</button>
+                onclick="pickClassroomOwnMedia(null)">${none}</button>
         ${list.map(p => `
             <button type="button" class="cc-own-photo${pick && pick.id === p.id ? ' on' : ''}"
-                    onclick="pickClassroomOwnPhoto('${escJs(p.id)}')" title="${esc(p.species || '')}">
-                <img src="${esc(p.url || '')}" alt="${esc(p.species || '')}">
+                    onclick="pickClassroomOwnMedia('${escJs(p.id)}')" title="${esc(p.species || '')}">
+                ${clips
+                    ? `<video src="${esc(p.url || '')}" muted preload="metadata"
+                             ${p.poster ? `poster="${esc(p.poster)}"` : ''}></video>
+                       <span class="cc-own-play" aria-hidden="true">▶</span>`
+                    : `<img src="${esc(p.url || '')}" alt="${esc(p.species || '')}">`}
             </button>`).join('')}
-        ${list.length ? '' : '<span class="classroom-muted">No photos from your feeders in the last two weeks.</span>'}`;
+        ${list.length ? '' : `<span class="classroom-muted">No ${
+            clips ? 'clips' : 'photos'} from this community's feeders in the last two weeks.</span>`}`;
 }
 
-function pickClassroomOwnPhoto(id) {
-    if (!id) { classroomOwn.photo = null; renderClassroomOwnPhotos(); return; }
-    const all = (classroomOwn.photos || []).concat(classroomOwn.photo ? [classroomOwn.photo] : []);
+/**
+ * Pick, or clear, whichever kind of media the open tab is showing.
+ *
+ * A photo and a clip are kept SEPARATELY rather than one "media" slot,
+ * because the slide shows a clip in preference to a photo and a teacher
+ * who sets both should get the clip without losing the photo they chose
+ * for the days the clip is swept by media retention.
+ */
+function pickClassroomOwnMedia(id) {
+    const clips = classroomOwn.mediaTab === 'clip';
+    const key   = clips ? 'clip' : 'photo';
+    if (!id) { classroomOwn[key] = null; renderClassroomOwnPhotos(); return; }
+
+    const pool = (clips ? classroomOwn.clips : classroomOwn.photos) || [];
+    const all  = pool.concat(classroomOwn[key] ? [classroomOwn[key]] : []);
     const p = all.find(x => x.id === id);
-    classroomOwn.photo = p ? { id: p.id, url: p.url } : null;
+    classroomOwn[key] = p ? { id: p.id, url: p.url } : null;
     renderClassroomOwnPhotos();
 }
+
+// Kept under its old name: the review list still calls it.
+function pickClassroomOwnPhoto(id) { pickClassroomOwnMedia(id); }
 
 async function saveClassroomOwnQuestion() {
     const status = document.getElementById('cc-own-status');
@@ -9632,7 +9934,8 @@ async function saveClassroomOwnQuestion() {
     if (choices.length < 2) { say('A question needs at least two answers.', true); return; }
 
     say('Saving…');
-    const { error } = await sbRpc('classroom_teacher_question_save', {
+
+    const base = {
         p_classroom_id:  classroomOwn.roomId,
         p_id:            classroomOwn.editing,
         p_prompt:        prompt,
@@ -9640,9 +9943,135 @@ async function saveClassroomOwnQuestion() {
         p_correct_index: correct,
         p_explain:       document.getElementById('cc-own-explain').value.trim() || null,
         p_detection_id:  classroomOwn.photo ? classroomOwn.photo.id : null,
-    }, true);
+    };
+    const catEl    = document.getElementById('cc-own-category');
+    const sharedEl = document.getElementById('cc-own-shared');
+    const extra = {
+        p_clip_detection_id: classroomOwn.clip ? classroomOwn.clip.id : null,
+        p_chart_spec:        classroomOwn.chart || null,
+        p_category:          (catEl && catEl.value) || null,
+        p_standards:         classroomOwn.standards || [],
+        p_shared:            !!(sharedEl && sharedEl.checked),
+    };
+
+    let { error } = await sbRpc('classroom_teacher_question_save',
+                                { ...base, ...extra }, true);
+
+    // ⚠ THE MIGRATION MAY NOT BE APPLIED YET. The site deploys the moment
+    // it is pushed; the SQL is pasted into the Supabase editor by hand,
+    // and the gap between the two is however long that takes. A teacher
+    // who loses a question they just wrote because of that gap is the
+    // worst outcome of shipping the feature at all, and it has happened
+    // before in this project — see the same fallback in sendClassroomFlag.
+    //
+    // PGRST202 is PostgREST failing to resolve the call because the new
+    // arguments are not on the function. Retry with the shape that has
+    // existed all along: the question saves, and only the new extras are
+    // lost. Said out loud rather than silently, so the teacher knows the
+    // chart they picked did not stick.
+    const missingArgs = error && (error.code === 'PGRST202'
+        || /p_clip_detection_id|p_chart_spec|p_shared|schema cache|does not exist/i
+             .test(error.message || ''));
+    if (missingArgs) {
+        const retry = await sbRpc('classroom_teacher_question_save', base, true);
+        if (!retry.error) {
+            showToast('Saved — but charts, clips, subjects and sharing need the '
+                    + 'database update first.');
+            showClassroomOwnQuestions(classroomOwn.roomId);
+            return;
+        }
+        error = retry.error;
+    }
+
     if (error) { say(error.message || 'Could not save that.', true); return; }
     showToast(classroomOwn.editing ? 'Question saved' : 'Saved — it comes up in the next lesson');
+    showClassroomOwnQuestions(classroomOwn.roomId);
+}
+
+/**
+ * Questions other classes in this community have offered.
+ *
+ * Nothing here is in this class's lesson yet — taking one is a decision
+ * its teacher makes, which is the whole point of sharing being opt-in at
+ * both ends. See the header of setup-classroom-teacher-questions-2.sql.
+ */
+async function showClassroomSharedQuestions() {
+    const box = document.getElementById('classroom-review');
+    const room = classroomList.find(r => r.id === classroomOwn.roomId);
+    if (!box || !room) return;
+
+    box.innerHTML = '<div class="classroom-muted">Looking for questions other classes have shared…</div>';
+
+    const { data, error } = await sbRpc('classroom_shared_questions_list',
+        { p_classroom_id: room.id }, true);
+
+    if (error) {
+        // Before the migration this function does not exist at all, which
+        // is a missing feature rather than a fault — say so plainly instead
+        // of showing a teacher a database error.
+        const notYet = error.code === 'PGRST202'
+            || /does not exist|schema cache/i.test(error.message || '');
+        box.innerHTML = notYet
+            ? `<h4 class="classroom-h">From other classes</h4>
+               <p class="classroom-muted">Sharing needs the database update first.</p>
+               <button class="classroom-btn" onclick="renderClassroomOwnList()">Back</button>`
+            : `<div class="classroom-error">${esc(error.message || 'Could not load.')}</div>
+               <button class="classroom-btn" onclick="renderClassroomOwnList()">Back</button>`;
+        return;
+    }
+
+    const items = Array.isArray(data) ? data : [];
+    if (typeof signPrivateMedia === 'function') {
+        try { await signPrivateMedia(items); } catch { /* thumbnails may not show */ }
+    }
+
+    box.innerHTML = `
+        <h4 class="classroom-h">Questions other classes have shared</h4>
+        <p class="classroom-muted">
+            Written by teachers of other ${esc(GRADE_BAND_LABELS[room.grade_band] || room.grade_band)}
+            classes in this community. Take one and it joins your lesson pool;
+            you can stop using it at any time, and only the teacher who wrote
+            it can change it.
+        </p>
+        ${items.length ? items.map(x => `
+            <div class="classroom-review-q cc-own-item">
+                ${x.image_url ? `<img class="cc-own-thumb" src="${esc(x.image_url)}" alt="">` : ''}
+                <div class="cc-own-body">
+                    <div class="classroom-review-head">
+                        <span class="classroom-pill">${esc(x.from_classroom || 'another class')}</span>
+                        ${x.category ? `<span class="classroom-pill">${
+                            esc(CLASSROOM_CATEGORY_LABELS[x.category] || x.category)}</span>` : ''}
+                    </div>
+                    <p class="classroom-review-prompt">${esc(x.prompt)}</p>
+                    ${(x.standards && x.standards.length) ? `<div class="cc-stds">${
+                        x.standards.map(c => `<span class="cc-std">${esc(c)}</span>`).join('')}</div>` : ''}
+                    <ol class="classroom-review-choices">${
+                        (x.choices || []).map((c, i) => `<li class="${
+                            i === x.correct_index ? 'right' : ''}">${esc(c)}${
+                            i === x.correct_index ? ' ✓' : ''}</li>`).join('')}</ol>
+                    <div class="classroom-review-actions">
+                        <button class="classroom-btn-primary"
+                                onclick="classroomAdoptShared('${escJs(x.id)}')">＋ Use this one</button>
+                    </div>
+                </div>
+            </div>`).join('')
+          : '<p class="classroom-muted">Nothing shared yet by other classes in this band.</p>'}
+        <button class="classroom-btn" onclick="renderClassroomOwnList()">Back</button>`;
+}
+
+async function classroomAdoptShared(id) {
+    const { error } = await sbRpc('classroom_adopt_question',
+        { p_classroom_id: classroomOwn.roomId, p_question_id: id, p_adopt: true }, true);
+    if (error) { showToast(error.message || 'Could not take that one.'); return; }
+    showToast('Added — it joins the pool for your next lesson');
+    showClassroomSharedQuestions();
+}
+
+async function classroomDropShared(id) {
+    const { error } = await sbRpc('classroom_adopt_question',
+        { p_classroom_id: classroomOwn.roomId, p_question_id: id, p_adopt: false }, true);
+    if (error) { showToast(error.message || 'Could not remove that one.'); return; }
+    showToast('Removed from your class');
     showClassroomOwnQuestions(classroomOwn.roomId);
 }
 
@@ -9780,6 +10209,29 @@ async function reviewClassroomQuestions(roomId) {
 // classroom module has to keep working if a later script 404s, so every
 // one of these returns empty rather than throwing.
 
+/**
+ * Chips for an explicit list of codes, band-filtered.
+ *
+ * Split out of cmStandardChipsHtml so a teacher's hand-tagged question
+ * renders through exactly the same path as a template's — one chip
+ * style, one tooltip, one link, whoever wrote the question.
+ */
+function cmStandardChipsList(codes, band) {
+    if (typeof CLASSROOM_STANDARDS === 'undefined') return '';
+    const keep = (codes || []).filter(c => {
+        const s = CLASSROOM_STANDARDS[c];
+        return !band || !s || s.bands.includes(band);
+    });
+    if (!keep.length) return '';
+
+    return `<div class="cc-stds">${keep.map(c => {
+        const s = CLASSROOM_STANDARDS[c] || null;
+        return `<a class="cc-std" target="_blank" rel="noopener"
+                   href="${esc(classroomStandardUrl(c))}"
+                   title="${esc(s ? s.text : c)}">${esc(c)}</a>`;
+    }).join('')}</div>`;
+}
+
 function cmStandardChipsHtml(recordedId, band) {
     if (typeof CLASSROOM_TEMPLATE_STANDARDS === 'undefined') return '';
     // Seven templates file their questions under a per-instance id. See
@@ -9825,6 +10277,7 @@ function cmStandardsSummaryHtml(questions, label) {
     // aligned. Counting it as untagged here would have contradicted the
     // list of benchmarks printed immediately above it.
     const untagged = qs.filter(q => {
+        if (q && Array.isArray(q.standards) && q.standards.length) return false;
         const raw = q && (q.template_id || q.templateId);
         const id  = typeof classroomTemplateIdOf === 'function'
             ? classroomTemplateIdOf(raw) : raw;
@@ -9886,7 +10339,9 @@ function classroomReviewItem(q, i) {
                 ${q.from_partner ? '<span class="classroom-pill partner">partner data</span>' : ''}
                 ${q.scope === 'community' ? '<span class="classroom-pill">pooled data</span>' : ''}
             </div>
-            ${cmStandardChipsHtml(q.template_id, q.grade_band)}
+            ${(q.standards && q.standards.length)
+                ? cmStandardChipsList(q.standards, q.grade_band)
+                : cmStandardChipsHtml(q.template_id, q.grade_band)}
             ${slide ? `<div class="classroom-review-slide">${slide}</div>` : ''}
             ${classroomIntroHtml(q)}
             <p class="classroom-review-prompt">${esc(q.prompt)}</p>
