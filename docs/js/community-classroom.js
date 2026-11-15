@@ -3917,18 +3917,26 @@ const CLASSROOM_TEMPLATES = [
         if (s.days.length < 3) return null;
 
         const sorted = s.days.slice().sort((x, y) => y.n - x.n);
-        const a = sorted[0];
-        if (!a) return null;
 
-        // From the quietest day upward: the first partner whose difference is
-        // small enough to count is also the largest countable difference,
-        // which is the easiest to see on the chart.
-        let b = null;
-        for (let i = sorted.length - 1; i > 0; i--) {
-            const d = a.n - sorted[i].n;
-            if (d >= 2 && d <= 10) { b = sorted[i]; break; }
+        // ⚠ ANY PAIR, NOT JUST PAIRS WITH THE BUSIEST DAY. This used to
+        // pin the first day to sorted[0] and hunt for a partner within
+        // ten of it — and on a real week running 0, 15, 19, 30, 36, 53
+        // nothing is within ten of 53, so the question never built. The
+        // prompt names both days anyway, so there is no reason the first
+        // one has to be the busiest.
+        //
+        // Busiest pair first, then the largest countable gap inside it:
+        // a big difference between two tall bars is easier to see across
+        // a room than a small one between two short ones.
+        let a = null, b = null;
+        outer:
+        for (let i = 0; i < sorted.length - 1; i++) {
+            for (let j = sorted.length - 1; j > i; j--) {
+                const d = sorted[i].n - sorted[j].n;
+                if (d >= 2 && d <= 10) { a = sorted[i]; b = sorted[j]; break outer; }
+            }
         }
-        if (!b) return null;
+        if (!a || !b) return null;
 
         const diff = a.n - b.n;
 
@@ -4073,29 +4081,49 @@ const CLASSROOM_TEMPLATES = [
         const top = s.species[0];
         const share = top.n / s.total;
 
+        // Two thirds and three quarters were missing, and a real week sat
+        // at 63% — nearest band half, 13 points away, so the question
+        // refused rather than saying "about two thirds". Both are
+        // ordinary 3-5 fractions and their absence was the only reason
+        // this never built.
         const bands = [
-            { label: 'about half',           v: 0.5  },
-            { label: 'about a quarter',      v: 0.25 },
             { label: 'about a tenth',        v: 0.1  },
+            { label: 'about a quarter',      v: 0.25 },
+            { label: 'about a third',        v: 0.33 },
+            { label: 'about half',           v: 0.5  },
+            { label: 'about two thirds',     v: 0.67 },
+            { label: 'about three quarters', v: 0.75 },
             { label: 'nearly all of them',   v: 0.9  },
         ];
-        const best = bands.slice().sort((a, b) =>
-            Math.abs(a.v - share) - Math.abs(b.v - share))[0];
-        // Only ask when one band is clearly the right one. "0.33" sits
-        // between a quarter and a half, and a class that argues about which
-        // is closer is arguing about the question, not the birds.
+        const near = bands.slice().sort((a, b) =>
+            Math.abs(a.v - share) - Math.abs(b.v - share));
+        const best = near[0];
+        // Only ask when ONE band is clearly the right one, which now takes
+        // two guards rather than one. The band has to be close — and, since
+        // a quarter and a third are only eight points apart, the runner-up
+        // has to be clearly further away as well. A share of 29% is near
+        // enough to a third to pass the first guard and just as near to a
+        // quarter, and a class arguing over which is closer is arguing
+        // about the question rather than about the birds.
         if (Math.abs(best.v - share) > 0.09) return null;
+        if (Math.abs(near[1].v - share) - Math.abs(best.v - share) < 0.06) return null;
 
-        const opts = cmShuffle(bands.map(b => b.label), rng);
+        // Three distractors, nearest first: the near misses are where the
+        // thinking is. Seven options on a projector is a reading test.
+        const built = cmChoices(best.label, near.slice(1, 4).map(b => b.label), rng);
+        if (!built) return null;
+
         return {
             prompt: `About what fraction of this week's visits were ${top.species}?`,
-            choices: opts.map(l => ({ label: l })),
-            correct_index: opts.indexOf(best.label),
+            ...built,
             // The named species is marked: the comparison is that bar against
             // the rest, and the answer is a ratio, not a bar.
             chart: cmChart('Visits by species this week',
                            cmSpeciesSeries(s), { band, highlight: top.species, showValues: true }),
-            explain: `${top.n} of ${s.total} visits — that's ${Math.round(share * 100)}%.`,
+            explain: `${top.n} of ${s.total} visits — that's ${Math.round(share * 100)}%, `
+                   + `so ${best.label}. Counting every bird is the slow way to see that; `
+                   + `looking at whether one bar is taller than all the others put together `
+                   + `is the fast way.`,
         };
     },
 },
