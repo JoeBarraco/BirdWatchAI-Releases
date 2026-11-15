@@ -9139,6 +9139,13 @@ ${jumbled.split('').join(' ')}`,
 
         const coldest = days.reduce((a, b) => (b.deg < a.deg ? b : a));
         const busiest = days.reduce((a, b) => (b.n > a.n ? b : a));
+        // ⚠ FOR THE COLOUR SCALE ONLY, and it must be the WARMEST day
+        // rather than the busiest. Scaling the heat ramp by the busiest
+        // day's temperature is comparing a count against a temperature,
+        // and when the busiest day IS the coldest the denominator
+        // collapses to zero and every bar comes out the same colour.
+        const warmest = days.reduce((a, b) => (b.deg > a.deg ? b : a));
+        const span = Math.max(1, warmest.deg - coldest.deg);
         const same = coldest.day === busiest.day;
 
         const built = cmChoices(same ? 'Yes — they were the same day'
@@ -9155,8 +9162,7 @@ ${jumbled.split('').join(' ')}`,
             chart: cmChart('Temperature each day',
                 days.map(d => ({ label: cmDayAxisLabel(d.day), value: d.deg, key: d.day,
                                  sub: d.n + ' visits',
-                                 color: cmHeatColor((d.deg - coldest.deg) /
-                                        Math.max(1, busiest.deg - coldest.deg)) })),
+                                 color: cmHeatColor((d.deg - coldest.deg) / span) })),
                 { band, showValues: true }),
             explain: 'The coldest day was ' + cmDayAxisLabel(coldest.day) + ' at '
                    + coldest.deg + '° with ' + coldest.n + ' visits; the busiest was '
