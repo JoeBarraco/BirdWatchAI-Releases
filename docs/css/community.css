@@ -3711,6 +3711,28 @@
    been taught something false. */
 .classroom-pill.partner { background: #c97a00; color: #fff; }
 
+/* Whose lesson this is, on the projector bar. Quiet on purpose: it sits
+   above a lesson for the whole period and the room should be looking at
+   the question. The school is the louder of the two, because that is the
+   part a class and a visitor in the room actually care about. */
+.classroom-stage-brand {
+    display: inline-flex; align-items: baseline; gap: 0.5rem;
+    margin-right: 0.7rem; padding-right: 0.7rem;
+    border-right: 1px solid var(--border);
+}
+.classroom-stage-mark {
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.02em;
+    color: var(--color-gray-500); white-space: nowrap;
+}
+.classroom-stage-school {
+    font-size: 0.82rem; font-weight: 700;
+    color: var(--color-gray-900); white-space: nowrap;
+}
+/* On a narrow screen the room name and the question counter matter more. */
+@media (max-width: 720px) {
+    .classroom-stage-mark { display: none; }
+}
+
 .classroom-dot {
     display: inline-block; width: 7px; height: 7px;
     border-radius: 50%; margin-right: 5px; vertical-align: middle;
@@ -5509,6 +5531,20 @@
     fill: none;
     stroke: #2eaa4f; stroke-width: 5;
 }
+
+/* ── Latitude and longitude ────────────────────────────────────────
+   Same two problems as the coordinate grid, so the same answers: the
+   lines have to be visible from the back of a room, and the dot has to
+   be a dot rather than a default-black invisible one. Wider than it is
+   tall, because the world is. */
+.cc-geo .cc-grid      { stroke-width: 2; }
+.cc-geo .cc-axis-line { stroke-width: 5; stroke: var(--color-gray-700); }
+.cc-geo .cc-axis      { font-size: 22px; opacity: 0.9; }
+.cc-geo-dot {
+    fill: #e74c3c;
+    stroke: var(--bg-card); stroke-width: 3;
+}
+.classroom-chart.cc-geo svg { max-height: 40vh; }
 
 
 .cc-axis-title {

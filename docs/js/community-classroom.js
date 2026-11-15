@@ -1092,6 +1092,25 @@ function cmShortName(species) {
  * length, then nearest, so it degrades to the old behavior rather than
  * returning nothing when the feeder has only a handful of species.
  */
+/**
+ * Say WHICH word the puzzle has encoded, where that is not the whole name.
+ *
+ * ⚠ Every puzzle below encodes cmShortName — the LAST WORD of the species
+ * name — and then asks for the bird, whose answer is the full name. For a
+ * one-word bird those are the same thing. For "White-tipped Dove" the puzzle
+ * spells DOVE, and these run guessFirst: the class has to say the answer with
+ * no options on screen, so they are being asked to get from four letters to a
+ * name those letters do not contain. Flagged from a lesson, exactly:
+ * "Not enough information to solve this question."
+ *
+ * The note is omitted where the short name IS the name, because telling a
+ * class that WREN is the last word of "Wren" is just noise.
+ */
+function cmShortNameNote(species) {
+    return String(species || '').trim().split(/[\s-]+/).length > 1
+        ? ' (just the last word)' : '';
+}
+
 function cmLengthMatchedDistractors(pool, answerLen, rng, count) {
     const exact = cmShuffle(pool.filter(x => x.short.length === answerLen), rng);
     const near  = cmShuffle(pool.filter(x => x.short.length !== answerLen), rng)
@@ -2575,6 +2594,7 @@ function classroomEvidenceHtml(q, revealed) {
     // they are meant to be reading a table.
     if (q.build) return classroomBuildChartHtml(q, revealed);
     if (q.grid)  return classroomGridHtml(q, revealed);
+    if (q.geo)   return classroomGeoHtml(q.geo, revealed);
     if (q.video && q.video.url) return classroomClipHtml(q, revealed);
     // ⚠ A CHART BEATS A PHOTOGRAPH. This chain returns ONE thing, and a
     // photo used to outrank the chart below it — so a question carrying
@@ -3126,6 +3146,83 @@ function classroomDotsHtml(chart, revealed) {
  * on it is a diagram they read once and forget. The names arrive with the
  * reveal, where they confirm rather than replace the looking.
  */
+/**
+ * The two lines the whole of latitude and longitude hangs off.
+ *
+ * Flagged from a lesson: "This is too difficult without visual
+ * representation of longitudinal and latitudinal lines on a map." Quite
+ * right - geo-latlong was asking a class to say where 28.1, -82.5 is with
+ * nothing on screen but the numbers, so the only route to the answer was
+ * already knowing which of the pair is which.
+ *
+ * ⚠ THE POINT IS NOT PLOTTED UNTIL THE REVEAL. Drawing the feeder on the
+ * grid turns "where is that?" into "look where the dot is", which is a
+ * different and much smaller question. Before the reveal the class gets the
+ * Equator, the Prime Meridian and the four directions - everything needed
+ * to reason with, nothing that answers it for them.
+ */
+/**
+ * Whose lesson this is, on the projector bar.
+ *
+ * Asked for: "when in clasroom mode the title should still show the
+ * birdwatch header at the top but maybe also the school and school logo."
+ * The first two are here.
+ *
+ * ⚠ THERE IS NO SCHOOL LOGO TO SHOW. logo_url is a column on FEEDERS
+ * (setup-feeder-logos.sql); communities have no such field, so a school
+ * crest needs a column, an upload and a moderation story rather than a line
+ * of markup here. The name goes up now and the crest can follow it.
+ *
+ * Deliberately quiet: this bar sits above a lesson for the whole period and
+ * the room is meant to be looking at the question, not at us.
+ */
+function cmStageBrandHtml() {
+    const c = (typeof myCommunities !== 'undefined' && Array.isArray(myCommunities))
+        ? myCommunities.find(x => x && x.id === classroomCommunityId) : null;
+    const school = c && (c.name || c.slug);
+    return `<span class="classroom-stage-brand">
+                <span class="classroom-stage-mark">🐦 BirdWatchAI</span>
+                ${school ? `<span class="classroom-stage-school">${esc(school)}</span>` : ''}
+            </span>`;
+}
+
+function classroomGeoHtml(geo, revealed) {
+    if (!geo || !isFinite(+geo.lat) || !isFinite(+geo.lng)) return '';
+
+    const W = 640, H = 340, pad = 44;
+    const X = lng => pad + ((+lng + 180) / 360) * (W - pad * 2);
+    const Y = lat => pad + ((90 - +lat) / 180) * (H - pad * 2);
+
+    let lines = '';
+    for (let lng = -180; lng <= 180; lng += 30) {
+        lines += `<line x1="${X(lng)}" y1="${pad}" x2="${X(lng)}" y2="${H - pad}"
+                        class="${lng === 0 ? 'cc-axis-line' : 'cc-grid'}"></line>`;
+    }
+    for (let lat = -90; lat <= 90; lat += 30) {
+        lines += `<line x1="${pad}" y1="${Y(lat)}" x2="${W - pad}" y2="${Y(lat)}"
+                        class="${lat === 0 ? 'cc-axis-line' : 'cc-grid'}"></line>`;
+    }
+
+    const dot = revealed
+        ? `<circle cx="${X(geo.lng)}" cy="${Y(geo.lat)}" r="11" class="cc-geo-dot"></circle>`
+        : '';
+
+    return `
+      <figure class="classroom-chart cc-geo">
+        <svg viewBox="0 0 ${W} ${H}" role="img"
+             aria-label="The Equator and the Prime Meridian">
+          ${lines}${dot}
+          <text x="${W - pad}" y="${Y(0) - 10}" class="cc-axis end">Equator</text>
+          <text x="${X(0) + 8}" y="${pad + 20}" class="cc-axis">Prime Meridian</text>
+          <text x="${X(0) - 10}" y="${pad - 14}" class="cc-axis end">north ↑</text>
+          <text x="${X(0) - 10}" y="${H - pad + 28}" class="cc-axis end">south ↓</text>
+          <text x="${pad}" y="${H - pad + 28}" class="cc-axis">← west</text>
+          <text x="${W - pad}" y="${H - pad + 28}" class="cc-axis end">east →</text>
+        </svg>
+        <figcaption>${esc(geo.caption || '')}</figcaption>
+      </figure>`;
+}
+
 function classroomMapHtml(spec, revealed) {
     const M = (typeof US_MAP !== 'undefined') ? US_MAP : null;
     if (!M || !spec) return '';
@@ -5446,7 +5543,7 @@ const CLASSROOM_TEMPLATES = [
         return {
             // "Which bird is this?" in front of a row of letters reads as an
             // identification question with the photo missing. Say the task.
-            prompt: `Unscramble the bird’s name:
+            prompt: `Unscramble the bird’s name${cmShortNameNote(pick.species)}:
 ${jumbled.split('').join(' ')}`,
             ...built,
             // The bird, but only once it has been unscrambled. Flagged: "would
@@ -5495,7 +5592,7 @@ ${jumbled.split('').join(' ')}`,
                                        pick.short.length, rng, 3).map(x => x.species), rng);
         if (!built) return null;
         return {
-            prompt: `Which bird fits? ${masked}  (${pick.short.length} letters)`,
+            prompt: `Which bird fits${cmShortNameNote(pick.species)}? ${masked}  (${pick.short.length} letters)`,
             ...built,
             explain: `${pick.short} — the ${pick.species}.`,
             fact: speciesFact(pick.species, band),
@@ -5521,15 +5618,32 @@ ${jumbled.split('').join(' ')}`,
         const pad = n => Array.from({ length: n },
             () => PUZZLE_ALPHABET[Math.floor(rng() * 26)]).join('');
 
-        // Four to six letters of noise each side. Enough that the word does
-        // not simply sit there, not so much that finding it is a chore.
+        // Four to six letters of noise each side at 3-5. Enough that the word
+        // does not simply sit there, not so much that finding it is a chore.
+        //
+        // ⚠ HARDER AT 6-8, because it was not a puzzle there. Flagged from a
+        // lesson in so many words: "too easy for this grade". A word sitting in
+        // plain reading order with four letters either side is a find-the-word
+        // for a nine-year-old; a thirteen-year-old reads it without stopping.
+        // So the older band gets twice the noise and the word may run
+        // backwards - which the prompt SAYS, because a reversed word nobody was
+        // told to look for is a trick rather than a puzzle.
+        const hard  = band === '6-8';
+        const noise = () => hard ? 8 + Math.floor(rng() * 5) : 4 + Math.floor(rng() * 3);
+        const back  = hard && rng() < 0.5;
+        const word  = back ? pick.short.split('').reverse().join('') : pick.short;
+
         let line = null;
         for (let attempt = 0; attempt < 20; attempt++) {
-            const candidate = pad(4 + Math.floor(rng() * 3)) + pick.short
-                            + pad(4 + Math.floor(rng() * 3));
+            const candidate = pad(noise()) + word + pad(noise());
             // The noise must not accidentally spell one of the OTHER options,
-            // which would give the question two right answers.
-            if (!others.some(o => candidate.includes(o.short))) { line = candidate; break; }
+            // which would give the question two right answers. Both directions
+            // now: once the class is told the word may be backwards, a
+            // reversed decoy in the noise is just as wrong an answer.
+            const rev = candidate.split('').reverse().join('');
+            if (!others.some(o => candidate.includes(o.short) || rev.includes(o.short))) {
+                line = candidate; break;
+            }
         }
         if (!line) return null;
 
@@ -5537,9 +5651,11 @@ ${jumbled.split('').join(' ')}`,
                                 cmShuffle(others, rng).slice(0, 3).map(x => x.species), rng);
         if (!built) return null;
         return {
-            prompt: `A bird's name is hidden in here. Which one?\n${line.split('').join(' ')}`,
+            prompt: `A bird's name is hidden in here${cmShortNameNote(pick.species)}`
+                  + `${hard ? ', forwards or backwards' : ''}. Which one?\n${line.split('').join(' ')}`,
             ...built,
-            explain: `${pick.short} is hidden in it — the ${pick.species}.`,
+            explain: `${word} is hidden in it`
+                   + `${back ? ' — written backwards' : ''} — the ${pick.species}.`,
             fact: speciesFact(pick.species, band),
         };
     },
@@ -5569,7 +5685,8 @@ ${jumbled.split('').join(' ')}`,
                                        pick.short.length, rng, 3).map(x => x.species), rng);
         if (!built) return null;
         return {
-            prompt: `If A=1 and Z=26, which bird is this? ${code}`,
+            prompt: `If A=1 and Z=26, which bird’s name is this${cmShortNameNote(pick.species)}? `
+                  + `${code}`,
             ...built,
             explain: `${code} spells ${pick.short} — the ${pick.species}.`,
         };
@@ -5602,7 +5719,8 @@ ${jumbled.split('').join(' ')}`,
         if (!built) return null;
         return {
             prompt: `Every letter has been moved ${shift} forward in the alphabet. `
-                  + `Move them back to find the bird: ${coded.split('').join(' ')}`,
+                  + `Move them back to find the bird’s name${cmShortNameNote(pick.species)}: `
+                  + `${coded.split('').join(' ')}`,
             ...built,
             explain: `${coded} shifted back ${shift} is ${pick.short} — the ${pick.species}.`,
         };
@@ -7924,7 +8042,7 @@ ${jumbled.split('').join(' ')}`,
                            { band, kind: 'hbars', plain: true }),
             explain: `${a.name} averaged ${aPer.toFixed(1)} visits a day and `
                    + `${b.name} averaged ${bPer.toFixed(1)}. Totals alone would not `
-                   + `settle it — a feeder switched on halfway through the fortnight `
+                   + `settle it — a feeder switched on halfway through the two weeks `
                    + `has fewer days to add up, which is why the comparison is per day.`,
         };
     },
@@ -8217,6 +8335,8 @@ ${jumbled.split('').join(' ')}`,
             prompt: `A feeder in this lesson sits at ${lat.toFixed(1)}, `
                   + `${lng.toFixed(1)}. Where is that?`,
             ...built,
+            geo: { lat, lng,
+                   caption: 'The Equator and the Prime Meridian divide the world in four' },
             explain: `Latitude comes first and measures north or south of the Equator; `
                    + `longitude comes second and measures east or west of the Prime `
                    + `Meridian. ${lat.toFixed(1)} is latitude, so ${Math.abs(lat).toFixed(1)}° `
@@ -9007,7 +9127,7 @@ ${jumbled.split('').join(' ')}`,
     build({ rng }) {
         const built = cmChoices(
             'The first name is the group it shares features with; the second is its own',
-            ['The first is the colour and the second is the size',
+            ['The first is the color and the second is the size',
              'The first is who found it and the second is where',
              'They are the same name in two languages'], rng);
         if (!built) return null;
@@ -9111,7 +9231,7 @@ ${jumbled.split('').join(' ')}`,
         const built = cmChoices('It changes where birds go and how many gather there',
             ['It has no effect at all',
              'It makes birds fly faster',
-             'It changes what colour the birds are'], rng);
+             'It changes what color the birds are'], rng);
         if (!built) return null;
 
         return {
@@ -9525,7 +9645,7 @@ ${jumbled.split('').join(' ')}`,
         if (!built) return null;
 
         return {
-            prompt: 'Split our fortnight into days colder than average and days warmer '
+            prompt: 'Split our two weeks into days colder than average and days warmer '
                   + 'than average. Which group got more visits per day?',
             ...built,
             chart: cmChart('Visits per day, split by temperature', [
@@ -9540,7 +9660,7 @@ ${jumbled.split('').join(' ')}`,
                    + 'temperatures dip below average — so our week '
                    + (colder ? 'agrees with that' : 'does NOT agree, which is worth '
                       + 'explaining rather than explaining away')
-                   + '. One fortnight at one feeder is not enough to settle it either way.',
+                   + '. Two weeks at one feeder is not enough to settle it either way.',
         };
     },
 },
@@ -9732,10 +9852,10 @@ ${jumbled.split('').join(' ')}`,
         if (!built) return null;
 
         return {
-            prompt: 'Look at the shape of our fortnight hour by hour. Which of these '
+            prompt: 'Look at the shape of our two weeks hour by hour. Which of these '
                   + 'describes it best?',
             ...built,
-            chart: cmChart('Visits by hour, whole fortnight',
+            chart: cmChart('Visits by hour, both weeks',
                 span.map(x => ({ label: fmtHourShort(x.h), value: x.n, key: String(x.h) })),
                 { band, ordered: true, kind: 'line', maxBars: CHART_MAX_HOURS }),
             explain: 'Our busiest hour was ' + fmtHourShort(peak.h) + ' with '
@@ -9748,8 +9868,8 @@ ${jumbled.split('').join(' ')}`,
                    + 'time, around half past eight and three o’clock, with the midday '
                    + 'dip shrinking on busier days — but an earlier study that expected '
                    + 'that shape did not find it, and a winter study of tagged birds '
-                   + 'found several species busiest in the afternoon instead. So our '
-                   + 'fortnight '
+                   + 'found several species busiest in the afternoon instead. So what '
+                   + 'we recorded '
                    + (twoPeaked ? 'supports the two-peak picture'
                                 : 'does not support the two-peak picture')
                    + '. Saying which is the whole job; "results support" and "results '
@@ -9840,11 +9960,11 @@ ${jumbled.split('').join(' ')}`,
         const low = String(name).toLowerCase();
         return {
             prompt: `Our camera watches for birds, but it photographs whatever turns up `
-                  + `— and this fortnight it caught a ${low}. Which group of animals `
+                  + `— and in the last two weeks it caught a ${low}. Which group of animals `
                   + `does a ${low} belong to?`,
             ...built,
             explain: `A ${low} is not a bird: ${GROUPS[group].toLowerCase()}. It turned `
-                   + `up ${n === 1 ? 'once' : n + ' times'} in our fortnight, and the counting `
+                   + `up ${n === 1 ? 'once' : n + ' times'} in our two weeks, and the counting `
                    + 'questions leave it out for exactly that reason — "how many bird '
                    + 'visits" has to mean birds. Sorting what the camera sees into groups '
                    + 'is the same job scientists do with every new animal they find, and '
@@ -9912,7 +10032,7 @@ ${jumbled.split('').join(' ')}`,
 
         return {
             prompt: 'Beside every bird it finds, our camera writes down how sure it '
-                  + `is. This fortnight it was ${Math.round(hi.c)}% sure about a `
+                  + `is. In the last two weeks it was ${Math.round(hi.c)}% sure about a `
                   + `${hi.sp}, and only ${Math.round(lo.c)}% sure about a `
                   + `${lo.sp}. Which identification is MORE LIKELY to be right?`,
             ...built,
@@ -9972,7 +10092,7 @@ ${jumbled.split('').join(' ')}`,
         const built = cmChoices(
             'How clear each photo happened to be — the angle, the light, how much '
             + 'of the bird showed',
-            ['The birds later in the fortnight were easier to recognise',
+            ['The birds later in the two weeks were easier to recognize',
              'The low-scoring ones were probably a different species',
              'The camera gets less sure as its battery runs down'], rng);
         if (!built) return null;
@@ -9987,8 +10107,8 @@ ${jumbled.split('').join(' ')}`,
             // Kept short on purpose. The first draft ran eleven lines on a
             // projector and pushed two of the four options off the bottom of
             // the screen, which no amount of good content survives.
-            prompt: `Our camera recorded ${pick.n} sightings of the ${pick.sp} this `
-                  + `fortnight — and it was ${Math.round(pick.hi)}% sure about one of `
+            prompt: `Our camera recorded ${pick.n} sightings of the ${pick.sp} in `
+                  + `two weeks — and it was ${Math.round(pick.hi)}% sure about one of `
                   + `them, ${Math.round(pick.lo)}% about another. Same species, same `
                   + 'feeder, same camera. What best explains the spread?',
             ...built,
@@ -10044,7 +10164,7 @@ ${jumbled.split('').join(' ')}`,
         if (!built) return null;
 
         return {
-            prompt: `Our camera logged ${conf.length} sightings this fortnight, and was `
+            prompt: `Our camera logged ${conf.length} sightings in the last two weeks, and was `
                   + `80% sure or better about only ${strict} of them. What would we `
                   + 'gain, and what would we lose, if we threw away everything below '
                   + '80%?',
@@ -10105,8 +10225,8 @@ ${jumbled.split('').join(' ')}`,
             if (!built) return null;
             return {
                 prompt: 'Our camera labels every sighting Common, Uncommon or Rare for '
-                      + `this area. Of the ${labelled.length} sightings it labelled this `
-                      + `fortnight, ${odd.length} ${many ? 'were' : 'was'} not Common`
+                      + `this area. Of the ${labelled.length} sightings it labeled in `
+                      + `two weeks, ${odd.length} ${many ? 'were' : 'was'} not Common`
                       + (names ? ` \u2014 ${names}` : '') + '. What does that actually '
                       + 'tell us?',
                 ...built,
@@ -10117,32 +10237,32 @@ ${jumbled.split('').join(' ')}`,
                        + 'county and flagged in the next, and a bird can be flagged '
                        + 'simply for turning up out of season. Those filters are built '
                        + 'from years of records by thousands of people. Our one camera, '
-                       + `at one feeder, over ${labelled.length} labelled sightings in a `
-                       + 'fortnight, is a very small piece of that. It is worth '
+                       + `at one feeder, over ${labelled.length} labeled sightings in `
+                       + 'two weeks, is a very small piece of that. It is worth '
                        + 'recording and it is not enough to conclude anything on its '
                        + 'own, which is what makes it evidence rather than proof.',
             };
         }
 
         const built = cmChoices(
-            'Only that nothing unusual came to OUR feeder, in OUR fortnight',
+            'Only that nothing unusual came to OUR feeder, in OUR two weeks',
             ['That there are no uncommon birds in our area',
-             'That our camera cannot recognise an unusual bird',
+             'That our camera cannot recognize an unusual bird',
              'That we have now seen every species that lives here'], rng);
         if (!built) return null;
         return {
             prompt: 'Our camera labels every sighting Common, Uncommon or Rare for this '
-                  + `area. All ${labelled.length} of the sightings it labelled this `
-                  + 'fortnight came back Common. What does that tell us?',
+                  + `area. All ${labelled.length} of the sightings it labeled in the `
+                  + 'last two weeks came back Common. What does that tell us?',
             ...built,
-            explain: 'Not much about the neighbourhood, and quite a lot about our '
+            explain: 'Not much about the neighborhood, and quite a lot about our '
                    + 'sample. One camera pointed at one feeder for two weeks sees the '
                    + 'birds that use that feeder, at that time of year \u2014 and the '
                    + 'commonest birds are common precisely because they turn up most. '
-                   + 'An unusual bird is unusual: a fortnight is nowhere near long '
+                   + 'An unusual bird is unusual: two weeks is nowhere near long '
                    + 'enough to say it is not around. This is why rarity filters are '
                    + 'built from years of records by thousands of people rather than '
-                   + 'from any one observer, however careful. Our fortnight is one '
+                   + 'from any one observer, however careful. What we recorded is one '
                    + 'honest contribution to that pile, not a verdict.',
         };
     },
@@ -10257,7 +10377,7 @@ ${jumbled.split('').join(' ')}`,
         if (!built) return null;
 
         return {
-            prompt: 'Three of these birds have been coming all fortnight. One only '
+            prompt: 'Three of these birds have been coming for the whole two weeks. One only '
                   + 'turned up in the last few days. Which is the newcomer?',
             ...built,
             image: cmShotFor(s14, answer),
@@ -11893,7 +12013,7 @@ function openClassroomOwnForm(id) {
                         onclick="classroomOwnMediaTab('clip')">Clips</button>
             </div>
             <div class="cc-own-photos" id="cc-own-photos">
-                <div class="classroom-muted">Loading this fortnight’s media…</div>
+                <div class="classroom-muted">Loading the last two weeks’ media…</div>
             </div>
         </details>
 
@@ -15455,6 +15575,7 @@ function renderClassroomStage() {
     stage.innerHTML = `
         <div class="classroom-stage-bar">
             <div>
+                ${cmStageBrandHtml()}
                 <strong>${esc(S.room.name)}</strong>
                 <span class="classroom-pill">${esc(band)}</span>
                 ${S.noData ? '<span class="classroom-pill warn">Feeder quiet — '
@@ -16095,6 +16216,7 @@ function renderClassroomLobby() {
     stage.innerHTML = `
         <div class="classroom-stage-bar">
             <div>
+                ${cmStageBrandHtml()}
                 <strong>${esc(S.room.name)}</strong>
                 <span class="classroom-pill">${esc(GRADE_BAND_LABELS[S.room.grade_band] || S.room.grade_band)}</span>
             </div>
