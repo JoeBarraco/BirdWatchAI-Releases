@@ -10050,7 +10050,7 @@ ${jumbled.split('').join(' ')}`,
                 + 'finding',
                 [`That ${subj} ${many ? 'are' : 'is'} rare everywhere in the world`,
                  'That the camera made a mistake',
-                 'That no one else has ever recorded one'], rng);
+                 `That no one else has ever recorded ${many ? 'them' : 'one'}`], rng);
             if (!built) return null;
             return {
                 prompt: 'Our camera labels every sighting Common, Uncommon or Rare for '
