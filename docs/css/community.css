@@ -5694,14 +5694,18 @@
     gap: 0.4rem;
 }
 
-/* A teacher's thumbs. Pushed to the far end of the review row so they read
-   as a quick reaction, apart from the two buttons that file a report. On
+/* A teacher's thumbs. In review they follow the two report buttons, with a
+   little more space before them than between those two, so they read as a
+   quick reaction rather than a third way to file a report. They used to be
+   pushed to the far end of the row, but on the full-screen panel that put
+   them two thousand pixels from everything else on the card, where a
+   teacher scanning the left edge did not find them. On
    the stage they sit beside Skip and stay small: the class can see them,
    and the room should be looking at the question, not the teacher's verdict
    on it. The pressed one has to be unmistakable, because pressing it again
    is how it is cleared. */
 .classroom-rate { display: inline-flex; gap: 0.3rem; }
-.classroom-review-actions .classroom-rate { margin-left: auto; }
+.classroom-review-actions .classroom-rate { margin-left: 0.6rem; }
 .classroom-rate-btn { padding: 4px 9px; line-height: 1; }
 .classroom-rate-btn.on {
     border-color: var(--color-primary);
