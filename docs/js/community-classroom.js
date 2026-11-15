@@ -8745,6 +8745,10 @@ function cmOwnLessonQuestions(room, o, band, seed, source) {
             // bird this file knows — the same rule the templates use.
             about_bird: SPECIES_LOOKS[right] ? right : null,
             own: true,
+            // Whose it is. Without this an adopted question wore a "your
+            // question" pill in the owning teacher's own review screen,
+            // which is exactly backwards.
+            owned: x.owned !== false,
         };
     }).filter(Boolean);
 
@@ -9663,6 +9667,10 @@ function openClassroomOwnForm(id) {
                 week — the shape is saved, the numbers never are. A chart saved in
                 October would otherwise still be showing October in March.
             </p>
+            <p class="classroom-muted">
+                A clip takes the slide if you pick one, so a question with both shows
+                the clip and not the chart.
+            </p>
             <div class="classroom-form-row">
                 <label class="classroom-field">
                     <span>Shape</span>
@@ -10334,7 +10342,9 @@ function classroomReviewItem(q, i) {
     return `
         <div class="classroom-review-q" data-q="${i}">
             <div class="classroom-review-head">
-                <span class="classroom-pill">${esc(q.own ? 'your question' : q.category)}</span>
+                <span class="classroom-pill">${esc(
+                    q.own && q.owned === false ? 'shared question'
+                  : q.own ? 'your question' : q.category)}</span>
                 <code class="classroom-review-tid">${esc(q.template_id)}</code>
                 ${q.from_partner ? '<span class="classroom-pill partner">partner data</span>' : ''}
                 ${q.scope === 'community' ? '<span class="classroom-pill">pooled data</span>' : ''}
