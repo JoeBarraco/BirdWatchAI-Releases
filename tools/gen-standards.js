@@ -11,8 +11,39 @@ for (const line of raw) {
   else if (cur && !seenAll.has(line.trim())) { seenAll.add(line.trim()); cur.codes.push(line.trim()); }
 }
 
-const ents = { '&amp;':'&','&lt;':'<','&gt;':'>','&quot;':'"','&#39;':"'",'&rsquo;':'\u2019','&lsquo;':'\u2018','&ldquo;':'\u201c','&rdquo;':'\u201d','&nbsp;':' ','&mdash;':'\u2014','&ndash;':'\u2013' };
-const dec = s => s.replace(/&[a-z#0-9]+;/gi, m => ents[m] !== undefined ? ents[m] : m);
+// CPALMS serves its benchmark text HTML-escaped, and not only the four
+// characters you would guess: the ratio standard carries &ne;, and the
+// quotation standards carry curly quotes. An entity that survives this is
+// printed raw on a slide \u2014 "b &ne; 0" was live.
+//
+// Named entities are a fixed list because only a handful appear; the
+// numeric forms are decoded properly, since those are open-ended.
+//
+// NOT EVERY ODDITY IS OURS. MA.6.AR.3.1 reads "appropriate notation: , a
+// to b, or a:b" with the a/b fraction missing. That gap is in CPALMS —
+// the fraction is markup that survives as text neither in the search
+// results nor on the benchmark's own detail page. Checked; leave it.
+// Our copy is verbatim, which is the promise, and a teacher following
+// the link finds the same sentence.
+const ents = {
+  '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&apos;': "'",
+  '&nbsp;': ' ', '&shy;': '',
+  '&rsquo;': '\u2019', '&lsquo;': '\u2018', '&ldquo;': '\u201c', '&rdquo;': '\u201d',
+  '&mdash;': '\u2014', '&ndash;': '\u2013', '&hellip;': '\u2026',
+  '&ne;': '\u2260', '&le;': '\u2264', '&ge;': '\u2265', '&plusmn;': '\u00b1',
+  '&times;': '\u00d7', '&divide;': '\u00f7', '&minus;': '\u2212',
+  '&deg;': '\u00b0', '&frac12;': '\u00bd', '&frac14;': '\u00bc', '&frac34;': '\u00be',
+  '&pi;': '\u03c0', '&radic;': '\u221a', '&infin;': '\u221e',
+  '&sup2;': '\u00b2', '&sup3;': '\u00b3', '&middot;': '\u00b7', '&bull;': '\u2022',
+};
+const dec = s => s.replace(/&(#x?[0-9a-f]+|[a-z][a-z0-9]*);/gi, (m, body) => {
+  if (body[0] === '#') {
+    const n = body[1] === 'x' || body[1] === 'X'
+      ? parseInt(body.slice(2), 16) : parseInt(body.slice(1), 10);
+    return Number.isFinite(n) ? String.fromCodePoint(n) : m;
+  }
+  return ents[m.toLowerCase()] !== undefined ? ents[m.toLowerCase()] : m;
+});
 
 const SUBJ = { MA:'Mathematics (B.E.S.T.)', SC:'Science', ELA:'English Language Arts (B.E.S.T.)',
                SS:'Social Studies', VA:'Visual Art', MU:'Music' };
@@ -108,6 +139,16 @@ function classroomStandard(code) {
 if (n < 100) {
   throw new Error(`only ${n} standards resolved — the CPALMS fetch or parse `
                 + `is broken; refusing to overwrite ${outPath}`);
+}
+
+// An entity that got past dec() would be printed raw on a projector. Fail
+// loudly and name it, rather than shipping "b &ne; 0" to a classroom and
+// finding out from a teacher.
+const leaked = [...new Set(out.match(/&(#x?[0-9a-f]+|[a-z][a-z0-9]*);/gi) || [])]
+  .filter(e => e.toLowerCase() !== '&amp;');
+if (leaked.length) {
+  throw new Error(`undecoded HTML entities in the benchmark text: ${leaked.join(' ')}`
+                + ` — add them to the ents map in this file`);
 }
 
 fs.writeFileSync(outPath, out);
