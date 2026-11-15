@@ -368,6 +368,16 @@ const CLASSROOM_TEMPLATE_STANDARDS = {
     'stat-new-arrival':     ['SC.3.L.17.1', 'SC.4.L.17.1'],
     'stat-pair-days':       ['SC.7.L.17.2', 'SC.7.N.1.6'],
     'stat-species-hour':    ['MA.3.M.2.1', 'MA.3.DP.1.2'],
+
+    // ── Temperature ──────────────────────────────────────────────────
+    //
+    // Every detection has carried a temperature since the feeders were
+    // built and almost nothing read it. These three do, and they are
+    // shaped by published findings rather than by what feels true —
+    // including a null result, which is the harder idea to teach.
+    'temp-below-average':   ['MA.8.DP.1.2', 'MA.7.DP.1.2', 'SC.7.N.1.4'],
+    'temp-what-else':       ['SC.7.N.1.4', 'SC.8.N.1.3', 'SC.6.N.1.2'],
+    'temp-coldest-busiest': ['MA.3.M.1.2', 'SC.4.N.1.7'],
 };
 
 // ════════════════════════════════════════════════════════════════════

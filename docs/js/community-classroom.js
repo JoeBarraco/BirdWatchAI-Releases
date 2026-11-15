@@ -7492,7 +7492,11 @@ ${jumbled.split('').join(' ')}`,
     title: 'All the possible outcomes',
     bands: ['6-8'],
     build({ s, rng }) {
-        if (s.species.length < 3 || s.species.length > 9) return null;
+        // 12, not 9. A pooled community feeder routinely sees ten or more
+        // species in a week, and the question was simply never asked on
+        // one. n x n is still a sample space a class can reason about at
+        // twelve; past that the number stops meaning anything.
+        if (s.species.length < 3 || s.species.length > 12) return null;
         const n = s.species.length;
 
         const built = cmChoices(String(n * n),
@@ -9005,6 +9009,169 @@ ${jumbled.split('').join(' ')}`,
 },
 
 // ════════════════════════════════════════════════════════════════════
+//  Temperature, which the feeder has recorded all along
+// ════════════════════════════════════════════════════════════════════
+//
+//  Every detection carries a temperature and almost nothing read it.
+//  These do, and they are shaped by what the research actually found
+//  rather than by what feels true:
+//
+//  · Project FeederWatch volunteers' counts, matched against local
+//    weather across 23 species, found birds visit feeders MORE as
+//    temperatures dip below average — and found no relationship with
+//    precipitation or wind speed. The null result is the more useful
+//    half for a classroom.
+//  · A 2023 radio-tracking study of Tufted Titmice found more feeder
+//    visits in cold, snowy weather.
+//  · A 2021 Behavioral Ecology study of Downy Woodpeckers and
+//    White-breasted Nuthatches found that the activity of a bird's
+//    SOCIAL PARTNERS explained its foraging better than overnight
+//    temperature did.
+//
+//  That last one is why cold-weather-means-more-birds is not taught
+//  here as a fact. Our feeder's own week is the evidence, and a class
+//  that finds the opposite has found something real about their week
+//  rather than having got the question wrong.
+
+{
+    // The FeederWatch finding, tested against this class's own fortnight
+    // rather than asserted. Below-average days against above-average
+    // days is exactly how that study framed it.
+    id: 'temp-below-average',
+    category: 'analysis',
+    title: 'Colder than usual',
+    bands: ['6-8'],
+    build({ s14, band, rng }) {
+        const days = [];
+        s14.days.forEach(d => {
+            const t = s14.dayTemp.get(d.day);
+            if (t && t.n >= 3) days.push({ day: d.day, n: d.n, deg: t.sum / t.n });
+        });
+        if (days.length < 7) return null;
+
+        const mean = days.reduce((a, b) => a + b.deg, 0) / days.length;
+        const cold = days.filter(d => d.deg <  mean);
+        const warm = days.filter(d => d.deg >= mean);
+        if (cold.length < 2 || warm.length < 2) return null;
+
+        const per = g => g.reduce((a, b) => a + b.n, 0) / g.length;
+        const coldPer = per(cold), warmPer = per(warm);
+        // A difference smaller than a quarter is not something a class can
+        // read off a chart, and calling it one would teach the opposite of
+        // the lesson.
+        if (Math.abs(coldPer - warmPer) < Math.max(1, Math.min(coldPer, warmPer) * 0.25)) return null;
+
+        const colder = coldPer > warmPer;
+        const built = cmChoices(
+            colder ? 'On the colder-than-usual days' : 'On the warmer-than-usual days',
+            [colder ? 'On the warmer-than-usual days' : 'On the colder-than-usual days',
+             'Exactly the same on both',
+             'The chart cannot tell us'], rng);
+        if (!built) return null;
+
+        return {
+            prompt: 'Split our fortnight into days colder than average and days warmer '
+                  + 'than average. Which group got more visits per day?',
+            ...built,
+            chart: cmChart('Visits per day, split by temperature', [
+                { label: 'Colder than average', value: Math.round(coldPer * 10) / 10, key: 'c',
+                  color: cmHeatColor(0.1) },
+                { label: 'Warmer than average', value: Math.round(warmPer * 10) / 10, key: 'w',
+                  color: cmHeatColor(0.9) },
+            ], { band, kind: 'hbars' }),
+            explain: 'Our average was ' + Math.round(mean) + '°. Colder days averaged '
+                   + coldPer.toFixed(1) + ' visits, warmer days ' + warmPer.toFixed(1)
+                   + '. Across 23 species, Project FeederWatch found birds visit more as '
+                   + 'temperatures dip below average — so our week '
+                   + (colder ? 'agrees with that' : 'does NOT agree, which is worth '
+                      + 'explaining rather than explaining away')
+                   + '. One fortnight at one feeder is not enough to settle it either way.',
+        };
+    },
+},
+
+{
+    // The null result, which is the harder and more useful idea: a
+    // variable that was measured and turned out not to matter.
+    id: 'temp-what-else',
+    category: 'science',
+    title: 'What else could it be?',
+    bands: ['6-8'],
+    build({ s14, rng }) {
+        if (s14.tempCoverage < 0.5 || s14.days.length < 7) return null;
+
+        const built = cmChoices(
+            'Watch for other things that change with the cold, like daylight and wind',
+            ['Decide the cold causes it and stop there',
+             'Ignore the temperature from now on',
+             'Only count birds on cold days'], rng);
+        if (!built) return null;
+
+        return {
+            prompt: 'Suppose our colder days really did have more visits. What should a '
+                  + 'scientist do next?',
+            ...built,
+            explain: 'Cold days are also shorter, often windier, and come later in the '
+                   + 'season — so "cold" arrives bundled with several other changes and '
+                   + 'any of them could be doing the work. Researchers who matched '
+                   + 'feeder counts to weather found temperature mattered but wind and '
+                   + 'rain did not, and another study found that what a bird’s '
+                   + 'NEIGHBOURS were doing predicted its feeding better than the '
+                   + 'temperature did. Finding a pattern is the start of the work.',
+        };
+    },
+},
+
+{
+    // MA.3.M.1.2 territory at 3-5: a real measurement question where the
+    // answer is often "no", which is the point.
+    id: 'temp-coldest-busiest',
+    category: 'analysis',
+    title: 'Was the coldest day the busiest?',
+    bands: ['3-5'],
+    build({ s14, band, rng }) {
+        const days = [];
+        s14.days.forEach(d => {
+            const t = s14.dayTemp.get(d.day);
+            if (t && t.n >= 3 && d.n > 0) days.push({ day: d.day, n: d.n, deg: Math.round(t.sum / t.n) });
+        });
+        if (days.length < 6) return null;
+
+        const coldest = days.reduce((a, b) => (b.deg < a.deg ? b : a));
+        const busiest = days.reduce((a, b) => (b.n > a.n ? b : a));
+        const same = coldest.day === busiest.day;
+
+        const built = cmChoices(same ? 'Yes — they were the same day'
+                                     : 'No — the busiest day was a different one',
+            [same ? 'No — the busiest day was a different one'
+                  : 'Yes — they were the same day',
+             'There was no coldest day',
+             'We did not measure the temperature'], rng);
+        if (!built) return null;
+
+        return {
+            prompt: 'Was our COLDEST day also our BUSIEST day?',
+            ...built,
+            chart: cmChart('Temperature each day',
+                days.map(d => ({ label: cmDayAxisLabel(d.day), value: d.deg, key: d.day,
+                                 sub: d.n + ' visits',
+                                 color: cmHeatColor((d.deg - coldest.deg) /
+                                        Math.max(1, busiest.deg - coldest.deg)) })),
+                { band, showValues: true }),
+            explain: 'The coldest day was ' + cmDayAxisLabel(coldest.day) + ' at '
+                   + coldest.deg + '° with ' + coldest.n + ' visits; the busiest was '
+                   + cmDayAxisLabel(busiest.day) + ' with ' + busiest.n + '. '
+                   + (same
+                      ? 'This time they match — but one week matching is not proof, it is '
+                        + 'one week matching.'
+                      : 'They are different days, and that is a real result. People expect '
+                        + 'cold to mean hungry birds, and sometimes it does — but what '
+                        + 'actually happened is what the data says.'),
+        };
+    },
+},
+
+// ════════════════════════════════════════════════════════════════════
 //  Statistics the community site already draws, in the classroom
 // ════════════════════════════════════════════════════════════════════
 //
@@ -9039,15 +9206,26 @@ ${jumbled.split('').join(' ')}`,
         //
         // One bird's run is a real streak: it starts, it breaks, and
         // finding it means reading along the row looking for the gap.
-        const pick = s14.species[0];
+        // ⚠ WALK THE SPECIES LIST. Taking the commonest bird was the
+        // second version of this and it failed the same way as the first:
+        // on a live feeder the top species turns up EVERY day, so its run
+        // is the whole window and the answer is "all of them" again.
+        // Fixing "any bird" by going per-species only moved the problem
+        // down one level. A streak is only a question when it breaks, so
+        // this looks for a bird whose run actually does.
+        let pick = null, best = 0;
+        for (const cand of s14.species.slice(0, 6)) {
+            const onDay = new Set();
+            s14.daySpec.forEach((m, day) => { if (m.has(cand.species)) onDay.add(day); });
+
+            let b = 0, run = 0;
+            days.forEach(d => { run = onDay.has(d.day) ? run + 1 : 0; if (run > b) b = run; });
+            if (b >= 2 && b < days.length) { pick = cand; best = b; break; }
+        }
         if (!pick) return null;
 
         const onDay = new Set();
         s14.daySpec.forEach((m, day) => { if (m.has(pick.species)) onDay.add(day); });
-
-        let best = 0, run = 0;
-        days.forEach(d => { run = onDay.has(d.day) ? run + 1 : 0; if (run > best) best = run; });
-        if (best < 2 || best === days.length) return null;
 
         const built = cmChartCountChoices(best, rng, null, 3);
         if (!built) return null;
