@@ -12441,9 +12441,15 @@ function cmStandardsResultsHtml(sessions) {
 
     const rows = [...tally.entries()]
         .map(([code, e]) => ({ code, ...e, pct: Math.round((e.right / e.total) * 100) }))
-        // Worst first; among equals, the one with more evidence first,
-        // because 1 of 2 says much less than 4 of 8.
-        .sort((a, b) => a.pct - b.pct || b.total - a.total);
+        // ⚠ EVIDENCE BEFORE SCORE. Sorting on percentage alone put eight
+        // benchmarks at "0% — 0 of 1" above one at "25% — 1 of 4", and the
+        // 1-of-4 is the one worth a lesson: a single wrong answer is a bad
+        // morning, four of them is a pattern. So anything with only one
+        // question behind it drops below everything that has more, and
+        // inside each group it is still worst first.
+        .sort((a, b) => (a.total < 2) - (b.total < 2)
+                     || a.pct - b.pct
+                     || b.total - a.total);
 
     const weak = rows.filter(r => r.pct < 60 && r.total >= 2);
 
@@ -12451,8 +12457,10 @@ function cmStandardsResultsHtml(sessions) {
         <details class="classroom-details cc-std-results">
             <summary>How the class did, standard by standard (${rows.length})</summary>
             <p class="classroom-muted">
-                Weakest first. A question tagged with more than one benchmark counts
-                towards each of them, so these add up to more than the
+                Weakest first, but anything with only one question behind it sits
+                below the rest — one wrong answer is a bad morning, three out of
+                four is a pattern. A question tagged with more than one benchmark
+                counts towards each of them, so these add up to more than the
                 ${counted} question${counted === 1 ? '' : 's'} behind them.
                 Predictions still waiting on the birds are left out.
             </p>
