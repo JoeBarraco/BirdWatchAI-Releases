@@ -12395,6 +12395,94 @@ function cmPct(correct, answered) {
  * multiple-choice question, so this is a gap worth knowing about rather than
  * one worth faking.
  */
+/**
+ * How the class did, benchmark by benchmark, across every lesson shown.
+ *
+ * Asked for: "when viewing previous lessons, the overall statistics could
+ * show something regarding the standards results... which standards were
+ * tested and what the results were from the class. This could help the
+ * teacher focus on certain standards that the class needs to improve on."
+ *
+ * ⚠ SORTED WORST FIRST, which is the whole point. A list in catalogue
+ * order is a record; a list with the weakest benchmark at the top is the
+ * thing a teacher plans next week from. The ordering IS the feature.
+ *
+ * ⚠ ONE QUESTION COUNTS ONCE PER BENCHMARK IT CLAIMS. A question tagged
+ * with three benchmarks is evidence about all three, so it scores in all
+ * three — the totals here deliberately do not add up to the number of
+ * questions asked, and the caption says so rather than leaving a teacher
+ * to wonder why 8 questions produced 19 results.
+ *
+ * Predictions are excluded: a question the birds have not settled yet has
+ * no result to report, and counting it as wrong would blame the class for
+ * the weather.
+ */
+function cmStandardsResultsHtml(sessions) {
+    if (typeof CLASSROOM_STANDARDS === 'undefined'
+     || typeof classroomStandardsFor !== 'function') return '';
+
+    const tally = new Map();   // code -> {right, total}
+    let counted = 0;
+
+    (sessions || []).forEach(s => (s.questions || []).forEach(q => {
+        if (q.pending || q.is_correct == null) return;
+        const codes = classroomStandardsFor([q]);
+        if (!codes.length) return;
+        counted++;
+        codes.forEach(c => {
+            const e = tally.get(c) || { right: 0, total: 0 };
+            e.total++;
+            if (q.is_correct) e.right++;
+            tally.set(c, e);
+        });
+    }));
+
+    if (tally.size < 2) return '';
+
+    const rows = [...tally.entries()]
+        .map(([code, e]) => ({ code, ...e, pct: Math.round((e.right / e.total) * 100) }))
+        // Worst first; among equals, the one with more evidence first,
+        // because 1 of 2 says much less than 4 of 8.
+        .sort((a, b) => a.pct - b.pct || b.total - a.total);
+
+    const weak = rows.filter(r => r.pct < 60 && r.total >= 2);
+
+    return `
+        <details class="classroom-details cc-std-results">
+            <summary>How the class did, standard by standard (${rows.length})</summary>
+            <p class="classroom-muted">
+                Weakest first. A question tagged with more than one benchmark counts
+                towards each of them, so these add up to more than the
+                ${counted} question${counted === 1 ? '' : 's'} behind them.
+                Predictions still waiting on the birds are left out.
+            </p>
+            ${weak.length ? `<p class="classroom-muted">
+                <strong>Worth another lesson:</strong> ${weak.slice(0, 3)
+                    .map(r => esc(r.code)).join(', ')}.
+            </p>` : ''}
+            <table class="cc-std-table">
+                <tbody>
+                ${rows.map(r => {
+                    const s = CLASSROOM_STANDARDS[r.code];
+                    const band = r.pct < 60 ? 'bad' : r.pct < 80 ? 'warn' : 'ok';
+                    return `
+                    <tr>
+                        <td><a class="cc-std" target="_blank" rel="noopener"
+                               href="${esc(classroomStandardUrl(r.code))}"
+                               title="${esc(s ? s.text : r.code)}">${esc(r.code)}</a></td>
+                        <td class="cc-std-bar">
+                            <span class="cc-std-fill ${band}" style="width:${r.pct}%"></span>
+                        </td>
+                        <td class="cc-std-num ${band}">${r.pct}%</td>
+                        <td class="cc-std-of">${r.right} of ${r.total}</td>
+                        <td class="cc-std-text">${esc(s ? s.text : '')}</td>
+                    </tr>`;
+                }).join('')}
+                </tbody>
+            </table>
+        </details>`;
+}
+
 function cmHistoryQuestionHtml(q) {
     const choices = Array.isArray(q.choices) ? q.choices : [];
     const rows = choices.map((c, i) => {
@@ -12616,7 +12704,8 @@ async function showClassroomHistory(id) {
     ${cats.length >= 2 ? `<p class="classroom-muted classroom-hcats">
         Hardest so far: ${cats.slice(0, 2).map(c => `${esc(c.cat)} (${c.pct}%)`).join(', ')}
         · Easiest: ${cats.slice(-1).map(c => `${esc(c.cat)} (${c.pct}%)`).join('')}
-    </p>` : ''}`;
+    </p>` : ''}
+    ${cmStandardsResultsHtml(sessions)}`;
 
     // The newest lesson, opened. This used to have to hunt for the newest one
     // WITH QUESTIONS, because an empty session would otherwise auto-open and
