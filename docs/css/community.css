@@ -2365,8 +2365,14 @@
             background: rgba(0,0,0,0.5); z-index: 9550;
             justify-content: center; align-items: center;
         }
+        #classroom-idea-modal {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.5); z-index: 9600;
+            justify-content: center; align-items: center;
+        }
         #mod-admin-modal.open,
         #community-panel-modal.open,
+        #classroom-idea-modal.open,
         #classroom-panel-modal.open { display: flex; }
         .mod-admin-box {
             background: var(--bg-card); border-radius: 12px;
@@ -3697,7 +3703,43 @@
    every button onto its own line — and this box also has to hold the review
    list and the question picker, which were cramped there even as one column.
    max-width: 90vw is inherited, so a small screen still behaves. */
-#classroom-panel-modal .mod-admin-box { width: 880px; }
+/* ── The classroom panel fills the window ──────────────────────────
+   Asked for twice: "I think it may be better if the classroom button
+   opened up in the entire window rather than a dialog box. It would give
+   more real estate to the classroom exercises", and again as "it should
+   open in the full screen, not just a dialog box."
+
+   Right, and for a reason beyond roominess. Every other dialog on this
+   site is a form you fill in and dismiss. This one holds a review pass
+   over sixty questions, each with its own chart or photograph rendered at
+   projector size, and 880px of an 80vh box was showing about one and a
+   half of them at a time.
+
+   STILL A DIALOG, though: role="dialog" and aria-modal stay, Escape still
+   closes it, and the Close button is still pinned in the left column.
+   Full-bleed is a size, not a change of kind — a panel you cannot get out
+   of is worse than a small one. */
+#classroom-panel-modal .mod-admin-box {
+    width: 100vw;
+    max-width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+    box-shadow: none;
+    /* The scroll container is still this box, which is what the sticky
+       left column resolves against — see .classroom-pane-left. */
+    padding: 1.5rem 1.75rem;
+}
+
+/* The backdrop has nothing left to show, and a dim layer under an opaque
+   full-screen panel only darkens the edges on a non-integer zoom. */
+#classroom-panel-modal.open { background: var(--bg-card); }
+
+/* 100dvh where the browser has it (the mobile URL bar makes 100vh lie),
+   and a plain vh fallback first for anything that does not. */
+@supports not (height: 100dvh) {
+    #classroom-panel-modal .mod-admin-box { height: 100vh; max-height: 100vh; }
+}
 
 .classroom-panes {
     display: flex; gap: 0.9rem; align-items: flex-start;
@@ -3730,7 +3772,12 @@
        here pushed Close below the column's own fold, which is the same bug
        wearing a different hat. Caught on screen after shipping it.
        The list scrolls; the title and Close do not. */
-    max-height: calc(80vh - 4rem);
+    /* Was calc(80vh - 4rem), matching the old 80vh dialog. The box is the
+       full window now, so the cap follows it — otherwise the column stops
+       a fifth of the way down a tall screen and the class list gets a
+       scrollbar it does not need. The 5rem is this box's own padding plus
+       the heading above the panes. */
+    max-height: calc(100dvh - 5rem);
     overflow: visible;
     /* So the right pane's content never shows through while it scrolls past. */
     background: var(--bg-card);
@@ -3745,6 +3792,19 @@
     min-height: 0;
     overflow-y: auto;
     display: flex; flex-direction: column; gap: 0.4rem;
+}
+
+/* Suggest sits with Close at the foot of the column rather than among the
+   classes, because it is not a class — but unlike Close it is a place you
+   go, so it keeps the ordinary row styling and only the spacing marks it
+   out. */
+.classroom-row-idea {
+    flex: 0 0 auto;
+    margin-top: 0.75rem;
+    justify-content: center;
+}
+.classroom-row-idea .classroom-row-name {
+    font-weight: 600; font-size: 0.82rem;
 }
 
 /* Close is in the column so it is always reachable, but it is not one of the
@@ -4496,20 +4556,33 @@
     width: min(100%, 1100px); text-align: center;
     border-top: 1px solid var(--border); padding-top: 1.8vmin;
 }
+/* ⚠ SIZED AGAINST THE PROMPT, NOT AGAINST A WEB PAGE.
+   Flagged from a live lesson: "the reveal is too small on all of the
+   questions." Measured, it was: the prompt runs at 3.2vmin and the
+   reveal body was at 2.0 — 62% of the sentence it is answering, for the
+   text a teacher actually reads aloud to the room. The explanation is
+   the payoff of the whole question and it was the smallest thing on the
+   slide.
+   Raising it is safe because the fitter gives height back in the right
+   order: classroomFitShrinkPhoto already lets the photograph shrink
+   further once a reveal is on screen (floor 0.14 against 0.26), so the
+   picture pays for the words rather than the other way round. */
 .classroom-reveal-head {
-    font-size: clamp(1.05rem, 2.8vmin, 2rem); font-weight: 700;
+    font-size: clamp(1.25rem, 3.2vmin, 2.4rem); font-weight: 700;
 }
 .classroom-reveal-head.ok      { color: #2eaa4f; }
 .classroom-reveal-head.miss    { color: #e74c3c; }
 .classroom-reveal-head.pending { color: #c97a00; }
 .classroom-reveal-body {
-    font-size: clamp(0.9rem, 2vmin, 1.4rem);
-    color: var(--color-gray-700); margin-top: 0.6vmin; line-height: 1.5;
+    font-size: clamp(1.1rem, 2.7vmin, 2rem);
+    /* gray-700 against the card is fine on a monitor and washes out on a
+       projector, which is the only place this text matters. */
+    color: var(--color-gray-900); margin-top: 0.8vmin; line-height: 1.45;
 }
 .classroom-fact {
-    font-size: clamp(0.85rem, 1.9vmin, 1.3rem);
+    font-size: clamp(1rem, 2.4vmin, 1.7rem);
     color: var(--color-gray-700); margin-top: 1.2vmin;
-    line-height: 1.5; max-width: 60ch; margin-inline: auto;
+    line-height: 1.45; max-width: 60ch; margin-inline: auto;
 }
 
 .classroom-stage-foot {

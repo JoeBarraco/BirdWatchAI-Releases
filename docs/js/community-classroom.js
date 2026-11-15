@@ -111,6 +111,16 @@ function updateClassroomNavUI() {
               && classroomCommunities().length > 0;
     btn.style.display = show ? '' : 'none';
 
+    // Suggest rides on the same membership. The request was that the
+    // suggestion area "cover both the classroom area as well as the entire
+    // community", and the classroom panel is the wrong home for the second
+    // half of that — you would have to open a teaching panel to report that
+    // something about the community feed is awkward. Same gate as the
+    // classroom button because classroom_suggest_question is scoped to a
+    // community and wants teacher, moderator or owner.
+    const idea = document.getElementById('navbar-idea-btn');
+    if (idea) idea.style.display = show ? '' : 'none';
+
     // This runs whenever memberships change, which is the first moment a
     // ?classroom= link can actually be resolved — before it, there is nothing
     // to look the id up in.
@@ -9976,6 +9986,170 @@ function openClassroomFlag(i, kind) {
     const note = document.getElementById(`classroom-flag-note-${i}`);
     note.value = carried;
     note.focus();
+}
+
+// ── Saying something that is not about a question ───────────────────
+//
+// Review's Suggest button is attached to a question, which is right for
+// "this chart is hard to read" and useless for "the panel should open
+// full screen". Flagged as exactly that: "there should be a general
+// suggestion area, not just for a question suggestion."
+//
+// It writes through classroom_suggest_question, which has existed since
+// the first feedback migration and has never had a front end — it takes a
+// free-text idea with an optional band and category and files it as
+// kind='suggestion', reason='idea'. No migration; the door was already
+// there, nothing opened it.
+
+/**
+ * The same form, in its own modal, from the navbar.
+ *
+ * Shares cmIdeaFormHtml and sendClassroomIdea with the in-panel version so
+ * there is one form and one send path — two copies of a feedback form is
+ * how one of them quietly stops working.
+ */
+function openClassroomIdeaStandalone() {
+    const modal = document.getElementById('classroom-idea-modal');
+    const body  = document.getElementById('classroom-idea-body');
+    if (!modal || !body) return;
+
+    const mine = classroomCommunities();
+    if (!mine.length) {
+        showToast('You are not in a community yet.');
+        return;
+    }
+    // Default to whichever community the classroom panel was last pointed
+    // at, so a teacher who has been working in one does not have to say so
+    // again.
+    if (!classroomCommunityId || !mine.some(c => c.id === classroomCommunityId)) {
+        classroomCommunityId = mine[0].id;
+    }
+
+    body.innerHTML = `
+        ${mine.length > 1 ? `
+            <label class="classroom-field" style="display:block;margin-bottom:0.75rem;">
+                <span>Which community</span>
+                <select id="cc-idea-community" style="width:100%;"
+                        onchange="classroomCommunityId = this.value">
+                    ${mine.map(c => `<option value="${esc(c.id)}"${
+                        c.id === classroomCommunityId ? ' selected' : ''}>${esc(c.name)}</option>`).join('')}
+                </select>
+            </label>` : ''}
+        ${cmIdeaFormHtml(null, 'closeClassroomIdeaStandalone()')}`;
+
+    modal.classList.add('open');
+    const t = document.getElementById('cc-idea-text');
+    if (t) t.focus();
+}
+
+function closeClassroomIdeaStandalone() {
+    const modal = document.getElementById('classroom-idea-modal');
+    const t = document.getElementById('cc-idea-text');
+    if (t && t.value.trim()
+        && !confirm('Discard what you have written?')) return;
+    if (modal) modal.classList.remove('open');
+}
+
+/**
+ * The form itself. `room` seeds the grade band when there is one;
+ * `cancel` is whatever closing means wherever it has been put.
+ */
+function cmIdeaFormHtml(room, cancel) {
+    const cats = [...new Set(CLASSROOM_TEMPLATES.map(t => t.category))]
+        .sort((a, b) => (CLASSROOM_CATEGORY_LABELS[a] || a)
+                 .localeCompare(CLASSROOM_CATEGORY_LABELS[b] || b));
+
+    return `
+        <p class="classroom-muted">
+            Anything at all — a question you wish existed, something about how the
+            classroom or the community site works, a bird the lessons never mention.
+            It goes to the same place as the notes left on individual questions,
+            and it is read.
+        </p>
+        <textarea id="cc-idea-text" rows="5" maxlength="2000"
+                  placeholder="e.g. It would help if a lesson could be paused and picked up after break."></textarea>
+        <div class="classroom-form-row">
+            <label class="classroom-field">
+                <span>Which grade band, if it matters</span>
+                <select id="cc-idea-band">
+                    <option value="">Any — or not about a grade</option>
+                    <option value="k-2"${room && room.grade_band === 'k-2' ? ' selected' : ''}>K–2</option>
+                    <option value="3-5"${room && room.grade_band === '3-5' ? ' selected' : ''}>Grades 3–5</option>
+                    <option value="6-8"${room && room.grade_band === '6-8' ? ' selected' : ''}>Grades 6–8</option>
+                </select>
+            </label>
+            <label class="classroom-field">
+                <span>Which subject, if it is about one</span>
+                <select id="cc-idea-category">
+                    <option value="">Not about a subject</option>
+                    ${cats.map(c => `<option value="${esc(c)}">${
+                        esc(CLASSROOM_CATEGORY_LABELS[c] || c)}</option>`).join('')}
+                </select>
+            </label>
+        </div>
+        <div class="classroom-form-actions">
+            <button class="classroom-btn-primary" onclick="sendClassroomIdea()">Send it</button>
+            <button class="classroom-btn" onclick="${cancel}">Cancel</button>
+        </div>
+        <div class="classroom-status" id="cc-idea-status"></div>`;
+}
+
+function openClassroomIdea() {
+    const box = document.getElementById('classroom-review');
+    if (!box) return;
+
+    hideClassroomHistory();
+    closeClassroomForm();
+    classroomLeftPick = { kind: 'idea' };
+    renderClassroomList();
+    renderClassroomActions();
+    box.style.display = '';
+
+    const room = classroomList.find(r => r.id === classroomPicked());
+    box.innerHTML = `<h4 class="classroom-h">Suggest something</h4>`
+                  + cmIdeaFormHtml(room, 'closeClassroomRight()');
+
+    const t = document.getElementById('cc-idea-text');
+    if (t) t.focus();
+}
+
+async function sendClassroomIdea() {
+    const text   = document.getElementById('cc-idea-text');
+    const status = document.getElementById('cc-idea-status');
+    const say = (msg, bad) => {
+        if (!status) return;
+        status.style.color = bad ? '#e74c3c' : 'var(--color-gray-500)';
+        status.textContent = msg;
+    };
+    const idea = (text && text.value || '').trim();
+    if (!idea) { say('Write the idea first.', true); if (text) text.focus(); return; }
+
+    say('Sending…');
+    const bandEl = document.getElementById('cc-idea-band');
+    const catEl  = document.getElementById('cc-idea-category');
+    const band = (bandEl && bandEl.value) || null;
+    const cat  = (catEl && catEl.value) || null;
+    // Only when the panel is open on a class. From the navbar there is no
+    // classroom in view, and attaching the idea to whichever one happened
+    // to be selected last would file it against a class it is not about.
+    const inPanel = !!document.getElementById('classroom-panel-modal').classList.contains('open');
+    const room = inPanel ? classroomList.find(r => r.id === classroomPicked()) : null;
+
+    const { error } = await sbRpc('classroom_suggest_question', {
+        p_community_id: classroomCommunityId,
+        p_idea:         idea,
+        p_grade_band:   band,
+        p_category:     cat,
+        p_classroom_id: room ? room.id : null,
+    }, true);
+
+    if (error) { say(error.message || 'Could not send it.', true); return; }
+
+    // The text is cleared only once it is safely filed. Losing what a
+    // teacher wrote because the save failed is the one outcome this whole
+    // screen exists to avoid.
+    if (text) text.value = '';
+    say('Sent — thank you. It arrives by email within a couple of seconds.');
 }
 
 function closeClassroomFlag(i) {
