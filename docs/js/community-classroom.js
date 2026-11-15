@@ -1203,7 +1203,12 @@ async function loadClassroomData(room) {
 
     const since = new Date(Date.now() - CLASSROOM_WINDOW_DAYS * 86400000).toISOString();
     const url = `${SUPABASE_URL}/rest/v1/community_detections`
-              + `?select=id,feeder_id,species,confidence,detected_at,image_url,video_url,temperature,rarity`
+              // latitude/longitude/zip_code carry the geography questions —
+              // SS.3.G.1.1 and SS.5.G.1.2 want a class reading real
+              // coordinates off real places, and a feeder that reports its
+              // position is the only honest source of those we have.
+              + `?select=id,feeder_id,species,confidence,detected_at,image_url,video_url,`
+              + `temperature,rarity,latitude,longitude,zip_code`
               + `&feeder_id=in.(${ids.join(',')})`
               + `&detected_at=gte.${encodeURIComponent(since)}`
               + `&order=detected_at.desc`;
@@ -1888,6 +1893,11 @@ function classroomChartHtml(chart, revealed) {
         case 'hbars': return classroomHBarsHtml(chart, withValues);
         case 'line':  return classroomLineHtml(chart, withValues);
         case 'donut': return classroomDonutHtml(chart, withValues);
+        // The three Florida names by name. None of these is ever reached by
+        // the rotation — a template asks for them or they do not appear.
+        case 'picto':   return classroomPictoHtml(chart, withValues);
+        case 'scatter': return classroomScatterHtml(chart, revealed);
+        case 'box':     return classroomBoxHtml(chart, revealed);
         // The clock also needs the REAL reveal, not just "show the values":
         // its reveal-only hands point at the answer, and showValues is
         // switched on before the reveal whenever the counts are safe to print.
@@ -2365,6 +2375,294 @@ function classroomDonutHtml(chart, revealed) {
                 <text x="${cx}" y="${cy - 2}" class="cc-donut-total" text-anchor="middle">${total}</text>
                 <text x="${cx}" y="${cy + 34}" class="cc-donut-cap" text-anchor="middle">visits</text>
                 ${legend}
+            </svg>
+            <figcaption>${esc(chart.caption)}</figcaption>
+        </figure>`;
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  Three chart shapes Florida asks for by name
+// ════════════════════════════════════════════════════════════════════
+//
+//  These are not more ways to draw a week. Each one exists because a
+//  benchmark names it and cannot be met without it:
+//
+//    scaled pictograph  MA.2.DP.1.1, MA.3.DP.1.1 — "scaled pictographs"
+//    scatter plot       MA.8.DP.1.1-1.3 — bivariate data, association
+//    box plot           MA.6.DP.1.3 — min, Q1, median, Q3, max
+//
+//  They are built directly rather than through cmChart. cmChart's job is to
+//  pick an honest shape for one series of labelled values and rotate
+//  between them; these three take a different shape of data entirely, and
+//  none of them may EVER be substituted for another chart — a question that
+//  asks a class to read a quartile off a box plot is unanswerable if the
+//  rotation hands it a bar chart.
+// ════════════════════════════════════════════════════════════════════
+
+/**
+ * A pictograph, with a key saying what one symbol is worth.
+ *
+ * The scale is the entire point, and it is the thing the benchmark adds at
+ * grade 2-3 over the tally charts of grade 1: a child who reads six birds
+ * as six visits has not read the chart. So the key is drawn large, and a
+ * half symbol is drawn where the count does not divide — rounding 7 up to
+ * 8 to keep the symbols whole would silently change the answer.
+ *
+ * `per` is chosen so the longest row stays countable. Ten symbols is about
+ * the limit before a class starts estimating instead of counting, which is
+ * the same judgement DOTS_MAX_VALUE makes for the tally chart.
+ */
+function cmPictograph(caption, series, opts) {
+    const o = opts || {};
+    const rows = (series || []).filter(s => s && isFinite(s.value));
+    if (rows.length < 2) return null;
+
+    const max = Math.max(...rows.map(r => r.value));
+    if (max <= 0) return null;
+
+    // A key of 1 is not a pictograph, it is a tally chart — and the
+    // benchmark that wants a tally chart already has one. Only offer this
+    // shape where a real scale is warranted.
+    const per = o.per || [1, 2, 5, 10, 20, 25, 50, 100].find(p => max / p <= 10) || 100;
+    if (per < 2 && !o.allowUnscaled) return null;
+
+    rows.forEach((r, i) => {
+        if (!r.color) r.color = cmRowColor(r, i, rows.length, 'spectrum');
+    });
+
+    return { kind: 'picto', caption, series: rows, per,
+             icon: o.icon || '●',
+             showValues: !!o.showValues, highlight: o.highlight || null,
+             max, total: rows.reduce((a, r) => a + r.value, 0) };
+}
+
+function classroomPictoHtml(chart, revealed) {
+    const rows = chart.series.map(s => {
+        const on    = chart.highlight && s.key === chart.highlight;
+        const whole = Math.floor(s.value / chart.per);
+        // A remainder worth drawing at all. Below a fifth of a symbol the
+        // half-glyph would read as a full one at projector distance, which
+        // is worse than leaving it off and letting the key explain it.
+        const rest  = (s.value % chart.per) / chart.per;
+
+        // The same masked bird silhouette the tally chart uses, so the two
+        // charts are visibly the same KIND of thing and only the key differs
+        // — which is exactly the step from MA.1.DP.1.1 to MA.3.DP.1.1.
+        let icons = '';
+        for (let i = 0; i < whole; i++) {
+            icons += `<span class="cc-dot" style="background:${s.color}"></span>`;
+        }
+        if (rest >= 0.2) {
+            icons += `<span class="cc-dot half" style="background:${s.color}"></span>`;
+        }
+
+        return `
+            <div class="cc-row${on ? ' on' : ''}">
+                <span class="cc-row-head">
+                    ${s.image ? `<span class="cc-thumb"><img src="${esc(s.image)}" alt=""></span>` : ''}
+                    <span class="cc-row-label">${esc(s.label)}</span>
+                </span>
+                <span class="cc-dots">${icons || '<span class="cc-none">none</span>'}</span>
+                ${revealed ? `<span class="cc-row-val">${s.value}</span>` : ''}
+            </div>`;
+    }).join('');
+
+    return `
+        <figure class="classroom-chart dots picto${chart.series.some(x => x.image) ? ' with-photos' : ''}">
+            <div class="cc-key">
+                <span class="cc-dot"></span>
+                = ${chart.per} visit${chart.per === 1 ? '' : 's'}
+            </div>
+            <div class="cc-rows">${rows}</div>
+            <figcaption>${esc(chart.caption)}</figcaption>
+        </figure>`;
+}
+
+/**
+ * A scatter plot of two numbers measured on the same days.
+ *
+ * MA.8.DP.1.2 asks a class to DESCRIBE a pattern of association, so the
+ * plot must be able to show that there isn't one. No trend line is drawn
+ * unless the caller asks for it, and `fit` is deliberately the caller's
+ * decision: a line through a cloud with no association is the single most
+ * misleading thing this file could draw.
+ *
+ * Axes both start at a sensible floor rather than at zero. A temperature
+ * axis from 0°F squashes a week that ran 38-54°F into the bottom third and
+ * hides exactly the spread the question is about.
+ */
+function cmScatter(caption, points, opts) {
+    const o = opts || {};
+    const pts = (points || []).filter(p => p && isFinite(p.x) && isFinite(p.y));
+    if (pts.length < 5) return null;
+
+    const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+    const xMin = Math.min(...xs), xMax = Math.max(...xs);
+    const yMin = Math.min(...ys), yMax = Math.max(...ys);
+    // All of one value on either axis is not bivariate data.
+    if (xMax === xMin || yMax === yMin) return null;
+
+    let fit = null;
+    if (o.fit) {
+        const n = pts.length;
+        const mx = xs.reduce((a, b) => a + b, 0) / n;
+        const my = ys.reduce((a, b) => a + b, 0) / n;
+        let num = 0, den = 0;
+        pts.forEach(p => { num += (p.x - mx) * (p.y - my); den += (p.x - mx) ** 2; });
+        if (den > 0) fit = { slope: num / den, intercept: my - (num / den) * mx };
+    }
+
+    return { kind: 'scatter', caption, points: pts, fit,
+             xLabel: o.xLabel || '', yLabel: o.yLabel || '',
+             xMin, xMax, yMin, yMax,
+             // Held back until the reveal: on "is there a pattern here?"
+             // the line IS the answer.
+             revealFit: !!o.revealFit, showValues: !!o.showValues };
+}
+
+function classroomScatterHtml(chart, revealed) {
+    const W = 1000, H = 560;
+    const padL = 92, padR = 36, padT = 28, padB = 96;
+    const plotW = W - padL - padR, plotH = H - padT - padB;
+
+    // A tenth of the range of padding on each side, so no point is drawn
+    // sitting on an axis where half of it is clipped.
+    const padX = (chart.xMax - chart.xMin) * 0.1 || 1;
+    const padY = (chart.yMax - chart.yMin) * 0.1 || 1;
+    const x0 = chart.xMin - padX, x1 = chart.xMax + padX;
+    const y0 = Math.max(0, chart.yMin - padY), y1 = chart.yMax + padY;
+
+    const X = v => padL + ((v - x0) / (x1 - x0)) * plotW;
+    const Y = v => padT + plotH - ((v - y0) / (y1 - y0)) * plotH;
+
+    const yStep = cmNiceStep(y1 - y0);
+    const xStep = cmNiceStep(x1 - x0);
+
+    let grid = '';
+    for (let v = Math.ceil(y0 / yStep) * yStep; v <= y1; v += yStep) {
+        grid += `<line x1="${padL}" y1="${Y(v).toFixed(1)}" x2="${W - padR}" y2="${Y(v).toFixed(1)}"
+                       class="cc-grid"></line>
+                 <text x="${padL - 14}" y="${(Y(v) + 7).toFixed(1)}" class="cc-axis end">${v}</text>`;
+    }
+    for (let v = Math.ceil(x0 / xStep) * xStep; v <= x1; v += xStep) {
+        grid += `<line x1="${X(v).toFixed(1)}" y1="${padT}" x2="${X(v).toFixed(1)}" y2="${padT + plotH}"
+                       class="cc-grid"></line>
+                 <text x="${X(v).toFixed(1)}" y="${padT + plotH + 34}" class="cc-axis mid">${v}</text>`;
+    }
+
+    const dots = chart.points.map(p => `
+        <circle cx="${X(p.x).toFixed(1)}" cy="${Y(p.y).toFixed(1)}" r="11"
+                fill="${p.color || 'var(--color-primary)'}" class="cc-pt"></circle>
+        ${revealed && p.label
+            ? `<text x="${X(p.x).toFixed(1)}" y="${(Y(p.y) - 18).toFixed(1)}"
+                     class="cc-val mid">${esc(p.label)}</text>` : ''}`).join('');
+
+    // The line only when the question has been answered, if the template
+    // said so — see cmScatter's header.
+    const showFit = chart.fit && (!chart.revealFit || revealed);
+    const line = showFit ? (() => {
+        const ya = chart.fit.intercept + chart.fit.slope * x0;
+        const yb = chart.fit.intercept + chart.fit.slope * x1;
+        return `<line x1="${X(x0).toFixed(1)}" y1="${Y(ya).toFixed(1)}"
+                      x2="${X(x1).toFixed(1)}" y2="${Y(yb).toFixed(1)}"
+                      class="cc-fit"></line>`;
+    })() : '';
+
+    return `
+        <figure class="classroom-chart scatter">
+            <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(chart.caption)}">
+                ${grid}
+                <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT + plotH}" class="cc-axis-line"></line>
+                <line x1="${padL}" y1="${padT + plotH}" x2="${W - padR}" y2="${padT + plotH}" class="cc-axis-line"></line>
+                ${line}
+                ${dots}
+                <text x="${padL + plotW / 2}" y="${H - 18}" class="cc-axis-title mid">${esc(chart.xLabel)}</text>
+                <text x="26" y="${padT + plotH / 2}" class="cc-axis-title mid"
+                      transform="rotate(-90 26 ${padT + plotH / 2})">${esc(chart.yLabel)}</text>
+            </svg>
+            <figcaption>${esc(chart.caption)}</figcaption>
+        </figure>`;
+}
+
+/**
+ * A box plot of one set of numbers.
+ *
+ * Quartiles by the method Florida's materials use — the median of each
+ * half, with the overall median excluded from both halves when the count
+ * is odd. There are several defensible definitions and they disagree on
+ * small sets; picking a different one would mark a correctly-worked answer
+ * wrong, which is the worst thing a question can do.
+ *
+ * The raw values are kept on the chart so the reveal can show the dots
+ * under the box. A box plot is the one chart where a class cannot check
+ * the summary against the data unless we show them both.
+ */
+function cmBoxPlot(caption, values, opts) {
+    const o = opts || {};
+    const v = (values || []).filter(x => isFinite(x)).slice().sort((a, b) => a - b);
+    if (v.length < 5) return null;
+
+    const med = arr => {
+        const m = Math.floor(arr.length / 2);
+        return arr.length % 2 ? arr[m] : (arr[m - 1] + arr[m]) / 2;
+    };
+    const half = Math.floor(v.length / 2);
+    const lower = v.slice(0, half);
+    const upper = v.slice(v.length % 2 ? half + 1 : half);
+
+    const five = { min: v[0], q1: med(lower), med: med(v), q3: med(upper), max: v[v.length - 1] };
+    // A box with no width teaches nothing and has no quartiles to read.
+    if (five.q1 === five.q3) return null;
+
+    return { kind: 'box', caption, five, values: v,
+             xLabel: o.xLabel || '', showValues: !!o.showValues };
+}
+
+function classroomBoxHtml(chart, revealed) {
+    const W = 1000, H = 330;
+    const padL = 60, padR = 60, padT = 40, padB = 86;
+    const plotW = W - padL - padR;
+    const f = chart.five;
+
+    const span = (f.max - f.min) || 1;
+    const lo = f.min - span * 0.12, hi = f.max + span * 0.12;
+    const X = v => padL + ((v - lo) / (hi - lo)) * plotW;
+
+    const boxTop = padT + 24, boxH = 92, mid = boxTop + boxH / 2;
+
+    const step = cmNiceStep(hi - lo);
+    let grid = '';
+    for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) {
+        grid += `<line x1="${X(v).toFixed(1)}" y1="${padT}" x2="${X(v).toFixed(1)}" y2="${boxTop + boxH + 26}"
+                       class="cc-grid"></line>
+                 <text x="${X(v).toFixed(1)}" y="${boxTop + boxH + 58}" class="cc-axis mid">${v}</text>`;
+    }
+
+    // The data itself, under the box. Jittered vertically so repeated
+    // values do not stack into a single dot and make the set look smaller
+    // than it is.
+    const dots = chart.values.map((v, i) => `
+        <circle cx="${X(v).toFixed(1)}" cy="${(boxTop + boxH + 12 + (i % 3) * 5).toFixed(1)}"
+                r="5" class="cc-pt-faint"></circle>`).join('');
+
+    const mark = (v, label) => revealed
+        ? `<text x="${X(v).toFixed(1)}" y="${padT + 12}" class="cc-val mid">${label} ${v}</text>` : '';
+
+    return `
+        <figure class="classroom-chart box">
+            <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(chart.caption)}">
+                ${grid}
+                ${dots}
+                <line x1="${X(f.min).toFixed(1)}" y1="${mid}" x2="${X(f.q1).toFixed(1)}" y2="${mid}" class="cc-whisker"></line>
+                <line x1="${X(f.q3).toFixed(1)}" y1="${mid}" x2="${X(f.max).toFixed(1)}" y2="${mid}" class="cc-whisker"></line>
+                <line x1="${X(f.min).toFixed(1)}" y1="${boxTop + 18}" x2="${X(f.min).toFixed(1)}" y2="${boxTop + boxH - 18}" class="cc-whisker"></line>
+                <line x1="${X(f.max).toFixed(1)}" y1="${boxTop + 18}" x2="${X(f.max).toFixed(1)}" y2="${boxTop + boxH - 18}" class="cc-whisker"></line>
+                <rect x="${X(f.q1).toFixed(1)}" y="${boxTop}"
+                      width="${(X(f.q3) - X(f.q1)).toFixed(1)}" height="${boxH}"
+                      class="cc-box"></rect>
+                <line x1="${X(f.med).toFixed(1)}" y1="${boxTop}" x2="${X(f.med).toFixed(1)}" y2="${boxTop + boxH}" class="cc-med"></line>
+                ${mark(f.min, 'min')}${mark(f.q1, 'Q1')}${mark(f.med, 'med')}${mark(f.q3, 'Q3')}${mark(f.max, 'max')}
+                <text x="${padL + plotW / 2}" y="${H - 14}" class="cc-axis-title mid">${esc(chart.xLabel)}</text>
             </svg>
             <figcaption>${esc(chart.caption)}</figcaption>
         </figure>`;
@@ -5817,6 +6115,843 @@ ${jumbled.split('').join(' ')}`,
             explain: 'Two jobs at once: "this patch is mine" and "I am healthy, nest '
                    + 'with me". Dawn air is still and sound carries furthest, so a '
                    + 'song costs least and reaches most just after first light.',
+        };
+    },
+},
+
+// ════════════════════════════════════════════════════════════════════
+//  Written from the standards, not from the data
+// ════════════════════════════════════════════════════════════════════
+//
+//  Every template above was written by asking "what can we ask about this
+//  week's birds?" and then checked against Florida's benchmarks after the
+//  fact. These were written the other way round: `node tools/check-alignment.js
+//  --gaps` listed 71 benchmarks in the catalogue that nothing asked about,
+//  and each of these answers one of them.
+//
+//  That ordering matters more than it sounds. Asking what the data can
+//  support produces a lot of counting and comparing, because that is what
+//  detections are — and it never produces a box plot, a scatter plot, a
+//  scaled pictograph or a question about telling an observation from an
+//  inference, because nothing about a row in a table suggests them. Those
+//  are the things a curriculum coordinator looks for.
+//
+//  THE GUARDS ARE STRICTER HERE, deliberately. A question about the spread
+//  of a distribution needs a distribution: several of these refuse to build
+//  below a threshold that has nothing to do with whether the arithmetic
+//  would work. A box plot of five identical days is arithmetically fine and
+//  pedagogically worthless.
+// ════════════════════════════════════════════════════════════════════
+
+// ── Reading a chart, K–2 and 3–5 ────────────────────────────────────
+
+{
+    // MA.2.DP.1.1 and MA.3.DP.1.1 both name "scaled pictographs", and the
+    // scale is the whole lesson: a child who counts six birds and answers
+    // six has read the picture and missed the chart.
+    id: 'picto-read',
+    category: 'counting',
+    title: 'Read the picture graph',
+    bands: ['k-2', '3-5'],
+    build({ s, band, rng }) {
+        const top = s.species.slice(0, band === 'k-2' ? 4 : 5);
+        if (top.length < 3) return null;
+
+        const chart = cmPictograph('Visits this week', cmSpeciesSeries(s, top.length),
+                                   { band, highlight: top[1].species });
+        // Null when no scale above 1 is warranted — at that size the tally
+        // chart is the right chart and already exists.
+        if (!chart) return null;
+
+        const pick = top[1];
+        const built = cmChoices(String(pick.n),
+            // The wrong answer this question is FOR: the number of symbols,
+            // read straight off the picture without using the key.
+            [String(Math.round(pick.n / chart.per))]
+                .concat(cmNumberDistractors(pick.n, rng, 2).map(String)), rng);
+        if (!built) return null;
+
+        return {
+            prompt: `Use the key. How many times did a ${pick.species} visit?`,
+            ...built,
+            chart,
+            image: cmShotFor(s, pick.species),
+            explain: `${Math.round(pick.n / chart.per * 10) / 10} bird symbols, and each `
+                   + `one stands for ${chart.per} visits — so ${pick.n}, not `
+                   + `${Math.round(pick.n / chart.per)}.`,
+            about_bird: pick.species,
+        };
+    },
+},
+
+{
+    // ELA.1.R.2.1 and ELA.2.R.2.1 list graphs among the TEXT FEATURES a
+    // child has to use to understand a text. A chart with its title taken
+    // off is the cleanest way to ask whether they were reading it.
+    id: 'chart-title',
+    category: 'analysis',
+    title: 'What is this chart about?',
+    bands: ['k-2', '3-5'],
+    build({ s, band, rng }) {
+        if (s.days.length < 5 || s.total < 10) return null;
+
+        const built = cmChoices('How many birds came each day',
+            ['How many different kinds of bird came',
+             'What the weather was each day',
+             'What time of day the birds came'], rng);
+        if (!built) return null;
+
+        const chart = cmChart('', cmDaySeries(s), { band, kind: 'bars' });
+        if (!chart) return null;
+        // The title is the answer, so it cannot also be the caption.
+        chart.caption = 'This chart has lost its title';
+
+        return {
+            prompt: band === 'k-2'
+                ? 'Someone rubbed out the title. What is this chart showing?'
+                : 'The title is missing. What does this chart show?',
+            ...built,
+            chart,
+            explain: 'One bar for each day, and each bar is as tall as the number of '
+                   + 'visits that day. The labels along the bottom are days, so the '
+                   + 'heights have to be a count of something per day.',
+        };
+    },
+},
+
+// ── Measures of centre and spread ───────────────────────────────────
+
+{
+    // MA.4.DP.1.2 names mode, median and range together. Median and range
+    // already had questions; the mode did not.
+    id: 'mode-daily',
+    category: 'math',
+    title: 'The most common count',
+    bands: ['3-5', '6-8'],
+    build({ s, band, rng }) {
+        if (s.days.length < 6) return null;
+
+        const counts = new Map();
+        s.days.forEach(d => counts.set(d.n, (counts.get(d.n) || 0) + 1));
+        const best = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0] - b[0]);
+
+        // A mode that only ties for first is not a mode a class can name,
+        // and "there is no mode" is a fair answer we are not asking for.
+        if (!best.length || best[0][1] < 2) return null;
+        if (best.length > 1 && best[1][1] === best[0][1]) return null;
+
+        const mode = best[0][0];
+        const vals = s.days.map(d => d.n);
+        const mean = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+
+        const built = cmChoices(String(mode),
+            [String(mean), String(Math.max(...vals))]
+                .concat(cmNumberDistractors(mode, rng, 1).map(String)), rng);
+        if (!built) return null;
+
+        return {
+            prompt: 'What is the MODE of the daily visit counts this week?',
+            ...built,
+            chart: cmChart('Visits each day', cmDaySeries(s), { band, showValues: true }),
+            explain: `${vals.slice().sort((a, b) => a - b).join(', ')} — `
+                   + `${mode} appears ${best[0][1]} times, more than any other count. `
+                   + `The mode is the value that happens most, not the biggest value `
+                   + `and not the average.`,
+        };
+    },
+},
+
+{
+    // MA.6.DP.1.3 — read the five-number summary off a box plot.
+    id: 'box-quartile',
+    category: 'math',
+    title: 'Reading a box plot',
+    bands: ['6-8'],
+    build({ s14, rng }) {
+        const vals = s14.days.map(d => d.n);
+        if (vals.length < 8) return null;
+
+        const chart = cmBoxPlot('Daily visits over the last two weeks', vals,
+                                { xLabel: 'visits in a day' });
+        if (!chart) return null;
+
+        const f = chart.five;
+        const ask = cmShuffle([
+            { k: 'median', v: f.med,
+              why: 'half the days were below it and half above' },
+            { k: 'lower quartile', v: f.q1,
+              why: 'a quarter of the days were quieter than this' },
+            { k: 'upper quartile', v: f.q3,
+              why: 'three quarters of the days were below this' },
+        ], rng)[0];
+
+        const others = [f.min, f.max, f.med, f.q1, f.q3]
+            .filter(v => v !== ask.v).map(String);
+        const built = cmChoices(String(ask.v), [...new Set(others)].slice(0, 3), rng);
+        if (!built) return null;
+
+        return {
+            prompt: `What is the ${ask.k} of the daily visit counts?`,
+            ...built,
+            chart,
+            explain: `${ask.v} — ${ask.why}. The box runs from the lower quartile `
+                   + `(${f.q1}) to the upper quartile (${f.q3}); the heavy line inside `
+                   + `it is the median (${f.med}), and the whiskers reach the quietest `
+                   + `day (${f.min}) and the busiest (${f.max}).`,
+        };
+    },
+},
+
+{
+    // MA.6.DP.1.4 — describe spread and distribution: symmetry, skewness,
+    // gaps, clusters, outliers. A histogram is the chart it names, and it
+    // is just bars over bins.
+    id: 'histogram-spread',
+    category: 'analysis',
+    title: 'The shape of the data',
+    bands: ['6-8'],
+    build({ s14, band, rng }) {
+        const vals = s14.days.map(d => d.n);
+        if (vals.length < 10) return null;
+
+        const max = Math.max(...vals), min = Math.min(...vals);
+        if (max - min < 4) return null;                 // nothing to describe
+
+        const binSize = cmNiceStep(max - min);
+        const bins = new Map();
+        vals.forEach(v => {
+            const b = Math.floor(v / binSize) * binSize;
+            bins.set(b, (bins.get(b) || 0) + 1);
+        });
+        if (bins.size < 3) return null;
+
+        const series = [...bins.entries()].sort((a, b) => a[0] - b[0])
+            .map(([b, n]) => ({ label: `${b}–${b + binSize - 1}`, value: n, key: String(b) }));
+
+        // Where the mean sits relative to the median is the honest test of
+        // skew, and it is the one a class can check for itself afterwards.
+        const sorted = vals.slice().sort((a, b) => a - b);
+        const mid = Math.floor(sorted.length / 2);
+        const median = sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+        const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+        const gap = (mean - median) / (max - min);
+
+        const answer = gap > 0.08  ? 'Most days are quiet, with a few much busier ones'
+                     : gap < -0.08 ? 'Most days are busy, with a few much quieter ones'
+                     : 'The days are spread fairly evenly around the middle';
+
+        const built = cmChoices(answer, [
+            'Most days are quiet, with a few much busier ones',
+            'Most days are busy, with a few much quieter ones',
+            'The days are spread fairly evenly around the middle',
+            'Every day had almost exactly the same number of visits',
+        ].filter(x => x !== answer).slice(0, 3), rng);
+        if (!built) return null;
+
+        return {
+            prompt: 'Each bar counts the DAYS that fell in that range of visits. '
+                  + 'Which best describes the shape?',
+            ...built,
+            chart: cmChart('How many days fell in each range', series,
+                           { band, kind: 'bars', plain: true, showValues: true }),
+            explain: `The mean is ${mean.toFixed(1)} and the median is ${median}. `
+                   + (Math.abs(gap) <= 0.08
+                      ? 'They are close, so the distribution is roughly symmetric.'
+                      : `The mean is pulled ${mean > median ? 'up' : 'down'} away from `
+                        + `the median, which is what a tail on the `
+                        + `${mean > median ? 'high' : 'low'} side does to it.`),
+        };
+    },
+},
+
+{
+    // MA.6.DP.1.6 — how a change in the data moves the centre and the
+    // spread. Asked as a thought experiment on this week's real numbers,
+    // which is what "given a real-world scenario" is asking for.
+    id: 'center-shift',
+    category: 'math',
+    title: 'What one big day does',
+    bands: ['6-8'],
+    build({ s, band, rng }) {
+        if (s.days.length < 6) return null;
+        const vals = s.days.map(d => d.n);
+        const max = Math.max(...vals);
+        if (max < 4) return null;
+
+        const extra = max * 3;
+        const sorted = vals.slice().sort((a, b) => a - b);
+        const mid = Math.floor(sorted.length / 2);
+        const med0 = sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+        const mean0 = vals.reduce((a, b) => a + b, 0) / vals.length;
+
+        const v2 = vals.concat([extra]).sort((a, b) => a - b);
+        const m2 = Math.floor(v2.length / 2);
+        const med1 = v2.length % 2 ? v2[m2] : (v2[m2 - 1] + v2[m2]) / 2;
+        const mean1 = v2.reduce((a, b) => a + b, 0) / v2.length;
+
+        // Only worth asking where the two really do behave differently —
+        // that difference IS the benchmark.
+        if (!(mean1 - mean0 > Math.abs(med1 - med0) + 0.5)) return null;
+
+        const built = cmChoices('The mean moves a lot; the median barely moves',
+            ['Both move by about the same amount',
+             'The median moves a lot; the mean barely moves',
+             'Neither changes, because it is only one day'], rng);
+        if (!built) return null;
+
+        return {
+            prompt: `Suppose tomorrow a flock arrives and we record ${extra} visits in `
+                  + `one day. What happens to this week's mean and median?`,
+            ...built,
+            chart: cmChart('Visits each day this week', cmDaySeries(s),
+                           { band, showValues: true }),
+            explain: `Mean ${mean0.toFixed(1)} → ${mean1.toFixed(1)}, median ${med0} → `
+                   + `${med1}. The mean adds every value up, so one huge day drags it; `
+                   + `the median only cares which value sits in the middle, and one `
+                   + `extra day at the top shifts that by one place at most. That is `
+                   + `why an outlier is a reason to quote the median.`,
+        };
+    },
+},
+
+// ── Two variables at once ───────────────────────────────────────────
+
+{
+    // MA.8.DP.1.1 and MA.8.DP.1.2 — construct a scatter plot from
+    // bivariate data and describe the association. Temperature and visits
+    // are the only two numbers a feeder measures on the same days, which
+    // makes this the one honest scatter plot in the whole module.
+    id: 'scatter-temp',
+    category: 'analysis',
+    title: 'Temperature against visits',
+    bands: ['6-8'],
+    build({ s14, rng }) {
+        const pts = [];
+        s14.days.forEach(d => {
+            const t = s14.dayTemp.get(d.day);
+            if (t && t.n >= 3) {
+                pts.push({ x: Math.round(t.sum / t.n), y: d.n,
+                           label: cmDayAxisLabel(d.day),
+                           color: cmHeatColor(0.5) });
+            }
+        });
+        if (pts.length < 7) return null;
+
+        // Colour by temperature once the range is known, so the plot says
+        // cold-to-warm twice over — position and hue.
+        const xs = pts.map(p => p.x);
+        const lo = Math.min(...xs), hi = Math.max(...xs);
+        if (hi - lo < 6) return null;              // no real range to look at
+        pts.forEach(p => { p.color = cmHeatColor((p.x - lo) / (hi - lo)); });
+
+        const chart = cmScatter('Each dot is one day', pts,
+            { xLabel: 'average temperature (°F)', yLabel: 'visits that day',
+              fit: true, revealFit: true });
+        if (!chart) return null;
+
+        const slope = chart.fit ? chart.fit.slope : 0;
+        const spread = (Math.max(...pts.map(p => p.y)) - Math.min(...pts.map(p => p.y))) || 1;
+        const strength = Math.abs(slope) * (hi - lo) / spread;
+
+        const answer = strength < 0.35 ? 'No clear pattern either way'
+                     : slope > 0       ? 'More visits on the warmer days'
+                                       : 'More visits on the colder days';
+        const built = cmChoices(answer, [
+            'More visits on the warmer days',
+            'More visits on the colder days',
+            'No clear pattern either way',
+        ].filter(x => x !== answer), rng);
+        if (!built) return null;
+
+        return {
+            prompt: 'Each dot is one day: how warm it was, and how many birds came. '
+                  + 'What pattern of association do you see?',
+            ...built,
+            chart,
+            explain: answer === 'No clear pattern either way'
+                ? 'The dots scatter without leaning either way. That is a real result, '
+                + 'not a failed one — plenty of pairs of measurements are unrelated, '
+                + 'and saying so is the honest reading.'
+                : `The dots lean ${slope > 0 ? 'upward' : 'downward'} to the right: `
+                + `about ${Math.abs(slope).toFixed(1)} ${slope > 0 ? 'more' : 'fewer'} `
+                + `visits for every extra degree. A lean is an association, not a `
+                + `cause — warmer days are also longer and calmer.`,
+        };
+    },
+},
+
+{
+    // MA.8.DP.1.3 — informally fit a straight line. "Informally" is the
+    // operative word, so the question is about what a good line DOES
+    // rather than about calculating one.
+    id: 'fit-line',
+    category: 'analysis',
+    title: 'Drawing the line',
+    bands: ['6-8'],
+    build({ s14, rng }) {
+        const pts = [];
+        s14.days.forEach(d => {
+            const t = s14.dayTemp.get(d.day);
+            if (t && t.n >= 3) pts.push({ x: Math.round(t.sum / t.n), y: d.n });
+        });
+        if (pts.length < 8) return null;
+
+        const chart = cmScatter('The same days, with a line through them', pts,
+            { xLabel: 'average temperature (°F)', yLabel: 'visits that day', fit: true });
+        if (!chart || !chart.fit) return null;
+
+        const built = cmChoices(
+            'As close to as many dots as possible, with about as many above as below',
+            ['Through the highest dot and the lowest dot',
+             'Through the first dot and the last dot',
+             'Through as many dots exactly as it can, ignoring the rest'], rng);
+        if (!built) return null;
+
+        return {
+            prompt: 'Where should a line of best fit go?',
+            ...built,
+            chart,
+            explain: 'A fitted line is a summary of ALL the dots, so it is judged by '
+                   + 'the whole cloud, not by any two of them. Joining the extremes '
+                   + 'lets the two least typical days decide the answer — which is '
+                   + 'the opposite of what a summary is for.',
+        };
+    },
+},
+
+{
+    // MA.7.DP.1.4 — proportional reasoning on a circle graph. The donut
+    // chart already existed; nothing asked a proportional question of it.
+    id: 'circle-graph',
+    category: 'math',
+    title: 'Reading a circle graph',
+    bands: ['6-8'],
+    build({ s, band, rng }) {
+        if (s.total < 40 || s.species.length < 3) return null;
+        const top = s.species[0];
+        const share = top.n / s.total;
+        if (share < 0.15 || share > 0.7) return null;   // a wedge you can judge
+
+        const degrees = Math.round(share * 360 / 5) * 5;
+        const chart = cmChart('Share of this week’s visits', cmSpeciesSeries(s, 6),
+                              { band, kind: 'donut', highlight: top.species });
+        if (!chart) return null;
+
+        const built = cmChoices(`about ${degrees}°`,
+            [`about ${degrees + 45}°`, `about ${Math.max(15, degrees - 40)}°`,
+             `about ${Math.min(350, degrees + 90)}°`], rng);
+        if (!built) return null;
+
+        return {
+            prompt: `The ${top.species} made ${top.n} of our ${s.total} visits. `
+                  + `Roughly how big is its slice, in degrees?`,
+            ...built,
+            chart,
+            explain: `${top.n} out of ${s.total} is about ${Math.round(share * 100)}%, `
+                   + `and a whole circle is 360°. ${Math.round(share * 100)}% of 360° `
+                   + `is about ${degrees}°.`,
+            about_bird: top.species,
+        };
+    },
+},
+
+{
+    // MA.7.DP.1.2 — compare two populations using centre and variability.
+    // This is the question the pooled data source exists for: it cannot be
+    // asked of one feeder at all.
+    id: 'compare-feeders',
+    category: 'comparison',
+    title: 'Two feeders, side by side',
+    bands: ['6-8'],
+    build({ s, band, rng }) {
+        if (!s.isPool || !s.feeders || s.feeders.length < 2) return null;
+
+        const ranked = s.feeders.slice().sort((a, b) => b.total - a.total);
+        const [a, b] = ranked;
+        if (!a || !b || b.total < 8) return null;
+
+        const per = x => x.days.length ? x.total / x.days.length : 0;
+        const aPer = per(a), bPer = per(b);
+        // Close averages make this a coin toss rather than a comparison.
+        if (Math.abs(aPer - bPer) < Math.max(1, aPer * 0.25)) return null;
+
+        const winner = aPer > bPer ? a : b;
+        const built = cmChoices(winner.name,
+            [aPer > bPer ? b.name : a.name,
+             'They are about the same',
+             'There is no way to tell from this'], rng);
+        if (!built) return null;
+
+        const series = [
+            { label: a.name, value: Math.round(aPer * 10) / 10, key: 'a' },
+            { label: b.name, value: Math.round(bPer * 10) / 10, key: 'b' },
+        ];
+
+        return {
+            prompt: 'Which of these two feeders is busier on a typical day?',
+            ...built,
+            chart: cmChart('Average visits per day', series,
+                           { band, kind: 'hbars', plain: true }),
+            explain: `${a.name} averaged ${aPer.toFixed(1)} visits a day and `
+                   + `${b.name} averaged ${bPer.toFixed(1)}. Totals alone would not `
+                   + `settle it — a feeder switched on halfway through the fortnight `
+                   + `has fewer days to add up, which is why the comparison is per day.`,
+        };
+    },
+},
+
+// ── Probability ─────────────────────────────────────────────────────
+
+{
+    // MA.7.DP.2.1 — determine the sample space for a simple experiment.
+    // Built from the species this feeder actually has, so the sample space
+    // is a real one the class can check.
+    id: 'sample-space',
+    category: 'math',
+    title: 'All the possible outcomes',
+    bands: ['6-8'],
+    build({ s, rng }) {
+        if (s.species.length < 3 || s.species.length > 9) return null;
+        const n = s.species.length;
+
+        const built = cmChoices(String(n * n),
+            [String(n * 2), String(n), String(n * (n - 1))], rng);
+        if (!built) return null;
+
+        return {
+            prompt: `${n} different species visited this week. If we write down the `
+                  + `species of the next bird AND the one after it, how many different `
+                  + `pairs could we end up with?`,
+            ...built,
+            explain: `${n} choices for the first bird, and the same ${n} for the second `
+                   + `— the first bird does not use anything up — so ${n} × ${n} = `
+                   + `${n * n}. That full list of outcomes is the sample space. It `
+                   + `includes the ${n} pairs where the same species turns up twice.`,
+        };
+    },
+},
+
+// ── Nature of science ───────────────────────────────────────────────
+
+{
+    // SC.4.N.1.6 — keep records that carefully distinguish actual
+    // observations from ideas and inferences about them. Asked against a
+    // real photograph from this feeder, which is the only way to ask it
+    // that is not a vocabulary question.
+    id: 'observe-or-infer',
+    category: 'science',
+    title: 'Saw it, or worked it out?',
+    bands: ['3-5', '6-8'],
+    build({ s, rng }) {
+        const shot = s.snapshots.find(r => (r.confidence || 0) >= 0.6);
+        if (!shot) return null;
+
+        const when = new Date(shot.detected_at);
+        const hour = when.getHours();
+
+        const built = cmChoices(
+            `The bird is ${hour < 12 ? 'hungry' : 'about to fly south'}`,
+            ['The bird is at the feeder',
+             'The bird has a beak',
+             'The photo was taken in daylight'], rng);
+        if (!built) return null;
+
+        return {
+            prompt: 'Three of these you can SEE in the photo. One is something '
+                  + 'somebody worked out. Which is the inference?',
+            ...built,
+            image: { url: shot.image_url, detection_id: shot.id },
+            explain: 'An observation is what the senses record; an inference is what '
+                   + 'you conclude from it. We can see the bird, the beak and the '
+                   + 'daylight. Why it came, and where it is going, are not in the '
+                   + 'photograph — they may well be true, and they are still not '
+                   + 'observations.',
+            detection_id: shot.id,
+        };
+    },
+},
+
+{
+    // SC.8.N.1.3 — "results support" or "fail to support", and science
+    // does not offer conclusive proof. Phrased against a real claim about
+    // this feeder so the hedge has something to be a hedge ABOUT.
+    id: 'results-support',
+    category: 'science',
+    title: 'What the data can and cannot say',
+    bands: ['6-8'],
+    build({ s, rng }) {
+        if (s.total < 25 || !s.species.length) return null;
+        const top = s.species[0];
+
+        const built = cmChoices(
+            `Our results SUPPORT the idea that ${top.species}s are the commonest `
+            + `visitor here`,
+            [`Our results PROVE that ${top.species}s are the commonest visitor here`,
+             `Our results prove that ${top.species}s are the commonest bird in the state`,
+             `Our results say nothing at all about which bird is commonest`], rng);
+        if (!built) return null;
+
+        return {
+            prompt: `${top.n} of our ${s.total} visits this week were ${top.species}s. `
+                  + `Which sentence should go in the write-up?`,
+            ...built,
+            explain: 'Scientists write "support" and "fail to support" rather than '
+                   + '"prove", because another week could always come out differently. '
+                   + 'One feeder, one week, cannot speak for the state either — but it '
+                   + 'is real evidence about this feeder, so "says nothing" is wrong too.',
+            about_bird: top.species,
+        };
+    },
+},
+
+{
+    // SC.7.N.1.2 — differentiate replication (by others) from repetition
+    // (multiple trials). A community with several feeders is a replication
+    // the class did not have to arrange.
+    id: 'replication-repetition',
+    category: 'science',
+    title: 'Repeating and replicating',
+    bands: ['6-8'],
+    build({ rng }) {
+        const built = cmChoices(
+            'Another school counts the birds at THEIR feeder',
+            ['We count again the next day',
+             'We count for a second week at our own feeder',
+             'Two of us count the same hour and compare'], rng);
+        if (!built) return null;
+
+        return {
+            prompt: 'Our class counts birds at our feeder every day for a week. '
+                  + 'Which of these would be a REPLICATION rather than a repetition?',
+            ...built,
+            explain: 'Repetition is doing your own trial again — more days, more weeks, '
+                   + 'two of you counting together. Replication is somebody ELSE '
+                   + 'getting the same result independently, which is the stronger '
+                   + 'check, because it cannot share your mistakes or your feeder.',
+        };
+    },
+},
+
+{
+    // MA.6.DP.1.1 — recognise and formulate a statistical question. The
+    // distinguishing feature is variability in the answers, which is
+    // exactly what a week of feeder data has.
+    id: 'stat-question',
+    category: 'analysis',
+    title: 'Which is a statistical question?',
+    bands: ['6-8'],
+    build({ rng }) {
+        const built = cmChoices(
+            'How many birds visit our feeder in a day?',
+            ['How many birds visited our feeder yesterday?',
+             'What is the name of the bird in this photo?',
+             'What time did the first bird arrive this morning?'], rng);
+        if (!built) return null;
+
+        return {
+            prompt: 'A statistical question is one you expect to get a RANGE of '
+                  + 'answers to. Which of these is one?',
+            ...built,
+            explain: 'The other three each have one right answer you could look up. '
+                   + '"How many in a day" varies from day to day, so answering it '
+                   + 'means collecting a set of numbers and summarising them — which '
+                   + 'is what makes it statistical.',
+        };
+    },
+},
+
+// ── Classifying what came ───────────────────────────────────────────
+
+{
+    // SC.3.L.15.1 — classify animals into major groups by physical
+    // characteristics and behaviours. The one benchmark that mentions
+    // birds by name, and nothing asked it.
+    id: 'classify-animal',
+    category: 'science',
+    title: 'What makes it a bird?',
+    bands: ['3-5'],
+    build({ s, rng }) {
+        const sp = s.species.length ? s.species[0].species : null;
+
+        const built = cmChoices('Feathers, a beak, and it lays eggs',
+            ['It can fly and it lays eggs',
+             'It has two legs and it can fly',
+             'It builds a nest and eats seeds'], rng);
+        if (!built) return null;
+
+        return {
+            prompt: sp
+                ? `Scientists put the ${sp} in the same group as every other bird. `
+                  + `What puts it there?`
+                : 'What puts an animal in the bird group?',
+            ...built,
+            image: sp ? cmShotFor(s, sp) : null,
+            explain: 'Feathers are the giveaway — no other animal alive has them. '
+                   + 'Flight is not: bats and most insects fly, and ostriches, '
+                   + 'penguins and kiwis do not. Nests and seeds are things some '
+                   + 'birds do, not things that make them birds.',
+            about_bird: sp,
+        };
+    },
+},
+
+{
+    // SC.1.L.16.1 — young resemble their parents, but individuals vary.
+    // Both halves matter, and the second half is the one usually skipped.
+    id: 'parents-and-variation',
+    category: 'science',
+    title: 'Like their parents',
+    bands: ['k-2'],
+    build({ rng }) {
+        const built = cmChoices('They look mostly like their parents, but not exactly',
+            ['They look exactly like their parents',
+             'They look nothing like their parents',
+             'They choose what they will look like'], rng);
+        if (!built) return null;
+
+        return {
+            prompt: 'When baby birds grow up, what do they look like?',
+            ...built,
+            explain: 'Young cardinals grow up red like their parents — that is why we '
+                   + 'can tell a cardinal from a jay at all. But no two are identical: '
+                   + 'one is a little bigger, one a little brighter. Both parts are '
+                   + 'true at once.',
+        };
+    },
+},
+
+{
+    // SC.2.L.17.2 — living things are everywhere, but each can only live
+    // where its basic needs are met. A feeder is a habitat the class is
+    // watching, which makes this concrete rather than definitional.
+    id: 'habitat-needs',
+    category: 'science',
+    title: 'Why birds come here',
+    bands: ['k-2'],
+    build({ rng }) {
+        const built = cmChoices('Because they can find food, water and shelter here',
+            ['Because every animal can live anywhere',
+             'Because they like our school',
+             'Because somebody told them to come'], rng);
+        if (!built) return null;
+
+        return {
+            prompt: 'Birds come to our feeder, but a fish could not live here. Why do '
+                  + 'the birds come?',
+            ...built,
+            explain: 'Living things are found all over the Earth, but each kind can '
+                   + 'only live where its needs are met. Our feeder has seed, and '
+                   + 'there are trees nearby to hide in. A fish needs water to breathe, '
+                   + 'so this is not a place a fish can live.',
+        };
+    },
+},
+
+// ── Geography, from where the feeders actually are ──────────────────
+
+{
+    // SS.5.G.1.2 — use latitude and longitude to locate places. Real
+    // coordinates, from a real feeder, which is the difference between
+    // this and a worksheet.
+    id: 'geo-latlong',
+    category: 'geography',
+    title: 'Finding it by coordinates',
+    bands: ['3-5', '6-8'],
+    build({ s, rng }) {
+        const row = s.rows.find(r => isFinite(+r.latitude) && isFinite(+r.longitude)
+                                  && +r.latitude !== 0 && +r.longitude !== 0);
+        if (!row) return null;
+
+        const lat = +row.latitude, lng = +row.longitude;
+        const ns = lat >= 0 ? 'north' : 'south';
+        const ew = lng >= 0 ? 'east' : 'west';
+
+        const built = cmChoices(
+            `${Math.abs(lat).toFixed(1)}° ${ns} of the Equator, `
+            + `${Math.abs(lng).toFixed(1)}° ${ew} of the Prime Meridian`,
+            [`${Math.abs(lng).toFixed(1)}° ${ns} of the Equator, `
+             + `${Math.abs(lat).toFixed(1)}° ${ew} of the Prime Meridian`,
+             `${Math.abs(lat).toFixed(1)}° ${ew} of the Equator, `
+             + `${Math.abs(lng).toFixed(1)}° ${ns} of the Prime Meridian`,
+             `${Math.abs(lat).toFixed(1)}° ${ns} of the Prime Meridian, `
+             + `${Math.abs(lng).toFixed(1)}° ${ew} of the Equator`], rng);
+        if (!built) return null;
+
+        return {
+            prompt: `A feeder in this lesson sits at ${lat.toFixed(1)}, `
+                  + `${lng.toFixed(1)}. Where is that?`,
+            ...built,
+            explain: `Latitude comes first and measures north or south of the Equator; `
+                   + `longitude comes second and measures east or west of the Prime `
+                   + `Meridian. ${lat.toFixed(1)} is latitude, so ${Math.abs(lat).toFixed(1)}° `
+                   + `${ns}. ${lng.toFixed(1)} is longitude, so `
+                   + `${Math.abs(lng).toFixed(1)}° ${ew}.`,
+        };
+    },
+},
+
+{
+    // SS.3.G.1.1 — use thematic maps, tables, charts, graphs AND PHOTOS to
+    // analyse geographic information. The lesson's own chart is the
+    // geographic information, which is the point.
+    id: 'geo-read-chart',
+    category: 'geography',
+    title: 'What the chart tells you about the place',
+    bands: ['3-5'],
+    build({ s, band, rng }) {
+        if (s.species.length < 4 || s.total < 20) return null;
+
+        const built = cmChoices('Which kinds of bird live around here',
+            ['How big the state is',
+             'How many people live here',
+             'What the weather will do tomorrow'], rng);
+        if (!built) return null;
+
+        return {
+            prompt: 'Geographers use charts like this one to learn about a place. '
+                  + 'What does this chart tell you about ours?',
+            ...built,
+            chart: cmChart('Birds recorded here this week', cmSpeciesSeries(s, 6),
+                           { band, kind: 'hbars' }),
+            explain: 'A list of which birds turn up, and how often, describes the '
+                   + 'living things of a place — which is geography as much as it is '
+                   + 'science. It says nothing about area, population or tomorrow, '
+                   + 'because none of those was measured.',
+        };
+    },
+},
+
+// ── Reading an argument ─────────────────────────────────────────────
+
+{
+    // ELA.3.R.2.4 and ELA.4.R.2.4 — identify a claim and the evidence
+    // used to support it. The class's own chart is the evidence, so the
+    // question is about whether the claim goes beyond it.
+    id: 'claim-evidence',
+    category: 'language',
+    title: 'Does the evidence back the claim?',
+    bands: ['3-5', '6-8'],
+    build({ s, band, rng }) {
+        if (s.total < 20 || s.species.length < 3) return null;
+        const top = s.species[0];
+
+        const built = cmChoices(
+            `${top.species}s came to our feeder more often than any other bird this week`,
+            [`${top.species}s are the most common bird in the world`,
+             `${top.species}s are the friendliest birds`,
+             `${top.species}s will come to our feeder again next week`], rng);
+        if (!built) return null;
+
+        return {
+            prompt: 'Which claim does this chart actually support?',
+            ...built,
+            chart: cmChart('Visits this week', cmSpeciesSeries(s, 6),
+                           { band, highlight: top.species }),
+            explain: 'The chart counts visits to one feeder in one week. That supports '
+                   + 'a claim about this feeder and this week, and nothing wider. The '
+                   + 'others might be true, but the evidence in front of us does not '
+                   + 'show them — and "friendliest" was never measured at all.',
+            about_bird: top.species,
         };
     },
 },

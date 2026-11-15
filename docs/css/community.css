@@ -4336,6 +4336,9 @@
     .classroom-slide-top.has-media .classroom-chart.hbars,
     .classroom-slide-top.has-media .classroom-chart.line,
     .classroom-slide-top.has-media .classroom-chart.donut,
+    .classroom-slide-top.has-media .classroom-chart.picto,
+    .classroom-slide-top.has-media .classroom-chart.scatter,
+    .classroom-slide-top.has-media .classroom-chart.box,
     .classroom-slide-top.has-media .classroom-chart.clock { width: 100%; }
 
     /* A photo AND a map is already a two-up; stacking them inside one
@@ -4851,6 +4854,74 @@
     font-size: clamp(0.75rem, 1.6vmin, 1.1rem);
     color: var(--color-gray-500); font-style: italic;
 }
+
+/* ── Scaled pictograph ─────────────────────────────────────────────
+   The tally chart with a key. Everything is inherited from .dots on
+   purpose: the two charts should look like the same chart, because the
+   step a child is being asked to take from one to the other is ONLY that
+   one bird now stands for more than one visit. A different-looking chart
+   would hide the one thing that changed.
+
+   The key is the loudest thing on the picture. A pictograph read without
+   its key gives the wrong answer every time and looks right doing it, so
+   it is not a footnote. */
+.classroom-chart.picto .cc-key {
+    display: flex; align-items: center; gap: 0.9vmin;
+    font-size: clamp(0.9rem, 2.1vmin, 1.5rem); font-weight: 700;
+    color: var(--color-gray-900);
+    padding: 0.5vmin 1.4vmin; margin-bottom: 1.4vmin;
+    border: 2px solid var(--border); border-radius: 10px;
+    align-self: flex-start;
+}
+.classroom-chart.picto .cc-key .cc-dot { background: var(--color-primary); }
+
+/* Half a bird, for a count that does not divide by the key. Rounding up to
+   keep the symbols whole would change the answer, so the chart shows the
+   remainder instead. Clipped rather than scaled: half as WIDE reads as half
+   a bird, half as big reads as a smaller, further-away bird. */
+.cc-dot.half { clip-path: inset(0 50% 0 0); }
+
+/* ── Scatter plot ──────────────────────────────────────────────────
+   MA.8.DP.1.1-1.3. Points sit above the gridlines and the fitted line
+   sits under the points — a trend line drawn over the data hides the
+   very points a class is being asked to judge it against. */
+.cc-pt { opacity: 0.85; }
+.cc-pt-faint { fill: var(--color-gray-500); opacity: 0.4; }
+
+/* Dashed, and never the same colour as a point. A solid line reads as
+   part of the data rather than as something drawn through it, and
+   MA.8.DP.1.3 is explicitly about fitting a line INFORMALLY — the
+   dashes say "this is a judgement, not a measurement". */
+.cc-fit {
+    stroke: var(--color-gray-900); stroke-width: 3.5;
+    stroke-dasharray: 14 10; opacity: 0.75;
+}
+
+.cc-axis-line { stroke: var(--color-gray-500); stroke-width: 2.5; }
+
+.cc-axis-title {
+    fill: var(--color-gray-900); opacity: 0.85;
+    font-size: 28px; font-family: inherit; font-weight: 700;
+}
+.cc-axis.mid, .cc-val.mid, .cc-axis-title.mid { text-anchor: middle; }
+.cc-axis.end { text-anchor: end; }
+
+/* ── Box plot ──────────────────────────────────────────────────────
+   MA.6.DP.1.3. The median line is the heaviest mark on the chart because
+   it is the one a class is most often asked to read, and at projector
+   distance a 2px rule inside a filled box disappears. */
+.cc-box {
+    fill: color-mix(in srgb, var(--color-primary) 22%, transparent);
+    stroke: var(--color-primary); stroke-width: 3;
+}
+.cc-med     { stroke: var(--color-gray-900); stroke-width: 6; }
+.cc-whisker { stroke: var(--color-primary); stroke-width: 3; }
+
+/* These two have far less to draw than a bar chart, so the global 34vh cap
+   squashes them into a strip. A box plot is one row tall by nature and a
+   scatter needs its height to show spread at all. */
+.classroom-chart.box svg     { max-height: 24vh; }
+.classroom-chart.scatter svg { max-height: 42vh; }
 
 /* A chart, a question, four choices and a reveal block all want the same
    screen. The chart is capped so the rest always fits beneath it: at 1080p

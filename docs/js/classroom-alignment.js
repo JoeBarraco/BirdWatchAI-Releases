@@ -210,6 +210,52 @@ const CLASSROOM_TEMPLATE_STANDARDS = {
     // animal-behaviour benchmark and nothing in MU, because nothing in MU
     // is about what a sound is FOR.
     'music-dawn-chorus':    ['SC.4.L.16.3'],
+
+    // ════════════════════════════════════════════════════════════════
+    //  Written from the gaps this file found
+    // ════════════════════════════════════════════════════════════════
+
+    // ── Reading a chart ──────────────────────────────────────────────
+    //
+    // Note what picto-read does NOT claim. MA.2.DP.1.1 and MA.3.DP.1.1 say
+    // "collect and represent"; a child reading our pictograph is doing
+    // neither — the chart did the representing. It earns the INTERPRET
+    // benchmarks and only those. The scaled pictograph was still worth
+    // building: reading one with a key of 5 is a different skill from
+    // reading a tally chart, and it is the one MA.3.DP.1.2 names.
+    'picto-read':          ['MA.1.DP.1.2', 'MA.2.DP.1.2', 'MA.3.DP.1.2'],
+    'chart-title':         ['ELA.1.R.2.1', 'ELA.2.R.2.1', 'MA.2.DP.1.2', 'MA.3.DP.1.2'],
+
+    // ── Centre and spread ────────────────────────────────────────────
+    'mode-daily':          ['MA.4.DP.1.2', 'MA.6.DP.1.2'],
+    'box-quartile':        ['MA.6.DP.1.3'],
+    'histogram-spread':    ['MA.6.DP.1.4'],
+    'center-shift':        ['MA.6.DP.1.6', 'MA.7.DP.1.1'],
+
+    // ── Two variables ────────────────────────────────────────────────
+    'scatter-temp':        ['MA.8.DP.1.1', 'MA.8.DP.1.2'],
+    'fit-line':            ['MA.8.DP.1.3'],
+    'circle-graph':        ['MA.7.DP.1.4', 'MA.6.AR.3.4'],
+    'compare-feeders':     ['MA.7.DP.1.2'],
+    'sample-space':        ['MA.7.DP.2.1'],
+
+    // ── Nature of science ────────────────────────────────────────────
+    'observe-or-infer':    ['SC.3.N.1.6', 'SC.4.N.1.6', 'SC.5.N.1.6', 'SC.7.N.1.6'],
+    'results-support':     ['SC.7.N.1.6', 'SC.8.N.1.3'],
+    'replication-repetition': ['SC.6.N.1.2', 'SC.7.N.1.2'],
+    'stat-question':       ['MA.6.DP.1.1'],
+
+    // ── Life science ─────────────────────────────────────────────────
+    'classify-animal':      ['SC.3.L.15.1'],
+    'parents-and-variation':['SC.1.L.16.1'],
+    'habitat-needs':        ['SC.1.L.17.1', 'SC.2.L.17.2'],
+
+    // ── Geography ────────────────────────────────────────────────────
+    'geo-latlong':          ['SS.5.G.1.2', 'SS.6.G.1.1'],
+    'geo-read-chart':       ['SS.3.G.1.1'],
+
+    // ── Argument ─────────────────────────────────────────────────────
+    'claim-evidence':       ['ELA.3.R.2.4', 'ELA.4.R.2.4', 'ELA.5.R.2.4'],
 };
 
 /**
