@@ -303,6 +303,22 @@ const CLASSROOM_TEMPLATE_STANDARDS = {
     'feeder-competition':   ['SC.7.L.17.2', 'SC.7.L.17.3'],
     'predict-from-probability': ['MA.8.DP.2.3', 'MA.7.DP.1.3'],
     'feeder-impact':        ['SC.4.L.17.4'],
+
+    // ── Music, unblocked by the recordings ───────────────────────────
+    //
+    // These six were the last of the gap list and they were blocked on
+    // one thing: every benchmark asks a class to compare melodic and
+    // rhythmic patterns BY EAR. Written against printed mnemonics they
+    // would have been vocabulary questions wearing a music label, which
+    // is the over-claiming this file exists to prevent. With real
+    // recordings they are what the benchmarks describe, and each one
+    // refuses to build without its audio.
+    'music-same-or-different':  ['MU.K.O.1.2'],
+    'music-high-or-low':        ['MU.2.O.1.1'],
+    'music-match-written':      ['MU.2.S.3.4', 'MU.3.S.3.4'],
+    'music-tempo-change':       ['MU.2.O.3.1'],
+    'music-timbre':             ['MU.3.H.1.3'],
+    'music-pitched-unpitched':  ['MU.1.C.1.3'],
 };
 
 // ════════════════════════════════════════════════════════════════════

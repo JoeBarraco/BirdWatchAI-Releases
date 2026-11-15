@@ -67,6 +67,10 @@ ctx.document=new Proxy({createElement:el,getElementById:()=>null,querySelector:(
 vm.createContext(ctx);
 
 try { vm.runInContext(read('docs/js/community-us-map.js'),ctx); } catch(e){}
+// The music questions refuse to build without a recording, so the sound
+// catalogue has to be in the sandbox or six templates would report as
+// "never built" and look broken.
+vm.runInContext(read('docs/js/community-bird-sounds.js'),ctx);
 vm.runInContext(read('docs/js/classroom-standards.js'),ctx);
 vm.runInContext(read('docs/js/community-classroom.js'),ctx);
 

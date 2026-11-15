@@ -1951,10 +1951,157 @@ function classroomEvidenceHtml(q, revealed) {
 
     // Both: the bird beside the places. Side by side on a projector, stacked
     // when there is no room for two.
+    const sound = q.sound ? classroomSoundHtml(q, revealed) : '';
+
     if (shot && map) return `<div class="classroom-evidence-pair">${shot}${map}</div>`;
     if (map)  return map;
-    if (shot) return shot;
+    // A photo AND a song: the bird above, the button below, which is the
+    // pairing the reveal of a "who sings this?" question wants.
+    if (shot) return sound ? `${shot}${sound}` : shot;
+    if (sound) return sound;
     return classroomChartHtml(q.chart, revealed);
+}
+
+/**
+ * A bird song on the slide.
+ *
+ * ⚠ A BUTTON, NOT AN <audio controls>. The native player is a thin strip
+ * of 14px glyphs: unreadable from the back of a classroom and almost
+ * unhittable on an interactive whiteboard. This is one large control that
+ * says what it will do.
+ *
+ * NOT autoplay either, and not looping. Browsers block autoplay without a
+ * gesture, so a song that was supposed to introduce the question would
+ * simply not happen and nobody would know why — and a bird call looping
+ * under a teacher's voice is the sort of thing that gets a feature turned
+ * off for good. The class hears it when the teacher presses it, as many
+ * times as they want.
+ *
+ * THE CREDIT IS NOT OPTIONAL. Every one of these is CC BY-SA or public
+ * domain; for the former, naming the recordist and the licence wherever
+ * the recording is played is the condition under which we may play it at
+ * all. Same rule the photographs already follow.
+ */
+/**
+ * The first of these species whose recording THIS browser can play.
+ *
+ * ⚠ NOT EVERY RECORDING IS AN MP3. Commons has exactly one Carolina
+ * Chickadee recording and it is an .ogg, which Safari will not play — so
+ * on an iPad at the front of a classroom, two music questions would have
+ * put up a button that does nothing. There is no mp3 of that species to
+ * fetch instead, and substituting a Black-capped Chickadee because the
+ * file format is more convenient would be answering a different question.
+ *
+ * So the question picks a bird it can actually sound. Pass the best
+ * example first and an acceptable fallback after it; a template that gets
+ * null should not build at all rather than ask about a silence.
+ */
+function cmPlayableSound(species) {
+    if (typeof birdSound !== 'function') return null;
+    const list = Array.isArray(species) ? species : [species];
+
+    let probe = null;
+    try { probe = document.createElement('audio'); } catch { probe = null; }
+
+    for (const sp of list) {
+        const rec = birdSound(sp);
+        if (!rec || !rec.file) continue;
+        if (!probe || !probe.canPlayType) return rec;   // cannot tell: try it
+
+        const type = /\.mp3$/i.test(rec.file) ? 'audio/mpeg'
+                   : /\.og[ga]$/i.test(rec.file) ? 'audio/ogg'
+                   : /\.wav$/i.test(rec.file) ? 'audio/wav' : '';
+        // canPlayType returns '', 'maybe' or 'probably'. Anything but '' is
+        // worth offering; '' is a definite no.
+        if (!type || probe.canPlayType(type)) return rec;
+    }
+    return null;
+}
+
+function classroomSoundHtml(q, revealed) {
+    const s = q.sound;
+    if (!s || !s.file) return '';
+
+    // Held back exactly like image_on_reveal, and for the same reason: on
+    // "which bird sounds like this?" the recording IS the question, but on
+    // "what does a cardinal sound like?" it is the answer.
+    if (q.sound_on_reveal && !revealed) return '';
+
+    const credit = s.artist
+        ? `<p class="classroom-shot-credit">${esc(s.artist)}${
+              s.licence ? ' / ' + esc(s.licence) : ''} · Wikimedia Commons</p>`
+        : '';
+
+    return `
+        <figure class="classroom-sound">
+            <button type="button" class="classroom-sound-btn"
+                    onclick="classroomPlaySound(this)" data-src="${esc(s.file)}">
+                <span class="classroom-sound-icon" aria-hidden="true">▶</span>
+                <span class="classroom-sound-label">Play the song</span>
+            </button>
+            <audio preload="none" src="${esc(s.file)}"></audio>
+            ${credit}
+        </figure>`;
+}
+
+/**
+ * Play, or stop if it is already playing.
+ *
+ * Stopping matters more than it sounds: some of these recordings run for a
+ * minute and a half, and a teacher who has heard enough needs one obvious
+ * way to end it rather than hunting for a control while thirty children
+ * listen to a towhee.
+ */
+function classroomPlaySound(btn) {
+    const fig = btn.closest('.classroom-sound');
+    const el  = fig && fig.querySelector('audio');
+    if (!el) return;
+
+    const label = btn.querySelector('.classroom-sound-label');
+    const icon  = btn.querySelector('.classroom-sound-icon');
+
+    if (!el.paused) {
+        el.pause();
+        el.currentTime = 0;
+        btn.classList.remove('playing');
+        if (icon)  icon.textContent = '▶';
+        if (label) label.textContent = 'Play the song';
+        return;
+    }
+
+    // Only one bird at a time. Two slides' worth of audio overlapping is
+    // the kind of thing that happens once and is never forgiven.
+    document.querySelectorAll('.classroom-sound audio').forEach(a => {
+        if (a !== el) { a.pause(); a.currentTime = 0; }
+    });
+    document.querySelectorAll('.classroom-sound-btn.playing').forEach(b => {
+        if (b !== btn) {
+            b.classList.remove('playing');
+            const i = b.querySelector('.classroom-sound-icon');
+            const l = b.querySelector('.classroom-sound-label');
+            if (i) i.textContent = '▶';
+            if (l) l.textContent = 'Play the song';
+        }
+    });
+
+    const done = () => {
+        btn.classList.remove('playing');
+        if (icon)  icon.textContent = '▶';
+        if (label) label.textContent = 'Play it again';
+    };
+    el.onended = done;
+
+    el.play().then(() => {
+        btn.classList.add('playing');
+        if (icon)  icon.textContent = '■';
+        if (label) label.textContent = 'Stop';
+    }).catch(() => {
+        // A codec the browser will not take — our ogg files on Safari — or a
+        // file that failed to load. Say so on the button rather than leaving
+        // a control that does nothing when pressed.
+        if (label) label.textContent = 'Sound will not play here';
+        btn.disabled = true;
+    });
 }
 
 /**
@@ -4749,15 +4896,35 @@ ${jumbled.split('').join(' ')}`,
     title: 'Who says that?',
     bands: ['k-2', '3-5', '6-8'],
     build({ rng }) {
-        const pool = cmShuffle(BIRD_SOUNDS, rng);
+        // Prefer a bird we can actually PLAY. Flagged exactly: "it would be
+        // better if these types of questions included a clickable link to
+        // play the sound." A mnemonic with the real song behind it is a
+        // different question from a mnemonic alone — the class hears the
+        // rhythm the words were invented to carry.
+        //
+        // Not a hard requirement, though: the written mnemonics work on
+        // their own and always have, and this template is one of the few
+        // that carries a lesson at a feeder with no data at all. A species
+        // with no recording still gets asked.
+        const withSound = BIRD_SOUNDS.filter(x => cmPlayableSound(x.bird));
+        const pool = cmShuffle(withSound.length >= 4 ? withSound : BIRD_SOUNDS, rng);
         const pick = pool[0];
         const built = cmChoices(pick.bird, pool.slice(1, 4).map(x => x.bird), rng);
         if (!built) return null;
+
+        const rec = cmPlayableSound(pick.bird);
+
         return {
             template_id: 'sound-' + pick.bird.toLowerCase().replace(/\W+/g, '-'),
-            prompt: `Birders learn songs by putting words to them. Which bird sounds `
+            prompt: rec
+                ? `Birders learn songs by putting words to them. Listen, then look at `
+                  + `the words. Which bird is this?\n"${pick.says}"`
+                : `Birders learn songs by putting words to them. Which bird sounds `
                   + `like this?\n"${pick.says}"`,
             ...built,
+            // The recording IS the question here, so it plays from the
+            // start rather than waiting for the reveal.
+            sound: rec,
             // Puts the "Read more" button on the reveal. Asked for on this
             // exact question — "maybe link to website about the bird?" — and
             // it is the right instinct: a class that has just learned a bird
@@ -8039,6 +8206,222 @@ ${jumbled.split('').join(' ')}`,
                    + 'have to be kept clean: crowding spreads disease. People change '
                    + 'environments even when they are trying to help, and noticing that '
                    + 'is part of the science.',
+        };
+    },
+},
+
+// ════════════════════════════════════════════════════════════════════
+//  Music, now that there is something to listen to
+// ════════════════════════════════════════════════════════════════════
+//
+//  These six benchmarks were the last block of the gap list and they were
+//  blocked on one thing: every one of them asks a class to compare
+//  melodic and rhythmic patterns BY EAR. Written against printed words
+//  they would have been vocabulary questions wearing a music label, which
+//  is the exact over-claiming classroom-alignment.js exists to prevent.
+//
+//  With real recordings they are the questions the benchmarks describe.
+//  Each one plays an actual bird and asks about what was heard.
+//
+//  ⚠ EVERY ONE REFUSES TO BUILD WITHOUT ITS AUDIO. Not a graceful
+//  degradation to a text version — that text version is precisely the
+//  thing that would be a lie. No recording, no question.
+// ════════════════════════════════════════════════════════════════════
+
+{
+    // MU.K.O.1.2 — similarities and differences in melodic phrases and
+    // rhythm patterns. Two birds, played one after the other.
+    id: 'music-same-or-different',
+    category: 'music',
+    title: 'Same or different?',
+    bands: ['k-2'],
+    needsData: false,
+    build({ rng }) {
+        // Both of these repeat, which is what the question is about. The
+        // chickadee is the clearer example and is ogg-only; the sparrow is
+        // the mp3 fallback for browsers that will not take ogg.
+        const rec = cmPlayableSound(['Carolina Chickadee', 'White-throated Sparrow']);
+        if (!rec) return null;
+        const chick = /chickadee/i.test(rec.file);
+
+        const built = cmChoices('It repeats the same few notes over and over',
+            ['Every part of it is different',
+             'It is one long note that never changes',
+             'It gets faster and faster until it stops'], rng);
+        if (!built) return null;
+
+        return {
+            prompt: `Listen to the ${chick ? 'chickadee' : 'sparrow'}. What happens `
+                  + `to its pattern?`,
+            ...built,
+            sound: rec,
+            explain: (chick
+                ? 'A chickadee repeats: chick-a-dee-dee-dee, then again. '
+                : 'The sparrow repeats: Peabody, Peabody, Peabody. ')
+                   + 'Hearing '
+                   + 'that something comes back is the first thing musicians listen '
+                   + 'for — a pattern you have heard before is what holds a piece of '
+                   + 'music together.',
+        };
+    },
+},
+
+{
+    // MU.2.O.1.1 — identify basic elements of music in an excerpt. Pitch
+    // is the element, and two birds a long way apart on it make the
+    // comparison audible rather than theoretical.
+    id: 'music-high-or-low',
+    category: 'music',
+    title: 'High and low, for real',
+    bands: ['k-2'],
+    needsData: false,
+    build({ rng }) {
+        const high = cmPlayableSound(['Carolina Chickadee', 'Tufted Titmouse',
+                                      'Northern Cardinal']);
+        const low  = cmPlayableSound(['American Crow', 'Barred Owl']);
+        if (!high || !low) return null;
+
+        const built = cmChoices('Pitch — how high or low a sound is',
+            ['Tempo — how fast it goes',
+             'Dynamics — how loud it is',
+             'Timbre — what kind of thing is making it'], rng);
+        if (!built) return null;
+
+        return {
+            prompt: 'Listen to this bird, then think of a crow. Which part of music '
+                  + 'is most different between them?',
+            ...built,
+            sound: high,
+            explain: 'Pitch. A chickadee sings high and a crow calls low, and that is '
+                   + 'the same difference as between the right-hand and left-hand ends '
+                   + 'of a piano. Tempo is speed, dynamics is loudness, and timbre is '
+                   + 'what makes a flute and a violin sound unlike each other even on '
+                   + 'the same note.',
+        };
+    },
+},
+
+{
+    // MU.2.S.3.4 — match an aural pattern with a written one. The
+    // mnemonics birders use ARE written rhythm patterns, which makes this
+    // the most natural fit of the six.
+    id: 'music-match-written',
+    category: 'music',
+    title: 'Match what you hear',
+    bands: ['k-2', '3-5'],
+    needsData: false,
+    build({ rng }) {
+        const rec = cmPlayableSound('Barred Owl');
+        if (!rec) return null;
+
+        const built = cmChoices('Who COOKS for you? Who COOKS for you ALL?',
+            ['Drink your teeeeea',
+             'chick-a-dee-dee-dee',
+             'Old Sam Peabody, Peabody, Peabody'], rng);
+        if (!built) return null;
+
+        return {
+            prompt: 'Listen. Which written pattern matches the rhythm you heard?',
+            ...built,
+            sound: rec,
+            explain: 'Eight syllables, said twice, with the stress falling on COOKS '
+                   + 'both times. Birders write songs down as words for exactly this '
+                   + 'reason — a written pattern you can check against what your ears '
+                   + 'just did is how you learn to trust them.',
+        };
+    },
+},
+
+{
+    // MU.2.O.3.1 — describe changes in tempo and dynamics WITHIN a work.
+    // The towhee is the right bird: a slow opening and a fast trill, in
+    // one phrase, every time.
+    id: 'music-tempo-change',
+    category: 'music',
+    title: 'When the speed changes',
+    bands: ['k-2', '3-5'],
+    needsData: false,
+    build({ rng }) {
+        const rec = cmPlayableSound('Eastern Towhee');
+        if (!rec) return null;
+
+        const built = cmChoices('It starts slow and then speeds up into a trill',
+            ['It stays at exactly the same speed all the way through',
+             'It starts fast and then slows right down',
+             'It stops and starts at random'], rng);
+        if (!built) return null;
+
+        return {
+            prompt: 'Listen to the whole phrase. What happens to the SPEED inside it?',
+            ...built,
+            sound: rec,
+            explain: '"Drink your teeeeea" — two slow notes, then the tea runs away '
+                   + 'into a fast trill. A change of tempo inside one phrase is '
+                   + 'something composers do deliberately, and this bird does it every '
+                   + 'single time.',
+        };
+    },
+},
+
+{
+    // MU.3.H.1.3 — identify timbre. Two birds of very different size make
+    // timbre separable from pitch, which is the hard part of the idea.
+    id: 'music-timbre',
+    category: 'music',
+    title: 'What kind of sound is it?',
+    bands: ['3-5'],
+    needsData: false,
+    build({ rng }) {
+        const rec = cmPlayableSound(['Mourning Dove', 'Barred Owl']);
+        if (!rec) return null;
+
+        const built = cmChoices('Soft and breathy, like blowing over a bottle',
+            ['Bright and metallic, like a triangle',
+             'Scratchy and rough, like a guiro',
+             'Sharp and clicky, like claves'], rng);
+        if (!built) return null;
+
+        return {
+            prompt: 'Listen. Which instrument has the closest TIMBRE — the closest '
+                  + 'kind of sound — to this bird?',
+            ...built,
+            sound: rec,
+            explain: 'Timbre is what makes two sounds at the same pitch and loudness '
+                   + 'still sound unlike each other. A dove’s coo is soft and hollow, '
+                   + 'with the air audible in it — much closer to blowing over a bottle '
+                   + 'than to anything struck or scraped.',
+        };
+    },
+},
+
+{
+    // MU.1.C.1.3 — pitched against unpitched. Birds divide the same way
+    // instruments do, which is the connection worth making: a song has a
+    // tune you could sing, a call does not.
+    id: 'music-pitched-unpitched',
+    category: 'music',
+    title: 'A tune, or just a noise?',
+    bands: ['k-2'],
+    needsData: false,
+    build({ rng }) {
+        const rec = cmPlayableSound(['American Crow', 'Blue Jay']);
+        if (!rec) return null;
+
+        const built = cmChoices('Unpitched, like a drum — you could not sing it',
+            ['Pitched, like a xylophone — you could sing it back',
+             'It is both at the same time',
+             'It is silent'], rng);
+        if (!built) return null;
+
+        return {
+            prompt: 'Instruments are pitched, like a xylophone, or unpitched, like a '
+                  + 'drum. Listen to this bird. Which is it most like?',
+            ...built,
+            sound: rec,
+            explain: 'A crow’s caw is a harsh noise with no clear note in it, so '
+                   + 'there is nothing to sing back — like a drum or a woodblock. A '
+                   + 'cardinal whistles real notes you could find on a xylophone. Birds '
+                   + 'split the same way our instruments do.',
         };
     },
 },
