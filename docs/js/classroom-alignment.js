@@ -256,6 +256,53 @@ const CLASSROOM_TEMPLATE_STANDARDS = {
 
     // ── Argument ─────────────────────────────────────────────────────
     'claim-evidence':       ['ELA.3.R.2.4', 'ELA.4.R.2.4', 'ELA.5.R.2.4'],
+
+    // ════════════════════════════════════════════════════════════════
+    //  Second batch from the gap list
+    // ════════════════════════════════════════════════════════════════
+    //
+    // Mostly Nature of Science, which is what was left: observation,
+    // inference, evidence, records, repeatability. Those are also the
+    // benchmarks that most need a real photograph to be asked honestly,
+    // which is why this batch is heavy on them.
+
+    // ── Looking carefully ────────────────────────────────────────────
+    'observe-carefully':    ['SC.K.N.1.2', 'SC.K.N.1.5', 'SC.1.N.1.4'],
+    'how-do-you-know':      ['SC.1.N.1.3', 'SC.1.N.1.4'],
+    'same-tools-different-counts': ['SC.2.N.1.2', 'SC.3.N.1.2'],
+    'repeat-the-count':     ['SC.2.N.1.4'],
+    'keeping-records':      ['SC.1.N.1.3', 'SC.3.N.1.3'],
+    'evidence-or-opinion':  ['SC.3.N.1.7', 'SC.4.N.1.7', 'SC.5.N.1.6', 'SC.5.N.2.1'],
+    'art-read-the-photo':   ['VA.3.C.1.2', 'VA.5.C.1.2', 'VA.4.C.1.2'],
+
+    // ── Numbers ──────────────────────────────────────────────────────
+    'order-the-days':       ['MA.1.NSO.1.4', 'MA.2.NSO.1.3', 'MA.1.DP.1.2'],
+    'ten-more-ten-less':    ['MA.1.NSO.2.3'],
+    'round-to-ten':         ['MA.2.NSO.1.4'],
+    'two-step-k2':          ['MA.2.AR.1.1', 'MA.1.AR.1.2'],
+    'extend-pattern':       ['MA.4.AR.3.2', 'MA.3.AR.3.3'],
+    'multi-step-seed':      ['MA.5.AR.1.1', 'MA.4.DP.1.3'],
+    'equivalent-fractions': ['MA.4.FR.1.3'],
+    'temp-difference':      ['MA.3.M.1.2'],
+
+    // ── Geography ────────────────────────────────────────────────────
+    'map-elements':         ['SS.1.G.1.2'],
+    'equator-poles':        ['SS.2.G.1.3'],
+    // Tagged to the weather benchmark and to Nature of Science, because
+    // the answer is about how you would FIND OUT — which is the plan of
+    // an investigation, not a fact about Florida.
+    'weather-impact':       ['SS.4.G.1.3', 'SC.5.N.1.6'],
+
+    // ── Words ────────────────────────────────────────────────────────
+    'roots-in-names':       ['ELA.3.V.1.2', 'ELA.4.V.1.2', 'ELA.5.V.1.2'],
+    'chart-and-words':      ['ELA.1.R.2.3', 'ELA.1.R.2.1'],
+
+    // ── 6-8 ──────────────────────────────────────────────────────────
+    'which-chart':          ['MA.7.DP.1.5'],
+    'linnaean-names':       ['SC.6.L.15.1'],
+    'feeder-competition':   ['SC.7.L.17.2', 'SC.7.L.17.3'],
+    'predict-from-probability': ['MA.8.DP.2.3', 'MA.7.DP.1.3'],
+    'feeder-impact':        ['SC.4.L.17.4'],
 };
 
 // ════════════════════════════════════════════════════════════════════

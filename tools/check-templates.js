@@ -70,29 +70,49 @@ try { vm.runInContext(read('docs/js/community-us-map.js'),ctx); } catch(e){}
 vm.runInContext(read('docs/js/classroom-standards.js'),ctx);
 vm.runInContext(read('docs/js/community-classroom.js'),ctx);
 
-// ── Synthetic feeder: 14 days, 6 species, photos, clips, temps, GPS ──
+// ── Synthetic feeders: several DIFFERENT fortnights ─────────────────
+//
+// Three weeks, not one. A single synthetic week cannot distinguish "the
+// guard is working" from "the guard is broken": order-the-days needs an
+// unambiguous busiest day, and the first two data sets this harness used
+// both happened to tie at the top, so it reported zero builds and looked
+// exactly like a bug in the template. A template is only a problem if it
+// builds in NONE of them.
 const SP=['Northern Cardinal','Blue Jay','Carolina Chickadee','Tufted Titmouse',
           'House Finch','Mourning Dove'];
-const rows=[]; let id=0;
-const now=Date.now();
-for(let d=13; d>=0; d--){
-  const day=new Date(now - d*86400000);
-  const n = 6 + ((d*7)%14);                      // varied daily counts
-  for(let i=0;i<n;i++){
-    const t=new Date(day); t.setHours(6+(i*3)%12, (i*13)%60, 0, 0);
-    rows.push({id:'det'+(++id), feeder_id:'f1', species:SP[(d+i)%SP.length],
-      confidence:0.7+((i%3)*0.1), detected_at:t.toISOString(),
-      image_url:'https://example.invalid/s'+id+'.jpg',
-      video_url: i%9===0 ? 'https://example.invalid/v'+id+'.mp4' : null,
-      temperature: 38 + ((d*5)%22), rarity:'common',
-      latitude: 39.3 + d*0.001, longitude: -76.6 - d*0.001, zip_code:'21210'});
-  }
-}
 const mk=(id,name,rs,home)=>vm.runInContext('cmSummarize',ctx)(id,name,rs,home);
-const s14=mk('f1','our feeder',rows,true);
-const half=rows.filter((_,i)=>i%2===0).map(r=>({...r,feeder_id:'f2'}));
-const pool=Object.assign(mk(null,'the school feeders',rows.concat(half),false),
-  {isPool:true, feeders:[mk('f1','Courtyard',rows,false), mk('f2','Library',half,false)]});
+
+function makeRows(seed){
+  const rows=[]; let id=0; const now=Date.now();
+  for(let d=13; d>=0; d--){
+    const day=new Date(now - d*86400000);
+    // Deterministic per seed, and deliberately uneven: real daily counts
+    // are not a formula and templates that need a clear maximum, a mode or
+    // a spread must meet data that has one.
+    const n = 3 + ((d*d*7 + d*13 + seed*29) % 31);
+    for(let i=0;i<n;i++){
+      const tm=new Date(day); tm.setHours(6+(i*3)%12, (i*13)%60, 0, 0);
+      rows.push({id:'det'+seed+'-'+(++id), feeder_id:'f1',
+        species:SP[(d+i+seed)%SP.length],
+        confidence:0.7+((i%3)*0.1), detected_at:tm.toISOString(),
+        image_url:'https://example.invalid/s'+id+'.jpg',
+        video_url: i%9===0 ? 'https://example.invalid/v'+id+'.mp4' : null,
+        temperature: 34 + ((d*5 + seed*7)%26), rarity:'common',
+        latitude: 39.3 + d*0.001, longitude: -76.6 - d*0.001, zip_code:'21210'});
+    }
+  }
+  return rows;
+}
+
+const WORLDS = [0,1,2].map(seed => {
+  const rows = makeRows(seed);
+  const s14  = mk('f1','our feeder',rows,true);
+  const half = rows.filter((_,i)=>i%2===0).map(r=>({...r,feeder_id:'f2'}));
+  const pool = Object.assign(mk(null,'the school feeders',rows.concat(half),false),
+    {isPool:true, feeders:[mk('f1','Courtyard',rows,false), mk('f2','Library',half,false)]});
+  return { seed, s14, pool };
+});
+const s14 = WORLDS[0].s14, pool = WORLDS[0].pool;
 
 const cmWindow=vm.runInContext('cmWindow',ctx);
 const cmRng=vm.runInContext('cmRng',ctx);
@@ -104,10 +124,14 @@ const only=process.argv.slice(2).find(a=>!a.startsWith('--'))||null;
 let built=0, nulled=0, threw=0; const kinds=new Set();
 const chartHtml=vm.runInContext('classroomChartHtml',ctx);
 const problems=[], nulls=[];
+const neverBuilt=[];
 for(const t of T){
   if(only && !only.split(',').includes(t.id)) continue;
+  let anyBuilt=false;
   for(const band of t.bands){
-    for(const [label,src] of [['single',s14],['pool',pool]]){
+    const pairs=[];
+    WORLDS.forEach(w=>{ pairs.push(['single:'+w.seed,w.s14],['pool:'+w.seed,w.pool]); });
+    for(const [label,src] of pairs){
       const s=cmWindow(src,7);
       if(src.isPool){ s.isPool=true; s.feeders=src.feeders.map(f=>cmWindow(f,7)); }
       try{
@@ -115,7 +139,7 @@ for(const t of T){
                          feeder:src.name, source:src,
                          room:{id:'r1', grade_band:band, name:'Room A'}});
         if(q && q.prompt){
-          built++;
+          built++; anyBuilt=true;
           // Render the chart both ways. A chart that builds and then throws
           // in its renderer is a blank slide on a projector.
           if(q.chart){
@@ -129,6 +153,7 @@ for(const t of T){
       }catch(e){ threw++; problems.push(`${t.id}/${band}/${label}: ${e.message}`); }
     }
   }
+  if(!anyBuilt) neverBuilt.push(t.id);
 }
 // ── The whole pipeline, per band, which is where the last bug lived ──
 const buildAll = vm.runInContext('buildClassroomQuestions', ctx);
@@ -148,6 +173,17 @@ for (const band of ['k-2', '3-5', '6-8']) {
 }
 
 console.log(`built ${built}  returned-null ${nulled}  THREW ${threw}`);
+// Reported, NOT failed. A template that builds in none of these may be
+// perfectly correct and simply need a condition the synthetic data has
+// not got — percent-of-days wants a species that misses some days, and
+// here every species appears every day. This list is a prompt to check,
+// not a verdict. Only a throw fails the run.
+if(neverBuilt.length){
+  console.log(`
+Built in none of the ${WORLDS.length} synthetic fortnights — worth a`);
+  console.log(`look, though tidy test data explains most of them:`);
+  neverBuilt.forEach(id=>console.log('  '+id));
+}
 console.log(`full lessons assembled: ${lessons} of 6`);
 console.log('chart kinds rendered: '+[...kinds].sort().join(', '));
 if(problems.length){ console.log('\nERRORS:'); problems.forEach(p=>console.log('  '+p)); }

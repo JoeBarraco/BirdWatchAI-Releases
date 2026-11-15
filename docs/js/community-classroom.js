@@ -7211,6 +7211,831 @@ ${jumbled.split('').join(' ')}`,
         };
     },
 },
+
+// ════════════════════════════════════════════════════════════════════
+//  Second batch from the gap list
+// ════════════════════════════════════════════════════════════════════
+//
+//  Same method as the first: `node tools/check-alignment.js --gaps` named
+//  49 benchmarks nothing asked about, and these answer the ones a feeder
+//  can honestly evidence.
+//
+//  WEIGHTED TOWARDS PHOTOGRAPHS AND CLIPS ON PURPOSE. A teacher asked for
+//  "more questions that include bird photos and clips", and it happens
+//  that the benchmarks still uncovered are mostly Nature of Science —
+//  observation, inference, evidence, records, repeatability — which are
+//  the ones that NEED a real picture. A question about careful looking
+//  with nothing to look at is a definition.
+//
+//  WHAT IS STILL NOT HERE, AND WHY.
+//  The six music benchmarks want melodic and rhythmic patterns compared
+//  by ear, and we have no audio. Writing them against printed words
+//  would be pretending. They stay in the gap list until bird song does.
+//  The "collect and represent" benchmarks (MA.*.DP.1.1, MA.6.DP.1.5)
+//  stay too: our charts do the representing, and a child choosing an
+//  option is not doing what those say. MA.7.DP.1.5 — CHOOSE an
+//  appropriate representation — is the one of that family a multiple
+//  choice can honestly carry, and it is here.
+// ════════════════════════════════════════════════════════════════════
+
+// ── Looking carefully, with something to look at ────────────────────
+
+{
+    // SC.K.N.1.5 and SC.1.N.1.4 together: what careful observation can
+    // and cannot tell you, asked over a real photograph of a real bird
+    // that really came.
+    id: 'observe-carefully',
+    category: 'science',
+    title: 'What can looking tell us?',
+    bands: ['k-2'],
+    build({ s, rng }) {
+        const shot = s.snapshots.find(r => (r.confidence || 0) >= 0.6);
+        if (!shot) return null;
+
+        const built = cmChoices('What colors it has',
+            ['What it ate for breakfast',
+             'How old it is',
+             'Whether it has babies'], rng);
+        if (!built) return null;
+
+        return {
+            prompt: 'Look at our photo carefully. Which of these can you find out '
+                  + 'just by LOOKING?',
+            ...built,
+            image: { url: shot.image_url, detection_id: shot.id },
+            explain: 'Careful looking tells you colors, size and shape — real things, '
+                   + 'and you can show somebody else the same photo and they will '
+                   + 'see them too. Breakfast, age and babies are not in the picture. '
+                   + 'Scientists are careful about that difference.',
+            detection_id: shot.id,
+        };
+    },
+},
+
+{
+    // SC.1.N.1.4 — ask "how do you know?" — and the answer is the point:
+    // because the camera kept a record, which is SC.1.N.1.3 as well.
+    id: 'how-do-you-know',
+    category: 'science',
+    title: 'How do you know?',
+    bands: ['k-2'],
+    build({ s, rng }) {
+        if (!s.species.length) return null;
+        const sp = s.species[0].species;
+
+        const built = cmChoices('Show them the photo the camera took',
+            ['Say it louder',
+             'Ask them to believe you',
+             'Guess again tomorrow'], rng);
+        if (!built) return null;
+
+        return {
+            prompt: `You tell a friend a ${sp} came to our feeder. They ask, `
+                  + `"how do you know?" What is the best thing to do?`,
+            ...built,
+            image: cmShotFor(s, sp),
+            image_on_reveal: true,
+            explain: '"How do you know?" is a fair question and it always has a good '
+                   + 'answer: show the evidence. Our camera keeps a picture of every '
+                   + 'visit, so we never have to say "just trust me".',
+            about_bird: sp,
+        };
+    },
+},
+
+{
+    // SC.2.N.1.2 and SC.3.N.1.2 — different groups, same tools, different
+    // answers. A clip is the honest way to ask it: everybody watches the
+    // same few seconds and the counts really do differ.
+    id: 'same-tools-different-counts',
+    category: 'science',
+    title: 'Two groups, two answers',
+    bands: ['k-2', '3-5'],
+    build({ s, band, rng }) {
+        const clip = cmPickClip(s, rng);
+        if (!clip) return null;
+
+        const built = cmChoices('Watch it again together and agree how to count',
+            ['The bigger number must be right',
+             'The group that finished first is right',
+             'Nobody can ever know'], rng);
+        if (!built) return null;
+
+        return {
+            prompt: band === 'k-2'
+                ? 'Two groups watched this same clip. One counted 3 birds and one '
+                  + 'counted 4. What should they do?'
+                : 'Two groups watched this same clip with the same tools and got '
+                  + 'different counts — 3 and 4. What is the scientific thing to do?',
+            ...built,
+            clip: { url: clip.video_url, detection_id: clip.id },
+            explain: 'Different groups using the same tools often get slightly '
+                   + 'different results, and that is normal rather than a mistake by '
+                   + 'one of them. Scientists go back to the evidence and work out '
+                   + 'WHY — did one group count a bird that landed twice?',
+            detection_id: clip.id,
+        };
+    },
+},
+
+{
+    // SC.2.N.1.4 — the same investigation repeated should reach similar
+    // conclusions. Our feeder does it every single day, which is a better
+    // example than anything invented.
+    id: 'repeat-the-count',
+    category: 'science',
+    title: 'Doing it again',
+    bands: ['k-2'],
+    build({ s, rng }) {
+        if (s.days.length < 5) return null;
+
+        const built = cmChoices('Close to the same, but not exactly the same',
+            ['Exactly the same every time',
+             'Completely different every time',
+             'It would stop working'], rng);
+        if (!built) return null;
+
+        return {
+            prompt: 'We count the birds at our feeder every day. If we do it again '
+                  + 'next week, what should we expect?',
+            ...built,
+            chart: cmChart('Visits each day', cmDaySeries(s), { band: 'k-2' }),
+            explain: 'A good investigation gives you a similar answer when you do it '
+                   + 'again — that is how you know it was a real result. Not identical, '
+                   + 'though: birds are not machines. Wildly different every time would '
+                   + 'mean something was wrong with how we were counting.',
+        };
+    },
+},
+
+{
+    // SC.1.N.1.3 and SC.3.N.1.3 — keeping records. The class already has
+    // the best possible one, so the question is about what makes it good.
+    id: 'keeping-records',
+    category: 'science',
+    title: 'Why we write it down',
+    bands: ['k-2', '3-5'],
+    build({ s, band, rng }) {
+        if (s.total < 10) return null;
+
+        const built = cmChoices('Because we would forget, and a record can be checked',
+            ['Because the birds want us to',
+             'Because it makes the birds come back',
+             'Because it is a rule'], rng);
+        if (!built) return null;
+
+        return {
+            prompt: band === 'k-2'
+                ? 'Our feeder writes down every bird it sees. Why is that a good idea?'
+                : 'Our feeder keeps a record of every visit. Why do scientists keep '
+                  + 'records of what they observe?',
+            ...built,
+            chart: cmChart('What the record looks like', cmDaySeries(s),
+                           { band, showValues: true }),
+            explain: `This chart only exists because something wrote down all `
+                   + `${s.total} visits as they happened. A record turns "I think `
+                   + `Thursday was busy" into something anyone can check — including `
+                   + `you, next month, when you have forgotten.`,
+        };
+    },
+},
+
+{
+    // SC.3.N.1.7, SC.4.N.1.7 and SC.5.N.2.1 — what empirical evidence IS,
+    // and that an explanation has to be tied to it.
+    id: 'evidence-or-opinion',
+    category: 'science',
+    title: 'Evidence, or just an idea?',
+    bands: ['3-5'],
+    build({ s, rng }) {
+        if (!s.species.length || s.total < 15) return null;
+        const top = s.species[0];
+
+        const built = cmChoices(
+            `${top.species}s visited ${top.n} times this week`,
+            [`${top.species}s are the prettiest birds`,
+             `${top.species}s like our feeder best`,
+             `${top.species}s are happy here`], rng);
+        if (!built) return null;
+
+        return {
+            prompt: 'Which of these is EVIDENCE — something that was observed or '
+                  + 'measured — rather than an idea about it?',
+            ...built,
+            image: cmShotFor(s, top.species),
+            explain: `${top.n} visits is a measurement: the camera counted them, and `
+                   + `anybody can check. "Prettiest" is an opinion, and "likes it best" `
+                   + `and "is happy" are explanations somebody made up to fit the `
+                   + `number. They might even be right — they are still not evidence.`,
+            about_bird: top.species,
+        };
+    },
+},
+
+// ── Looking, as an artist ───────────────────────────────────────────
+
+{
+    // VA.3.C.1.2 and VA.5.C.1.2 — reflect on and interpret an image using
+    // observation. The feeder's own photograph is the work being read.
+    id: 'art-read-the-photo',
+    category: 'art',
+    title: 'Reading a picture',
+    bands: ['3-5'],
+    build({ s, rng }) {
+        const shot = s.snapshots.find(r => (r.confidence || 0) >= 0.6);
+        if (!shot) return null;
+
+        const built = cmChoices(
+            'Describe what is actually in it, then say what it makes you think',
+            ['Decide straight away whether you like it',
+             'Work out how expensive the camera was',
+             'Find out who took it before looking'], rng);
+        if (!built) return null;
+
+        return {
+            prompt: 'Artists look at an image before they judge it. What is the first '
+                  + 'thing to do with this photograph?',
+            ...built,
+            image: { url: shot.image_url, detection_id: shot.id },
+            explain: 'Describe first, interpret second: what is in the frame, where the '
+                   + 'light is, what is sharp and what is blurred — then what it makes '
+                   + 'you feel. Deciding whether you like it first tends to stop you '
+                   + 'looking at all.',
+            detection_id: shot.id,
+        };
+    },
+},
+
+// ── Numbers, K-2 ────────────────────────────────────────────────────
+
+{
+    // MA.1.NSO.1.4 and MA.2.NSO.1.3 — plot, order and compare whole
+    // numbers, using the week the class has in front of them.
+    id: 'order-the-days',
+    category: 'math',
+    title: 'Putting days in order',
+    bands: ['k-2'],
+    build({ s, band, rng }) {
+        const days = s.days.filter(d => d.n > 0);
+        if (days.length < 4) return null;
+
+        const sorted = days.slice().sort((a, b) => a.n - b.n);
+        const answer = sorted[sorted.length - 1];
+
+        // Only the TOP has to be unambiguous. Rejecting every week with any
+        // repeated count at all was the first version of this, and it never
+        // built once — real daily counts repeat constantly, and a tie between
+        // Tuesday and Thursday down in the middle does not stop "which day
+        // comes last" having one answer.
+        if (answer.n === sorted[sorted.length - 2].n) return null;
+
+        // Distractors from days with DIFFERENT counts, so no option is as
+        // defensible as the answer.
+        const seen = new Set([answer.n]);
+        const others = sorted.filter(d => !seen.has(d.n) && seen.add(d.n))
+                             .slice(0, 3)
+                             .map(d => cmDayAxisLabel(d.day));
+        if (others.length < 2) return null;
+
+        const built = cmChoices(cmDayAxisLabel(answer.day), others, rng);
+        if (!built) return null;
+
+        return {
+            prompt: 'If we put the days in order from FEWEST birds to MOST, '
+                  + 'which day comes last?',
+            ...built,
+            chart: cmChart('Visits each day', cmDaySeries(s), { band }),
+            explain: `In order: ${sorted.map(d => `${cmDayAxisLabel(d.day)} (${d.n})`)
+                        .join(', ')}. Last means the biggest.`,
+        };
+    },
+},
+
+{
+    // MA.1.NSO.2.3 — ten more and ten less than a two-digit number.
+    id: 'ten-more-ten-less',
+    category: 'math',
+    title: 'Ten more, ten less',
+    bands: ['k-2'],
+    build({ s, rng }) {
+        const pick = cmShuffle(s.days.filter(d => d.n >= 10 && d.n <= 89), rng)[0];
+        if (!pick) return null;
+
+        const answer = pick.n + 10;
+        const built = cmChoices(String(answer),
+            [String(pick.n - 10), String(pick.n + 1), String(pick.n + 100)], rng);
+        if (!built) return null;
+
+        return {
+            prompt: `There were ${pick.n} visits on ${cmDayProse(pick.day)}. `
+                  + `What is TEN MORE than ${pick.n}?`,
+            ...built,
+            explain: `${pick.n} + 10 = ${answer}. Ten more changes the tens digit and `
+                   + `leaves the ones alone. Ten LESS would be ${pick.n - 10}.`,
+        };
+    },
+},
+
+{
+    // MA.2.NSO.1.4 — round to the nearest 10. The 3-5 band already has a
+    // rounding question; this is the two-digit one.
+    id: 'round-to-ten',
+    category: 'math',
+    title: 'Rounding to ten',
+    bands: ['k-2'],
+    build({ s, rng }) {
+        const pick = cmShuffle(s.days.filter(d => d.n > 0 && d.n <= 99 && d.n % 10 !== 0),
+                               rng)[0];
+        if (!pick) return null;
+
+        const answer = Math.round(pick.n / 10) * 10;
+        const other  = answer === Math.floor(pick.n / 10) * 10
+            ? answer + 10 : answer - 10;
+        const built = cmChoices(String(answer),
+            [String(other), String(pick.n), String(answer + 10)], rng);
+        if (!built) return null;
+
+        return {
+            prompt: `${pick.n} birds came on ${cmDayProse(pick.day)}. Rounded to the `
+                  + `nearest TEN, about how many is that?`,
+            ...built,
+            explain: `${pick.n} is closer to ${answer} than to ${other}, so it rounds `
+                   + `to ${answer}. Rounding is for when "about" is enough.`,
+        };
+    },
+},
+
+{
+    // MA.2.AR.1.1 — a two-step addition and subtraction problem out of
+    // the week's own numbers.
+    id: 'two-step-k2',
+    category: 'math',
+    title: 'Two steps',
+    bands: ['k-2'],
+    build({ s, band, rng }) {
+        const days = s.days.filter(d => d.n > 0);
+        if (days.length < 3) return null;
+        const [a, b] = cmShuffle(days, rng).slice(0, 2);
+        if (!a || !b) return null;
+
+        const flew = Math.max(1, Math.round((a.n + b.n) / 3));
+        const answer = a.n + b.n - flew;
+        if (answer < 1) return null;
+
+        const built = cmChoices(String(answer),
+            [String(a.n + b.n), String(a.n + b.n + flew), String(Math.abs(a.n - b.n))], rng);
+        if (!built) return null;
+
+        return {
+            prompt: `${a.n} birds came on ${cmDayProse(a.day)} and ${b.n} came on `
+                  + `${cmDayProse(b.day)}. If ${flew} of them flew away again, how many `
+                  + `were left?`,
+            ...built,
+            chart: cmChart('Visits each day', cmDaySeries(s),
+                           { band, showValues: true }),
+            explain: `Two steps: first add, ${a.n} + ${b.n} = ${a.n + b.n}. Then take `
+                   + `away, ${a.n + b.n} − ${flew} = ${answer}.`,
+        };
+    },
+},
+
+// ── Numbers, 3-5 ────────────────────────────────────────────────────
+
+{
+    // MA.4.AR.3.2 — generate, describe and extend a pattern with a rule.
+    // The rule is invented, not found in the data: feeder counts do not
+    // follow one, and pretending otherwise would be the dishonest version.
+    id: 'extend-pattern',
+    category: 'math',
+    title: 'Following a rule',
+    bands: ['3-5'],
+    build({ s, rng }) {
+        if (!s.species.length) return null;
+        const start = 3 + Math.floor(rng() * 5);
+        const step  = 2 + Math.floor(rng() * 4);
+        const seq   = [start, start + step, start + 2 * step, start + 3 * step];
+        const next  = start + 4 * step;
+
+        const built = cmChoices(String(next),
+            [String(next + step), String(next - 1), String(start + 3 * step + 1)], rng);
+        if (!built) return null;
+
+        return {
+            prompt: `We put out ${start} scoops of seed in week 1, then add ${step} `
+                  + `more every week: ${seq.join(', ')}… How many scoops in week 5?`,
+            ...built,
+            explain: `The rule is "add ${step} each time". Week 4 was ${seq[3]}, so `
+                   + `week 5 is ${seq[3]} + ${step} = ${next}. Describing the rule in `
+                   + `words is what lets you jump to any week without listing them all.`,
+        };
+    },
+},
+
+{
+    // MA.5.AR.1.1 — multi-step, more than one operation.
+    id: 'multi-step-seed',
+    category: 'math',
+    title: 'More than one step',
+    bands: ['3-5'],
+    build({ s, band, rng }) {
+        if (s.total < 20 || s.days.length < 5) return null;
+        const perScoop = 5 + Math.floor(rng() * 5);
+        const cost = 2;
+        const scoops = Math.ceil(s.total / perScoop);
+        const answer = scoops * cost;
+
+        const built = cmChoices(`$${answer}`,
+            [`$${scoops}`, `$${s.total * cost}`, `$${Math.round(answer / 2)}`], rng);
+        if (!built) return null;
+
+        return {
+            prompt: `Our feeder had ${s.total} visits this week. One scoop of seed `
+                  + `feeds about ${perScoop} visits, and a scoop costs $${cost}. `
+                  + `About how much did this week cost?`,
+            ...built,
+            chart: cmChart('Visits each day', cmDaySeries(s), { band }),
+            explain: `Two operations: ${s.total} ÷ ${perScoop} ≈ ${scoops} scoops, then `
+                   + `${scoops} × $${cost} = $${answer}. Dividing first and multiplying `
+                   + `second — doing it the other way round answers a different question.`,
+        };
+    },
+},
+
+{
+    // MA.4.FR.1.3 — equivalent fractions, and the "why" clause of that
+    // benchmark: what happens to numerator and denominator.
+    id: 'equivalent-fractions',
+    category: 'math',
+    title: 'The same fraction, written twice',
+    bands: ['3-5'],
+    build({ s, rng }) {
+        const days = s.days.filter(d => d.n > 0).length;
+        if (days < 4 || days > 7) return null;
+
+        // Halves are the one family that lands on friendly numbers whatever
+        // the week looks like.
+        const built = cmChoices('2/4',
+            ['1/4', '2/3', '3/4'], rng);
+        if (!built) return null;
+
+        return {
+            prompt: 'Birds came on some days and not others. If they came on HALF of '
+                  + 'the days, which of these is the same as 1/2?',
+            ...built,
+            explain: '2/4 is the same amount as 1/2: both the top and the bottom have '
+                   + 'been doubled, so the size of each piece halved and you have twice '
+                   + 'as many. 2/3 and 3/4 are bigger than a half; 1/4 is smaller.',
+        };
+    },
+},
+
+{
+    // MA.3.M.1.2 — a real-world problem with TEMPERATURES, which is the
+    // one measurement our feeders record and almost nothing used.
+    id: 'temp-difference',
+    category: 'math',
+    title: 'How much colder?',
+    bands: ['3-5'],
+    build({ s, rng }) {
+        const temps = s.days
+            .map(d => ({ day: d.day, t: s.dayTemp.get(d.day) }))
+            .filter(x => x.t && x.t.n >= 3)
+            .map(x => ({ day: x.day, deg: Math.round(x.t.sum / x.t.n) }));
+        if (temps.length < 4) return null;
+
+        const warm = temps.reduce((a, b) => (b.deg > a.deg ? b : a));
+        const cold = temps.reduce((a, b) => (b.deg < a.deg ? b : a));
+        const diff = warm.deg - cold.deg;
+        if (diff < 4) return null;
+
+        const built = cmChoices(`${diff}°`,
+            [`${warm.deg}°`, `${cold.deg}°`, `${diff + 10}°`], rng);
+        if (!built) return null;
+
+        return {
+            prompt: `The warmest day this week was ${warm.deg}° and the coldest was `
+                  + `${cold.deg}°. How much colder was the coldest day?`,
+            ...built,
+            chart: cmChart('Temperature each day',
+                temps.map(x => ({ label: cmDayAxisLabel(x.day), value: x.deg,
+                                  key: x.day, color: cmHeatColor(
+                                      (x.deg - cold.deg) / Math.max(1, diff)) })),
+                { band: '3-5', plain: false }),
+            explain: `${warm.deg} − ${cold.deg} = ${diff} degrees. A difference between `
+                   + `two measurements is a subtraction, even though both numbers are `
+                   + `temperatures rather than counts.`,
+        };
+    },
+},
+
+// ── Geography ───────────────────────────────────────────────────────
+
+{
+    // SS.1.G.1.2 — the key elements of a map. Asked about the map this
+    // class actually uses to find the feeders.
+    id: 'map-elements',
+    category: 'geography',
+    title: 'Parts of a map',
+    bands: ['k-2'],
+    build({ rng }) {
+        const built = cmChoices('A compass rose, so you know which way is north',
+            ['A photograph of every bird',
+             'The names of everyone who looked at it',
+             'A list of the days of the week'], rng);
+        if (!built) return null;
+
+        return {
+            prompt: 'We use a map to find where our feeders are. What does every good '
+                  + 'map need?',
+            ...built,
+            explain: 'A map needs a title to say what it shows, a key to say what the '
+                   + 'symbols mean, and a compass rose to say which way is north. '
+                   + 'Without north, "it is above the river" does not tell you where to go.',
+        };
+    },
+},
+
+{
+    // SS.2.G.1.3 — the Equator and the Poles, reached through migration,
+    // which is the reason a class has to care where the Equator is.
+    id: 'equator-poles',
+    category: 'geography',
+    title: 'The line round the middle',
+    bands: ['k-2'],
+    build({ rng }) {
+        const built = cmChoices('The Equator',
+            ['The North Pole', 'The South Pole', 'The Prime Meridian'], rng);
+        if (!built) return null;
+
+        return {
+            prompt: 'Some birds fly south every winter to stay warm. What is the name '
+                  + 'of the line around the middle of the Earth, where it is warmest?',
+            ...built,
+            explain: 'The Equator runs round the middle of the globe and is the warmest '
+                   + 'part of the Earth. The Poles are the cold ends, top and bottom. '
+                   + 'The Prime Meridian is a line too — but it runs the other way, '
+                   + 'top to bottom.',
+        };
+    },
+},
+
+{
+    // SS.4.G.1.3 — how weather impacts Florida. Our own temperature
+    // record against our own visit record, which beats a textbook.
+    id: 'weather-impact',
+    category: 'geography',
+    title: 'Weather and wildlife',
+    bands: ['3-5'],
+    build({ s, rng }) {
+        const temps = s.days
+            .map(d => ({ n: d.n, t: s.dayTemp.get(d.day) }))
+            .filter(x => x.t && x.t.n >= 3)
+            .map(x => ({ n: x.n, deg: x.t.sum / x.t.n }));
+        if (temps.length < 5) return null;
+
+        const built = cmChoices('Record the weather and the birds, then compare them',
+            ['Decide now and look later',
+             'Ask somebody in another state',
+             'Only count on warm days'], rng);
+        if (!built) return null;
+
+        return {
+            prompt: 'Florida’s weather changes what lives here and when. How would '
+                  + 'you find out whether weather changes the birds at OUR feeder?',
+            ...built,
+            explain: 'Our feeder already records the temperature with every visit, so '
+                   + 'the two measurements can be lined up and compared. Only counting '
+                   + 'on warm days would decide the answer before you started — which '
+                   + 'is why scientists record everything, including the days that look '
+                   + 'boring.',
+        };
+    },
+},
+
+// ── Words ───────────────────────────────────────────────────────────
+
+{
+    // ELA.3.V.1.2, ELA.4.V.1.2 and ELA.5.V.1.2 — Greek and Latin roots.
+    // Bird names are full of them, which is why "tri-color" is a lesson
+    // and not a list to memorise.
+    id: 'roots-in-names',
+    category: 'language',
+    title: 'Roots in bird names',
+    bands: ['3-5'],
+    build({ rng }) {
+        const picks = [
+            { word: 'Tricolored Heron', part: 'TRI',  means: 'three',
+              also: 'tricycle, triangle, triplets' },
+            { word: 'Bicolored Hawk',   part: 'BI',   means: 'two',
+              also: 'bicycle, binoculars, biweekly' },
+            { word: 'Rufous Hummingbird', part: 'RUFOUS', means: 'reddish',
+              also: 'rufescent' },
+        ];
+        const p = cmShuffle(picks, rng)[0];
+        const others = ['five', 'small', 'loud'].filter(x => x !== p.means);
+        const built = cmChoices(p.means, others.slice(0, 3), rng);
+        if (!built) return null;
+
+        return {
+            prompt: `A ${p.word} gets its name from the part "${p.part}". What does `
+                  + `that part mean?`,
+            ...built,
+            explain: `${p.part} means "${p.means}" — the same root turns up in `
+                   + `${p.also}. Knowing a handful of roots lets you work out words you `
+                   + `have never seen, which is the whole reason to learn them.`,
+        };
+    },
+},
+
+{
+    // ELA.1.R.2.3 — the same information given in a picture and in words,
+    // and whether they agree. Our chart and our sentence are the pair.
+    id: 'chart-and-words',
+    category: 'language',
+    title: 'The picture and the words',
+    bands: ['k-2'],
+    build({ s, band, rng }) {
+        const days = s.days.filter(d => d.n > 0);
+        if (days.length < 4) return null;
+        const busiest = days.reduce((a, b) => (b.n > a.n ? b : a));
+
+        const built = cmChoices('They say the same thing in two different ways',
+            ['The chart is right and the words are wrong',
+             'The words are right and the chart is wrong',
+             'They are about different birds'], rng);
+        if (!built) return null;
+
+        return {
+            prompt: `The chart shows our week. The words say: "${
+                      cmDayAxisLabel(busiest.day)} was our busiest day." How do the `
+                  + `picture and the words go together?`,
+            ...built,
+            chart: cmChart('Visits each day', cmDaySeries(s), { band,
+                           highlight: busiest.day }),
+            explain: 'A chart and a sentence can carry the same information. The tallest '
+                   + 'bar and the word "busiest" are the same fact — one is quicker to '
+                   + 'see, the other is quicker to say. Good readers check that the '
+                   + 'picture and the words agree.',
+        };
+    },
+},
+
+// ── 6-8 ─────────────────────────────────────────────────────────────
+
+{
+    // MA.7.DP.1.5 — CHOOSE an appropriate graphical representation. The
+    // one benchmark in the "represent" family a multiple choice can carry
+    // honestly, because choosing is the verb.
+    id: 'which-chart',
+    category: 'analysis',
+    title: 'Which chart should we draw?',
+    bands: ['6-8'],
+    build({ s, rng }) {
+        if (s.species.length < 3 || s.days.length < 5) return null;
+
+        const built = cmChoices('A bar chart, one bar per species',
+            ['A line graph, one point per species',
+             'A box plot of the species names',
+             'A scatter plot of species against species'], rng);
+        if (!built) return null;
+
+        return {
+            prompt: 'We want to show how many visits each SPECIES made this week. '
+                  + 'Which representation fits that data?',
+            ...built,
+            explain: 'Species are categories, not a sequence, so bars are right: each '
+                   + 'one stands alone and heights compare directly. A line would claim '
+                   + 'the species run in order and that the space between them means '
+                   + 'something. A box plot needs numbers to find quartiles in, and a '
+                   + 'scatter plot needs two measurements per thing.',
+        };
+    },
+},
+
+{
+    // SC.6.L.15.1 — why organisms are classified by shared characteristics,
+    // with the Linnaean system by name. Every detection we record carries
+    // a Linnaean name whether the class notices or not.
+    id: 'linnaean-names',
+    category: 'science',
+    title: 'Two names for every bird',
+    bands: ['6-8'],
+    build({ rng }) {
+        const built = cmChoices(
+            'The first name is the group it shares features with; the second is its own',
+            ['The first is the colour and the second is the size',
+             'The first is who found it and the second is where',
+             'They are the same name in two languages'], rng);
+        if (!built) return null;
+
+        return {
+            prompt: 'A Northern Cardinal’s scientific name is Cardinalis cardinalis, '
+                  + 'and a Blue Jay’s is Cyanocitta cristata. What do the two parts mean?',
+            ...built,
+            explain: 'Linnaeus’ system gives every species a genus and a species '
+                   + 'name. The genus groups organisms that share characteristics — '
+                   + 'Cyanocitta holds the jays — and the second name picks out one of '
+                   + 'them. Classification is a claim about shared features, which is '
+                   + 'why it changes when the evidence does.',
+        };
+    },
+},
+
+{
+    // SC.7.L.17.2 — relationships among organisms. A feeder is a
+    // competition experiment running in the courtyard, which makes this
+    // the rare ecology benchmark a class can watch rather than read.
+    id: 'feeder-competition',
+    category: 'science',
+    title: 'What is happening at the feeder',
+    bands: ['6-8'],
+    build({ s, rng }) {
+        if (s.species.length < 3) return null;
+        const [a, b] = s.species.slice(0, 2).map(x => x.species);
+
+        const built = cmChoices('Competition',
+            ['Mutualism', 'Parasitism', 'Commensalism'], rng);
+        if (!built) return null;
+
+        return {
+            prompt: `${a}s and ${b}s both come to our feeder, and there is only so much `
+                  + `seed. What is the relationship between them called?`,
+            ...built,
+            chart: cmChart('Visits this week', cmSpeciesSeries(s, 6),
+                           { band: '6-8', kind: 'hbars' }),
+            explain: 'Competition: two species needing the same limited resource. '
+                   + 'Mutualism would mean both gain, parasitism that one feeds off the '
+                   + 'other, commensalism that one gains and the other is unaffected. '
+                   + 'A feeder makes competition visible because the resource is in one '
+                   + 'place and we are counting who gets it.',
+            about_bird: a,
+        };
+    },
+},
+
+{
+    // MA.8.DP.2.3 — a real-world probability problem over a repeated
+    // experiment, with a prediction at the end of it.
+    id: 'predict-from-probability',
+    category: 'math',
+    title: 'Predicting from a probability',
+    bands: ['6-8'],
+    build({ s, band, rng }) {
+        if (s.total < 40 || s.species.length < 3) return null;
+        const top = s.species[0];
+        const p = top.n / s.total;
+        if (p < 0.15 || p > 0.6) return null;
+
+        const nextN = 50;
+        const answer = Math.round(p * nextN);
+        const built = cmChoices(String(answer),
+            [String(nextN), String(Math.round(answer / 2)), String(Math.min(nextN, answer * 2))], rng);
+        if (!built) return null;
+
+        return {
+            prompt: `${top.n} of our ${s.total} visits this week were ${top.species}s. `
+                  + `Of the NEXT 50 visits, about how many would you predict?`,
+            ...built,
+            chart: cmChart('Share of this week’s visits', cmSpeciesSeries(s, 6),
+                           { band, kind: 'donut', highlight: top.species }),
+            explain: `${top.n} out of ${s.total} is about ${Math.round(p * 100)}%, and `
+                   + `${Math.round(p * 100)}% of 50 is about ${answer}. A prediction from `
+                   + `a probability is an expectation, not a promise — the next 50 could `
+                   + `easily come out a few either side.`,
+            about_bird: top.species,
+        };
+    },
+},
+
+{
+    // SC.4.L.17.4 — ways animals and humans impact the environment. A
+    // feeder is a human intervention in an ecosystem, which the class is
+    // running, which makes the question uncomfortable in a useful way.
+    id: 'feeder-impact',
+    category: 'science',
+    title: 'What a feeder changes',
+    bands: ['3-5'],
+    build({ s, rng }) {
+        if (s.total < 15) return null;
+
+        const built = cmChoices('It changes where birds go and how many gather there',
+            ['It has no effect at all',
+             'It makes birds fly faster',
+             'It changes what colour the birds are'], rng);
+        if (!built) return null;
+
+        return {
+            prompt: 'Putting up a feeder is something PEOPLE did to this place. What '
+                  + 'does it change?',
+            ...built,
+            explain: 'A feeder concentrates birds somewhere they would not otherwise '
+                   + 'gather — which is how we get to watch them, and also why feeders '
+                   + 'have to be kept clean: crowding spreads disease. People change '
+                   + 'environments even when they are trying to help, and noticing that '
+                   + 'is part of the science.',
+        };
+    },
+},
 ];
 
 /**
