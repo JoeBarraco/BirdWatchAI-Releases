@@ -4928,6 +4928,83 @@
     color: var(--color-gray-500); font-style: italic;
 }
 
+/* ── A chart the class builds ───────────────────────────────────────
+   Sized for a room, not a mouse: the + and − are the only controls in
+   the whole module a teacher presses repeatedly while thirty children
+   watch, so they are big, far apart, and never move between presses. */
+.classroom-chart.cc-build { width: min(100%, 980px); }
+
+.cc-build-key {
+    display: inline-flex; align-items: center; gap: 0.6vmin;
+    font-size: clamp(0.85rem, 2vmin, 1.4rem); font-weight: 700;
+    color: var(--color-gray-900);
+    padding: 0.4vmin 1.2vmin; margin-bottom: 1vmin;
+    border: 2px solid var(--border); border-radius: 10px;
+}
+.cc-build-key .cc-dot { background: var(--color-primary); }
+
+/* The numbers the class is working from. A table IS one of the
+   representations the benchmarks name, so it is deliberately a real
+   table rather than a sentence. */
+.cc-build-table {
+    border-collapse: collapse; margin-bottom: 1.4vmin;
+    font-size: clamp(0.85rem, 2vmin, 1.4rem);
+}
+.cc-build-table td {
+    padding: 0.3vmin 1.2vmin; border: 1px solid var(--border);
+    color: var(--color-gray-900);
+}
+.cc-build-table td:last-child { font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+
+.cc-build-rows { display: flex; flex-direction: column; gap: 1vmin; }
+
+.cc-build-row {
+    display: grid; grid-template-columns: 9em 1fr 2.5em auto auto;
+    align-items: center; gap: 1vmin;
+    padding: 0.5vmin 0.8vmin; border-radius: 10px;
+}
+/* Only ever after the class says it is finished — a row going red while
+   they are still building it is the chart arguing with them. */
+.cc-build-row.ok  { background: rgba(46,170,79,0.12); }
+.cc-build-row.bad { background: rgba(231,76,60,0.10); }
+
+.cc-build-label {
+    font-size: clamp(0.8rem, 1.9vmin, 1.3rem); font-weight: 600;
+    color: var(--color-gray-900); text-align: right;
+    overflow-wrap: anywhere;
+}
+.cc-build-bar {
+    display: block; height: clamp(16px, 3.2vmin, 40px);
+    background: color-mix(in srgb, var(--color-gray-500) 16%, transparent);
+    border-radius: 6px; overflow: hidden;
+}
+.cc-build-fill { display: block; height: 100%; transition: width 0.12s ease; }
+.cc-build-fill.ok  { outline: 2px solid #2eaa4f; outline-offset: -2px; }
+.cc-build-fill.bad { outline: 2px solid #e74c3c; outline-offset: -2px; }
+
+.cc-build-units { display: flex; flex-wrap: wrap; align-items: center; gap: 0.7vmin; }
+
+.cc-build-val {
+    font-weight: 700; font-variant-numeric: tabular-nums; text-align: right;
+    font-size: clamp(0.85rem, 2vmin, 1.4rem); color: var(--color-gray-900);
+}
+.cc-build-btns { display: flex; gap: 0.5vmin; }
+.cc-build-btns .classroom-btn {
+    font-size: clamp(1rem, 2.4vmin, 1.7rem); font-weight: 700;
+    min-width: 2.2em; padding: 0.2em 0.5em; line-height: 1.1;
+}
+.cc-build-target {
+    font-size: clamp(0.7rem, 1.6vmin, 1.1rem); color: #e74c3c; font-weight: 600;
+    white-space: nowrap;
+}
+
+.cc-build-foot { display: flex; flex-direction: column; align-items: center; gap: 0.6vmin; }
+
+@media (max-width: 720px) {
+    .cc-build-row { grid-template-columns: 6em 1fr auto; }
+    .cc-build-val, .cc-build-target { grid-column: 2 / -1; text-align: left; }
+}
+
 /* ── Standard-by-standard results in Previous Lessons ──────────────
    A table rather than a list, because the teacher is comparing numbers
    down a column — that is what "which standards does the class need to

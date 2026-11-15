@@ -1911,7 +1911,256 @@ function classroomSlideTopHtml(S, q) {
         </div>`;
 }
 
+// ════════════════════════════════════════════════════════════════════
+//  A chart the class builds
+// ════════════════════════════════════════════════════════════════════
+//
+//  Ten Florida benchmarks were left uncovered after two batches of
+//  questions, and they were all the same shape: "COLLECT AND REPRESENT
+//  data using tally marks or pictographs", "create box plots and
+//  histograms", "construct maps, charts and graphs". A child picking one
+//  of four options is not representing anything, so tagging a
+//  multiple-choice question against those would have been the exact
+//  over-claim classroom-alignment.js exists to prevent. They stayed in
+//  the gap list, visibly, until there was something real to point at.
+//
+//  THIS IS THAT. The class is given the numbers as a TABLE — which is
+//  itself one of the representations those benchmarks name — and an
+//  empty chart. They say how tall each bar should be; the teacher taps
+//  it up. Nothing is checked until they say they are done.
+//
+//  ⚠ THE FIRST CHECK IS THE ANSWER, and the rest is practice. A teacher
+//  can keep adjusting after a wrong check — they should, that is the
+//  lesson — but what gets recorded is whether the class had it right the
+//  first time they said they were finished. Recording the last state
+//  instead would score every class 100%, and a scoreboard that cannot
+//  say anything is worse than no scoreboard.
+//
+//  It still records as an ordinary two-choice answer, so the history,
+//  the scoreboard and the standards report need no special case.
+
+/**
+ * Turn a series into a chart the class can actually build.
+ *
+ * ⚠ THE CLASS CAN ONLY LAND ON MULTIPLES OF THE STEP. The interaction is
+ * "press + until the bar is right", so a target of 23 on a chart that
+ * moves in fives is a bar they can never finish — they would press past
+ * it forever.
+ *
+ * The first version of this demanded a step that divided every count
+ * exactly, and against real feeder counts nothing ever did: all three
+ * build questions returned null on every data set, which is the same
+ * mistake the pictograph question made a batch earlier.
+ *
+ * So there are two honest modes, and the caller picks:
+ *
+ *   exact  — the counts are naturally small (days of the week, species
+ *            per day), the step is 1, and every bar lands on its number.
+ *   scaled — a key of 5 or 10, and the target is the count ROUNDED to the
+ *            nearest step. That is not a compromise, it is what a scaled
+ *            pictograph IS: 99 visits at ten-per-bird is ten birds. The
+ *            table shows the true count, the class does the dividing, and
+ *            the explain says plainly that the graph approximates.
+ *
+ * Returns null whenever the data cannot carry either.
+ */
+function cmBuildSpec(caption, series, opts) {
+    const o = opts || {};
+    const rows = (series || []).filter(s => s && isFinite(s.value) && s.value > 0)
+                               .slice(0, o.maxRows || 5);
+    if (rows.length < 3) return null;
+
+    const max = Math.max(...rows.map(r => r.value));
+    if (max <= 0) return null;
+
+    const presses = o.maxPresses || 12;
+
+    if (o.scaled) {
+        // Smallest key that keeps every row inside the press budget.
+        const step = (o.steps || [2, 5, 10, 20, 25]).find(p => Math.round(max / p) <= presses);
+        if (!step) return null;
+
+        const target = v => Math.max(step, Math.round(v / step) * step);
+        // All rounding to the same height is a graph with nothing to read.
+        const heights = new Set(rows.map(r => target(r.value) / step));
+        if (heights.size < 2) return null;
+
+        return {
+            kind: o.kind || 'picto', scaled: true,
+            caption, step, top: Math.max(...rows.map(r => target(r.value))),
+            series: rows.map((r, i) => ({
+                label: r.label,
+                count: r.value,                    // what the table says
+                target: target(r.value),           // what the chart can show
+                color: r.color || cmRowColor(r, i, rows.length, 'spectrum'),
+            })),
+        };
+    }
+
+    // Exact. Only worth offering while the bars stay short enough to build
+    // by hand — twenty presses on one row is not a lesson.
+    if (max > presses) return null;
+
+    return {
+        kind: o.kind || 'bars',
+        caption, step: 1, top: max,
+        series: rows.map((r, i) => ({
+            label: r.label,
+            count: r.value,
+            target: r.value,
+            color: r.color || cmRowColor(r, i, rows.length, 'spectrum'),
+        })),
+    };
+}
+
+/**
+ * How many DAYS each of the commonest species turned up.
+ *
+ * Small whole numbers by construction — never more than the days in the
+ * window — which is what makes an exact build possible at all. It is
+ * also a genuinely different question from "how many visits": a bird
+ * that came every day in ones and a bird that came once in a flock look
+ * nothing alike here.
+ */
+function cmDaysSeenSeries(s, limit) {
+    // ⚠ ONLY THE DAYS THE WINDOW SHOWS. daySpec is keyed by calendar day
+    // and a 7-day cutoff lands mid-day, so it routinely holds EIGHT keys
+    // for a seven-day week — which produced "came on 8 of 7 days" and a
+    // tally too long to build. s.days is the canonical list.
+    const inWindow = new Set(s.days.map(d => d.day));
+    const days = new Map();
+    s.daySpec.forEach((m, day) => {
+        if (!inWindow.has(day)) return;
+        m.forEach((_, sp) => days.set(sp, (days.get(sp) || 0) + 1));
+    });
+    return s.species.slice(0, limit || 4)
+        .map(x => ({ label: x.species, value: days.get(x.species) || 0, key: x.species }))
+        .filter(r => r.value > 0);
+}
+
+function classroomBuildChartHtml(q, revealed) {
+    const b = q.build;
+    if (!b) return '';
+
+    const vals = q.build_values || b.series.map(() => 0);
+    const top  = b.top;
+    const step = b.step;
+
+    // Unit mode draws one stamp per step, which is what a tally chart and
+    // a pictograph ARE. Bar mode draws a column. Same controls either way.
+    const unit = b.kind === 'picto' || b.kind === 'tally';
+
+    const rows = b.series.map((s, i) => {
+        const v    = vals[i];
+        const done = q.build_checked || revealed;
+        // Right, or not, only once they have said they are finished.
+        const mark = !done ? '' : (v === s.target ? ' ok' : ' bad');
+
+        const body = unit
+            ? `<span class="cc-build-units">${
+                 Array.from({ length: Math.round(v / step) },
+                   () => `<span class="cc-dot" style="background:${s.color || 'var(--color-primary)'}"></span>`).join('')
+               }${v === 0 ? '<span class="cc-none">none yet</span>' : ''}</span>`
+            : `<span class="cc-build-bar"><span class="cc-build-fill${mark}"
+                 style="width:${Math.min(100, (v / top) * 100)}%;background:${
+                   s.color || 'var(--color-primary)'}"></span></span>`;
+
+        return `
+          <div class="cc-build-row${mark}">
+            <span class="cc-build-label">${esc(s.label)}</span>
+            ${body}
+            <span class="cc-build-val">${v}</span>
+            <span class="cc-build-btns">
+              <button type="button" class="classroom-btn" ${revealed ? 'disabled' : ''}
+                      onclick="classroomBuildBump(${i}, -1)" aria-label="Lower ${esc(s.label)}">−</button>
+              <button type="button" class="classroom-btn" ${revealed ? 'disabled' : ''}
+                      onclick="classroomBuildBump(${i}, 1)" aria-label="Raise ${esc(s.label)}">+</button>
+            </span>
+            ${done && v !== s.target
+              ? `<span class="cc-build-target">should be ${s.target}</span>` : ''}
+          </div>`;
+    }).join('');
+
+    return `
+      <figure class="classroom-chart cc-build">
+        <div class="cc-build-key">
+          ${unit ? `<span class="cc-dot"></span> = ${step} visit${step === 1 ? '' : 's'}`
+                 : `Each step is ${step} visit${step === 1 ? '' : 's'}`}
+        </div>
+        <table class="cc-build-table"><tbody>
+          ${b.series.map(s => `<tr><td>${esc(s.label)}</td><td>${
+              s.count != null ? s.count : s.target}</td></tr>`).join('')}
+        </tbody></table>
+        <div class="cc-build-rows">${rows}</div>
+        <figcaption>${esc(b.caption)}</figcaption>
+      </figure>`;
+}
+
+/**
+ * Raise or lower one bar by a step.
+ *
+ * Clamped at zero and at the top of the chart, because a bar taller than
+ * the axis is not a thing a class can read and a negative count is not a
+ * thing that happened.
+ */
+function classroomBuildBump(i, dir) {
+    const S = classroomSession;
+    if (!S || S.revealed) return;
+    const q = S.questions[S.index];
+    if (!q || !q.build) return;
+
+    if (!q.build_values) q.build_values = q.build.series.map(() => 0);
+    const step = q.build.step;
+    const next = q.build_values[i] + dir * step;
+    q.build_values[i] = Math.max(0, Math.min(q.build.top, next));
+
+    // Any change after a wrong check clears the marks: leaving a bar
+    // painted red while the class is in the middle of fixing it is the
+    // chart arguing with them.
+    q.build_checked = false;
+    renderClassroomStage();
+}
+
+/**
+ * "We're finished" — grade the chart.
+ *
+ * The first press is what the class is scored on. Later presses still
+ * mark the bars so they can see what is left, which is the part a
+ * teacher actually uses, but they do not change the record.
+ */
+function classroomBuildCheck() {
+    const S = classroomSession;
+    if (!S || S.revealed) return;
+    const q = S.questions[S.index];
+    if (!q || !q.build) return;
+
+    const vals = q.build_values || q.build.series.map(() => 0);
+    const right = q.build.series.every((s, i) => vals[i] === s.target);
+
+    q.build_checked = true;
+
+    if (q.build_scored) { renderClassroomStage(); return; }
+    q.build_scored = true;
+
+    // choices[0] is "we built it correctly" — see the template.
+    answerClassroomQuestion(right ? 0 : 1);
+}
+
 function classroomChoicesBlock(S, q, choices) {
+    // A built chart answers itself: the class says when it is finished and
+    // the chart is graded. Offering the two record options as buttons as
+    // well would be two ways to answer one question, and the wrong one is
+    // a tap away.
+    if (q.build && !S.revealed) {
+        return `<div class="cc-build-foot">
+            <button class="classroom-btn-primary big" onclick="classroomBuildCheck()">
+                ${q.build_checked ? 'Check it again' : 'We’re finished — check it'}</button>
+            ${q.build_checked
+                ? '<p class="classroom-muted">Not quite yet — the red rows are the ones to fix.</p>'
+                : ''}
+        </div>`;
+    }
+
     const shown = S.choicesShownFor === S.index;
     // A question whose answers carry their own colour drops the decorative
     // A/B/C/D accents. Those are fixed — red, blue, amber, purple, by
@@ -1951,6 +2200,10 @@ function classroomEvidenceHtml(q, revealed) {
     // whole job is to be compared. It comes first because a question that has
     // one cannot be answered from anything else.
     if (q.pair) return classroomPairHtml(q.pair);
+    // A chart the class is building beats everything: it IS the question,
+    // and a photograph beside it would be something else to look at while
+    // they are meant to be reading a table.
+    if (q.build) return classroomBuildChartHtml(q, revealed);
     if (q.video && q.video.url) return classroomClipHtml(q, revealed);
     // image_on_reveal: a photo that would answer the question, held back until
     // the answer is up. Before then the slide falls through to whatever else
@@ -8435,6 +8688,124 @@ ${jumbled.split('').join(' ')}`,
         };
     },
 },
+
+// ════════════════════════════════════════════════════════════════════
+//  Charts the class builds
+// ════════════════════════════════════════════════════════════════════
+//
+//  The last of the gap list, and the reason it was last. Ten benchmarks
+//  say COLLECT AND REPRESENT, CREATE, CONSTRUCT — and for two batches of
+//  questions there was nothing honest to point at, because choosing one
+//  of four options is not representing anything. They sat in --gaps on
+//  purpose rather than being tagged against a multiple choice.
+//
+//  Each of these hands the class a table of real counts and an empty
+//  chart, and they build it. The table is itself one of the
+//  representations the benchmarks name, so the question is "turn this
+//  representation into that one", which is the actual skill.
+//
+//  They refuse to build unless the step divides every count exactly:
+//  the interaction is pressing + until the bar is right, and a target
+//  the steps cannot land on is a bar the class can never finish. Quiet
+//  weeks and awkward numbers mean no question rather than an
+//  approximate one.
+// ════════════════════════════════════════════════════════════════════
+
+{
+    // MA.1.DP.1.1 and MA.2.DP.1.1 — represent data with tally marks or
+    // pictographs. One mark per visit at this age: the counting is the
+    // lesson, and a key would be a second idea on top of it.
+    id: 'build-tally',
+    category: 'counting',
+    title: 'Build the tally chart',
+    bands: ['k-2'],
+    build({ s }) {
+        // DAYS, not visits. A week has seven of them, so every bar is
+        // short enough for a five-year-old to build by pressing, and the
+        // numbers are exact rather than rounded.
+        const spec = cmBuildSpec('Days each bird came', cmDaysSeenSeries(s, 4),
+            { kind: 'tally', maxPresses: 7, maxRows: 4 });
+        if (!spec) return null;
+
+        return {
+            prompt: 'The table says how many DAYS each bird came. Build the chart to '
+                  + 'match — one mark for every day.',
+            choices: [{ label: 'We built it correctly' }, { label: 'We needed another go' }],
+            correct_index: 0,
+            build: spec,
+            explain: 'Reading a chart somebody else drew and drawing one yourself are '
+                   + 'different skills, and the second is the one that makes the first '
+                   + 'stick. Every mark stands for one day, so the row is as long as '
+                   + 'the number beside it.',
+        };
+    },
+},
+
+{
+    // MA.3.DP.1.1 — scaled pictographs and scaled bar graphs. The KEY is
+    // the step up from the K-2 version: the chart no longer moves one at
+    // a time, so the class has to divide before they press.
+    id: 'build-pictograph',
+    category: 'counting',
+    title: 'Build the picture graph',
+    bands: ['3-5'],
+    build({ s }) {
+        const spec = cmBuildSpec('Our picture graph', cmSpeciesSeries(s, 5),
+            { kind: 'picto', scaled: true, steps: [2, 5, 10, 20, 25], maxPresses: 10 });
+        if (!spec) return null;
+
+        return {
+            prompt: `Each bird on this graph stands for ${spec.step} visits. Work out how `
+                  + `many birds each row needs, then build it.`,
+            choices: [{ label: 'We built it correctly' }, { label: 'We needed another go' }],
+            correct_index: 0,
+            build: spec,
+            explain: `With a key of ${spec.step}, a row is the count divided by `
+                   + `${spec.step}, to the nearest whole bird. A picture graph rounds — `
+                   + `that is the deal you make for a chart you can read across the `
+                   + `room — so the heights are close to the counts rather than equal `
+                   + `to them. Reading one without its key gives the wrong answer every `
+                   + `time.`,
+        };
+    },
+},
+
+{
+    // MA.5.DP.1.1 and SS.5.G.1.4 — construct a chart to display data,
+    // including geographic data. Days rather than species, so it is a
+    // different build from the pictograph in the same band.
+    id: 'build-bar-chart',
+    category: 'counting',
+    title: 'Build the bar chart',
+    bands: ['3-5', '6-8'],
+    build({ s }) {
+        // How many DIFFERENT species each day — a small whole number, so
+        // the bars are exact. "How many visits" would need rounding, and a
+        // bar chart that rounds is the wrong lesson for this benchmark.
+        const perDay = s.days
+            .map(d => ({ label: cmDayAxisLabel(d.day),
+                         value: (s.daySpec.get(d.day) || new Map()).size,
+                         key: d.day }))
+            .filter(r => r.value > 0);
+
+        const spec = cmBuildSpec('Kinds of bird each day', perDay,
+            { kind: 'bars', maxPresses: 12, maxRows: 5 });
+        if (!spec) return null;
+
+        return {
+            prompt: 'The table says how many DIFFERENT kinds of bird came each day. '
+                  + 'Build the bar chart to match.',
+            choices: [{ label: 'We built it correctly' }, { label: 'We needed another go' }],
+            correct_index: 0,
+            build: spec,
+            explain: 'A bar chart turns a column of numbers into something you can '
+                   + 'compare at a glance — which is the point of drawing one, and why '
+                   + 'the heights have to be right rather than roughly right. Notice '
+                   + 'this counts KINDS of bird, not visits: a day with forty doves and '
+                   + 'nothing else is a short bar.',
+        };
+    },
+},
 ];
 
 /**
@@ -13104,6 +13475,14 @@ function classroomFootControls(S, last, joinMode) {
             : '<button class="classroom-btn-primary big" onclick="nextClassroomQuestion()">Next question →</button>';
     }
     if (!joinMode) {
+        // The build questions carry their own control in the slide, and
+        // "tap the class's answer" is wrong advice there — there is
+        // nothing to tap but the bars.
+        const q = S.questions[S.index];
+        if (q && q.build) {
+            return '<span class="classroom-muted">Ask the class how tall each bar should be, '
+                 + 'then press Check.</span>';
+        }
         return '<span class="classroom-muted">Poll the room, then tap the class’s answer.</span>';
     }
     if (S.awaitingPick) {

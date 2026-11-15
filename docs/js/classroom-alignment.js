@@ -319,6 +319,22 @@ const CLASSROOM_TEMPLATE_STANDARDS = {
     'music-tempo-change':       ['MU.2.O.3.1'],
     'music-timbre':             ['MU.3.H.1.3'],
     'music-pitched-unpitched':  ['MU.1.C.1.3'],
+
+    // ── Charts the class builds ──────────────────────────────────────
+    //
+    // These are the only questions in the set that may claim the
+    // "collect and represent" benchmarks, and they may claim them
+    // because the class actually represents something: a table of real
+    // counts goes in, a chart they construct comes out. Every other
+    // question in this file that touches data INTERPRETS it, which is a
+    // different verb and a different benchmark.
+    'build-tally':          ['MA.1.DP.1.1', 'MA.2.DP.1.1', 'MA.K.DP.1.1'],
+    'build-pictograph':     ['MA.3.DP.1.1'],
+    // SS.5.G.1.4 is "construct maps, charts and graphs to display
+    // geographic information" — which bird visits a place and how often
+    // is geographic information, and the class is constructing the chart
+    // rather than reading one.
+    'build-bar-chart':      ['MA.5.DP.1.1', 'MA.4.DP.1.1', 'SS.5.G.1.4'],
 };
 
 // ════════════════════════════════════════════════════════════════════
