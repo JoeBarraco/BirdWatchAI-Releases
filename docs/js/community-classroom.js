@@ -8446,8 +8446,14 @@ function cmStandardsSummaryHtml(questions, label) {
 
     const qs = questions || [];
     const codes = classroomStandardsFor(qs);
+    // Through the resolver, like everything else — a question filed as
+    // "sound-carolina-chickadee" is a bird-by-sound question and is
+    // aligned. Counting it as untagged here would have contradicted the
+    // list of benchmarks printed immediately above it.
     const untagged = qs.filter(q => {
-        const id = q && (q.template_id || q.templateId);
+        const raw = q && (q.template_id || q.templateId);
+        const id  = typeof classroomTemplateIdOf === 'function'
+            ? classroomTemplateIdOf(raw) : raw;
         return !(CLASSROOM_TEMPLATE_STANDARDS[id] || []).length;
     }).length;
 
