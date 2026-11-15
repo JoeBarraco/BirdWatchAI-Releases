@@ -1404,8 +1404,12 @@ function cmSummarize(feederId, name, rows, isHome, windowDays) {
 
     // Highest confidence first: the identification question wants the clearest
     // photo of the bird, not the most recent blur.
-    snapshots.sort((a, b) => (b.confidence || 0) - (a.confidence || 0));
-    clips.sort((a, b) => (b.confidence || 0) - (a.confidence || 0));
+    // Through cmConfPct rather than the raw field: order survives either
+    // scale, but a feed that ever mixed the two would sort every 0-1 row
+    // below every 0-100 one, and "the clearest photo we have" would quietly
+    // become "any photo from the other firmware".
+    snapshots.sort((a, b) => cmConfPct(b) - cmConfPct(a));
+    clips.sort((a, b) => cmConfPct(b) - cmConfPct(a));
 
     const species = [...bySpecies.entries()]
         .map(([species, n]) => ({ species, n }))
@@ -3846,8 +3850,12 @@ const CLASSROOM_TEMPLATES = [
     build({ s, band, rng, feeder }) {
         // Confidence floor: a misidentified snapshot teaches the wrong bird,
         // and the model is the only thing standing behind the "right" answer.
-        const shot = s.snapshots.find(r => (r.confidence || 0) >= 0.65 && SPECIES_FACTS[r.species])
-                  || s.snapshots.find(r => (r.confidence || 0) >= 0.65);
+        // This floor was written `>= 0.65` against a figure the detector
+        // reports from 0 to 100, so it admitted everything, including the
+        // 36%-confident guesses - in the question that puts a photograph on
+        // a projector and tells a six-year-old what bird it is.
+        const shot = s.snapshots.find(r => cmConfPct(r) >= CM_CONF_LABEL && SPECIES_FACTS[r.species])
+                  || s.snapshots.find(r => cmConfPct(r) >= CM_CONF_LABEL);
         if (!shot) return null;
 
         // Distractors are drawn from THIS feeder's other visitors first. A
