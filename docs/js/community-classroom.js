@@ -279,6 +279,101 @@ function cmNumberDistractors(n, rng, count) {
     return [...out];
 }
 
+/**
+ * The finest value a class can actually read off this chart.
+ *
+ * ⚠ THIS IS THE THING THAT MADE "HOW MANY?" UNANSWERABLE.
+ * Flagged twice in one morning, correctly both times: "the y axis needs
+ * more granularity, every 20 visits is not fine enough — the number was
+ * 15 and it is really hard to tell that from the chart", and "you can't
+ * see where the bar height crosses the y-axis".
+ *
+ * The cause is not the axis. It is that the chart's scale is set by its
+ * BIGGEST bar while the question asks about a small one: a day with 15
+ * visits drawn on an axis topping out at 80 sits between two gridlines
+ * twenty apart, and no amount of relabelling fixes that. Nor can the
+ * gridlines simply be made finer — eighty faint lines across a projected
+ * plot is a grey wash, which is what cmMinorStep's own cap is about.
+ *
+ * So the chart is not the thing to change. The CHOICES are: options a
+ * class cannot tell apart on the chart it was given are not a question.
+ * This returns the resolution so the options can be spaced to beat it.
+ *
+ * A dots chart is one mark per visit, so it reads to the unit.
+ */
+function cmChartResolution(chart) {
+    if (!chart || chart.kind === 'dots') return 1;
+    const step  = cmNiceStep(chart.max);
+    const top   = Math.ceil(chart.max / step) * step;
+    const minor = cmMinorStep(top, step);
+    return Math.max(1, minor || step);
+}
+
+/**
+ * Numeric options a class can tell apart on the chart in front of them.
+ *
+ * Spaced by at least the chart's resolution, so "is that bar 13, 14, 15
+ * or 16?" — four options inside one gridline gap — cannot happen. Falls
+ * back to the ordinary spread when there is no chart to read.
+ */
+function cmChartCountChoices(answer, rng, chart, count) {
+    const want = count || 3;
+    const gap  = cmChartResolution(chart);
+    if (gap <= 1) {
+        return cmChoices(String(answer),
+                         cmNumberDistractors(answer, rng, want).map(String), rng);
+    }
+
+    // Whole multiples of the gap on either side, nearest first, so the
+    // options stay in the same part of the chart as the answer rather than
+    // wandering off to numbers no bar is near.
+    const out = [];
+    for (let k = 1; out.length < want && k <= want + 2; k++) {
+        for (const sign of cmShuffle([1, -1], rng)) {
+            const v = answer + sign * gap * k;
+            if (v >= 0 && v !== answer && !out.includes(v)) out.push(v);
+            if (out.length >= want) break;
+        }
+    }
+    if (out.length < want) return null;
+    return cmChoices(String(answer), out.slice(0, want).map(String), rng);
+}
+
+/**
+ * A bird seen head-on, with its line of symmetry, as a data: URI.
+ *
+ * Deliberately plain and deliberately NOT a photograph — see the note in
+ * the art-symmetry template. Drawn with currentColor-free literal values
+ * because a data: URI has no stylesheet; the palette is picked to read on
+ * both the light and dark slide backgrounds.
+ */
+function cmSymmetryDiagram() {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 260">
+  <rect width="320" height="260" fill="#f4f1ea"/>
+  <!-- body -->
+  <ellipse cx="160" cy="165" rx="56" ry="68" fill="#8a9ab0"/>
+  <!-- wings, one each side -->
+  <ellipse cx="104" cy="160" rx="22" ry="52" fill="#6f8099"/>
+  <ellipse cx="216" cy="160" rx="22" ry="52" fill="#6f8099"/>
+  <!-- head -->
+  <circle cx="160" cy="80" r="42" fill="#9aa9bd"/>
+  <!-- eyes -->
+  <circle cx="142" cy="74" r="7" fill="#243043"/>
+  <circle cx="178" cy="74" r="7" fill="#243043"/>
+  <!-- beak -->
+  <path d="M160 88 L150 104 L170 104 Z" fill="#e0a23c"/>
+  <!-- feet -->
+  <path d="M146 232 v16 M146 248 l-9 8 M146 248 l9 8" stroke="#e0a23c"
+        stroke-width="5" fill="none" stroke-linecap="round"/>
+  <path d="M174 232 v16 M174 248 l-9 8 M174 248 l9 8" stroke="#e0a23c"
+        stroke-width="5" fill="none" stroke-linecap="round"/>
+  <!-- the line itself -->
+  <line x1="160" y1="18" x2="160" y2="252" stroke="#c0392b" stroke-width="3"
+        stroke-dasharray="10 8"/>
+</svg>`;
+    return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg.replace(/\s+/g, ' '));
+}
+
 // ── Species facts (design notes §5) ──────────────────────
 //
 // Only species the feeders actually see, at two reading levels. Shown on the
@@ -3634,14 +3729,19 @@ const CLASSROOM_TEMPLATES = [
         const pick = s.species.find(x => x.n >= 3 && x.n <= 20);
         if (!pick || s.species.length < 2) return null;
 
-        const built = cmChoices(String(pick.n),
-                                cmNumberDistractors(pick.n, rng, 2).map(String), rng);
+        // Horizontal, so a species name sits beside its bar instead of being
+        // wrapped under a narrow column next to its photograph. Flagged
+        // exactly that way: "the text under the image is too crowded with
+        // the other images. It might be better to have the Y-Axis be the
+        // bird types and the x-axis be the # of visits."
+        const chart = cmChart('Visits by species this week', cmSpeciesSeries(s),
+                              { band, kind: 'hbars', highlight: pick.species });
+        const built = cmChartCountChoices(pick.n, rng, chart, 2);
         if (!built) return null;
         return {
             prompt: `How many ${pick.species}s came this week?`,
             ...built,
-            chart: cmChart('Visits by species this week',
-                           cmSpeciesSeries(s), { band, highlight: pick.species }),
+            chart,
             explain: `${pick.species}: ${pick.n} visits this week.`,
             fact: speciesFact(pick.species, band),
         };
@@ -4133,6 +4233,14 @@ const CLASSROOM_TEMPLATES = [
             // No chart: this one is about the bird, not the data, and a chart
             // of visit counts beside it would only suggest the answer is in
             // there somewhere.
+            //
+            // The bird itself, held back until the reveal. Asked for:
+            // "it would be better if it showed a picture of a northern
+            // cardinal as the reveal." On reveal and not before, because a
+            // photograph of a cardinal IS the answer to "what color is a
+            // cardinal" — image_on_reveal is what that flag is for.
+            image: cmShotFor(s, species),
+            image_on_reveal: true,
             explain: look.female
                 ? `${look.color} — though the female is ${look.female}.`
                 : `${look.color}. Look for ${look.feature}.`,
@@ -4852,26 +4960,45 @@ ${jumbled.split('').join(' ')}`,
         // the evidence for this question on the board — each bar is a colour,
         // labelled and painted, so "which one is missing" is readable from
         // the back of the room without knowing a single species.
+        //
+        // Flagged AGAIN, and the second flag was about something else:
+        // "there is no way to know this without looking at the detections
+        // prior to the session... the question doesn't show any photos, or
+        // species, just asks which colors." Painted bars say which colours
+        // came; they do not say that a colour here means a BIRD of that
+        // colour. So each bar now carries a photograph of one of this
+        // feeder's own birds in that colour, which is the thing the chart
+        // was missing — and the prompt names the chart instead of leaving
+        // the class to work out that it is the evidence.
         const byColor = new Map();
         cmColorfulSpecies(s).forEach(x => {
-            byColor.set(x.look.color, (byColor.get(x.look.color) || 0) + x.n);
+            const row = byColor.get(x.look.color)
+                     || { n: 0, species: null };
+            row.n += x.n;
+            // The commonest bird of that colour, since s.species is already
+            // sorted by count and this keeps the first one seen.
+            if (!row.species) row.species = x.species;
+            byColor.set(x.look.color, row);
         });
         // `color` is honoured per row by cmChart, so each bar is painted the
         // colour it stands for. That is the whole point here: a bar chart of
         // colour words drawn in the default palette would be one more thing
         // to decode.
         const series = [...byColor.entries()]
-            .sort((a, b) => b[1] - a[1])
-            .map(([color, n]) => ({
+            .sort((a, b) => b[1].n - a[1].n)
+            .map(([color, row]) => ({
                 label: color.charAt(0).toUpperCase() + color.slice(1),
-                value: n,
+                value: row.n,
                 color: COLOR_WORD_HEX[color] || undefined,
+                image: cmSpeciesPhoto(s, row.species),
             }));
 
         return {
-            prompt: 'Which of these colors did NOT come to our feeder this week?',
+            prompt: 'Look at the chart. Which of these colors was NOT on any bird '
+                  + 'at our feeder this week?',
             ...built,
-            chart: cmChart('The colors that DID come this week', series, { band }),
+            chart: cmChart('Birds that came this week, by their color', series,
+                           { band, kind: 'hbars' }),
             explain: `No ${answer} birds this week. `
                    + `We saw ${series.map(x => x.label.toLowerCase()).join(', ')}.`,
         };
@@ -4996,14 +5123,19 @@ ${jumbled.split('').join(' ')}`,
         const days = cmDaySeries(s).filter(d => d.value > 0 && d.value <= 20);
         if (!days.length) return null;
         const pick = cmShuffle(days, rng)[0];
-        const built = cmChoices(String(pick.value),
-                                cmNumberDistractors(pick.value, rng, 3).map(String), rng);
+
+        // Chart first, choices second. The options have to be spaced against
+        // the scale the class will actually be reading — see
+        // cmChartResolution. Built the other way round, a quiet Tuesday on a
+        // busy week's axis got four options inside one gridline gap.
+        const chart = cmChart('Visits each day', cmDaySeries(s),
+                              { band, highlight: pick.key });
+        const built = cmChartCountChoices(pick.value, rng, chart, 3);
         if (!built) return null;
         return {
             prompt: `How many birds came on ${cmDayProse(pick.key)}?`,
             ...built,
-            chart: cmChart('Visits each day', cmDaySeries(s),
-                           { band, highlight: pick.key }),
+            chart,
             explain: `${pick.value} visits on ${cmDayProse(pick.key)}.`,
         };
     },
@@ -6048,9 +6180,27 @@ ${jumbled.split('').join(' ')}`,
             prompt: 'A bird seen from the front is symmetrical. Where is its line '
                   + 'of symmetry?',
             ...built,
+            // A DRAWING, NOT A PHOTOGRAPH, and that is the whole decision.
+            //
+            // Asked for: "it would be better as part of the reveal to show a
+            // bird to see the symmetry." Right — and a feeder photograph is
+            // the wrong way to grant it. Nearly every shot a camera gets is
+            // side-on, which is the one view in which a bird's symmetry is
+            // invisible, so the picture would quietly contradict the answer
+            // the class had just been told was correct. There is no way to
+            // ask the feeder for a head-on bird.
+            //
+            // So the reveal carries a diagram of the thing the question
+            // actually describes: a bird seen FROM THE FRONT, with the line
+            // down it. Inline SVG through the existing image path, so it
+            // needs no new rendering and no network.
+            image: { url: cmSymmetryDiagram() },
+            image_on_reveal: true,
             explain: 'Straight down the middle: one wing, one eye and one foot on '
                    + 'each side, mirrored. Almost every animal is built this way, '
-                   + 'which is why a drawing looks wrong the moment it is not.',
+                   + 'which is why a drawing looks wrong the moment it is not. '
+                   + 'You cannot see it in most feeder photos because the bird is '
+                   + 'side-on — turn it to face you and the two halves match.',
         };
     },
 },
