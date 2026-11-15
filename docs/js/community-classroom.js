@@ -1158,24 +1158,46 @@ function cmDayKeysEnding(today, count) {
  * from the species list alone. The lesson says "bird visits" in a dozen
  * places, and a deer is not a bird visit.
  */
-const CM_NOT_BIRDS = new Set([
-    'deer', 'white-tailed deer', 'whitetail deer', 'mule deer', 'elk', 'moose',
-    'squirrel', 'gray squirrel', 'grey squirrel', 'eastern gray squirrel',
-    'eastern grey squirrel', 'fox squirrel', 'red squirrel', 'flying squirrel',
-    'chipmunk', 'eastern chipmunk', 'groundhog', 'woodchuck', 'marmot',
-    'raccoon', 'racoon', 'opossum', 'possum', 'virginia opossum',
-    'rabbit', 'cottontail', 'eastern cottontail', 'hare', 'jackrabbit',
-    'cat', 'domestic cat', 'house cat', 'feral cat', 'bobcat', 'lynx',
-    'dog', 'domestic dog', 'coyote', 'wolf', 'fox', 'red fox', 'gray fox',
-    'grey fox', 'bear', 'black bear', 'brown bear',
-    'skunk', 'striped skunk', 'armadillo', 'nine-banded armadillo',
-    'rat', 'mouse', 'vole', 'shrew', 'mole', 'bat',
-    'weasel', 'mink', 'otter', 'marten', 'fisher', 'badger', 'porcupine',
-    'snake', 'lizard', 'anole', 'green anole', 'brown anole', 'iguana',
-    'gecko', 'skink', 'turtle', 'tortoise', 'frog', 'toad',
-    'insect', 'butterfly', 'moth', 'bee', 'wasp', 'hornet', 'dragonfly',
-    'human', 'person', 'people', 'man', 'woman', 'child',
-    'unknown', 'other', 'none', 'no bird', 'empty', 'motion', 'background',
+const CM_NOT_BIRDS = new Map([
+    ['deer', 'mammal'], ['white-tailed deer', 'mammal'], ['whitetail deer', 'mammal'],
+    ['mule deer', 'mammal'], ['elk', 'mammal'], ['moose', 'mammal'],
+    ['squirrel', 'mammal'], ['gray squirrel', 'mammal'], ['grey squirrel', 'mammal'],
+    ['eastern gray squirrel', 'mammal'], ['eastern grey squirrel', 'mammal'],
+    ['fox squirrel', 'mammal'], ['red squirrel', 'mammal'], ['flying squirrel', 'mammal'],
+    ['chipmunk', 'mammal'], ['eastern chipmunk', 'mammal'], ['groundhog', 'mammal'],
+    ['woodchuck', 'mammal'], ['marmot', 'mammal'],
+    ['raccoon', 'mammal'], ['racoon', 'mammal'], ['opossum', 'mammal'],
+    ['possum', 'mammal'], ['virginia opossum', 'mammal'],
+    ['rabbit', 'mammal'], ['cottontail', 'mammal'], ['eastern cottontail', 'mammal'],
+    ['hare', 'mammal'], ['jackrabbit', 'mammal'],
+    ['cat', 'mammal'], ['domestic cat', 'mammal'], ['house cat', 'mammal'],
+    ['feral cat', 'mammal'], ['bobcat', 'mammal'], ['lynx', 'mammal'],
+    ['dog', 'mammal'], ['domestic dog', 'mammal'], ['coyote', 'mammal'],
+    ['wolf', 'mammal'], ['fox', 'mammal'], ['red fox', 'mammal'],
+    ['gray fox', 'mammal'], ['grey fox', 'mammal'],
+    ['bear', 'mammal'], ['black bear', 'mammal'], ['brown bear', 'mammal'],
+    ['skunk', 'mammal'], ['striped skunk', 'mammal'],
+    ['armadillo', 'mammal'], ['nine-banded armadillo', 'mammal'],
+    ['rat', 'mammal'], ['mouse', 'mammal'], ['vole', 'mammal'],
+    ['shrew', 'mammal'], ['mole', 'mammal'], ['bat', 'mammal'],
+    ['weasel', 'mammal'], ['mink', 'mammal'], ['otter', 'mammal'],
+    ['marten', 'mammal'], ['fisher', 'mammal'], ['badger', 'mammal'],
+    ['porcupine', 'mammal'],
+    ['snake', 'reptile'], ['lizard', 'reptile'], ['anole', 'reptile'],
+    ['green anole', 'reptile'], ['brown anole', 'reptile'], ['iguana', 'reptile'],
+    ['gecko', 'reptile'], ['skink', 'reptile'], ['turtle', 'reptile'],
+    ['tortoise', 'reptile'], ['alligator', 'reptile'],
+    ['frog', 'amphibian'], ['toad', 'amphibian'], ['salamander', 'amphibian'],
+    ['insect', 'insect'], ['butterfly', 'insect'], ['moth', 'insect'],
+    ['bee', 'insect'], ['wasp', 'insect'], ['hornet', 'insect'],
+    ['dragonfly', 'insect'], ['grasshopper', 'insect'],
+    // Not animals the question should ever ask about: people, and the
+    // detector's own ways of saying it does not know.
+    ['human', 'skip'], ['person', 'skip'], ['people', 'skip'],
+    ['man', 'skip'], ['woman', 'skip'], ['child', 'skip'],
+    ['unknown', 'skip'], ['other', 'skip'], ['none', 'skip'],
+    ['no bird', 'skip'], ['empty', 'skip'], ['motion', 'skip'],
+    ['background', 'skip'],
 ]);
 
 /**
@@ -1203,6 +1225,53 @@ const CM_LATIN_COMMON = {
     'cyanocitta cristata':      'Blue Jay',
 };
 
+/**
+ * Roughly how big, in the three sizes a field guide actually uses.
+ *
+ * This exists for one question - who gives way to whom at a crowded feeder -
+ * and it is deliberately coarse. Project FeederWatch's displacement data
+ * found that the heavier bird usually wins, so a question can be built on
+ * size; but published weights for the same species vary by source and the
+ * ranges overlap badly in the middle (a starling and a jay are the same
+ * handful of grams apart that nobody should be asked to guess about). So the
+ * question only ever compares SMALL against LARGE, two steps apart, where
+ * the ordering is not in doubt whichever guide you open. Everything medium
+ * is here to be excluded, not to be compared.
+ */
+const CM_BIRD_SIZE = {
+    // chickadee-to-sparrow sized, under about 25g
+    'Carolina Chickadee': 'small', 'Black-capped Chickadee': 'small',
+    'Tufted Titmouse': 'small', 'Carolina Wren': 'small', 'Bewick\'s Wren': 'small',
+    'House Wren': 'small', 'Winter Wren': 'small',
+    'House Finch': 'small', 'Purple Finch': 'small', 'American Goldfinch': 'small',
+    'Pine Siskin': 'small', 'White-breasted Nuthatch': 'small',
+    'Red-breasted Nuthatch': 'small', 'Brown-headed Nuthatch': 'small',
+    'House Sparrow': 'small', 'Dark-eyed Junco': 'small', 'Chipping Sparrow': 'small',
+    'Song Sparrow': 'small', 'White-throated Sparrow': 'small',
+    'Downy Woodpecker': 'small', 'Ruby-throated Hummingbird': 'small',
+    'Tree Swallow': 'small', 'Yellow-rumped Warbler': 'small',
+    'Pine Warbler': 'small', 'Palm Warbler': 'small',
+
+    // robin-to-starling sized: never compared, only kept out of the way
+    'Northern Cardinal': 'medium', 'American Robin': 'medium',
+    'European Starling': 'medium', 'Northern Mockingbird': 'medium',
+    'Red-bellied Woodpecker': 'medium', 'Hairy Woodpecker': 'medium',
+    'Red-winged Blackbird': 'medium', 'Brown Thrasher': 'medium',
+    'Gray Catbird': 'medium', 'Blue Grosbeak': 'medium',
+    'Common Ground Dove': 'medium', 'Ruddy Ground Dove': 'medium',
+    'Inca Dove': 'medium', 'Brown-headed Cowbird': 'medium',
+
+    // dove-to-crow sized, comfortably over 70g
+    'Mourning Dove': 'large', 'White-winged Dove': 'large',
+    'White-tipped Dove': 'large', 'Eurasian Collared-Dove': 'large',
+    'Spotted Dove': 'large', 'Rock Pigeon': 'large',
+    'Common Wood-Pigeon': 'large', 'Blue Jay': 'large',
+    'Florida Scrub-Jay': 'large', 'American Crow': 'large', 'Fish Crow': 'large',
+    'Common Grackle': 'large', 'Boat-tailed Grackle': 'large',
+    'Northern Flicker': 'large', 'Pileated Woodpecker': 'large',
+    'Blue-headed Vireo': 'small',
+};
+
 function cmSpeciesName(sp) {
     const k = String(sp || '').trim().toLowerCase();
     return CM_LATIN_COMMON[k] || sp;
@@ -1212,11 +1281,26 @@ function cmIsBird(sp) {
     return !CM_NOT_BIRDS.has(String(sp || '').trim().toLowerCase());
 }
 
+// The group an animal belongs to, or null for a bird and for the
+// detector's "I do not know" rows, which name no animal at all.
+function cmAnimalGroup(sp) {
+    const g = CM_NOT_BIRDS.get(String(sp || '').trim().toLowerCase());
+    return !g || g === 'skip' ? null : g;
+}
+
 function cmSummarize(feederId, name, rows, isHome, windowDays) {
     // Scientific names become common ones and the non-birds go, before a
     // single count is taken - so every number downstream, every chart and
     // every photo is drawn from the same cleaned set rather than each
     // template having to remember to filter for itself.
+    // The names as well as the tally: a deer that walked past the feeder is
+    // a fact about the fortnight, and SC.3.L.15.1 is a question about exactly
+    // that - which group of animals does this one belong to?
+    const others = new Map();
+    rows.filter(r => !cmIsBird(r.species)).forEach(r => {
+        const sp = r.species || '';
+        if (cmAnimalGroup(sp)) others.set(sp, (others.get(sp) || 0) + 1);
+    });
     const nonBird = rows.filter(r => !cmIsBird(r.species)).length;
     rows = rows.filter(r => cmIsBird(r.species))
                .map(r => (cmSpeciesName(r.species) === r.species
@@ -1280,7 +1364,7 @@ function cmSummarize(feederId, name, rows, isHome, windowDays) {
         // Kept rather than discarded: a class that knows a deer walked past
         // the feeder is better off than one that thinks nothing did, and a
         // question may want to say so one day.
-        nonBird,
+        nonBird, others,
         avgTemp: tempRows ? tempSum / tempRows : null,
         tempCoverage: rows.length ? tempRows / rows.length : 0,
         dayTemp,
@@ -9424,6 +9508,186 @@ ${jumbled.split('').join(' ')}`,
                       : 'They are different days, and that is a real result. People expect '
                         + 'cold to mean hungry birds, and sometimes it does — but what '
                         + 'actually happened is what the data says.'),
+        };
+    },
+},
+
+
+// ════════════════════════════════════════════════════════════════════
+//  Three more the research suggested, and the feeder can answer
+// ════════════════════════════════════════════════════════════════════
+//
+//  · Feeder watchers have argued for years about whether birds feed in
+//    two bursts with a quiet middle. A study of black-capped chickadees
+//    found their feeder visits were always bimodal, peaking around half
+//    past eight and three o'clock with the dip shrinking as the day got
+//    busier. An earlier study that EXPECTED that shape did not find it
+//    and suggested mild weather had taken the pressure off. A winter
+//    study with tagged birds found several species peaked in the
+//    afternoon instead.
+//  · Project FeederWatch volunteers recorded one bird making another
+//    give way, tens of thousands of times, and the result was the first
+//    dominance ranking of 136 North American feeder species. Heavier
+//    birds generally displaced lighter ones; a follow-up found mass
+//    tracked dominance closely. Not perfectly, though - some species
+//    punch well above their weight, woodpeckers especially.
+//
+//  The disagreement is the reason both of these are questions rather
+//  than facts. A class whose feeder comes out the other way has found
+//  something about their feeder, not got the answer wrong, and that is
+//  what SC.8.N.1.3 means by "results support" and "fail to support".
+
+{
+    id: 'shape-of-the-day',
+    category: 'time',
+    title: 'The shape of the day',
+    bands: ['6-8'],
+    build({ s14, band, rng }) {
+        if (s14.total < 40) return null;
+        const h = s14.byHour;
+
+        // Only the hours the feeder is actually awake for. Counting the
+        // empty small hours would flatten every shape into "one spike".
+        let lo = 0, hi = 23;
+        while (lo < 24 && !h[lo]) lo++;
+        while (hi >= 0 && !h[hi]) hi--;
+        if (hi - lo < 5) return null;
+
+        const span = [];
+        for (let i = lo; i <= hi; i++) span.push({ h: i, n: h[i] });
+        const peak = span.reduce((a, b) => (b.n > a.n ? b : a));
+        const mean = span.reduce((a, b) => a + b.n, 0) / span.length;
+
+        // A second peak has to be a separate event, not the shoulder of the
+        // first one, so it must sit at least two hours away and have a real
+        // trough between the two rather than a dent.
+        let second = null;
+        span.forEach(x => {
+            if (Math.abs(x.h - peak.h) < 2) return;
+            if (!second || x.n > second.n) second = x;
+        });
+        let dip = null;
+        if (second) {
+            const a = Math.min(peak.h, second.h), b = Math.max(peak.h, second.h);
+            dip = span.filter(x => x.h > a && x.h < b).reduce((m, x) => Math.min(m, x.n), Infinity);
+        }
+        const twoPeaked = !!second && second.n >= peak.n * 0.6
+                       && dip !== null && dip <= Math.min(peak.n, second.n) * 0.65;
+
+        const lateThird = peak.h >= lo + Math.ceil((hi - lo) * 2 / 3);
+        const flat = peak.n <= mean * 1.6;
+
+        const ANSWERS = {
+            two:   'Two busy spells with a quieter patch in between',
+            one:   'One busy spell, and quieter either side of it',
+            flat:  'About the same all day long',
+            late:  'Quiet early, then busiest near the end of the day',
+        };
+        const key = twoPeaked ? 'two' : flat ? 'flat' : lateThird ? 'late' : 'one';
+        const built = cmChoices(ANSWERS[key],
+            Object.keys(ANSWERS).filter(k => k !== key).map(k => ANSWERS[k]), rng);
+        if (!built) return null;
+
+        return {
+            prompt: 'Look at the shape of our fortnight hour by hour. Which of these '
+                  + 'describes it best?',
+            ...built,
+            chart: cmChart('Visits by hour, whole fortnight',
+                span.map(x => ({ label: fmtHourShort(x.h), value: x.n, key: String(x.h) })),
+                { band, ordered: true, kind: 'line' }),
+            explain: 'Our busiest hour was ' + fmtHourShort(peak.h) + ' with '
+                   + peak.n + ' visits, against ' + mean.toFixed(1) + ' in an average hour'
+                   + (twoPeaked
+                      ? ', and a second spell around ' + fmtHourShort(second.h)
+                        + ' with the quiet patch between them down to ' + dip + '.'
+                      : '.')
+                   + ' Researchers watching chickadees at feeders found two peaks every '
+                   + 'time, around half past eight and three o’clock, with the midday '
+                   + 'dip shrinking on busier days — but an earlier study that expected '
+                   + 'that shape did not find it, and a winter study of tagged birds '
+                   + 'found several species busiest in the afternoon instead. So our '
+                   + 'fortnight '
+                   + (twoPeaked ? 'supports the two-peak picture'
+                                : 'does not support the two-peak picture')
+                   + '. Saying which is the whole job; "results support" and "results '
+                   + 'fail to support" are the honest words for it either way.',
+        };
+    },
+},
+
+{
+    id: 'who-gives-way',
+    category: 'science',
+    title: 'Who gives way?',
+    bands: ['6-8'],
+    build({ s, band, rng }) {
+        const sized = s.species
+            .map(x => ({ species: x.species, n: x.n, size: CM_BIRD_SIZE[x.species] }))
+            .filter(x => x.size === 'small' || x.size === 'large');
+        const small = sized.filter(x => x.size === 'small');
+        const large = sized.filter(x => x.size === 'large');
+        // Only ever small against large. Anything closer than that and the
+        // published weights overlap, which would make this a guess dressed
+        // up as a question.
+        if (!small.length || !large.length) return null;
+
+        const big = cmShuffle(large, rng)[0];
+        const wee = cmShuffle(small, rng)[0];
+        const built = cmChoices(big.species,
+            [wee.species, 'Whichever one got there first', 'They would share the perch'], rng);
+        if (!built) return null;
+
+        return {
+            prompt: `Both the ${big.species} and the ${wee.species} came to our feeder `
+                  + 'this week. If they arrived at the same perch at the same moment, '
+                  + 'which one would you EXPECT to make the other give way?',
+            ...built,
+            image: cmShotFor(s, big.species),
+            image_on_reveal: true,
+            explain: `The ${big.species}, because it is much the bigger bird. Project `
+                   + 'FeederWatch volunteers recorded one bird displacing another tens '
+                   + 'of thousands of times and built the first dominance ranking for '
+                   + '136 feeder species: the heavier bird usually wins, and a follow-up '
+                   + 'study found weight tracked rank closely. Usually, not always — '
+                   + 'some birds rank far above their weight, woodpeckers in particular, '
+                   + 'and the researchers were surprised by several of their own results. '
+                   + '"Expect" is doing real work in that question: it is a prediction '
+                   + 'from a pattern, and our camera has not watched these two meet.',
+            about_bird: big.species,
+        };
+    },
+},
+
+{
+    id: 'not-a-bird',
+    category: 'science',
+    title: 'Not a bird',
+    bands: ['3-5'],
+    build({ s14, rng }) {
+        if (!s14.others || !s14.others.size) return null;
+        const name = cmShuffle([...s14.others.keys()], rng)[0];
+        const group = cmAnimalGroup(name);
+        if (!group) return null;
+
+        const GROUPS = { mammal: 'A mammal', reptile: 'A reptile',
+                         amphibian: 'An amphibian', insect: 'An insect' };
+        const built = cmChoices(GROUPS[group],
+            Object.keys(GROUPS).filter(k => k !== group).map(k => GROUPS[k])
+                  .concat(['A bird']).slice(0, 3), rng);
+        if (!built) return null;
+
+        const n = s14.others.get(name);
+        return {
+            prompt: `Our camera watches for birds, but it photographs whatever turns up `
+                  + `— and this fortnight it caught a ${name}. Which group of animals `
+                  + `does a ${name} belong to?`,
+            ...built,
+            explain: `A ${name} is not a bird: ${GROUPS[group].toLowerCase()}. It turned `
+                   + `up ${n} time${n === 1 ? '' : 's'} in our fortnight, and the counting `
+                   + 'questions leave it out for exactly that reason — "how many bird '
+                   + 'visits" has to mean birds. Sorting what the camera sees into groups '
+                   + 'is the same job scientists do with every new animal they find, and '
+                   + 'the camera cannot do it for us.',
         };
     },
 },

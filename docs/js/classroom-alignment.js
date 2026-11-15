@@ -377,6 +377,14 @@ const CLASSROOM_TEMPLATE_STANDARDS = {
     // including a null result, which is the harder idea to teach.
     'temp-below-average':   ['MA.8.DP.1.2', 'MA.7.DP.1.2', 'SC.7.N.1.4'],
     'temp-what-else':       ['SC.7.N.1.4', 'SC.8.N.1.3', 'SC.6.N.1.2'],
+    // Grounded in the feeder-watch literature rather than invented: the
+    // two-peak argument, the dominance ranking, and the camera's own
+    // non-birds. SC.8.N.1.3 is the point of the first - the research
+    // disagrees with itself, so a class says "supports" or "fails to
+    // support" rather than "right" or "wrong".
+    'shape-of-the-day':    ['MA.6.DP.1.4', 'SC.8.N.1.3'],
+    'who-gives-way':       ['SC.7.L.17.2', 'SC.7.L.17.3'],
+    'not-a-bird':          ['SC.3.L.15.1'],
     'temp-coldest-busiest': ['MA.3.M.1.2', 'SC.4.N.1.7'],
 };
 
