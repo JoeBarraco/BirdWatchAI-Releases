@@ -5940,7 +5940,15 @@ ${jumbled.split('').join(' ')}`,
     title: 'Seed scoops',
     bands: ['3-5'],
     build({ s, band, rng }) {
-        const days = cmDaySeries(s).slice(-2);
+        // Today is not over, so "there were 0 visits on Sunday" is not a
+        // fact about Sunday - it is a fact about the time of day the class
+        // ran. A day still in progress with nothing on it is dropped; a real
+        // nought on a finished day is kept, because that one is true.
+        let series = cmDaySeries(s);
+        const nowKey = cmDayKey(new Date());
+        if (series.length && series[series.length - 1].key === nowKey
+            && !series[series.length - 1].value) series = series.slice(0, -1);
+        const days = series.slice(-2);
         if (days.length < 2) return null;
         const total = days.reduce((a, d) => a + d.value, 0);
         if (total < 4) return null;
@@ -5977,10 +5985,11 @@ ${jumbled.split('').join(' ')}`,
             explain: `${days[0].value} + ${days[1].value} = ${total} visits. `
                    + `${total} ÷ ${per} = ${whole}`
                    + (rem
-                      ? ` with ${rem} left over - and those ${rem} `
-                        + `visit${rem === 1 ? '' : 's'} still want feeding, so it is `
-                        + `${answer} scoops, not ${whole}. What to do with a `
-                        + 'remainder depends on what you are counting.'
+                      ? ` with ${rem} left over — and `
+                        + (rem === 1 ? 'that one visit still wants feeding'
+                                     : `those ${rem} visits still want feeding`)
+                        + `, so it is ${answer} scoops, not ${whole}. What to do `
+                        + 'with a remainder depends on what you are counting.'
                       : ` exactly, so ${answer} scoops.`),
         };
     },
@@ -9700,13 +9709,17 @@ ${jumbled.split('').join(' ')}`,
         if (!built) return null;
 
         const n = s14.others.get(name);
+        // "a Deer" mid-sentence reads as a proper noun. Bird names are
+        // capitalised because they are species names; these are common nouns
+        // and the detector just happens to shout them.
+        const low = String(name).toLowerCase();
         return {
             prompt: `Our camera watches for birds, but it photographs whatever turns up `
-                  + `— and this fortnight it caught a ${name}. Which group of animals `
-                  + `does a ${name} belong to?`,
+                  + `— and this fortnight it caught a ${low}. Which group of animals `
+                  + `does a ${low} belong to?`,
             ...built,
-            explain: `A ${name} is not a bird: ${GROUPS[group].toLowerCase()}. It turned `
-                   + `up ${n} time${n === 1 ? '' : 's'} in our fortnight, and the counting `
+            explain: `A ${low} is not a bird: ${GROUPS[group].toLowerCase()}. It turned `
+                   + `up ${n === 1 ? 'once' : n + ' times'} in our fortnight, and the counting `
                    + 'questions leave it out for exactly that reason — "how many bird '
                    + 'visits" has to mean birds. Sorting what the camera sees into groups '
                    + 'is the same job scientists do with every new animal they find, and '
