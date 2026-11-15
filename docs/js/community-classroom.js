@@ -7984,7 +7984,13 @@ ${jumbled.split('').join(' ')}`,
         if (s.total < 40 || s.species.length < 3) return null;
         const top = s.species[0];
         const p = top.n / s.total;
-        if (p < 0.15 || p > 0.6) return null;
+        // 0.70, not 0.60. The first ceiling was a guess and it was wrong by
+        // three points: the commonest bird on the live feeder sits at 63%,
+        // so the question never built once on real data. There IS a real
+        // ceiling — past about three quarters the prediction is just "nearly
+        // all of them" and the donut's biggest slice swallows the rest — but
+        // it is not where I first put it.
+        if (p < 0.15 || p > 0.70) return null;
 
         const nextN = 50;
         const answer = Math.round(p * nextN);
