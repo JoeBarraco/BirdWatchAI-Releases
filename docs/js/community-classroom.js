@@ -9002,6 +9002,7 @@ function renderClassroomForm() {
                 <button type="button" class="classroom-btn" onclick="classroomPickAll(true)">Select all</button>
                 <button type="button" class="classroom-btn" onclick="classroomPickAll(false)">Select none</button>
             </div>
+            ${cmStandardPickerHtml()}
             <div id="classroom-picks" class="classroom-picks"></div>
             <p id="classroom-picks-warn" class="classroom-muted"></p>
         </details>
@@ -9152,6 +9153,99 @@ function classroomPickCategory(cat, on) {
  * rather than one carrying a frozen list of today's templates — which would
  * quietly never show them a question added next month.
  */
+// ── Picking questions by benchmark ──────────────────────────────────
+//
+// A teacher planning a week does not think "I want the comparison
+// category". They think "we are on MA.3.DP.1.2 this week". This turns the
+// second sentence into the first.
+//
+// NO SCHEMA CHANGE, deliberately. A classroom's picks are already stored
+// as a set of template ids, so choosing a benchmark just ticks the boxes
+// that cover it and the existing save path carries it. Adding a standards
+// column to classroom_challenges would have meant another argument on
+// classroom_challenge_create — the overload that took the challenge RPCs
+// down with PGRST203 — for a feature that needs no new storage at all.
+//
+// It is a FILTER, not a mode: the ticks it sets are ordinary ticks a
+// teacher can then adjust. Nothing anywhere records that a selection came
+// from a benchmark, which is right, because what the class can be asked is
+// the set of questions and not the reason somebody chose them.
+
+function cmStandardPickerHtml() {
+    if (typeof CLASSROOM_STANDARDS === 'undefined'
+     || typeof CLASSROOM_TEMPLATE_STANDARDS === 'undefined') return '';
+
+    const band = classroomFormBand();
+    // Only benchmarks this band can actually be asked about. Offering a
+    // 6-8 code to a K-2 class produces a selection of nothing, which reads
+    // as a broken control rather than as an empty result.
+    const codes = Object.keys(CLASSROOM_STANDARDS).filter(c => {
+        const s = CLASSROOM_STANDARDS[c];
+        if (!s.bands.includes(band)) return false;
+        return classroomTemplatesForStandards([c])
+            .some(id => {
+                const t = CLASSROOM_TEMPLATES.find(x => x.id === id);
+                return t && t.bands.includes(band);
+            });
+    });
+    if (!codes.length) return '';
+
+    const bySubject = new Map();
+    codes.forEach(c => {
+        const subj = CLASSROOM_STANDARDS[c].subject;
+        if (!bySubject.has(subj)) bySubject.set(subj, []);
+        bySubject.get(subj).push(c);
+    });
+
+    return `
+        <div class="cc-std-pick">
+            <label>
+                <span>Or pick by Florida standard</span>
+                <select id="classroom-std-pick" onchange="classroomPickByStandard(this.value)">
+                    <option value="">— choose a benchmark —</option>
+                    ${[...bySubject.entries()].map(([subj, cs]) => `
+                        <optgroup label="${esc(subj)}">
+                            ${cs.map(c => `<option value="${esc(c)}">${esc(c)} — ${
+                                esc(CLASSROOM_STANDARDS[c].text.slice(0, 72))}${
+                                CLASSROOM_STANDARDS[c].text.length > 72 ? '…' : ''}</option>`).join('')}
+                        </optgroup>`).join('')}
+                </select>
+            </label>
+            <p class="classroom-muted" id="classroom-std-pick-note">
+                Ticks every question that exercises that benchmark, and unticks the rest.
+                Adjust the boxes afterwards as you like.
+            </p>
+        </div>`;
+}
+
+function classroomPickByStandard(code) {
+    const note = document.getElementById('classroom-std-pick-note');
+    if (!code) return;
+
+    const band = classroomFormBand();
+    const ids = classroomTemplatesForStandards([code]).filter(id => {
+        const t = CLASSROOM_TEMPLATES.find(x => x.id === id);
+        return t && t.bands.includes(band);
+    });
+
+    // Should not happen — the dropdown only offers benchmarks with a
+    // question in this band — but a selection that silently empties the
+    // picker would be the worst possible outcome of clicking it.
+    if (!ids.length) {
+        if (note) note.textContent = 'Nothing in this grade band covers that benchmark.';
+        return;
+    }
+
+    classroomPicks = new Set(ids);
+    syncClassroomPickBoxes();
+
+    if (note) {
+        const s = CLASSROOM_STANDARDS[code];
+        note.textContent = `${ids.length} question${ids.length === 1 ? '' : 's'} `
+                         + `selected for ${code}${s ? ' — ' + s.text : ''}`;
+    }
+}
+
 function classroomPickAll(on) {
     const band = classroomFormBand();
     const s = classroomPickMaterialise();
