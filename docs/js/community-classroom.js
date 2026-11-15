@@ -1288,6 +1288,39 @@ function cmAnimalGroup(sp) {
     return !g || g === 'skip' ? null : g;
 }
 
+/**
+ * How sure the detector was, as a percentage from 0 to 100.
+ *
+ * THE DETECTOR REPORTS A PERCENTAGE. 63.5 means "63.5% sure". Every
+ * threshold in this file was written as `>= 0.65`, which on a 0-100 scale is
+ * true of every detection ever recorded - so the filters that were supposed
+ * to keep a 36%-confident guess out of "which bird is this?" have never once
+ * excluded a row. The guess-the-species question has been free to put up a
+ * photo whose label was barely better than a coin flip, under a comment
+ * explaining that a misidentified clip teaches the wrong bird.
+ *
+ * Production settled the scale beyond argument: the values arrive byte-
+ * scaled (91/255 * 100 = 35.686...), running 35.7 at the lowest through a
+ * median of 63.5 to 97.3 at the best.
+ *
+ * Normalised defensively all the same. A firmware that started reporting
+ * 0-1 would otherwise reinstate exactly this bug from the other direction,
+ * and silently - which is how it survived this long the first time.
+ */
+function cmConfPct(r) {
+    const c = Number(r && r.confidence);
+    if (!isFinite(c) || c <= 0) return 0;
+    return c <= 1 ? c * 100 : c;
+}
+
+// Where the SPECIES NAME is the content - guess-the-bird, and the clip
+// questions - a shaky label teaches a child the wrong bird, so the floor is
+// real and a question that cannot clear it does not get asked. Where the
+// photograph is only something true to look at, the label is not the answer
+// and the best available shot is better than no question at all.
+const CM_CONF_LABEL = 65;
+const CM_CONF_SHOW  = 55;
+
 function cmSummarize(feederId, name, rows, isHome, windowDays) {
     // Scientific names become common ones and the non-birds go, before a
     // single count is taken - so every number downstream, every chart and
@@ -1317,6 +1350,11 @@ function cmSummarize(feederId, name, rows, isHome, windowDays) {
     const clips = [];
     let tempSum = 0, tempRows = 0;
     const dayTemp = new Map();   // day -> {sum, n}
+    // How unusual the detector thinks each sighting is for THIS AREA -
+    // Common, Uncommon, Rare. Fetched since the beginning and read by
+    // nothing, which is a waste of the one field that knows our feeder sits
+    // in a place rather than nowhere.
+    const byRarity = new Map();
 
     for (const r of rows) {
         const sp = r.species || 'Unknown';
@@ -1336,6 +1374,17 @@ function cmSummarize(feederId, name, rows, isHome, windowDays) {
             if (!dayTemp.has(day)) dayTemp.set(day, { sum: 0, n: 0 });
             const t = dayTemp.get(day);
             t.sum += r.temperature; t.n++;
+        }
+
+        // Title case, always. Production sends "Common"; the test fixture
+        // sent "common", and the question that asks how many sightings were
+        // "something other than Common" then answered ALL OF THEM - a clean
+        // reversal of its own meaning, from a capital letter. Whatever the
+        // feeder sends, it means the same three words.
+        const rar = String(r.rarity || '').trim();
+        if (rar) {
+            const key = rar.charAt(0).toUpperCase() + rar.slice(1).toLowerCase();
+            byRarity.set(key, (byRarity.get(key) || 0) + 1);
         }
 
         if (r.image_url && !isPrivateMedia(r.image_url)) snapshots.push(r);
@@ -1364,7 +1413,7 @@ function cmSummarize(feederId, name, rows, isHome, windowDays) {
         // Kept rather than discarded: a class that knows a deer walked past
         // the feeder is better off than one that thinks nothing did, and a
         // question may want to say so one day.
-        nonBird, others,
+        nonBird, others, byRarity,
         avgTemp: tempRows ? tempSum / tempRows : null,
         tempCoverage: rows.length ? tempRows / rows.length : 0,
         dayTemp,
@@ -3752,10 +3801,10 @@ function cmShorten(text, max) {
  * meet the same cardinal twice in its first two slides.
  */
 function cmPickClip(s, rng) {
-    const good = s.clips.filter(r => (r.confidence || 0) >= 0.65);
+    const good = s.clips.filter(r => cmConfPct(r) >= CM_CONF_LABEL);
     if (!good.length) return null;
-    const photo = s.snapshots.find(r => (r.confidence || 0) >= 0.65 && SPECIES_FACTS[r.species])
-               || s.snapshots.find(r => (r.confidence || 0) >= 0.65);
+    const photo = s.snapshots.find(r => cmConfPct(r) >= CM_CONF_LABEL && SPECIES_FACTS[r.species])
+               || s.snapshots.find(r => cmConfPct(r) >= CM_CONF_LABEL);
     const other = good.filter(r => !photo || r.species !== photo.species);
     const pool = (other.length ? other : good).slice(0, 6);
     return cmShuffle(pool, rng)[0];
@@ -7877,7 +7926,9 @@ ${jumbled.split('').join(' ')}`,
     title: 'Saw it, or worked it out?',
     bands: ['3-5', '6-8'],
     build({ s, rng }) {
-        const shot = s.snapshots.find(r => (r.confidence || 0) >= 0.6);
+        // The photograph is here to be looked at, not named, so a middling
+        // one beats no question - but take the clearest the feeder has.
+        const shot = s.snapshots.find(r => cmConfPct(r) >= CM_CONF_SHOW) || s.snapshots[0];
         if (!shot) return null;
 
         const when = new Date(shot.detected_at);
@@ -8227,7 +8278,9 @@ ${jumbled.split('').join(' ')}`,
     title: 'What can looking tell us?',
     bands: ['k-2'],
     build({ s, rng }) {
-        const shot = s.snapshots.find(r => (r.confidence || 0) >= 0.6);
+        // The photograph is here to be looked at, not named, so a middling
+        // one beats no question - but take the clearest the feeder has.
+        const shot = s.snapshots.find(r => cmConfPct(r) >= CM_CONF_SHOW) || s.snapshots[0];
         if (!shot) return null;
 
         const built = cmChoices('What colors it has',
@@ -8420,7 +8473,9 @@ ${jumbled.split('').join(' ')}`,
     title: 'Reading a picture',
     bands: ['3-5'],
     build({ s, rng }) {
-        const shot = s.snapshots.find(r => (r.confidence || 0) >= 0.6);
+        // The photograph is here to be looked at, not named, so a middling
+        // one beats no question - but take the clearest the feeder has.
+        const shot = s.snapshots.find(r => cmConfPct(r) >= CM_CONF_SHOW) || s.snapshots[0];
         if (!shot) return null;
 
         const built = cmChoices(
@@ -9737,6 +9792,269 @@ ${jumbled.split('').join(' ')}`,
     },
 },
 
+// ═════════════════════════════════════════════════════════════════════
+//  The number beside the bird's name
+// ═════════════════════════════════════════════════════════════════════
+//
+//  Every detection has carried a confidence figure since the first one, and
+//  until now the lesson used it only to sort photographs. That is a waste of
+//  the single most honest thing our camera produces: a machine saying out
+//  loud how sure it is, and being wrong sometimes anyway.
+//
+//  It is also the one place a feeder can teach what a confidence score is
+//  WITHOUT a worksheet, because the class can see the bird. The research is
+//  blunt about the limits:
+//
+//    · Calibration - the agreement between a model's stated confidence and
+//      how often it is actually right - is not something a classifier gets
+//      for free. A model can be accurate overall and badly calibrated, and
+//      wrong answers are often given with high confidence.
+//    · Work on BirdNET, the model behind Merlin's sound ID, found that
+//      raising the confidence threshold raises the share of identifications
+//      that are correct but cuts the number of detections you keep. The same
+//      work found that a single global threshold performs only moderately
+//      and that good thresholds differ species by species.
+//    · A score reflects how closely the input matched what the model was
+//      trained on. It is not a promise about the bird.
+//
+//  So none of these questions says the percentage is a probability of being
+//  right. They say a higher number is a better bet, which is true, and they
+//  say where that stops being true, which is the part worth a lesson.
+
+{
+    // MA.7.DP.2.2 wants a child given a probability to interpret the
+    // likelihood and compare two of them. Our camera hands them two, about
+    // two birds they can see, which beats a bag of marbles.
+    id: 'confidence-compare',
+    category: 'science',
+    title: 'How sure is sure?',
+    bands: ['6-8'],
+    build({ s14, rng }) {
+        const scored = s14.rows
+            .map(r => ({ sp: r.species, c: cmConfPct(r) }))
+            .filter(x => x.c > 0)
+            .sort((a, b) => b.c - a.c);
+        if (scored.length < 2) return null;
+
+        // Different species, and a gap wide enough that the comparison is
+        // not noise wearing a decimal point.
+        const hi = scored[0];
+        const lo = scored.slice().reverse()
+                         .find(x => x.sp !== hi.sp && hi.c - x.c >= 20);
+        if (!lo) return null;
+
+        const built = cmChoices(`The ${hi.sp}`,
+            [`The ${lo.sp}`,
+             'Both are equally likely to be right',
+             'The percentage cannot tell us anything about that'], rng);
+        if (!built) return null;
+
+        return {
+            prompt: 'Beside every bird it finds, our camera writes down how sure it '
+                  + `is. This fortnight it was ${Math.round(hi.c)}% sure about a `
+                  + `${hi.sp}, and only ${Math.round(lo.c)}% sure about a `
+                  + `${lo.sp}. Which identification is MORE LIKELY to be right?`,
+            ...built,
+            explain: `The ${hi.sp}, at ${Math.round(hi.c)}%. A higher number is a `
+                   + 'better bet — but it is a bet, not a promise. The figure says '
+                   + 'how closely the picture matched the birds the computer was '
+                   + 'trained on, which is not the same as how likely it is to be '
+                   + 'right, and a computer can be confident and wrong at the same '
+                   + 'time. Researchers testing BirdNET, the model behind Merlin’s '
+                   + 'sound ID, found exactly that: scores had to be read species by '
+                   + `species. So ${Math.round(lo.c)}% is worth checking ourselves, `
+                   + `and ${Math.round(hi.c)}% is worth checking too — just less `
+                   + 'urgently.',
+            about_bird: hi.sp,
+        };
+    },
+},
+
+{
+    // MA.7.DP.1.2 — two groups, a measure of center each, a comparison and a
+    // conclusion. The groups are species and the measure is the mean of the
+    // camera's own confidence figures, so the child is comparing real
+    // populations of real measurements.
+    id: 'confidence-by-species',
+    category: 'science',
+    title: 'The bird it keeps squinting at',
+    bands: ['6-8'],
+    build({ s14, band, rng }) {
+        const by = new Map();
+        s14.rows.forEach(r => {
+            const c = cmConfPct(r);
+            if (!c) return;
+            if (!by.has(r.species)) by.set(r.species, []);
+            by.get(r.species).push(c);
+        });
+
+        // Three sightings before a species gets an average at all. One
+        // blurry photograph is not a measure of center, it is a photograph.
+        const avg = [...by.entries()]
+            .filter(([, v]) => v.length >= 3)
+            .map(([sp, v]) => ({ sp, n: v.length,
+                                 m: v.reduce((a, b) => a + b, 0) / v.length }))
+            .sort((a, b) => a.m - b.m);
+        if (avg.length < 3) return null;
+
+        // A gap worth asking about. Two species a point apart is a question
+        // about rounding, not about the camera.
+        const least = avg[0];
+        if (avg[1].m - least.m < 5) return null;
+
+        const built = cmChoices(least.sp, avg.slice(1, 4).map(x => x.sp), rng);
+        if (!built) return null;
+
+        return {
+            prompt: 'Our camera records how sure it was about every single sighting. '
+                  + 'Take the AVERAGE of those figures for each bird. Which species '
+                  + 'was it least sure about?',
+            ...built,
+            // Sorted least-sure first, so the answer is the left-hand bar and
+            // cannot be trimmed off its own chart.
+            chart: cmChart('Average confidence by species, %',
+                avg.map(x => ({ label: x.sp, value: Math.round(x.m) })), { band }),
+            explain: `The ${least.sp}, averaging ${Math.round(least.m)}% across `
+                   + `${least.n} sightings, against ${Math.round(avg[avg.length - 1].m)}% `
+                   + `for the ${avg[avg.length - 1].sp}. A computer is not equally good `
+                   + 'at every bird: it is surer about the ones it saw most often while '
+                   + 'it was being trained, and about the ones that look like nothing '
+                   + 'else. Researchers found the same thing testing BirdNET and '
+                   + 'concluded that one threshold for all species works poorly — each '
+                   + 'species really needs its own. Which means the honest reading of '
+                   + `this chart is not "the camera is bad at the ${least.sp}" but "we `
+                   + `should check the ${least.sp} ourselves."`,
+            about_bird: least.sp,
+        };
+    },
+},
+
+{
+    // MA.6.DP.1.4 — given a histogram, describe and interpret the spread.
+    // The whole question is what the shape of this distribution costs you if
+    // you cut it off at 80, which is the benchmark's own work.
+    id: 'confidence-threshold',
+    category: 'science',
+    title: 'Where to draw the line',
+    bands: ['6-8'],
+    build({ s14, band, rng }) {
+        const conf = s14.rows.map(cmConfPct).filter(c => c > 0);
+        if (conf.length < 30) return null;
+
+        const strict = conf.filter(c => c >= 80).length;
+        // The question is about a cost, so there has to be one: keep it for
+        // feeders where raising the bar actually throws most of the
+        // fortnight away, and where it does not throw away everything.
+        if (!strict || strict / conf.length > 0.45) return null;
+
+        const bins = [];
+        for (let b = 30; b < 100; b += 10) {
+            bins.push({ label: `${b}–${b + 9}`,
+                        value: conf.filter(c => c >= b && c < b + 10).length });
+        }
+
+        const built = cmChoices(
+            'We would trust every sighting we kept more, and we would lose most of them',
+            ['We would trust every sighting we kept more, and lose none of them',
+             'We would end up with more sightings than we started with',
+             'Nothing would change except the labels'], rng);
+        if (!built) return null;
+
+        return {
+            prompt: `Our camera logged ${conf.length} sightings this fortnight, and it `
+                  + `was 80% sure or better about ${strict} of them. Suppose we threw `
+                  + 'away every sighting it was less than 80% sure about. Look at the '
+                  + 'shape of the chart before you answer: what would we gain, and '
+                  + 'what would we lose?',
+            ...built,
+            chart: cmChart('How sure the camera was, in ten-point bands',
+                bins, { band, ordered: true }),
+            explain: `Both at once. We would keep ${strict} of ${conf.length} sightings `
+                   + `— about ${Math.round(strict / conf.length * 100)}% — and every one `
+                   + 'we kept would be a better bet. We would also throw away '
+                   + `${conf.length - strict} real visits by real birds, because a bird `
+                   + 'the camera was only 60% sure about is usually still a bird. '
+                   + 'Researchers testing BirdNET found this exact trade: a higher '
+                   + 'threshold raises the share of identifications that are correct '
+                   + 'and cuts how many you keep. There is no setting that avoids the '
+                   + 'choice. Where you draw the line depends on what the mistake '
+                   + 'would cost — and that is a decision about your question, not a '
+                   + 'fact about the camera.',
+        };
+    },
+},
+
+{
+    // SC.7.N.1.6 — empirical evidence is the CUMULATIVE body of observations.
+    // One camera, one feeder, one fortnight is the smallest possible slice of
+    // that, and a rarity label is the place a class can see why it matters.
+    id: 'rarity-one-sighting',
+    category: 'science',
+    title: 'What counts as rare',
+    bands: ['6-8'],
+    build({ s14, rng }) {
+        const byR = s14.byRarity;
+        if (!byR || !byR.size) return null;
+        const total = [...byR.values()].reduce((a, b) => a + b, 0);
+        if (total < 20) return null;
+
+        const common = byR.get('Common') || 0;
+        const odd    = total - common;
+
+        // Two directions, because a fortnight that saw nothing unusual is the
+        // commoner case by far and has a better question in it than a null.
+        if (odd > 0) {
+            const built = cmChoices(
+                'That this bird is not often seen around HERE — and one sighting is a '
+                + 'start, not a finding',
+                ['That this bird is rare everywhere in the world',
+                 'That the camera made a mistake',
+                 'That no one else has ever recorded one'], rng);
+            if (!built) return null;
+            return {
+                prompt: 'Our camera labels every sighting Common, Uncommon or Rare for '
+                      + `this area. Out of ${total} sightings this fortnight, `
+                      + `${odd} ${odd === 1 ? 'was' : 'were'} labelled something other `
+                      + 'than Common. What does that actually tell us?',
+                ...built,
+                explain: 'Rarity labels are LOCAL. eBird, the biggest record of bird '
+                       + 'sightings there is, decides what to flag using a filter kept '
+                       + 'for each region by reviewers who live there — not one '
+                       + 'national list — so the same species can be routine in one '
+                       + 'county and flagged in the next, and a bird can be flagged '
+                       + 'simply for turning up out of season. Those filters are built '
+                       + 'from years of records by thousands of people. Our one camera, '
+                       + `at one feeder, over ${total} sightings in a fortnight, is a `
+                       + 'very small piece of that. It is worth recording and it is not '
+                       + 'enough to conclude anything on its own, which is what makes it '
+                       + 'evidence rather than proof.',
+            };
+        }
+
+        const built = cmChoices(
+            'Only that nothing unusual came to OUR feeder, in OUR fortnight',
+            ['That there are no uncommon birds in our area',
+             'That our camera cannot recognise an unusual bird',
+             'That we have now seen every species that lives here'], rng);
+        if (!built) return null;
+        return {
+            prompt: 'Our camera labels every sighting Common, Uncommon or Rare for this '
+                  + `area. All ${total} of our sightings this fortnight came back `
+                  + 'Common. What does that tell us?',
+            ...built,
+            explain: 'Not much about the neighbourhood, and quite a lot about our '
+                   + 'sample. One camera pointed at one feeder for two weeks sees the '
+                   + 'birds that use that feeder, at that time of year — and the '
+                   + 'commonest birds are common precisely because they turn up most. '
+                   + 'An unusual bird is unusual: a fortnight is nowhere near long '
+                   + 'enough to say it is not around. This is why rarity filters are '
+                   + 'built from years of records by thousands of people rather than '
+                   + 'from any one observer, however careful. Our fortnight is one '
+                   + 'honest contribution to that pile, not a verdict.',
+        };
+    },
+},
+
 // ════════════════════════════════════════════════════════════════════
 //  Statistics the community site already draws, in the classroom
 // ════════════════════════════════════════════════════════════════════
@@ -10213,6 +10531,7 @@ const CM_EMPTY_SUMMARY = {
     species: [], bySpecies: new Map(), days: [], byDay: new Map(),
     byHour: new Array(24).fill(0), daySpec: new Map(), snapshots: [], clips: [],
     distinct: 0, avgTemp: null, tempCoverage: 0, dayTemp: new Map(),
+    nonBird: 0, others: new Map(), byRarity: new Map(),
     isPool: false, feeders: [],
 };
 

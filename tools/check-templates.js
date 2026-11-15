@@ -98,10 +98,20 @@ function makeRows(seed){
       const tm=new Date(day); tm.setHours(6+(i*3)%12, (i*13)%60, 0, 0);
       rows.push({id:'det'+seed+'-'+(++id), feeder_id:'f1',
         species:SP[(d+i+seed)%SP.length],
-        confidence:0.7+((i%3)*0.1), detected_at:tm.toISOString(),
+        // 0-100, which is what the detector actually reports, and varying
+        // BY SPECIES as well as by row. This fixture used to say 0.7-0.9 on
+        // a 0-1 scale, which matched the `>= 0.65` thresholds that had been
+        // broken since they were written and so reported them working. Test
+        // data that agrees with the bug is worse than no test data.
+        confidence: 38 + ((d+i+seed)%SP.length)*6 + ((i*17)%22),
+        detected_at:tm.toISOString(),
         image_url:'https://example.invalid/s'+id+'.jpg',
         video_url: i%9===0 ? 'https://example.invalid/v'+id+'.mp4' : null,
-        temperature: 34 + ((d*5 + seed*7)%26), rarity:'common',
+        temperature: 34 + ((d*5 + seed*7)%26),
+        // Overwhelmingly Common with the odd unusual one, as a real
+        // fortnight is, and capitalised the way production sends it.
+        rarity: (d*31 + i*7) % 37 === 0 ? 'Uncommon'
+              : (d*31 + i*7) % 97 === 0 ? 'Rare' : 'Common',
         latitude: 39.3 + d*0.001, longitude: -76.6 - d*0.001, zip_code:'21210'});
     }
   }

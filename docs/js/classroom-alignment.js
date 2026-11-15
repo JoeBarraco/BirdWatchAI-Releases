@@ -385,6 +385,36 @@ const CLASSROOM_TEMPLATE_STANDARDS = {
     'shape-of-the-day':    ['MA.6.DP.1.4', 'SC.8.N.1.3'],
     'who-gives-way':       ['SC.7.L.17.2', 'SC.7.L.17.3'],
     'not-a-bird':          ['SC.3.L.15.1'],
+
+    // ── The confidence figure the detector has always recorded ─────────
+    //
+    // MA.7.DP.2.2 is "given the probability of a chance event, interpret the
+    // likelihood of it occurring; compare the probabilities of chance
+    // events", and confidence-compare is that benchmark almost word for
+    // word: two stated figures, which is likelier, say why. The camera
+    // supplies the two numbers and the two birds.
+    //
+    // confidence-by-species claims MA.7.DP.1.2 because the child compares a
+    // measure of center between groups and draws a conclusion — the groups
+    // being species and the measurements being the camera's own confidence
+    // figures. MA.6.DP.1.2 rides along for computing the mean itself.
+    //
+    // confidence-threshold claims MA.6.DP.1.4 and nothing else. The child is
+    // given a histogram and has to read its spread to see what cutting it at
+    // 80 would cost. It is NOT tagged to a Nature of Science benchmark: the
+    // trade-off is the lesson, but the child is not explaining what evidence
+    // is, they are reading a distribution.
+    'confidence-compare':    ['MA.7.DP.2.2'],
+    'confidence-by-species': ['MA.7.DP.1.2', 'MA.6.DP.1.2'],
+    'confidence-threshold':  ['MA.6.DP.1.4'],
+
+    // SC.7.N.1.6 is "empirical evidence is the CUMULATIVE body of
+    // observations on which scientific explanations are based", and the
+    // cumulative is the whole point here: both forms of this question turn
+    // on one feeder's fortnight being a small piece of a record built from
+    // years of sightings by thousands of people. The child has to pick the
+    // reading that says so.
+    'rarity-one-sighting':   ['SC.7.N.1.6'],
     'temp-coldest-busiest': ['MA.3.M.1.2', 'SC.4.N.1.7'],
 };
 
