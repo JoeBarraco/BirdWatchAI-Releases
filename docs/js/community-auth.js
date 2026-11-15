@@ -773,25 +773,101 @@ async function startModReburnLoad(d) {
     }
 }
 
-function openModEdit(detectionId) {
-    const d = allDetections.find(x => String(x.id) === String(detectionId));
-    if (!d) return;
-    // Populate species select from all loaded detections
-    const speciesList = [...new Set(allDetections.map(x => x.species).filter(Boolean))].sort();
+// ── Species roster for the edit dialog ──────────────────────
+//
+// The dialog used to offer only the species in allDetections. That array is
+// whatever the feed has loaded, and when the feed is filtered to one species
+// it holds nothing else, which is exactly when a moderator is correcting a
+// misidentification and needs the other choices. The fix offers what is to
+// hand at once, then fills in every species ever recorded.
+//
+// The all-time list is a promise, not an array, so two dialogs opened before
+// the first fetch lands share one request instead of starting a second one.
+// It is never period-bound, unlike the feed's own roster: the right species
+// for a detection does not depend on which week the feed happens to show.
+let modEditAllSpeciesPromise = null;
+
+// Called beside invalidateDropdownCache() after a moderator edit or delete.
+// An edit can introduce a species or remove the last detection of one, so a
+// cached list would be wrong in both directions.
+function invalidateModEditSpeciesCache() {
+    modEditAllSpeciesPromise = null;
+}
+
+function fetchModEditAllSpecies() {
+    if (!modEditAllSpeciesPromise) {
+        modEditAllSpeciesPromise = fetchAllRows(
+            `${SUPABASE_URL}/rest/v1/community_detections?select=species&order=species`,
+            sbAuthed())
+            .then(rows => {
+                if (!rows) throw new Error('species list unavailable');
+                return [...new Set(rows.map(r => r.species).filter(Boolean))];
+            })
+            .catch(err => {
+                // Don't cache a failure: the next dialog should try again rather
+                // than be stuck with the short list for the rest of the visit.
+                modEditAllSpeciesPromise = null;
+                throw err;
+            });
+    }
+    return modEditAllSpeciesPromise;
+}
+
+// What can be offered without waiting: the species loaded into the feed, plus
+// the feed filter's roster, which loadAllDropdownOptions builds from every
+// detection in the period and so is not narrowed by the species filter itself.
+function modEditImmediateSpecies() {
+    const out = allDetections.map(x => x.species);
+    const filterSel = document.getElementById('species-filter');
+    if (filterSel) {
+        for (const opt of filterSel.options) out.push(opt.value);  // "" = All species
+    }
+    return out;
+}
+
+// (Re)builds the select's options. On a refill the moderator may already have
+// picked something, so the current pick wins over the detection's species:
+// a list that grows under their cursor must not undo the choice they made.
+function fillModEditSpecies(sources, ownSpecies, isRefill) {
     const sel = document.getElementById('mod-edit-species-select');
     const customInput = document.getElementById('mod-edit-species-custom');
-    sel.innerHTML = speciesList.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('') +
+    // The detection's own species is always offered, so a record whose species
+    // nothing else shares opens on its name rather than on "Other".
+    const list = [...new Set([...sources, ownSpecies].filter(Boolean))].sort();
+    const keep = isRefill ? sel.value : null;
+    sel.innerHTML = list.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('') +
         '<option value="__custom__">Other (type manually)…</option>';
-    // Pre-select current species, or show custom input if not in list
-    if (d.species && speciesList.includes(d.species)) {
-        sel.value = d.species;
+    if (isRefill) {
+        // Every value the select held is in the new list or is __custom__, and
+        // the custom input is left exactly as it was, typed text included.
+        sel.value = keep;
+        return;
+    }
+    if (ownSpecies) {
+        sel.value = ownSpecies;
         customInput.style.display = 'none';
         customInput.value = '';
     } else {
         sel.value = '__custom__';
         customInput.style.display = '';
-        customInput.value = d.species || '';
+        customInput.value = '';
     }
+}
+
+function openModEdit(detectionId) {
+    const d = allDetections.find(x => String(x.id) === String(detectionId));
+    if (!d) return;
+    fillModEditSpecies(modEditImmediateSpecies(), d.species, false);
+    // Fire-and-forget: the dialog is usable on the short list straight away.
+    // The full list is applied only if this same detection's dialog is still
+    // open when it lands; otherwise the next openModEdit picks it up from the
+    // cache anyway.
+    fetchModEditAllSpecies().then(all => {
+        const modal = document.getElementById('mod-edit-modal');
+        if (!modal.classList.contains('open')) return;
+        if (document.getElementById('mod-edit-id').value !== String(d.id)) return;
+        fillModEditSpecies([...modEditImmediateSpecies(), ...all], d.species, true);
+    }).catch(() => { /* the immediate list stays; Other still covers the rest */ });
     document.getElementById('mod-edit-id').value = d.id;
     document.getElementById('mod-edit-rarity').value = d.rarity || 'Common';
 
@@ -1038,6 +1114,7 @@ async function doModSave() {
         // Refresh from server so dropdowns and counts reconcile with the edit.
         // The edit can rename a species, so the cached roster has to go too.
         if (typeof invalidateDropdownCache === 'function') invalidateDropdownCache();
+        invalidateModEditSpeciesCache();
         loadFeed();
     } catch (err) {
         if (!handleModSessionError(err)) showToast('Error: ' + err.message);
@@ -1078,6 +1155,7 @@ async function confirmModDelete(detectionId) {
         allDetections = allDetections.filter(x => String(x.id) !== String(detectionId));
         if (typeof serverTotal === 'number' && serverTotal > 0) serverTotal--;
         if (typeof invalidateDropdownCache === 'function') invalidateDropdownCache();
+        invalidateModEditSpeciesCache();
         renderFeed();
         showToast('Detection deleted');
     } catch (err) {
