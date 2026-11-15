@@ -11607,6 +11607,29 @@ function renderClassroomActions() {
         <div class="classroom-actions-head">
             <h4 class="classroom-h">${esc(r.name)}</h4>
             <span class="classroom-pill">${esc(GRADE_BAND_LABELS[r.grade_band] || r.grade_band)}</span>
+            <!-- ⚠ ON THE TITLE LINE, NOT IN A GROUP OF THEIR OWN.
+                 These three act on the class as a THING — rename it, link to
+                 it, delete it — rather than being something you do with a
+                 class, which is what the two groups below are. Under their
+                 own "Settings" heading they read as a third thing a teacher
+                 might be here to do, carrying the same weight as starting
+                 the lesson that begins in a minute; a teacher opens this
+                 panel to teach nearly every time and to rename a class about
+                 twice a year.
+                 Beside the name they are attached to the thing they act on
+                 and out of the way of the two rows that matter.
+                 NOT in the left-hand list, which was the other idea: that
+                 column is the selector, every row in it answers "which
+                 class", and hanging a Delete off the control you click to
+                 choose something is a misclick waiting to happen. The panel
+                 was also already rebuilt once to get per-class buttons OUT
+                 of that list — see the note on .classroom-panes. -->
+            <span class="classroom-head-actions">
+                <button class="classroom-btn" onclick="editClassroom('${escJs(r.id)}')">✏️ Edit</button>
+                <button class="classroom-btn" onclick="copyClassroomLink('${escJs(r.id)}')"
+                        title="A link that opens straight into this class">🔗 Link</button>
+                <button class="classroom-btn-danger" onclick="deleteClassroom('${escJs(r.id)}')">🗑 Delete</button>
+            </span>
         </div>
         <div class="classroom-card-meta">
             ${r.home_feeder_id
@@ -11649,15 +11672,6 @@ function renderClassroomActions() {
             </div>
         </div>
 
-        <div class="classroom-group">
-            <div class="classroom-group-title">Settings</div>
-            <div class="classroom-group-row">
-                <button class="classroom-btn" onclick="editClassroom('${escJs(r.id)}')">✏️ Edit</button>
-                <button class="classroom-btn" onclick="copyClassroomLink('${escJs(r.id)}')"
-                        title="A link that opens straight into this class">🔗 Link</button>
-                <button class="classroom-btn-danger" onclick="deleteClassroom('${escJs(r.id)}')">🗑 Delete</button>
-            </div>
-        </div>
 
         <div class="classroom-pending" id="classroom-pending-${esc(r.id)}"></div>`;
 }

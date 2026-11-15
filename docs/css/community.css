@@ -4048,6 +4048,25 @@
     display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
 }
 .classroom-actions-head .classroom-h { margin: 0; }
+/* The three that act on the class itself, on the title line.
+   margin-left:auto pushes them to the far end, so the name and its grade
+   pill stay together on the left and these sit apart from them rather
+   than reading as more of the title. They wrap to their own line on a
+   narrow pane, which .classroom-actions-head already allows. */
+.classroom-head-actions {
+    display: flex; gap: 6px; flex-wrap: wrap;
+    margin-left: auto;
+}
+
+/* Stacked, these wrap onto a line of their own, and margin-left:auto then
+   strands them against the right edge with a hole where the title was.
+   ⚠ This block has to sit AFTER the rule above, not up in the 720px block
+   with the pane stacking it belongs to: same specificity, so the later one
+   wins, and from up there it lost silently. */
+@media (max-width: 720px) {
+    .classroom-head-actions { margin-left: 0; }
+}
+
 
 /* Grouped by WHEN you would do it, not by what the code calls it. */
 .classroom-group { margin-top: 0.8rem; }
