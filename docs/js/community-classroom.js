@@ -9023,7 +9023,7 @@ function renderClassroomForm() {
                 <select id="classroom-teacher">${teacherOpts}</select>
             </label>` : ''}
             <label>Grade band
-                <select id="classroom-grade-band" onchange="renderClassroomPickChecks()">
+                <select id="classroom-grade-band" onchange="renderClassroomPickChecks(); renderClassroomStandardPicker()">
                     <option value="k-2"${editing?.grade_band === 'k-2' ? ' selected' : ''}>K–2 — pictures and counting</option>
                     <option value="3-5"${editing?.grade_band === '3-5' ? ' selected' : ''}>Grades 3–5 — charts and averages</option>
                     <option value="6-8"${editing?.grade_band === '6-8' ? ' selected' : ''}>Grades 6–8 — percents and trends</option>
@@ -9074,7 +9074,7 @@ function renderClassroomForm() {
                 <button type="button" class="classroom-btn" onclick="classroomPickAll(true)">Select all</button>
                 <button type="button" class="classroom-btn" onclick="classroomPickAll(false)">Select none</button>
             </div>
-            ${cmStandardPickerHtml()}
+            <div id="classroom-std-pick-host"></div>
             <div id="classroom-picks" class="classroom-picks"></div>
             <p id="classroom-picks-warn" class="classroom-muted"></p>
         </details>
@@ -9096,6 +9096,7 @@ function renderClassroomForm() {
 
     renderClassroomPartnerChecks();
     renderClassroomPickChecks();
+    renderClassroomStandardPicker();
 }
 
 /**
@@ -9242,6 +9243,24 @@ function classroomPickCategory(cat, on) {
 // teacher can then adjust. Nothing anywhere records that a selection came
 // from a benchmark, which is right, because what the class can be asked is
 // the set of questions and not the reason somebody chose them.
+
+/**
+ * Fill the picker host, once the form is actually on the page.
+ *
+ * ⚠ IT CANNOT BE RENDERED INLINE WITH THE FORM. The list of benchmarks
+ * depends on the grade band, and classroomFormBand() reads the band
+ * <select> out of the DOM — which does not exist yet while the form's own
+ * HTML string is still being built. Inline, it silently fell back to the
+ * 'k-2' default and offered a 3-5 class a list of K-2 benchmarks, with
+ * nothing on screen to say so.
+ *
+ * Called after the form is written, and again whenever the band changes,
+ * exactly as renderClassroomPickChecks is.
+ */
+function renderClassroomStandardPicker() {
+    const host = document.getElementById('classroom-std-pick-host');
+    if (host) host.innerHTML = cmStandardPickerHtml();
+}
 
 function cmStandardPickerHtml() {
     if (typeof CLASSROOM_STANDARDS === 'undefined'
