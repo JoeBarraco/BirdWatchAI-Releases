@@ -9934,11 +9934,13 @@ ${jumbled.split('').join(' ')}`,
         }
 
         return {
+            // Kept short on purpose. The first draft ran eleven lines on a
+            // projector and pushed two of the four options off the bottom of
+            // the screen, which no amount of good content survives.
             prompt: `Our camera recorded ${pick.n} sightings of the ${pick.sp} this `
-                  + `fortnight. It was ${Math.round(pick.hi)}% sure about one of them `
-                  + `and only ${Math.round(pick.lo)}% sure about another — the same `
-                  + 'species, the same feeder, the same camera. Look at how spread out '
-                  + 'those figures are. What best explains it?',
+                  + `fortnight — and it was ${Math.round(pick.hi)}% sure about one of `
+                  + `them, ${Math.round(pick.lo)}% about another. Same species, same `
+                  + 'feeder, same camera. What best explains the spread?',
             ...built,
             image: cmShotFor(s14, pick.sp),
             image_on_reveal: true,
@@ -9992,11 +9994,10 @@ ${jumbled.split('').join(' ')}`,
         if (!built) return null;
 
         return {
-            prompt: `Our camera logged ${conf.length} sightings this fortnight, and it `
-                  + `was 80% sure or better about ${strict} of them. Suppose we threw `
-                  + 'away every sighting it was less than 80% sure about. Look at the '
-                  + 'shape of the chart before you answer: what would we gain, and '
-                  + 'what would we lose?',
+            prompt: `Our camera logged ${conf.length} sightings this fortnight, and was `
+                  + `80% sure or better about only ${strict} of them. What would we `
+                  + 'gain, and what would we lose, if we threw away everything below '
+                  + '80%?',
             ...built,
             chart: cmChart('How sure the camera was, in ten-point bands',
                 bins, { band, ordered: true }),
