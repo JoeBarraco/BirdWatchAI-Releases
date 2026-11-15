@@ -8406,8 +8406,12 @@ async function reviewClassroomQuestions(roomId) {
 // classroom module has to keep working if a later script 404s, so every
 // one of these returns empty rather than throwing.
 
-function cmStandardChipsHtml(templateId, band) {
+function cmStandardChipsHtml(recordedId, band) {
     if (typeof CLASSROOM_TEMPLATE_STANDARDS === 'undefined') return '';
+    // Seven templates file their questions under a per-instance id. See
+    // the header above CLASSROOM_ID_PREFIXES in classroom-alignment.js.
+    const templateId = typeof classroomTemplateIdOf === 'function'
+        ? classroomTemplateIdOf(recordedId) : recordedId;
     // Band-filtered for the same reason classroomStandardsFor is: a
     // template serving K-2 and 3-5 claims benchmarks from both, but the
     // question on screen was built for one of them.

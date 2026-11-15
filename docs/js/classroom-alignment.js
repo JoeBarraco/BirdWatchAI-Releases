@@ -258,6 +258,62 @@ const CLASSROOM_TEMPLATE_STANDARDS = {
     'claim-evidence':       ['ELA.3.R.2.4', 'ELA.4.R.2.4', 'ELA.5.R.2.4'],
 };
 
+// ════════════════════════════════════════════════════════════════════
+//  Seven templates do not record their own id
+// ════════════════════════════════════════════════════════════════════
+//
+//  Most questions are stored under the id of the template that built
+//  them. Seven are not: they override template_id with one derived from
+//  the instance, so bird-by-sound files a question as
+//  "sound-carolina-chickadee" and lang-idiom files one as
+//  "lang-idiom-a-night-owl".
+//
+//  That is deliberate and worth keeping — the repeat-avoidance in
+//  buildClassroomQuestions works on recorded ids, and without it a class
+//  that met the night-owl idiom on Monday would count every other idiom
+//  as "seen" too. But it means an alignment keyed on the template id
+//  resolves to nothing for exactly those seven, and the questions render
+//  with no benchmark chips while looking no different from a word puzzle
+//  that genuinely claims none.
+//
+//  Resolved by prefix rather than by recording a second id, because that
+//  also repairs HISTORY: lessons taught before any of this existed are
+//  already stored under the instance ids, and nothing can go back and
+//  add a field to them.
+//
+//  The bird-wonder case is the odd one — its instances are named
+//  "wonder-<bird>" from the BIRD_WONDERS table rather than built from a
+//  prefix the template controls, so the prefix is "wonder-".
+//
+//  ⚠ ORDER MATTERS. "lang-compound-" must be tested before "lang-" would
+//  be, if a bare "lang-" prefix is ever added. Longest first.
+const CLASSROOM_ID_PREFIXES = [
+    ['lang-syllables-', 'lang-syllables'],
+    ['lang-compound-',  'lang-compound-word'],
+    ['lang-idiom-',     'lang-idiom'],
+    ['geo-continent-',  'geo-continents'],
+    ['collective-',     'bird-collective-noun'],
+    ['sound-',          'bird-by-sound'],
+    ['wonder-',         'bird-wonder'],
+];
+
+/**
+ * The template a recorded question id belongs to.
+ *
+ * Returns the id unchanged when it is already a template's own — which is
+ * the common case — and null for a teacher's own question, which claims
+ * nothing because nobody but the teacher knows what it asks.
+ */
+function classroomTemplateIdOf(recordedId) {
+    if (!recordedId) return null;
+    if (CLASSROOM_TEMPLATE_STANDARDS[recordedId] !== undefined) return recordedId;
+    if (recordedId.indexOf('teacher:') === 0) return null;
+    for (const [prefix, id] of CLASSROOM_ID_PREFIXES) {
+        if (recordedId.indexOf(prefix) === 0) return id;
+    }
+    return recordedId;
+}
+
 /**
  * Every benchmark a set of asked questions touched, in catalogue order.
  *
@@ -280,7 +336,7 @@ const CLASSROOM_TEMPLATE_STANDARDS = {
 function classroomStandardsFor(items) {
     const seen = new Set();
     (items || []).forEach(q => {
-        const id   = q && (q.template_id || q.templateId || q.id);
+        const id   = classroomTemplateIdOf(q && (q.template_id || q.templateId || q.id));
         const band = q && (q.grade_band || q.band);
         (CLASSROOM_TEMPLATE_STANDARDS[id] || []).forEach(c => {
             const s = CLASSROOM_STANDARDS[c];
@@ -326,8 +382,17 @@ function classroomTemplatesForStandards(codes) {
         });
     });
 
+    CLASSROOM_ID_PREFIXES.forEach(([prefix, id]) => {
+        if (!(id in CLASSROOM_TEMPLATE_STANDARDS)) {
+            bad.push(`id prefix "${prefix}" resolves to ${id}, which has no alignment entry`);
+        }
+    });
+
     if (typeof CLASSROOM_TEMPLATES !== 'undefined') {
         const known = new Set(CLASSROOM_TEMPLATES.map(t => t.id));
+        CLASSROOM_ID_PREFIXES.forEach(([prefix, id]) => {
+            if (!known.has(id)) bad.push(`id prefix "${prefix}" resolves to ${id}, which is not a template`);
+        });
         Object.keys(CLASSROOM_TEMPLATE_STANDARDS).forEach(id => {
             if (!known.has(id)) bad.push(`alignment for a template that no longer exists: ${id}`);
         });
