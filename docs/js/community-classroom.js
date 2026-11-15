@@ -4243,43 +4243,63 @@ const CLASSROOM_TEMPLATES = [
     title: 'More or fewer tomorrow?',
     bands: ['k-2', '3-5'],
     build({ s, band, rng, feeder, source }) {
+        // Asked before the feeder has done anything today, "more than today"
+        // is a formality rather than a prediction - so this used to refuse.
+        // But a feeder that has done nothing yet today is what EVERY morning
+        // class sees, which meant the question refused the lessons it was
+        // written for and ran only for the afternoon ones. It now predicts
+        // forward from the last day that actually has a count: today by the
+        // afternoon, yesterday at registration. Predicting today from
+        // yesterday is the better lesson of the two anyway, because the class
+        // finds out before home time instead of waiting a night for it.
         const todayKey = cmDayKey(new Date());
         const todayN   = s.byDay.get(todayKey) || 0;
-        // Asked before the feeder has done anything today, "more than today"
-        // is a formality rather than a prediction.
-        if (todayN < 3) return null;
-
-        const tomorrowKey = cmDayKey(new Date(Date.now() + 86400000));
-        const opts = cmShuffle(['More than today', 'Fewer than today', 'About the same'], rng);
+        let baseKey = todayKey, baseN = todayN;
+        if (todayN < 3) {
+            const prior = s.days.filter(d => d.day < todayKey && d.n >= 3).pop();
+            if (!prior) return null;
+            baseKey = prior.day; baseN = prior.n;
+        }
+        const baseIsToday = baseKey === todayKey;
+        const aheadKey = cmDayKey(new Date(cmDayStart(baseKey).getTime() + 86400000));
+        const ahead = aheadKey === todayKey ? 'today' : 'tomorrow';
+        const back  = baseIsToday ? 'today' : 'then';
+        const opts = cmShuffle(['More than ' + back, 'Fewer than ' + back,
+                                'About the same'], rng);
+        const lead = baseIsToday
+            ? `Today ${feeder} had ${baseN} bird visits.`
+            : `On ${cmDayProse(baseKey)} ${feeder} had ${baseN} bird visits.`;
 
         return {
             prompt: band === 'k-2'
-                ? `Today ${feeder} had ${todayN} bird visits. Will tomorrow have more or fewer?`
-                : `${feeder} has ${todayN} visits today. Will tomorrow have more, fewer, or about the same?`,
+                ? `${lead} Will ${ahead} have more or fewer?`
+                : `${lead} Will ${ahead} have more, fewer, or about the same?`,
             choices: opts.map(l => ({ label: l })),
             correct_index: null,            // not knowable yet
-            explain: 'We will check this at the start of the next class.',
+            explain: ahead === 'today'
+                ? 'We will check this before the end of today.'
+                : 'We will check this at the start of the next class.',
             // The run-up, with today marked AND tomorrow drawn as an empty
             // slot. A prediction chart that stops at today asks the class to
             // imagine the thing they are predicting; showing it as a dashed
             // box with a question mark puts it on the axis where it belongs,
             // and makes plain that the answer does not exist yet.
             chart: cmChart(`Visits each day at ${feeder}`,
-                           cmDaySeries(s).concat([{
-                               label: cmDayAxisLabel(tomorrowKey),
-                               value: 0, key: tomorrowKey, pending: true,
+                           cmDaySeries(s).filter(d => d.key <= baseKey).concat([{
+                               label: cmDayAxisLabel(aheadKey),
+                               value: 0, key: aheadKey, pending: true,
                            }]),
-                           { band, highlight: todayKey, ordered: true, kind: 'bars' }),
+                           { band, highlight: baseKey, ordered: true, kind: 'bars' }),
             pending_check: {
                 kind: 'visits_on_day',
                 feeder_id: source.feederId,
-                day: tomorrowKey,
-                baseline: todayN,
+                day: aheadKey,
+                baseline: baseN,
                 labels: opts,
             },
-            // End of tomorrow, local time — the earliest moment the count is
-            // final rather than half a day's worth.
-            resolve_after: new Date(cmDayStart(tomorrowKey).getTime() + 86400000).toISOString(),
+            // End of the day being predicted, local time - the earliest
+            // moment the count is final rather than half a day's worth.
+            resolve_after: new Date(cmDayStart(aheadKey).getTime() + 86400000).toISOString(),
         };
     },
 },
@@ -4646,16 +4666,32 @@ const CLASSROOM_TEMPLATES = [
         // one — so it is its own question rather than a reskin.
         if (s.days.length < 4) return null;
         const sorted = s.days.slice().sort((a, b) => a.n - b.n);
-        if (sorted[0].n === sorted[1].n) return null;
-
-        const pick = sorted.slice(0, 4);
-        const opts = cmShuffle(pick, rng);
+        const min   = sorted[0].n;
+        const tied  = s.days.filter(d => d.n === min);
+        const above = s.days.filter(d => d.n > min).sort((a, b) => a.n - b.n);
+        // A tie at the bottom used to kill this outright, and a real week has
+        // two empty days in it more often than not - so the mirror of
+        // busiest-day sat out every week that busiest-day ran. A tie is not a
+        // broken question. It means the answer is the quietest of the days ON
+        // OFFER, and the prompt says so rather than hoping nobody notices the
+        // other nought on the chart.
+        if (above.length < 2) return null;
+        const answer = cmShuffle(tied, rng)[0];
+        const opts   = cmShuffle([answer].concat(above.slice(0, 3)), rng);
+        const many   = tied.length > 1;
         return {
-            prompt: `Which day was quietest at ${feeder} this week?`,
+            prompt: many
+                ? `Which of THESE days was quietest at ${feeder} this week?`
+                : `Which day was quietest at ${feeder} this week?`,
             choices: opts.map(d => ({ label: cmDayAxisLabel(d.day) })),
-            correct_index: opts.findIndex(d => d.day === sorted[0].day),
+            correct_index: opts.findIndex(d => d.day === answer.day),
             chart: cmChart('Visits each day this week', cmDaySeries(s), { band }),
-            explain: pick.map(d => `${cmDayAxisLabel(d.day)}: ${d.n}`).join(' · '),
+            explain: opts.map(d => `${cmDayAxisLabel(d.day)}: ${d.n}`).join(' · ')
+                   + (many
+                      ? `. ${cmDayAxisLabel(answer.day)} had ${min} - and so did `
+                        + `${tied.length - 1} other day${tied.length > 2 ? 's' : ''} this `
+                        + 'week. The chart shows that; four choices cannot.'
+                      : ''),
         };
     },
 },
@@ -4916,22 +4952,34 @@ const CLASSROOM_TEMPLATES = [
         // Straight from the notes: "Which bird came today?" as a picture
         // choice. Today only, so it is about what is happening now rather
         // than about a week of history.
+        // Before the first bird of the day this asked nothing - which in
+        // practice meant it asked nothing at morning registration, when a
+        // K-2 class is most likely to be looking. When today is still empty
+        // it uses the last day that was not, and NAMES that day rather than
+        // quietly passing yesterday off as today.
         const todayKey = cmDayKey(new Date());
-        const today = s.daySpec.get(todayKey);
-        if (!today || !today.size) return null;
+        let key = todayKey, on = s.daySpec.get(todayKey);
+        if (!on || !on.size) {
+            const prior = s.days.filter(d => d.day < todayKey &&
+                (s.daySpec.get(d.day) || new Map()).size).pop();
+            if (!prior) return null;
+            key = prior.day; on = s.daySpec.get(key);
+        }
+        const isToday = key === todayKey;
+        const when = isToday ? 'today' : `on ${cmDayProse(key)}`;
 
-        const seenToday = [...today.keys()];
-        const notToday = s.species.map(x => x.species).filter(sp => !today.has(sp));
-        if (!seenToday.length || notToday.length < 2) return null;
+        const seen = [...on.keys()];
+        const notThen = s.species.map(x => x.species).filter(sp => !on.has(sp));
+        if (!seen.length || notThen.length < 2) return null;
 
-        const answer = cmShuffle(seenToday, rng)[0];
-        const built = cmChoices(answer, cmShuffle(notToday, rng).slice(0, 2), rng);
+        const answer = cmShuffle(seen, rng)[0];
+        const built = cmChoices(answer, cmShuffle(notThen, rng).slice(0, 2), rng);
         if (!built) return null;
         return {
-            prompt: 'Which of these birds came to the feeder TODAY?',
+            prompt: `Which of these birds came to the feeder ${isToday ? 'TODAY' : 'on ' + cmDayProse(key).toUpperCase()}?`,
             ...built,
-            explain: `${answer} came ${today.get(answer)} time(s) today. `
-                   + `The others came earlier in the week, but not today.`,
+            explain: `${answer} came ${on.get(answer)} time(s) ${when}. `
+                   + `The others came on other days this week, but not ${isToday ? 'today' : 'then'}.`,
             fact: speciesFact(answer, band),
         };
     },
@@ -5539,20 +5587,32 @@ ${jumbled.split('').join(' ')}`,
         const primaries = pool.filter(x => PRIMARY_COLORS.includes(x.look.color));
         const others    = pool.filter(x => !PRIMARY_COLORS.includes(x.look.color)
                                         && x.look.color !== 'black and white');
-        if (primaries.length < 2 || !others.length) return null;
-
-        const answer = cmShuffle(others, rng)[0];
+        // "Which is NOT primary" needs three primary birds to fill the other
+        // three choices, and a real feeder hands you one cardinal and a great
+        // deal of brown. Ask it the other way round when that happens: one
+        // red bird among the grays and browns is a perfectly good question
+        // about the same idea, and it is the one this feeder can support.
+        if (!primaries.length || !others.length) return null;
+        const flip = primaries.length < 3 || others.length < 1;
+        const answer = flip ? cmShuffle(primaries, rng)[0] : cmShuffle(others, rng)[0];
+        const pool2  = flip ? others : primaries;
+        if (pool2.length < 2) return null;
         const built = cmChoices(answer.species,
-            cmShuffle(primaries, rng).slice(0, 3).map(x => x.species), rng);
+            cmShuffle(pool2, rng).slice(0, 3).map(x => x.species), rng);
         if (!built) return null;
 
         return {
             prompt: 'Artists call red, yellow and blue the PRIMARY colors — '
                   + 'you cannot mix any other paints to make them. Which of these '
-                  + 'birds is NOT wearing a primary color?',
+                  + (flip ? 'birds IS wearing a primary color?'
+                          : 'birds is NOT wearing a primary color?'),
             ...built,
-            explain: `The ${answer.species} is ${answer.look.color}, which is not `
-                   + `red, yellow or blue. The others are.`,
+            explain: flip
+                ? `The ${answer.species} is ${answer.look.color}, which is one of the `
+                  + 'three. Every other bird here is wearing a color you could mix '
+                  + 'from other paints.'
+                : `The ${answer.species} is ${answer.look.color}, which is not `
+                  + 'red, yellow or blue. The others are.',
             fact: speciesFact(answer.species, band),
         };
     },
@@ -5564,25 +5624,60 @@ ${jumbled.split('').join(' ')}`,
     title: 'Mixing paint',
     bands: ['3-5', '6-8'],
     build({ s, band, rng }) {
-        // Anchored to a bird that is actually orange, so the mixing question
-        // has something in the room to point at.
-        const orange = cmColorfulSpecies(s, ['orange'])[0];
-        if (!orange) return null;
+        // Anchored to a bird that is actually a MIXED color, so the question
+        // has something in the room to point at. Orange alone meant an oriole
+        // or nothing, and a Florida feeder in November is cardinals and
+        // doves - so green and purple count too, and when the feeder has none
+        // of the three the primary bird it DOES have still carries the idea
+        // from the other end: the cardinal's red is the one you cannot mix.
+        const MIXES = [
+            { color: 'orange', mix: 'red + yellow',
+              not: ['blue + yellow', 'red + blue', 'black + white'] },
+            { color: 'green',  mix: 'blue + yellow',
+              not: ['red + yellow', 'red + blue', 'black + white'] },
+            { color: 'purple', mix: 'red + blue',
+              not: ['red + yellow', 'blue + yellow', 'black + white'] },
+        ];
+        let bird = null, mix = null;
+        for (const m of MIXES) {
+            const hit = cmColorfulSpecies(s, [m.color])[0];
+            if (hit) { bird = hit; mix = m; break; }
+        }
 
-        const built = cmChoices('red + yellow',
-            ['blue + yellow', 'red + blue', 'black + white'], rng);
-        if (!built) return null;
+        if (bird) {
+            const built = cmChoices(mix.mix, mix.not, rng);
+            if (!built) return null;
+            return {
+                prompt: `The ${bird.species} came to our feeder this week. Its `
+                      + `${mix.color} is not a primary color — which two paints `
+                      + 'would you mix to make it?',
+                ...built,
+                image: cmShotFor(s, bird.species) || null,
+                explain: `${mix.mix} makes ${mix.color}. The other pairs make the `
+                       + 'other mixes: red and yellow give orange, blue and yellow '
+                       + 'give green, red and blue give purple.',
+                fact: speciesFact(bird.species, band),
+            };
+        }
 
-        const photo = cmShotFor(s, orange.species);
+        const prim = cmColorfulSpecies(s)
+            .filter(x => PRIMARY_COLORS.includes(x.look.color))[0];
+        if (!prim) return null;
+        const built2 = cmChoices('orange', ['red', 'yellow', 'blue'], rng);
+        if (!built2) return null;
+        const c = prim.look.color;
         return {
-            prompt: `The ${orange.species} came to our feeder this week. Its `
-                  + 'orange is not a primary color — which two paints would '
-                  + 'you mix to make it?',
-            ...built,
-            image: photo || null,
-            explain: 'Red and yellow make orange. Blue and yellow make green, '
-                   + 'and red and blue make purple.',
-            fact: speciesFact(orange.species, band),
+            prompt: `The ${prim.species} came to our feeder this week, and it is `
+                  + `${c}. Red, yellow and blue are the paints you CANNOT mix — `
+                  + 'you have to start with them. Which of these colors CAN you '
+                  + 'mix from two others?',
+            ...built2,
+            image: cmShotFor(s, prim.species) || null,
+            explain: 'Orange, because red and yellow make it. '
+                   + c.charAt(0).toUpperCase() + c.slice(1) + ' is a primary color, '
+                   + 'so there is no pair of paints that makes it — which is '
+                   + 'exactly what "primary" means.',
+            fact: speciesFact(prim.species, band),
         };
     },
 },
@@ -5676,25 +5771,43 @@ ${jumbled.split('').join(' ')}`,
         const total = days.reduce((a, d) => a + d.value, 0);
         if (total < 4) return null;
 
-        // Pick a divisor that divides cleanly, so the answer is a whole
-        // number of scoops rather than a remainder nobody asked about.
-        const per = [2, 3, 4, 5].filter(n => total % n === 0).pop();
-        if (!per) return null;
-        const answer = total / per;
+        // This used to demand a divisor that went in cleanly, so a two-day
+        // total of 53 got no question at all - and 53 is not a strange number
+        // for two days at a feeder, it is just prime. Seed comes in whole
+        // scoops, so the remainder IS the question rather than an obstacle
+        // to it: a part scoop still has to go out as a whole one.
+        const per = [2, 3, 4, 5][Math.floor(rng() * 4)];
+        const answer = Math.ceil(total / per);
+        const whole  = Math.floor(total / per);
+        const rem    = total % per;
 
-        const built = cmChoices(String(answer),
-            cmNumberDistractors(answer, rng, 3).map(String), rng);
+        // The tempting wrong answer is the one that drops the part scoop, so
+        // it goes in deliberately rather than being left to chance.
+        const wrong = [];
+        if (rem) wrong.push(String(whole));
+        cmNumberDistractors(answer, rng, 4).forEach(k => {
+            if (wrong.length < 3 && k !== answer && !wrong.includes(String(k)))
+                wrong.push(String(k));
+        });
+        const built = cmChoices(String(answer), wrong.slice(0, 3), rng);
         if (!built) return null;
 
         return {
-            prompt: `Our class puts out one scoop of seed for every ${per} visits. `
-                  + `There were ${days[0].value} visits on ${cmDayProse(days[0].key)}, `
+            prompt: `Our class puts out one scoop of seed for every ${per} visits, `
+                  + 'and a part scoop still has to go out as a whole one. There were '
+                  + `${days[0].value} visits on ${cmDayProse(days[0].key)}, `
                   + `and ${days[1].value} visits on ${cmDayProse(days[1].key)}. `
                   + 'How many scoops of seed do we owe the feeder?',
             ...built,
             chart: cmChart('Visits each day', cmDaySeries(s), { band, ordered: true }),
             explain: `${days[0].value} + ${days[1].value} = ${total} visits. `
-                   + `${total} ÷ ${per} = ${answer} scoops.`,
+                   + `${total} ÷ ${per} = ${whole}`
+                   + (rem
+                      ? ` with ${rem} left over - and those ${rem} `
+                        + `visit${rem === 1 ? '' : 's'} still want feeding, so it is `
+                        + `${answer} scoops, not ${whole}. What to do with a `
+                        + 'remainder depends on what you are counting.'
+                      : ` exactly, so ${answer} scoops.`),
         };
     },
 },
@@ -5931,10 +6044,14 @@ ${jumbled.split('').join(' ')}`,
     title: 'Multiplication',
     bands: ['3-5'],
     build({ s, band, rng }) {
-        const days = cmDaySeries(s).filter(d => d.value > 0);
+        // The filter and the pick were the wrong way round: this took a day
+        // at random and THEN refused if that day's count was awkward, so a
+        // week with one quiet day and six busy ones failed six times in seven
+        // for no reason anyone could see. Filter first, pick from what is
+        // left.
+        const days = cmDaySeries(s).filter(d => d.value >= 2 && d.value <= 15);
         if (!days.length) return null;
         const pick = cmShuffle(days, rng)[0];
-        if (pick.value < 2 || pick.value > 15) return null;
         const weeks = 2 + Math.floor(rng() * 3);          // 2-4
         const answer = pick.value * weeks;
         const built = cmChoices(String(answer),
@@ -5957,19 +6074,35 @@ ${jumbled.split('').join(' ')}`,
     bands: ['3-5'],
     build({ s, band, rng }) {
         const total = s.total;
-        const groups = [2, 3, 4, 5].filter(n => total % n === 0 && total / n >= 2);
-        if (!groups.length) return null;
-        const per = cmShuffle(groups, rng)[0];
-        const answer = total / per;
+        if (total < 8) return null;
+        // 157 visits is an ordinary week and it divides by nothing, so
+        // insisting on a clean divisor retired this question for the whole
+        // fortnight. Sharing a job between groups does not stop being
+        // arithmetic when it comes out uneven - somebody takes the extra, and
+        // saying who is the part worth asking about.
+        const clean = [2, 3, 4, 5].filter(n => total % n === 0 && total / n >= 2);
+        const per = clean.length
+            ? cmShuffle(clean, rng)[0]
+            : cmShuffle([2, 3, 4, 5].filter(n => total / n >= 2), rng)[0];
+        if (!per) return null;
+        const answer = Math.floor(total / per);
+        const rem    = total % per;
         const built = cmChoices(String(answer),
                                 cmNumberDistractors(answer, rng, 3).map(String), rng);
         if (!built) return null;
         return {
             prompt: `Our feeder had ${total} visits this week. If ${per} groups of `
-                  + 'children shared the job of counting them equally, how many '
-                  + 'would each group count?',
+                  + 'children shared the job of counting them out as evenly as they '
+                  + 'can, how many would each group count'
+                  + (rem ? ', before anyone takes the leftovers?' : '?'),
             ...built,
-            explain: `${total} ÷ ${per} = ${answer} each.`,
+            explain: rem
+                ? `${total} ÷ ${per} = ${answer} each, with ${rem} left over. You `
+                  + `cannot split ${rem} visit${rem === 1 ? '' : 's'} ${per} ways, so `
+                  + `one group counts ${answer + rem} and the rest count ${answer}. `
+                  + 'Deciding what happens to the remainder is part of the problem, '
+                  + 'not a mistake in it.'
+                : `${total} ÷ ${per} = ${answer} each, exactly.`,
         };
     },
 },

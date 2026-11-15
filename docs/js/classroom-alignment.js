@@ -105,13 +105,13 @@ const CLASSROOM_TEMPLATE_STANDARDS = {
     'probability-two-same':['MA.7.DP.2.3', 'MA.8.DP.2.2'],
 
     // ── Word problems built on the week's own numbers ──────────────────
-    'word-seed-scoops':    ['MA.3.AR.1.2', 'MA.4.DP.1.3'],
+    'word-seed-scoops':    ['MA.3.AR.1.2', 'MA.4.DP.1.3', 'MA.5.AR.1.1'],
     'word-watch-minutes':  ['MA.3.AR.1.2', 'MA.4.M.2.1'],
     'word-feeder-empty':   ['MA.6.AR.3.2', 'MA.6.AR.3.5'],
     'count-one-day':       ['MA.K.NSO.1.1', 'MA.1.DP.1.2'],
     'total-two-days':      ['MA.3.AR.1.2', 'MA.3.NSO.2.1', 'MA.4.DP.1.3'],
     'multiply-days':       ['MA.3.AR.1.2'],
-    'divide-share':        ['MA.3.AR.1.2'],
+    'divide-share':        ['MA.3.AR.1.2', 'MA.5.AR.1.1'],
     'round-nearest-ten':   ['MA.3.NSO.1.4'],
     'odd-or-even':         ['MA.2.AR.3.1'],
     'ordinal-rank':        ['MA.K.NSO.1.3', 'MA.3.DP.1.2'],
