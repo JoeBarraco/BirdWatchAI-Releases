@@ -4879,8 +4879,18 @@
 .classroom-sound-btn:active { transform: translateY(1px); }
 
 /* Visibly different while it is playing, because the only other signal is
-   the sound itself — and in a noisy room that is not a signal. */
-.classroom-sound-btn.playing { background: var(--color-gray-900); }
+   the sound itself — and in a noisy room that is not a signal.
+
+   ⚠ THE TEXT COLOUR MOVES WITH IT. --color-gray-900 is near-black in the
+   light theme and near-white in the dark one, so the inherited white text
+   from the rule above left "■ Stop" as white on white — invisible on a
+   dark slide, which is the one a projector shows. Pairing it with
+   --bg-card means the two always swap together: dark on light, or light
+   on dark, whichever way round the theme is. */
+.classroom-sound-btn.playing {
+    background: var(--color-gray-900);
+    color: var(--bg-card);
+}
 
 .classroom-sound-btn:disabled {
     background: var(--color-gray-500); cursor: not-allowed;
