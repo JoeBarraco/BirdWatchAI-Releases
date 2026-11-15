@@ -1181,7 +1181,14 @@
 <script src="js/community-bird-photos.js?v=75bfa8a8"></script>
 <script src="js/community-bird-pairs.js?v=fde6b7cd"></script>
 <script src="js/community-us-map.js?v=7260cdca"></script>
+<!-- Florida standards. The catalogue is generated from CPALMS and must load
+     BEFORE the templates; the alignment map must load AFTER them, because its
+     self-check reads CLASSROOM_TEMPLATES to catch a tag whose question no
+     longer exists. Swapping the two would make that half of the check silently
+     do nothing. -->
+<script src="js/classroom-standards.js?v=18250c1a"></script>
 <script src="js/community-classroom.js?v=ff61fb19"></script>
+<script src="js/classroom-alignment.js?v=f7a56edc"></script>
 <!-- Interactive chart runtime: crosshair tooltips on the trend chart, per-species hover rows on
      the Activity / Calendar / Rarity Mix charts. No-op until a [data-bw-chart] element appears. -->
 <script src="js/community-charts.js?v=2b12e881"></script>
