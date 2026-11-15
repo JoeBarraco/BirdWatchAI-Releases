@@ -3732,6 +3732,44 @@
 }
 .classroom-btn-primary[disabled] { opacity: 0.45; cursor: not-allowed; }
 .classroom-btn-danger:hover { border-color: #e74c3c; color: #e74c3c; }
+/* ── The way out of a right-hand view ──────────────────────────────
+   ⚠ STICKY, because these views are LONG.
+
+   Each of them ends with a Close that returns to the class's actions,
+   and that was the only one. "Review questions" on a K-2 class builds
+   every question the band can ask — 57 of them on the feeder this was
+   reported from, each with its photograph, standards chips and two
+   feedback buttons — so the way out sat several screens below the fold:
+   "When I scroll through the questions, there is no way to close the
+   question list without going all the way to the bottom."
+
+   Pinned to the BOTTOM rather than given a bar at the top, because the
+   panel already has a sticky header with a ✕ in it and that ✕ closes the
+   whole panel. Two crosses at the top of the same screen doing different
+   things is worse than the scrolling was. Down here it is unambiguous:
+   the ✕ up there leaves the Classroom, this leaves the list.
+
+   Full width so it is opaque edge to edge — a floating button with the
+   list showing either side of it reads as something that has come loose.
+   It settles into its natural place at the end of the content, so at the
+   bottom of a short view it is an ordinary button. */
+.classroom-right-close {
+    position: sticky; z-index: 4;
+    display: block; width: 100%;
+    margin-top: 0.75rem;
+    background: var(--bg-card);
+
+    /* ⚠ Reaches THROUGH the box's bottom padding, which is why this is not
+       simply bottom:0. A scroll container's bottom padding is part of the
+       scrollable area and content paints in it on the way past, so a button
+       pinned at bottom:0 left a 24px strip of the question list showing
+       below it — measured, not guessed. Pulling it down by that padding and
+       adding the same amount back as its own padding keeps the button the
+       size it looks while covering the strip. */
+    bottom: calc(var(--box-pad-y, 0px) * -1);
+    padding: 9px 11px calc(9px + var(--box-pad-y, 0px));
+}
+
 
 .classroom-pending:not(:empty) { margin-top: 0.5rem; }
 .classroom-pending-row {
@@ -3952,6 +3990,10 @@
 #classroom-panel-modal .mod-panel-head { --head-pad: 1.75rem; }
 #classroom-panel-modal .mod-admin-box,
 #community-panel-modal .mod-admin-box { padding-top: 0; }
+/* The box's own bottom padding, published so the sticky Close in the right
+   pane can reach through it — see .classroom-right-close. A custom property
+   inherits, so the button reads it without knowing which panel it is in. */
+#classroom-panel-modal .mod-admin-box { --box-pad-y: 1.5rem; }
 
 /* 40px square: a close button is the one control on these panels somebody
    reaches for in a hurry, often one-handed, and the ✕ glyph itself is

@@ -11722,7 +11722,7 @@ async function showClassroomOwnQuestions(roomId) {
         { p_classroom_id: roomId }, true);
     if (error) {
         box.innerHTML = `<div class="classroom-error">${esc(error.message || 'Could not load the questions.')}</div>
-            <button class="classroom-btn" onclick="closeClassroomRight()">Close</button>`;
+            <button class="classroom-btn classroom-right-close" onclick="closeClassroomRight()">Close</button>`;
         return;
     }
     const items = Array.isArray(data) ? data : [];
@@ -11807,7 +11807,7 @@ function renderClassroomOwnList() {
         <div class="classroom-form-actions">
             <button class="classroom-btn-primary" onclick="openClassroomOwnForm(null)">＋ Write a question</button>
             <button class="classroom-btn" onclick="showClassroomSharedQuestions()">🤝 From other classes</button>
-            <button class="classroom-btn" onclick="closeClassroomRight()">Close</button>
+            <button class="classroom-btn classroom-right-close" onclick="closeClassroomRight()">Close</button>
         </div>
         ${items.length
             ? `<p class="classroom-muted">${items.length} question${items.length === 1 ? '' : 's'}, ${on} switched on.</p>
@@ -12499,7 +12499,7 @@ async function reviewClassroomQuestions(roomId) {
         box.innerHTML = `<div class="classroom-muted">
             ${esc(room.home_feeder_name || 'This feeder')} hasn't logged enough
             visits to build a lesson from, so there is nothing to review yet.</div>
-            <button class="classroom-btn" onclick="closeClassroomRight()">Close</button>`;
+            <button class="classroom-btn classroom-right-close" onclick="closeClassroomRight()">Close</button>`;
         return;
     }
 
@@ -12536,7 +12536,7 @@ async function reviewClassroomQuestions(roomId) {
         <div class="classroom-review-list">
             ${questions.map((q, i) => classroomReviewItem(q, i)).join('')}
         </div>
-        <button class="classroom-btn" onclick="closeClassroomRight()">Close</button>`;
+        <button class="classroom-btn classroom-right-close" onclick="closeClassroomRight()">Close</button>`;
 }
 
 // ── Standards on screen ─────────────────────────────────────────────
@@ -13142,7 +13142,7 @@ function openClassroomSuggest() {
         </div>
         <div class="classroom-form-actions">
             <button class="classroom-btn-primary" onclick="sendClassroomSuggestion()">Send suggestion</button>
-            <button class="classroom-btn" onclick="closeClassroomRight()">Cancel</button>
+            <button class="classroom-btn classroom-right-close" onclick="closeClassroomRight()">Cancel</button>
         </div>
         <div class="classroom-status" id="classroom-suggest-status"></div>`;
     document.getElementById('classroom-suggest-idea').focus();
@@ -13180,7 +13180,7 @@ async function sendClassroomSuggestion() {
            question you will meet it in a lesson.</p>
         <div class="classroom-form-actions">
             <button class="classroom-btn" onclick="openClassroomSuggest()">Suggest another</button>
-            <button class="classroom-btn" onclick="closeClassroomRight()">Close</button>
+            <button class="classroom-btn classroom-right-close" onclick="closeClassroomRight()">Close</button>
         </div>`;
 }
 
@@ -13216,7 +13216,7 @@ async function showClassroomFeedback() {
           p_include_resolved: classroomFeedbackShowHandled }, true);
     if (error) {
         box.innerHTML = `<div class="classroom-error">${esc(error.message || 'Could not load.')}</div>`
-                      + '<button class="classroom-btn" onclick="closeClassroomRight()">Close</button>';
+                      + '<button class="classroom-btn classroom-right-close" onclick="closeClassroomRight()">Close</button>';
         return;
     }
 
@@ -13242,7 +13242,7 @@ async function showClassroomFeedback() {
                           + 'through a lesson and flag anything that reads badly.')
                       + '</div>'
                       + `<div class="classroom-form-actions">${handledToggle}`
-                      + '<button class="classroom-btn" onclick="closeClassroomRight()">Close</button></div>';
+                      + '<button class="classroom-btn classroom-right-close" onclick="closeClassroomRight()">Close</button></div>';
         return;
     }
 
@@ -13295,7 +13295,7 @@ async function showClassroomFeedback() {
                     : ''}
             </div>`).join('')}
         </div>
-        <button class="classroom-btn" onclick="closeClassroomRight()">Close</button>`;
+        <button class="classroom-btn classroom-right-close" onclick="closeClassroomRight()">Close</button>`;
 }
 
 // The ids currently on screen, so "mark all" cannot quietly resolve
@@ -14321,7 +14321,7 @@ async function showClassroomChallenge() {
         box.innerHTML = missing
             ? '<div class="classroom-muted">Challenges are not set up on this site yet.</div>'
             : `<div class="classroom-error">${esc(error.message || 'Could not load.')}</div>`;
-        box.innerHTML += '<button class="classroom-btn" onclick="closeClassroomRight()">Close</button>';
+        box.innerHTML += '<button class="classroom-btn classroom-right-close" onclick="closeClassroomRight()">Close</button>';
         return;
     }
 
@@ -14364,7 +14364,7 @@ async function showClassroomChallenge() {
               + 'Previous lessons — a challenge just puts them side by side for a week.</p>'}
         ${board}
         ${manage ? cmChallengeAdminHtml(items, live) : ''}
-        <button class="classroom-btn" onclick="closeClassroomRight()">Close</button>`;
+        <button class="classroom-btn classroom-right-close" onclick="closeClassroomRight()">Close</button>`;
 }
 
 /**
