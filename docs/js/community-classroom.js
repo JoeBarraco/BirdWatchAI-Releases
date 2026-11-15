@@ -9558,34 +9558,53 @@ ${jumbled.split('').join(' ')}`,
         const peak = span.reduce((a, b) => (b.n > a.n ? b : a));
         const mean = span.reduce((a, b) => a + b.n, 0) / span.length;
 
-        // A second peak has to be a separate event, not the shoulder of the
-        // first one, so it must sit at least two hours away and have a real
-        // trough between the two rather than a dent.
+        // A second peak has to be a separate EVENT, not the shoulder of the
+        // first one. The first version of this took the tallest hour two or
+        // more away from the peak and then checked the valley, which on a
+        // real fortnight picked 6am as the "second peak" of an 8am peak -
+        // the same morning rush, two hours wide - and then rejected the
+        // whole thing because there is no valley inside a single rush.
+        //
+        // So the valley is tested for EVERY candidate, and the tallest hour
+        // that genuinely sits across a valley wins. The bar for the second
+        // peak is also much lower than it first was: it has to beat an
+        // average hour, not two thirds of the busiest one. Our own feeder
+        // settled that - a 75-visit dawn rush, four visits an hour through
+        // the middle of the day, and 27 again at five o'clock is two spells
+        // by any reading, and a 0.6 threshold called it one.
         let second = null;
         span.forEach(x => {
             if (Math.abs(x.h - peak.h) < 2) return;
-            if (!second || x.n > second.n) second = x;
+            if (x.n < mean) return;
+            const a = Math.min(peak.h, x.h), b = Math.max(peak.h, x.h);
+            const trough = span.filter(y => y.h > a && y.h < b)
+                               .reduce((m, y) => Math.min(m, y.n), Infinity);
+            if (!isFinite(trough)) return;
+            if (trough > Math.min(peak.n, x.n) * 0.5) return;
+            if (!second || x.n > second.n) second = { h: x.h, n: x.n, dip: trough };
         });
-        let dip = null;
-        if (second) {
-            const a = Math.min(peak.h, second.h), b = Math.max(peak.h, second.h);
-            dip = span.filter(x => x.h > a && x.h < b).reduce((m, x) => Math.min(m, x.n), Infinity);
-        }
-        const twoPeaked = !!second && second.n >= peak.n * 0.6
-                       && dip !== null && dip <= Math.min(peak.n, second.n) * 0.65;
+        const twoPeaked = !!second;
 
-        const lateThird = peak.h >= lo + Math.ceil((hi - lo) * 2 / 3);
+        // Where the one peak sits, when there is only one. "Quieter either
+        // side of it" was the only single-peak answer on offer and it was
+        // flatly untrue of a feeder whose busiest hour is the first hour it
+        // is awake, which is the commonest shape there is.
+        const width = hi - lo;
+        const third = peak.h <= lo + width / 3 ? 'early'
+                    : peak.h >= hi - width / 3 ? 'late' : 'mid';
         const flat = peak.n <= mean * 1.6;
 
         const ANSWERS = {
             two:   'Two busy spells with a quieter patch in between',
-            one:   'One busy spell, and quieter either side of it',
-            flat:  'About the same all day long',
+            early: 'Busiest first thing, then quieter all day',
             late:  'Quiet early, then busiest near the end of the day',
+            mid:   'One busy spell in the middle of the day',
+            flat:  'About the same all day long',
         };
-        const key = twoPeaked ? 'two' : flat ? 'flat' : lateThird ? 'late' : 'one';
+        const key = twoPeaked ? 'two' : flat ? 'flat' : third;
         const built = cmChoices(ANSWERS[key],
-            Object.keys(ANSWERS).filter(k => k !== key).map(k => ANSWERS[k]), rng);
+            cmShuffle(Object.keys(ANSWERS).filter(k => k !== key)
+                            .map(k => ANSWERS[k]), rng), rng);
         if (!built) return null;
 
         return {
@@ -9599,7 +9618,7 @@ ${jumbled.split('').join(' ')}`,
                    + peak.n + ' visits, against ' + mean.toFixed(1) + ' in an average hour'
                    + (twoPeaked
                       ? ', and a second spell around ' + fmtHourShort(second.h)
-                        + ' with the quiet patch between them down to ' + dip + '.'
+                        + ' with the quiet patch between them down to ' + second.dip + '.'
                       : '.')
                    + ' Researchers watching chickadees at feeders found two peaks every '
                    + 'time, around half past eight and three o’clock, with the midday '
