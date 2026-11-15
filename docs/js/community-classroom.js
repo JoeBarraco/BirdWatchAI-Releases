@@ -10046,12 +10046,18 @@ function openClassroomOwnForm(id) {
             </div>
         </details>
 
-        <details class="classroom-details">
-            <summary>A chart from the class's data</summary>
+        <details class="classroom-details" id="cc-own-chart-details">
+            <summary>Put a chart beside the question (optional)</summary>
+            <p class="classroom-muted">
+                Pick a shape and what it should count, and the class sees that chart
+                next to your question — so you can ask "which day was busiest?" over
+                your own wording. Choose <em>No chart</em> to leave it off.
+            </p>
             <p class="classroom-muted">
                 Drawn fresh each lesson from whatever the feeders have recorded that
                 week — the shape is saved, the numbers never are. A chart saved in
-                October would otherwise still be showing October in March.
+                October would otherwise still be showing October in March, which is
+                why the preview below changes as the weeks go by.
             </p>
             <p class="classroom-muted">
                 A clip takes the slide if you pick one, so a question with both shows
@@ -10079,6 +10085,7 @@ function openClassroomOwnForm(id) {
                     </select>
                 </label>
             </div>
+            <div id="cc-own-chart-preview" class="cc-own-chart-preview"></div>
         </details>
 
         <details class="classroom-details">
@@ -10124,6 +10131,7 @@ function openClassroomOwnForm(id) {
     document.getElementById('cc-own-prompt').focus();
     classroomOwn.mediaTab = 'photo';
     renderClassroomOwnStandards();
+    renderClassroomOwnChartPreview();
     loadClassroomOwnPhotos();
 }
 
@@ -10163,8 +10171,15 @@ async function loadClassroomOwnPhotos() {
             .map(r => ({ id: r.id, url: r.image_url, species: r.species }));
         classroomOwn.clips = [...bestClip.values()].slice(0, 24)
             .map(r => ({ id: r.id, url: r.video_url, poster: r.image_url, species: r.species }));
+        // Kept so the chart preview can draw this class's REAL numbers.
+        // Explaining a chart in words was the thing a teacher said did not
+        // work — "I have no idea how to create a chart question" — so the
+        // form shows the chart instead.
+        classroomOwn.source = cmPickSource(data);
     }
     renderClassroomOwnPhotos();
+    // The preview could not draw before the data arrived.
+    renderClassroomOwnChartPreview();
 }
 
 function classroomOwnMediaTab(which) {
@@ -10240,6 +10255,45 @@ function classroomOwnChartChanged() {
     const kind = document.getElementById('cc-own-chart-kind').value;
     const src  = document.getElementById('cc-own-chart-source').value;
     classroomOwn.chart = kind ? { kind, source: src || 'days' } : null;
+    renderClassroomOwnChartPreview();
+}
+
+/**
+ * Show the chart, rather than describing it.
+ *
+ * A teacher wrote: "I have no idea how to create a chart question using
+ * the write new question editor. Is it possible to explain it in the
+ * page?" Explaining it in more words was the obvious answer and the
+ * wrong one — the question was really "what will this do?", and the only
+ * convincing answer to that is the chart itself, drawn from this class's
+ * own data, changing the moment either dropdown moves.
+ *
+ * Says so plainly when the data cannot carry the chosen shape, which is
+ * an ordinary outcome on a quiet week and would otherwise look broken.
+ */
+function renderClassroomOwnChartPreview() {
+    const box = document.getElementById('cc-own-chart-preview');
+    if (!box) return;
+
+    if (!classroomOwn.chart) {
+        box.innerHTML = '<p class="classroom-muted">No chart — the question goes up on '
+                      + 'its own, or with a photo.</p>';
+        return;
+    }
+    if (!classroomOwn.source) {
+        box.innerHTML = '<p class="classroom-muted">Loading this class’s data…</p>';
+        return;
+    }
+
+    const room  = classroomList.find(r => r.id === classroomOwn.roomId);
+    const chart = cmOwnChart(classroomOwn.chart, classroomOwn.source,
+                             room ? room.grade_band : 'k-2');
+    box.innerHTML = chart
+        ? `<p class="classroom-muted">This is what the class would see this week:</p>
+           ${classroomChartHtml(chart, false)}`
+        : '<p class="classroom-muted">Your feeders have not recorded enough this week '
+        + 'to draw that one. The question still works — it just goes up without a '
+        + 'chart until there is more data.</p>';
 }
 
 function renderClassroomOwnPhotos() {

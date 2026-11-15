@@ -4928,6 +4928,18 @@
     color: var(--color-gray-500); font-style: italic;
 }
 
+/* The live preview in the question builder. Capped hard: this is a
+   thumbnail of what the class will see, not the thing itself, and a
+   full-height projector chart inside a form pushes Save off the screen. */
+.cc-own-chart-preview { margin-top: 0.6rem; }
+.cc-own-chart-preview .classroom-chart { width: min(100%, 460px); margin: 0; }
+.cc-own-chart-preview .classroom-chart svg { max-height: 150px; }
+.cc-own-chart-preview .cc-dot { width: 11px; }
+.cc-own-chart-preview .cc-row-label,
+.cc-own-chart-preview .cc-row-val { font-size: 0.72rem; }
+.cc-own-chart-preview .cc-thumb { width: 34px; }
+.cc-own-chart-preview figcaption { font-size: 0.72rem; }
+
 /* ── A chart the class builds ───────────────────────────────────────
    Sized for a room, not a mouse: the + and − are the only controls in
    the whole module a teacher presses repeatedly while thirty children
