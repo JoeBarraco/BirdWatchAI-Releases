@@ -4575,6 +4575,21 @@
         align-items: center;
         gap: 3.4vmin;
     }
+    /* Two photographs share this column, so it gets a little more than one
+       photograph would. A LITTLE: the slide is scaled to fit by
+       classroomFitMeasure, so height bought here is paid for by everything
+       on the slide shrinking. Measured at 1920x1080, overflow before the
+       fitter runs against the width each bird ends up:
+         1.12fr  219px  421px     ← the default, same overflow as one photo
+         1.3fr   219px  452px     ← free
+         1.5fr   284px  480px
+         2fr     413px  535px
+       Past 1.3fr the prompt column narrows enough to wrap the question onto
+       more lines, and the fitter pays for it by shrinking the photographs it
+       was supposed to be enlarging. */
+    .classroom-slide-top.has-media.has-pair {
+        grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+    }
     .classroom-slide-media {
         min-width: 0; display: flex; justify-content: center; align-items: center;
         /* The axis labels at either end of a chart sit right on its viewBox
@@ -5454,13 +5469,60 @@
 }
 
 .cc-axis-line { stroke: var(--color-gray-500); stroke-width: 2.5; }
+/* ── The coordinate grid: MA.6.GR.1.1 ──────────────────────────────
+   ⚠ THESE THREE HAD NO CSS AT ALL, and an SVG shape with no fill is
+   BLACK. So the 289 invisible tap targets — one per intersection, radius
+   14 in a 620 viewBox — painted the plot as a solid field of black dots,
+   burying the gridlines, the axis numbers, the point the class plotted
+   and the ring showing where it should have gone. On a dark slide the
+   mark and the answer were black on near-black even where the dots left
+   a gap. The whole question has looked like this since it shipped.
+
+   Reported from a lesson, and charitably: "It was difficult to see the
+   axis labels and markers."
+
+   A tap target is a target, not a mark: transparent, and showing itself
+   only under the pointer so a teacher can see what they are about to
+   hit. */
+.cc-grid-hit {
+    fill: transparent;
+    cursor: pointer;
+}
+.cc-grid-hit:hover {
+    fill: color-mix(in srgb, var(--color-primary) 25%, transparent);
+}
+
+/* Where the class said the point goes. Filled, with a slide-coloured
+   outline so it stays a disc against a gridline it happens to sit on. */
+.cc-grid-mark {
+    fill: var(--color-primary);
+    stroke: var(--bg-card); stroke-width: 3;
+}
+.cc-grid-mark.ok  { fill: #2eaa4f; }
+.cc-grid-mark.bad { fill: #e74c3c; }
+
+/* Where it actually goes — a ring, never a disc, because it is drawn at
+   the same time as the class's mark when they disagree and the two must
+   not read as one blob. "The ringed point is where it should be" is on
+   the slide, so this has to actually look like a ring from the back. */
+.cc-grid-truth {
+    fill: none;
+    stroke: #2eaa4f; stroke-width: 5;
+}
+
 
 .cc-axis-title {
     fill: var(--color-gray-900); opacity: 0.85;
     font-size: 28px; font-family: inherit; font-weight: 700;
 }
 .cc-axis.mid, .cc-val.mid, .cc-axis-title.mid { text-anchor: middle; }
-.cc-axis.end { text-anchor: end; }
+/* ⚠ .cc-axis-title.end was missing here, and an SVG root clips to its
+   viewBox. The grid's x-axis title is written with class "cc-axis-title
+   end" and placed at the far right edge expecting to run leftwards from
+   it; anchored at the default start it ran off the right instead and was
+   cut. It has always been cut - at 28px it only lost the arrowhead, so it
+   read as a slightly odd label rather than a broken one. */
+.cc-axis.end, .cc-axis-title.end { text-anchor: end; }
 
 /* ── Box plot ──────────────────────────────────────────────────────
    MA.6.DP.1.3. The median line is the heaviest mark on the chart because
@@ -5478,6 +5540,29 @@
    scatter needs its height to show spread at all. */
 .classroom-chart.box svg     { max-height: 24vh; }
 .classroom-chart.scatter svg { max-height: 42vh; }
+
+/* The coordinate grid needs MORE than the cap, not less, and for the
+   opposite reason: it is square, so a height cap is also a width cap. It
+   also carries no list of choices to leave room for - the grid IS the
+   input, the class taps a cell and the only button under it is "Check
+   it".
+   ⚠ Has to out-specify the .has-media rule further down, which is what
+   actually applies here (52vh, and the chart counts as the media). A
+   plain .classroom-chart.cc-grid svg loses to it and changes nothing,
+   measured: still 374px. */
+.classroom-slide-top.has-media .classroom-chart.cc-grid svg,
+.classroom-chart.cc-grid svg { max-height: 58vh; }
+
+/* ⚠ AND THE DRAWING ITSELF HAS TO BE BIGGER, which matters more than the
+   cap. Everything in this figure is sized against a 620-unit viewBox and
+   then scaled to whatever the slide allows, so the question is not how
+   many pixels the numbers are but what FRACTION of the grid they are. At
+   26px they were 4% of it - about 16px once drawn, read from the back of
+   a room. The gridlines were worse: 1.5 units came out under a pixel. */
+.cc-grid .cc-axis       { font-size: 34px; opacity: 0.9; }
+.cc-grid .cc-axis-title { font-size: 32px; }
+.cc-grid .cc-grid       { stroke-width: 2.5; }
+.cc-grid .cc-axis-line  { stroke-width: 5; stroke: var(--color-gray-700); }
 
 /* A chart, a question, four choices and a reveal block all want the same
    screen. The chart is capped so the rest always fits beneath it: at 1080p
@@ -5859,6 +5944,10 @@
 @media (max-width: 620px) {
     .classroom-pair-half { max-width: 100%; }
 }
+/* Bigger when the pair IS the media on the slide, which is the case the
+   flag was about: "the photo reveal needs to be much larger". Matches what
+   a single reveal photo already gets from the .has-media rule. */
+.classroom-slide-top.has-media .classroom-pair-half img { max-height: 48vh; }
 .classroom-pair-half img {
     width: 100%; max-height: 34vh; object-fit: cover;
     border-radius: 12px; display: block;

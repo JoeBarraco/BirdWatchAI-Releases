@@ -2141,8 +2141,14 @@ function classroomSlideTopHtml(S, q) {
     const media = classroomEvidenceHtml(q, S.revealed);
     if (!media) return `<div class="classroom-slide-top">${ask}</div>`;
 
+    // Two photographs need more of the slide than one does. Without this
+    // the pair splits the media column between them and each bird comes
+    // out SMALLER than the single photo it replaced - the opposite of the
+    // "much larger" that was asked for.
+    const wide = media.indexOf('classroom-pair') >= 0 ? ' has-pair' : '';
+
     return `
-        <div class="classroom-slide-top has-media">
+        <div class="classroom-slide-top has-media${wide}">
             <div class="classroom-slide-media">${media}</div>
             <div class="classroom-slide-ask">${ask}</div>
         </div>`;
@@ -2338,12 +2344,16 @@ function classroomGridHtml(q, revealed) {
 
     const put = q.grid_at;
     const right = put && put.x === g.target.x && put.y === g.target.y;
+    // Radii are generous for the same reason the axis numbers are 26px in
+    // a 620 viewBox: this is read from the back of a room after the whole
+    // chart has been scaled down to fit. 11 and 13 came out at about 6px
+    // on a 1080p projector.
     const mark = put
-        ? `<circle cx="${X(put.x)}" cy="${Y(put.y)}" r="11"
+        ? `<circle cx="${X(put.x)}" cy="${Y(put.y)}" r="15"
                    class="cc-grid-mark ${q.grid_checked ? (right ? 'ok' : 'bad') : ''}"></circle>`
         : '';
     const truth = (revealed || (q.grid_checked && !right))
-        ? `<circle cx="${X(g.target.x)}" cy="${Y(g.target.y)}" r="13" class="cc-grid-truth"></circle>`
+        ? `<circle cx="${X(g.target.x)}" cy="${Y(g.target.y)}" r="21" class="cc-grid-truth"></circle>`
         : '';
 
     return `
@@ -2556,7 +2566,10 @@ function classroomEvidenceHtml(q, revealed) {
     // A sexed pair is its own shape: two photographs of ONE species whose
     // whole job is to be compared. It comes first because a question that has
     // one cannot be answered from anything else.
-    if (q.pair) return classroomPairHtml(q.pair);
+    // on_reveal: the same idea as image_on_reveal. “Who gives way?” shows
+    // both birds only once the answer is up, so the slide does not hand the
+    // class a size comparison while it is still being asked to predict one.
+    if (q.pair && (revealed || !q.pair.on_reveal)) return classroomPairHtml(q.pair);
     // A chart the class is building beats everything: it IS the question,
     // and a photograph beside it would be something else to look at while
     // they are meant to be reading a table.
@@ -9767,13 +9780,23 @@ ${jumbled.split('').join(' ')}`,
             [wee.species, 'Whichever one got there first', 'They would share the perch'], rng);
         if (!built) return null;
 
+        const bigShot = cmShotFor(s, big.species);
+        const weeShot = cmShotFor(s, wee.species);
+
         return {
             prompt: `Both the ${big.species} and the ${wee.species} came to our feeder `
                   + 'this week. If they arrived at the same perch at the same moment, '
                   + 'which one would you EXPECT to make the other give way?',
             ...built,
-            image: cmShotFor(s, big.species),
-            image_on_reveal: true,
+            // Both birds on the reveal where the feeder has photographed
+            // both, because “it is much the bigger bird” is an assertion
+            // until the class can see them next to each other. One photo
+            // only when that is all there is.
+            ...(bigShot && weeShot
+                ? { pair: { a: { url: bigShot.url, label: big.species },
+                            b: { url: weeShot.url, label: wee.species },
+                            on_reveal: true } }
+                : { image: bigShot || weeShot, image_on_reveal: true }),
             explain: `The ${big.species}, because it is much the bigger bird. Project `
                    + 'FeederWatch volunteers recorded one bird displacing another tens '
                    + 'of thousands of times and built the first dominance ranking for '
@@ -15568,23 +15591,36 @@ function classroomFootControls(S, last, joinMode) {
  * by two different people.
  */
 function classroomPairHtml(pair) {
-    if (!pair || !pair.male || !pair.female) return '';
+    if (!pair) return '';
+    // Two photographs side by side, to be compared. This began as male
+    // beside female of ONE species and is now also two different species —
+    // “who gives way?” was showing the winner alone, and a teacher asked
+    // for “the other bird photo as well”, quite rightly: the answer turns
+    // on which bird is bigger and the class could only see one of them.
+    const first  = pair.a || pair.male;
+    const second = pair.b || pair.female;
+    if (!first || !second) return '';
+    const labelA = pair.a ? (first.label  || '') : 'male';
+    const labelB = pair.b ? (second.label || '') : 'female';
 
     const one = (half, label) => {
-        const c = half.credit || {};
+        // Wikimedia photographs carry a credit because their licence
+        // requires one. A photograph off the school's own feeder does not
+        // have a credit and must not be given a fake “Unknown” one.
+        const c = half.credit;
         return `
         <figure class="classroom-pair-half">
             <img src="${esc(half.url)}" alt=""
                  onload="requestAnimationFrame(classroomFitStage)">
-            <figcaption>${esc(label)}</figcaption>
-            <p class="classroom-shot-credit">${esc(c.artist || 'Unknown')} /
-               ${esc(c.licence || '')} · Wikimedia Commons</p>
+            ${label ? `<figcaption>${esc(label)}</figcaption>` : ''}
+            ${c ? `<p class="classroom-shot-credit">${esc(c.artist || 'Unknown')} /
+                     ${esc(c.licence || '')} · Wikimedia Commons</p>` : ''}
         </figure>`;
     };
 
     return `<div class="classroom-pair">
-                ${one(pair.male, 'male')}
-                ${one(pair.female, 'female')}
+                ${one(first, labelA)}
+                ${one(second, labelB)}
             </div>`
          + (pair.species ? `<p class="classroom-pair-cap">${esc(pair.species)}</p>` : '');
 }
