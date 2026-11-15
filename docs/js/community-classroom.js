@@ -1173,10 +1173,33 @@ function classroomFitShot(img) {
  * a moment later anyway.
  */
 async function loadClassroomData(room) {
+    const scope = room.question_scope || 'home';
+
     const ids = [];
     if (room.home_feeder_id) ids.push(room.home_feeder_id);
     (room.partners || []).forEach(p => { if (p.feeder_id) ids.push(p.feeder_id); });
-    if (!ids.length) return { home: null, partners: [], all: [] };
+
+    // 'community' reaches past the classroom's own list to every approved
+    // feeder here — the same set the Stats tab draws on. A single courtyard
+    // feeder in February has ten visits and no lesson in it; forty feeders
+    // across the community have a week's worth of real data, and the
+    // questions that need VOLUME (scatter plots, box plots, comparing two
+    // populations) only exist at that size.
+    //
+    // Approved only, and only in THIS community. Reading the feeders table
+    // unfiltered would turn a classroom into a viewer for every feeder on
+    // the site, which is the hole loadClassroomFeederOptions was careful
+    // not to open.
+    let pooledNames = new Map();
+    if (scope === 'community') {
+        const extra = await cmCommunityFeederIds();
+        extra.forEach(f => {
+            pooledNames.set(f.id, f.display_name);
+            if (!ids.includes(f.id)) ids.push(f.id);
+        });
+    }
+
+    if (!ids.length) return { home: null, partners: [], all: [], pooled: null, scope };
 
     const since = new Date(Date.now() - CLASSROOM_WINDOW_DAYS * 86400000).toISOString();
     const url = `${SUPABASE_URL}/rest/v1/community_detections`
@@ -1218,7 +1241,67 @@ async function loadClassroomData(room) {
         .map(p => cmSummarize(p.feeder_id, nameOf(p.feeder_id),
                               byFeeder.get(p.feeder_id) || [], false));
 
-    return { home, partners, all: [home, ...partners].filter(Boolean) };
+    // Every feeder that came back, named — including the community ones the
+    // classroom never listed. Comparison questions need the parts, not just
+    // the pile: "which feeder saw more cardinals" is MA.7.DP.1.2, and it
+    // cannot be asked of a summary that has already added them together.
+    const each = ids.map(id => {
+        const own = id === room.home_feeder_id ? home
+                  : partners.find(p => p.feederId === id);
+        return own || cmSummarize(id, pooledNames.get(id) || 'a feeder',
+                                  byFeeder.get(id) || [], false);
+    }).filter(Boolean);
+
+    // The pile itself. Built from the rows rather than by merging summaries,
+    // so every derived figure — byHour, daySpec, the temperature average —
+    // is computed over the whole set instead of being averaged twice.
+    const pooled = rows.length ? Object.assign(
+        cmSummarize(null, cmPoolName(), rows, false),
+        { isPool: true, feeders: each.filter(x => x.total > 0) }
+    ) : null;
+
+    return { home, partners, all: [home, ...partners].filter(Boolean), each, pooled, scope };
+}
+
+// What the slides call the pooled set. The community's own name when we
+// have it, because "our feeders" is a claim about ownership that is true
+// for a school and false for an open community anyone may join.
+function cmPoolName() {
+    const c = (typeof myCommunities !== 'undefined' && Array.isArray(myCommunities))
+        ? myCommunities.find(x => x && x.id === classroomCommunityId) : null;
+    const name = c && (c.name || c.slug);
+    return name ? `the ${name} feeders` : 'our community feeders';
+}
+
+/**
+ * Every approved feeder in this community, with its display name.
+ *
+ * Same two-step read as loadClassroomFeederOptions, and for the same
+ * reason: community_feeders_list is owner/moderator-only, and a teacher
+ * has to be able to run a community-wide lesson without the roster.
+ */
+async function cmCommunityFeederIds() {
+    if (!classroomCommunityId) return [];
+    try {
+        const res = await fetch(
+            `${SUPABASE_URL}/rest/v1/community_feeders`
+            + `?select=feeder_id&status=eq.approved&community_id=eq.${classroomCommunityId}`,
+            { headers: sbHeaders(true) });
+        if (!res.ok) return [];
+        const ids = (await res.json()).map(r => r.feeder_id).filter(Boolean);
+        if (!ids.length) return [];
+
+        const fres = await fetch(
+            `${SUPABASE_URL}/rest/v1/feeders?id=in.(${ids.join(',')})`
+            + `&select=id,display_name`,
+            { headers: sbHeaders(true) });
+        if (!fres.ok) return [];
+        return await fres.json();
+    } catch {
+        // A classroom set to 'community' whose lookup fails falls back to
+        // its own feeders rather than to no lesson at all.
+        return [];
+    }
 }
 
 /**
@@ -1232,6 +1315,13 @@ async function loadClassroomData(room) {
  */
 function cmPickSource(data) {
     const { home, partners } = data;
+
+    // A classroom set to 'community' asked for the pile, so it gets the
+    // pile — no fallback ladder, because there is nothing wider to fall
+    // back TO. If even the whole community is empty the caller's
+    // no-data path handles it, exactly as for a quiet home feeder.
+    if (data.scope === 'community' && data.pooled) return data.pooled;
+
     if (home && home.total >= CLASSROOM_MIN_ROWS) return home;
 
     const best = partners.slice().sort((a, b) => b.total - a.total)[0];
@@ -1246,7 +1336,18 @@ function cmPickSource(data) {
 function cmWindow(src, days) {
     const cutoff = Date.now() - days * 86400000;
     const rows = src.rows.filter(r => new Date(r.detected_at).getTime() >= cutoff);
-    return cmSummarize(src.feederId, src.name, rows, src.isHome, days);
+    const out  = cmSummarize(src.feederId, src.name, rows, src.isHome, days);
+
+    // Carry the pool flags across. Without this a narrowed pool looks like
+    // an ordinary single feeder, and every question that checks isPool —
+    // the per-feeder comparisons especially — silently stops firing on the
+    // 7-day window while still working on the 14-day one.
+    if (src.isPool) {
+        out.isPool  = true;
+        out.feeders = (src.feeders || []).map(f => cmWindow(f, days))
+                                         .filter(f => f.total > 0);
+    }
+    return out;
 }
 
 // ── The evidence on the board (design notes §2, §3, §11) ───────────
@@ -5794,6 +5895,7 @@ const CM_EMPTY_SUMMARY = {
     species: [], bySpecies: new Map(), days: [], byDay: new Map(),
     byHour: new Array(24).fill(0), daySpec: new Map(), snapshots: [], clips: [],
     distinct: 0, avgTemp: null, tempCoverage: 0, dayTemp: new Map(),
+    isPool: false, feeders: [],
 };
 
 /**
@@ -6073,10 +6175,14 @@ function buildClassroomQuestions(room, data, opts) {
             category:    t.category,
             title:       t.title,
             grade_band:  band,
-            scope:       source.isHome ? 'home' : 'partner',
+            scope:       source.isPool ? 'community'
+                       : source.isHome ? 'home' : 'partner',
             source_feeder_id:   source.feederId,
             source_feeder_name: source.name,
-            from_partner: !source.isHome,
+            // A pooled lesson is not "from a partner" — there is no single
+            // other feeder to name, and the amber badge that phrase drives
+            // would be pointing at nothing.
+            from_partner: !source.isHome && !source.isPool,
             ...q,
         });
     }
@@ -6557,7 +6663,12 @@ function renderClassroomList() {
         const seen = r.home_feeder_seen_at
             ? new Date(r.home_feeder_seen_at).getTime() > Date.now() - 10 * 60 * 1000
             : false;
-        const feeder = r.home_feeder_id
+        // A pooled class is not missing a feeder, so it must not be scolded
+        // for having none — "No feeder" in amber is a prompt to go and fix
+        // something, and here there is nothing to fix.
+        const feeder = r.question_scope === 'community'
+            ? 'All community feeders'
+            : r.home_feeder_id
             ? `<span class="classroom-dot ${seen ? 'on' : 'off'}"></span>${esc(r.home_feeder_name || 'Feeder')}`
             : '<span class="classroom-warn">No feeder</span>';
 
@@ -7015,7 +7126,9 @@ async function reviewClassroomQuestions(roomId) {
         ${challengeNote}
         <p class="classroom-muted">
             All ${built} question${built === 1 ? '' : 's'} this band can build from
-            ${esc(source.name)}${source.isHome ? '' : ' (a partner feeder)'} today,
+            ${esc(source.name)}${source.isPool
+                ? ` (${source.feeders.length} feeder${source.feeders.length === 1 ? '' : 's'} pooled)`
+                : source.isHome ? '' : ' (a partner feeder)'} today,
             exactly as a class would see them. A lesson shows
             ${CLASSROOM_QUESTIONS_PER_SESSION} of these; this is the whole set, so
             nothing goes unreviewed just because a lesson did not pick it.
@@ -7627,6 +7740,16 @@ function renderClassroomForm() {
             </label>
 
             <label class="classroom-field">
+                <span>Where the data comes from</span>
+                <select id="classroom-question-scope">
+                    <option value="home"${(editing?.question_scope || 'home') === 'home' ? ' selected' : ''}>
+                        Our feeder — fall back to a partner when it is quiet</option>
+                    <option value="community"${editing?.question_scope === 'community' ? ' selected' : ''}>
+                        Every feeder in this community — pooled</option>
+                </select>
+            </label>
+
+            <label class="classroom-field">
                 <span>How many questions a session</span>
                 <select id="classroom-quiz-size" onchange="updateClassroomPickCount()">
                     ${[1, 2, 3, 5, 6, 8, 10, 12].map(n => `
@@ -8102,6 +8225,7 @@ async function saveClassroom() {
     const name   = document.getElementById('classroom-name').value.trim();
     const home   = document.getElementById('classroom-home-feeder').value;
     const band   = document.getElementById('classroom-grade-band').value;
+    const scope  = document.getElementById('classroom-question-scope')?.value || 'home';
     const size   = parseInt(document.getElementById('classroom-quiz-size')?.value, 10);
     const status = document.getElementById('classroom-form-status');
     const say = (msg, ok) => {
@@ -8110,7 +8234,15 @@ async function saveClassroom() {
     };
 
     if (!name) { say('Give the class a name.', false); return; }
-    if (!home) { say('Choose the feeder this class watches.', false); return; }
+
+    // A home feeder is only compulsory when the lessons come FROM it. A
+    // class pooling the whole community may have no feeder of its own —
+    // that is the case this option exists for, a school signing up in
+    // January with nothing on the wall yet.
+    if (!home && scope !== 'community') {
+        say('Choose the feeder this class watches, or pool the community instead.', false);
+        return;
+    }
 
     const partners = [...document.querySelectorAll('#classroom-partners input:checked')]
         .map(el => el.value)
@@ -8126,8 +8258,9 @@ async function saveClassroom() {
         const { error } = await sbRpc('classroom_update', {
             p_classroom_id:    roomId,
             p_name:            name,
-            p_home_feeder_id:  home,
+            p_home_feeder_id:  home || null,
             p_grade_band:      band,
+            p_question_scope:  scope,
             p_teacher_user_id: teacher || null,
         }, true);
         if (error) { say(error.message || 'Could not save.', false); return; }
@@ -8135,9 +8268,9 @@ async function saveClassroom() {
         const { data, error } = await sbRpc('classroom_create', {
             p_community_id:   classroomCommunityId,
             p_name:           name,
-            p_home_feeder_id: home,
+            p_home_feeder_id: home || null,
             p_grade_band:     band,
-            p_question_scope: 'home',
+            p_question_scope: scope,
         }, true);
         if (error) { say(error.message || 'Could not create.', false); return; }
         roomId = data && data.id;
