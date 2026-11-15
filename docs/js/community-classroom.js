@@ -2460,6 +2460,12 @@ function cmPictograph(caption, series, opts) {
     });
 
     return { kind: 'picto', per, series: rows,
+             // What the SYMBOLS add up to, row by row — see the note at the
+             // `plotted` check in buildClassroomQuestions. Without this the
+             // true counts are printed over a chart that is drawing
+             // something slightly different.
+             plotted: rows.map(r => ({
+                 value: Math.round((r.value / per) * 2) / 2 * per })),
              caption: dropped
                 ? `${caption} (${dropped} rarer bird${dropped === 1 ? '' : 's'} `
                   + `left off — too few to draw at this scale)`
@@ -7363,7 +7369,15 @@ function buildClassroomQuestions(room, data, opts) {
         // So the numbers go on, except where a choice IS one of the plotted
         // values, which is the case where printing them answers the question.
         if (q.chart && !q.chart.showValues) {
-            const plotted = new Set(q.chart.series.map(r => String(r.value)));
+            // `plotted` is what the chart SHOWS, which is not always the
+            // underlying value. A pictograph rounds to the nearest half
+            // symbol: the row holds 46 but the picture says 45, and the
+            // question's answer is "about 45". Comparing the choices
+            // against 46 found no match, concluded that printing the
+            // numbers was safe, and would have printed 46 beside a row
+            // whose correct answer was 45.
+            const plotted = new Set((q.chart.plotted || q.chart.series)
+                                        .map(r => String(r.value)));
             // Except on a clock, whose answers are TIMES. "7 o'clock" carries a
             // 7 that is an hour, not a count, so matching it against the
             // plotted counts was a coincidence detector — and a busy hour of
