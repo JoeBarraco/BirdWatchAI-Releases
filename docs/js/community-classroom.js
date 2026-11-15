@@ -8957,20 +8957,40 @@ ${jumbled.split('').join(' ')}`,
         const days = s14.days;
         if (days.length < 8) return null;
 
+        // ⚠ PER SPECIES, NOT PER FEEDER. The first version asked for the
+        // longest run of days ANY bird came, and on a live feeder that is
+        // every day in the window — the answer is "all of them", which a
+        // class can say without counting anything, so the guard threw the
+        // question away and it never built once on real data.
+        //
+        // One bird's run is a real streak: it starts, it breaks, and
+        // finding it means reading along the row looking for the gap.
+        const pick = s14.species[0];
+        if (!pick) return null;
+
+        const onDay = new Set();
+        s14.daySpec.forEach((m, day) => { if (m.has(pick.species)) onDay.add(day); });
+
         let best = 0, run = 0;
-        days.forEach(d => { run = d.n > 0 ? run + 1 : 0; if (run > best) best = run; });
-        // No streak, or every single day — neither is a question.
+        days.forEach(d => { run = onDay.has(d.day) ? run + 1 : 0; if (run > best) best = run; });
         if (best < 2 || best === days.length) return null;
 
         const built = cmChartCountChoices(best, rng, null, 3);
         if (!built) return null;
 
         return {
-            prompt: 'What is the longest run of days IN A ROW when at least one bird came?',
+            prompt: 'What is the longest run of days IN A ROW that a ' + pick.species
+                  + ' came?',
             ...built,
-            chart: cmChart('Visits each day', cmDaySeries(s14), { band, showValues: true }),
-            explain: best + ' days in a row. A single empty day breaks a run, so counting '
-                   + 'one means hunting for the gaps rather than for the busy days.',
+            chart: cmChart(pick.species + ' each day',
+                days.map(d => ({ label: cmDayAxisLabel(d.day),
+                                 value: onDay.has(d.day) ? 1 : 0, key: d.day })),
+                { band, kind: 'bars', plain: true, showValues: false }),
+            image: cmShotFor(s14, pick.species),
+            explain: best + ' days in a row. A single missed day breaks a run, so '
+                   + 'counting one means hunting for the gaps rather than for the '
+                   + 'busy days.',
+            about_bird: pick.species,
         };
     },
 },
@@ -8995,22 +9015,28 @@ ${jumbled.split('').join(' ')}`,
         const cutoff = Date.now() - 5 * 86400000;
         const fresh = [...first.entries()].filter(e => e[1] >= cutoff).map(e => e[0]);
         const old   = [...first.entries()].filter(e => e[1] <  cutoff).map(e => e[0]);
-        // Exactly one newcomer, or the question has several right answers.
-        if (fresh.length !== 1 || old.length < 3) return null;
 
-        const built = cmChoices(fresh[0], cmShuffle(old, rng).slice(0, 3), rng);
+        // ⚠ ONE NEWCOMER ON THE SLIDE, not one newcomer in the fortnight.
+        // The first version demanded exactly one recent arrival across the
+        // whole feeder, and a real community had three — so it never
+        // built. What the question actually needs is that only one of the
+        // FOUR OPTIONS is new, which is a property of the options.
+        if (!fresh.length || old.length < 3) return null;
+        const answer = cmShuffle(fresh, rng)[0];
+
+        const built = cmChoices(answer, cmShuffle(old, rng).slice(0, 3), rng);
         if (!built) return null;
 
         return {
             prompt: 'Three of these birds have been coming all fortnight. One only '
                   + 'turned up in the last few days. Which is the newcomer?',
             ...built,
-            image: cmShotFor(s14, fresh[0]),
+            image: cmShotFor(s14, answer),
             image_on_reveal: true,
-            explain: 'The ' + fresh[0] + '. Birds move with the seasons and with what '
+            explain: 'The ' + answer + '. Birds move with the seasons and with what '
                    + 'there is to eat, so the list of who comes to a feeder is never '
                    + 'finished — which is the reason to write it down every day.',
-            about_bird: fresh[0],
+            about_bird: answer,
         };
     },
 },
