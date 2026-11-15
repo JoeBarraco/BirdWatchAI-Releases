@@ -2414,24 +2414,46 @@ function classroomDonutHtml(chart, revealed) {
  */
 function cmPictograph(caption, series, opts) {
     const o = opts || {};
-    const rows = (series || []).filter(s => s && isFinite(s.value));
+    let rows = (series || []).filter(s => s && isFinite(s.value));
     if (rows.length < 2) return null;
 
     const max = Math.max(...rows.map(r => r.value));
     if (max <= 0) return null;
 
+    const SCALES = [2, 5, 10, 20, 25, 50, 100];
+
     // A key of 1 is not a pictograph, it is a tally chart — and the
     // benchmark that wants a tally chart already has one. Only offer this
     // shape where a real scale is warranted.
-    const per = o.per || [1, 2, 5, 10, 20, 25, 50, 100].find(p => max / p <= 10) || 100;
-    if (per < 2 && !o.allowUnscaled) return null;
+    //
+    // `exactFor` is how a QUESTION about one row stays answerable: the key
+    // has to divide that row exactly, or the class reads 9½ birds off a
+    // chart drawn for 99 visits and answers 95. The row being asked about
+    // must be readable to the visit, whatever the others round to.
+    const per = o.per || SCALES.find(p => max / p <= 10
+                    && (o.exactFor == null || o.exactFor % p === 0));
+    if (!per) return null;
+
+    // ⚠ A ROW SMALLER THAN HALF THE KEY CANNOT BE DRAWN HONESTLY.
+    // Two visits against a key of ten is a fifth of a bird; drawn as the
+    // smallest mark available — half a bird — it reads as five, and a class
+    // counting carefully gets the wrong answer BECAUSE they counted
+    // carefully. Those rows come off the chart and the caption says how
+    // many, which is what a teacher drawing this on the board would do.
+    const kept = rows.filter(r => r.value >= per / 2);
+    const dropped = rows.length - kept.length;
+    if (kept.length < 2) return null;
+    rows = kept;
 
     rows.forEach((r, i) => {
         if (!r.color) r.color = cmRowColor(r, i, rows.length, 'spectrum');
     });
 
-    return { kind: 'picto', caption, series: rows, per,
-             icon: o.icon || '●',
+    return { kind: 'picto', per, series: rows,
+             caption: dropped
+                ? `${caption} (${dropped} rarer bird${dropped === 1 ? '' : 's'} `
+                  + `left off — too few to draw at this scale)`
+                : caption,
              showValues: !!o.showValues, highlight: o.highlight || null,
              max, total: rows.reduce((a, r) => a + r.value, 0) };
 }
@@ -2439,11 +2461,14 @@ function cmPictograph(caption, series, opts) {
 function classroomPictoHtml(chart, revealed) {
     const rows = chart.series.map(s => {
         const on    = chart.highlight && s.key === chart.highlight;
-        const whole = Math.floor(s.value / chart.per);
-        // A remainder worth drawing at all. Below a fifth of a symbol the
-        // half-glyph would read as a full one at projector distance, which
-        // is worse than leaving it off and letting the key explain it.
-        const rest  = (s.value % chart.per) / chart.per;
+        // Rounded to the nearest HALF symbol, because half a bird is the
+        // only fraction this chart can draw. Three quarters of the way to
+        // the next bird is drawn as a whole one, not as a half — 99 visits
+        // against a key of ten is ten birds, and showing nine and a half
+        // would be further from the truth, not closer to it.
+        const units = Math.round((s.value / chart.per) * 2) / 2;
+        const whole = Math.floor(units);
+        const rest  = units - whole;
 
         // The same masked bird silhouette the tally chart uses, so the two
         // charts are visibly the same KIND of thing and only the key differs
@@ -2452,7 +2477,7 @@ function classroomPictoHtml(chart, revealed) {
         for (let i = 0; i < whole; i++) {
             icons += `<span class="cc-dot" style="background:${s.color}"></span>`;
         }
-        if (rest >= 0.2) {
+        if (rest) {
             icons += `<span class="cc-dot half" style="background:${s.color}"></span>`;
         }
 
@@ -2619,8 +2644,8 @@ function cmBoxPlot(caption, values, opts) {
 }
 
 function classroomBoxHtml(chart, revealed) {
-    const W = 1000, H = 330;
-    const padL = 60, padR = 60, padT = 40, padB = 86;
+    const W = 1000, H = 372;
+    const padL = 60, padR = 60, padT = 48, padB = 124;
     const plotW = W - padL - padR;
     const f = chart.five;
 
@@ -2645,8 +2670,32 @@ function classroomBoxHtml(chart, revealed) {
         <circle cx="${X(v).toFixed(1)}" cy="${(boxTop + boxH + 12 + (i % 3) * 5).toFixed(1)}"
                 r="5" class="cc-pt-faint"></circle>`).join('');
 
-    const mark = (v, label) => revealed
-        ? `<text x="${X(v).toFixed(1)}" y="${padT + 12}" class="cc-val mid">${label} ${v}</text>` : '';
+    // ⚠ THE FIVE MARKS COLLIDE, and on a tight distribution they always
+    // will — min and Q1 sitting four visits apart rendered as "miQ1 6.5",
+    // which is not a near miss, it is two numbers eaten by each other.
+    //
+    // Two bands rather than one: the quartiles and median above the box,
+    // the extremes below the dots, which also matches where each mark
+    // actually is. Within a band, a label too close to the one before it
+    // drops to a second line instead of overprinting. Nothing is omitted —
+    // a five-number summary with a number quietly missing would be a
+    // worse chart than one with a crowded label.
+    const LABEL_W = 110;
+    const band = (items, baseY, dy) => {
+        let lastX = -Infinity, low = false;
+        return items.map(([v, label]) => {
+            const x = X(v);
+            low = (x - lastX < LABEL_W) ? !low : false;
+            lastX = x;
+            return `<text x="${x.toFixed(1)}" y="${baseY + (low ? dy : 0)}"
+                          class="cc-val mid">${label} ${v}</text>`;
+        }).join('');
+    };
+
+    const marks = revealed
+        ? band([[f.q1, 'Q1'], [f.med, 'med'], [f.q3, 'Q3']], padT + 14, -30)
+        + band([[f.min, 'min'], [f.max, 'max']], boxTop + boxH + 86, 30)
+        : '';
 
     return `
         <figure class="classroom-chart box">
@@ -2661,7 +2710,7 @@ function classroomBoxHtml(chart, revealed) {
                       width="${(X(f.q3) - X(f.q1)).toFixed(1)}" height="${boxH}"
                       class="cc-box"></rect>
                 <line x1="${X(f.med).toFixed(1)}" y1="${boxTop}" x2="${X(f.med).toFixed(1)}" y2="${boxTop + boxH}" class="cc-med"></line>
-                ${mark(f.min, 'min')}${mark(f.q1, 'Q1')}${mark(f.med, 'med')}${mark(f.q3, 'Q3')}${mark(f.max, 'max')}
+                ${marks}
                 <text x="${padL + plotW / 2}" y="${H - 14}" class="cc-axis-title mid">${esc(chart.xLabel)}</text>
             </svg>
             <figcaption>${esc(chart.caption)}</figcaption>
@@ -6157,13 +6206,21 @@ ${jumbled.split('').join(' ')}`,
         const top = s.species.slice(0, band === 'k-2' ? 4 : 5);
         if (top.length < 3) return null;
 
-        const chart = cmPictograph('Visits this week', cmSpeciesSeries(s, top.length),
-                                   { band, highlight: top[1].species });
-        // Null when no scale above 1 is warranted — at that size the tally
-        // chart is the right chart and already exists.
+        // The row being asked about must divide by the key EXACTLY, or the
+        // chart cannot be read to the visit and every answer is a near
+        // miss. Walk the species rather than always taking the second: a
+        // question that is unanswerable as drawn is worse than a lesson
+        // with one fewer question in it.
+        let chart = null, pick = null;
+        for (const cand of top.slice(1)) {
+            const c = cmPictograph('Visits this week', cmSpeciesSeries(s, top.length),
+                                   { band, highlight: cand.species, exactFor: cand.n });
+            // And it has to survive the small-row filter, or the bird being
+            // asked about is not on the chart at all.
+            if (c && c.series.some(r => r.key === cand.species)) { chart = c; pick = cand; break; }
+        }
         if (!chart) return null;
 
-        const pick = top[1];
         const built = cmChoices(String(pick.n),
             // The wrong answer this question is FOR: the number of symbols,
             // read straight off the picture without using the key.
@@ -6176,9 +6233,9 @@ ${jumbled.split('').join(' ')}`,
             ...built,
             chart,
             image: cmShotFor(s, pick.species),
-            explain: `${Math.round(pick.n / chart.per * 10) / 10} bird symbols, and each `
-                   + `one stands for ${chart.per} visits — so ${pick.n}, not `
-                   + `${Math.round(pick.n / chart.per)}.`,
+            explain: `${pick.n / chart.per} bird symbols, and each one stands for `
+                   + `${chart.per} visits — so ${pick.n}, not `
+                   + `${pick.n / chart.per}.`,
             about_bird: pick.species,
         };
     },
