@@ -1141,7 +1141,87 @@ function cmDayKeysEnding(today, count) {
     return out;
 }
 
+/**
+ * What counts as a bird.
+ *
+ * The detector reports what it sees, and what turns up at a feeder is not
+ * always a bird. A real classroom here was offered "Deer" as one of three
+ * answers to "which of these birds came to the feeder today" - which is a
+ * giveaway and a lie in the same breath, and it was the FIRST thing a
+ * six-year-old would have spotted. A detection carries no taxonomic field to
+ * sort this out with, so this is a list of the animals that actually show up
+ * in front of feeder cameras. It errs towards keeping things: an unlisted
+ * animal is treated as a bird, because dropping a real species from a lesson
+ * is worse than the occasional stray.
+ *
+ * These rows leave the classroom summary entirely rather than being hidden
+ * from the species list alone. The lesson says "bird visits" in a dozen
+ * places, and a deer is not a bird visit.
+ */
+const CM_NOT_BIRDS = new Set([
+    'deer', 'white-tailed deer', 'whitetail deer', 'mule deer', 'elk', 'moose',
+    'squirrel', 'gray squirrel', 'grey squirrel', 'eastern gray squirrel',
+    'eastern grey squirrel', 'fox squirrel', 'red squirrel', 'flying squirrel',
+    'chipmunk', 'eastern chipmunk', 'groundhog', 'woodchuck', 'marmot',
+    'raccoon', 'racoon', 'opossum', 'possum', 'virginia opossum',
+    'rabbit', 'cottontail', 'eastern cottontail', 'hare', 'jackrabbit',
+    'cat', 'domestic cat', 'house cat', 'feral cat', 'bobcat', 'lynx',
+    'dog', 'domestic dog', 'coyote', 'wolf', 'fox', 'red fox', 'gray fox',
+    'grey fox', 'bear', 'black bear', 'brown bear',
+    'skunk', 'striped skunk', 'armadillo', 'nine-banded armadillo',
+    'rat', 'mouse', 'vole', 'shrew', 'mole', 'bat',
+    'weasel', 'mink', 'otter', 'marten', 'fisher', 'badger', 'porcupine',
+    'snake', 'lizard', 'anole', 'green anole', 'brown anole', 'iguana',
+    'gecko', 'skink', 'turtle', 'tortoise', 'frog', 'toad',
+    'insect', 'butterfly', 'moth', 'bee', 'wasp', 'hornet', 'dragonfly',
+    'human', 'person', 'people', 'man', 'woman', 'child',
+    'unknown', 'other', 'none', 'no bird', 'empty', 'motion', 'background',
+]);
+
+/**
+ * The detector falls back to the scientific name when it has no common one,
+ * and "Streptopelia chinensis" in front of a Year 2 class is not a bird, it
+ * is a spelling test. Only binomials actually seen in this community's data
+ * are mapped; an unmapped one is left exactly as it came rather than guessed
+ * at, because a wrong common name is worse than a Latin one.
+ */
+const CM_LATIN_COMMON = {
+    'streptopelia chinensis':   'Spotted Dove',
+    'streptopelia decaocto':    'Eurasian Collared-Dove',
+    'columba livia':            'Rock Pigeon',
+    'columba livia domestica':  'Rock Pigeon',
+    'columba palumbus':         'Common Wood-Pigeon',
+    'zenaida macroura':         'Mourning Dove',
+    'zenaida asiatica':         'White-winged Dove',
+    'cardinalis cardinalis':    'Northern Cardinal',
+    'baeolophus bicolor':       'Tufted Titmouse',
+    'thryothorus ludovicianus': 'Carolina Wren',
+    'haemorhous mexicanus':     'House Finch',
+    'passer domesticus':        'House Sparrow',
+    'sturnus vulgaris':         'European Starling',
+    'quiscalus quiscula':       'Common Grackle',
+    'cyanocitta cristata':      'Blue Jay',
+};
+
+function cmSpeciesName(sp) {
+    const k = String(sp || '').trim().toLowerCase();
+    return CM_LATIN_COMMON[k] || sp;
+}
+
+function cmIsBird(sp) {
+    return !CM_NOT_BIRDS.has(String(sp || '').trim().toLowerCase());
+}
+
 function cmSummarize(feederId, name, rows, isHome, windowDays) {
+    // Scientific names become common ones and the non-birds go, before a
+    // single count is taken - so every number downstream, every chart and
+    // every photo is drawn from the same cleaned set rather than each
+    // template having to remember to filter for itself.
+    const nonBird = rows.filter(r => !cmIsBird(r.species)).length;
+    rows = rows.filter(r => cmIsBird(r.species))
+               .map(r => (cmSpeciesName(r.species) === r.species
+                          ? r : { ...r, species: cmSpeciesName(r.species) }));
+
     const bySpecies = new Map();
     const byDay     = new Map();
     const byHour    = new Array(24).fill(0);
@@ -1197,6 +1277,10 @@ function cmSummarize(feederId, name, rows, isHome, windowDays) {
         rows, total: rows.length,
         species, bySpecies, days, byDay, byHour, daySpec, snapshots, clips,
         distinct: species.length,
+        // Kept rather than discarded: a class that knows a deer walked past
+        // the feeder is better off than one that thinks nothing did, and a
+        // question may want to say so one day.
+        nonBird,
         avgTemp: tempRows ? tempSum / tempRows : null,
         tempCoverage: rows.length ? tempRows / rows.length : 0,
         dayTemp,
@@ -4263,9 +4347,12 @@ const CLASSROOM_TEMPLATES = [
         const baseIsToday = baseKey === todayKey;
         const aheadKey = cmDayKey(new Date(cmDayStart(baseKey).getTime() + 86400000));
         const ahead = aheadKey === todayKey ? 'today' : 'tomorrow';
-        const back  = baseIsToday ? 'today' : 'then';
-        const opts = cmShuffle(['More than ' + back, 'Fewer than ' + back,
-                                'About the same'], rng);
+        // "More than then" is not English. When the comparison day is not
+        // today the prompt has already named it, so the choices carry the
+        // direction alone rather than pointing back at a word.
+        const opts = cmShuffle(baseIsToday
+            ? ['More than today', 'Fewer than today', 'About the same']
+            : ['More', 'Fewer', 'About the same'], rng);
         const lead = baseIsToday
             ? `Today ${feeder} had ${baseN} bird visits.`
             : `On ${cmDayProse(baseKey)} ${feeder} had ${baseN} bird visits.`;
@@ -4689,8 +4776,8 @@ const CLASSROOM_TEMPLATES = [
             explain: opts.map(d => `${cmDayAxisLabel(d.day)}: ${d.n}`).join(' · ')
                    + (many
                       ? `. ${cmDayAxisLabel(answer.day)} had ${min} - and so did `
-                        + `${tied.length - 1} other day${tied.length > 2 ? 's' : ''} this `
-                        + 'week. The chart shows that; four choices cannot.'
+                        + (tied.length === 2 ? 'one other day' : `${tied.length - 1} other days`)
+                        + ' this week. The chart shows that; four choices cannot.'
                       : ''),
         };
     },
@@ -4976,7 +5063,10 @@ const CLASSROOM_TEMPLATES = [
         const built = cmChoices(answer, cmShuffle(notThen, rng).slice(0, 2), rng);
         if (!built) return null;
         return {
-            prompt: `Which of these birds came to the feeder ${isToday ? 'TODAY' : 'on ' + cmDayProse(key).toUpperCase()}?`,
+            // TODAY is shouted because the whole point is to stop a class
+            // answering from the week. A spelled-out date is specific on its
+            // own, and "ON SATURDAY NOVEMBER 14TH" is just loud.
+            prompt: `Which of these birds came to the feeder ${isToday ? 'TODAY' : 'on ' + cmDayProse(key)}?`,
             ...built,
             explain: `${answer} came ${on.get(answer)} time(s) ${when}. `
                    + `The others came on other days this week, but not ${isToday ? 'today' : 'then'}.`,
