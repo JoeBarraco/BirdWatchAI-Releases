@@ -3903,6 +3903,57 @@
 .classroom-row-close:hover .classroom-row-name { color: var(--color-gray-900); }
 .classroom-pane-right { flex: 1 1 auto; min-width: 0; }
 
+/* ── The panel's own header, and the way out ───────────────────────
+   ⚠ THE CLOSE BUTTON HAS TO BE ON SCREEN AT EVERY WIDTH.
+
+   The Close in the left column (.classroom-row-close) is reachable only
+   while that column is sticky, and it is sticky only while the panes sit
+   side by side. Below 720px they stack — correctly, a sticky column there
+   would pin itself over the pane it introduces — so the column, and the
+   only visible way out of a panel that fills the entire window, scrolls
+   off the top. Measured on a phone with a lesson review open: 2961px of
+   content in an 812px window, with Close at top:-921 and nothing else to
+   press. Escape still worked, which is no help on a tablet.
+
+   So the title bar stays put and carries the close.
+
+   The box loses its top padding and the bar supplies its own, rather than
+   the bar wearing a negative top margin to cancel it. Tried that first:
+   a sticky element whose margin box starts above the scrollport settles a
+   margin's worth too low when it sticks, so a 24px band of the lesson
+   review showed ABOVE the title bar the whole way down. The horizontal
+   negative margins are still needed and are not the same problem - they
+   only widen the opaque background out to the edges of the box, without
+   which the content scrolls up through the gap either side. */
+#classroom-panel-modal .mod-admin-box { padding-top: 0; }
+#classroom-panel-modal .classroom-panel-head {
+    position: sticky; top: 0; z-index: 6;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 1rem;
+    margin: 0 -1.75rem 1rem;
+    padding: 0.85rem 1.75rem;
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
+}
+#classroom-panel-modal .classroom-panel-head h3 { margin-bottom: 0; }
+
+/* 40px square: a close button is the one control on this panel somebody
+   reaches for in a hurry, often one-handed, and the ✕ glyph itself is
+   small. */
+.classroom-head-close {
+    flex: 0 0 auto;
+    width: 40px; height: 40px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.6rem; line-height: 1;
+    border: 1px solid var(--border); border-radius: 8px;
+    background: var(--bg-card); color: var(--color-gray-500);
+    font-family: inherit; cursor: pointer;
+}
+.classroom-head-close:hover {
+    border-color: var(--color-gray-500); color: var(--color-gray-900);
+}
+
+
 @media (max-width: 720px) {
     .classroom-panes { flex-direction: column; }
     .classroom-pane-left {

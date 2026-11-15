@@ -13,7 +13,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="BirdWatchAI">
-    <link rel="stylesheet" href="css/community.css?v=fb7b429e">
+    <link rel="stylesheet" href="css/community.css?v=1eb2db27">
 </head>
 <body>
 <!-- Top navbar with auth controls -->
@@ -923,7 +923,20 @@
 
 <div id="classroom-panel-modal" role="dialog" aria-modal="true">
     <div class="mod-admin-box">
-        <h3>Classroom</h3>
+        <!-- Sticky, with the close button in it. The panel fills the window
+             and a lesson review runs to sixty questions, so whatever is open
+             on the right is usually taller than the screen. The Close in the
+             left column is pinned only while the panes sit side by side;
+             below 720px they stack and that column scrolls away with
+             everything else, which left a full-screen panel with no visible
+             way out. Reported twice now, the second time as "I frequently
+             have trouble finding the close button when pages are expanded".
+             Top-right is where a dialog's close belongs anyway. -->
+        <div class="classroom-panel-head">
+            <h3>Classroom</h3>
+            <button type="button" class="classroom-head-close"
+                    onclick="closeClassroomPanel()" aria-label="Close">&times;</button>
+        </div>
 
         <p id="classroom-panel-empty" style="display:none;font-size:0.85rem;color:var(--color-gray-500);">
             You aren't a teacher in any community yet. A community moderator can make you
