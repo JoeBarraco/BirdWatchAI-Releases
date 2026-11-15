@@ -8930,6 +8930,177 @@ ${jumbled.split('').join(' ')}`,
     },
 },
 
+// ════════════════════════════════════════════════════════════════════
+//  Statistics the community site already draws, in the classroom
+// ════════════════════════════════════════════════════════════════════
+//
+//  Every benchmark is covered, so none of these close a gap. They are
+//  here because the Stats tab on the community site computes a dozen
+//  things no lesson has ever used — streaks, first sightings, species
+//  that have stopped coming, which two birds share a day — and a class
+//  watching the same feeder deserves the questions their teacher can
+//  already see the answers to.
+//
+//  VARIETY IS A REAL PROBLEM, not a nicety: a class running a lesson
+//  every day meets the whole set in a fortnight, which is exactly why
+//  the ordering code bothers to push repeats to the back.
+
+{
+    // The Records tab counts consecutive active days. A streak is a
+    // pattern in time, and it is the kind of number a class can check
+    // itself on the following morning.
+    id: 'stat-streak',
+    category: 'counting',
+    title: 'Days in a row',
+    bands: ['3-5'],
+    build({ s14, band, rng }) {
+        const days = s14.days;
+        if (days.length < 8) return null;
+
+        let best = 0, run = 0;
+        days.forEach(d => { run = d.n > 0 ? run + 1 : 0; if (run > best) best = run; });
+        // No streak, or every single day — neither is a question.
+        if (best < 2 || best === days.length) return null;
+
+        const built = cmChartCountChoices(best, rng, null, 3);
+        if (!built) return null;
+
+        return {
+            prompt: 'What is the longest run of days IN A ROW when at least one bird came?',
+            ...built,
+            chart: cmChart('Visits each day', cmDaySeries(s14), { band, showValues: true }),
+            explain: best + ' days in a row. A single empty day breaks a run, so counting '
+                   + 'one means hunting for the gaps rather than for the busy days.',
+        };
+    },
+},
+
+{
+    // "New arrivals" on the Records tab: a species whose first sighting
+    // in the window is recent. For a class this is the question that
+    // makes a feeder feel alive — something turned up that was not here
+    // before.
+    id: 'stat-new-arrival',
+    category: 'science',
+    title: 'Who is new?',
+    bands: ['3-5', '6-8'],
+    build({ s14, rng }) {
+        const first = new Map();
+        s14.rows.forEach(r => {
+            const t = new Date(r.detected_at).getTime();
+            if (!first.has(r.species) || t < first.get(r.species)) first.set(r.species, t);
+        });
+        if (first.size < 4) return null;
+
+        const cutoff = Date.now() - 5 * 86400000;
+        const fresh = [...first.entries()].filter(e => e[1] >= cutoff).map(e => e[0]);
+        const old   = [...first.entries()].filter(e => e[1] <  cutoff).map(e => e[0]);
+        // Exactly one newcomer, or the question has several right answers.
+        if (fresh.length !== 1 || old.length < 3) return null;
+
+        const built = cmChoices(fresh[0], cmShuffle(old, rng).slice(0, 3), rng);
+        if (!built) return null;
+
+        return {
+            prompt: 'Three of these birds have been coming all fortnight. One only '
+                  + 'turned up in the last few days. Which is the newcomer?',
+            ...built,
+            image: cmShotFor(s14, fresh[0]),
+            image_on_reveal: true,
+            explain: 'The ' + fresh[0] + '. Birds move with the seasons and with what '
+                   + 'there is to eat, so the list of who comes to a feeder is never '
+                   + 'finished — which is the reason to write it down every day.',
+            about_bird: fresh[0],
+        };
+    },
+},
+
+{
+    // The Pairs tab counts how often two species share a day. That is
+    // co-occurrence, and it is the evidence behind the relationships
+    // SC.7.L.17.2 names.
+    id: 'stat-pair-days',
+    category: 'science',
+    title: 'Seen on the same day',
+    bands: ['6-8'],
+    build({ s14, rng }) {
+        const SEP = ' & ';
+        const pairs = new Map();
+        s14.daySpec.forEach(m => {
+            const sp = [...m.keys()].sort();
+            for (let i = 0; i < sp.length; i++) {
+                for (let j = i + 1; j < sp.length; j++) {
+                    const k = sp[i] + SEP + sp[j];
+                    pairs.set(k, (pairs.get(k) || 0) + 1);
+                }
+            }
+        });
+        if (pairs.size < 4) return null;
+
+        const ranked = [...pairs.entries()].sort((a, b) => b[1] - a[1]);
+        // A tie at the top has two right answers.
+        if (ranked[0][1] < 3 || ranked[0][1] === ranked[1][1]) return null;
+
+        const built = cmChoices(ranked[0][0], ranked.slice(1, 4).map(e => e[0]), rng);
+        if (!built) return null;
+
+        return {
+            prompt: 'Which of these pairs of birds turned up on the SAME day most often?',
+            ...built,
+            explain: ranked[0][0] + ' shared ' + ranked[0][1] + ' days. Two species at '
+                   + 'one feeder are after the same seed — but sharing a day is not '
+                   + 'sharing a minute, and the camera cannot tell you which. That gap '
+                   + 'between what the data shows and what you would like it to show is '
+                   + 'the thing worth noticing.',
+        };
+    },
+},
+
+{
+    // The Life List gives every species its own peak hour. One species
+    // at a time is a sharper question than "when is the feeder busy",
+    // because the answer genuinely differs per bird.
+    id: 'stat-species-hour',
+    category: 'time',
+    title: 'When does this bird come?',
+    bands: ['3-5'],
+    build({ s, band, rng }) {
+        if (!s.species.length) return null;
+        const pick = s.species[0];
+
+        const hours = new Array(24).fill(0);
+        s.rows.forEach(r => {
+            if (r.species === pick.species) hours[new Date(r.detected_at).getHours()]++;
+        });
+        const peak = hours.indexOf(Math.max(...hours));
+        if (hours[peak] < 3) return null;
+
+        // Only hours this bird was actually seen, so every wrong option is
+        // still a bar on the chart rather than an hour nothing happened.
+        const seen = hours.map((n, h) => ({ n: n, h: h }))
+                          .filter(x => x.n > 0 && x.h !== peak);
+        if (seen.length < 2) return null;
+
+        const built = cmChoices(fmtHourShort(peak),
+            cmShuffle(seen, rng).slice(0, 3).map(x => fmtHourShort(x.h)), rng);
+        if (!built) return null;
+
+        return {
+            prompt: 'At what time of day did the ' + pick.species + ' come most often?',
+            ...built,
+            chart: cmChart(pick.species + ' by hour',
+                hours.map((n, h) => ({ label: fmtHourShort(h), value: n, key: String(h) }))
+                     .filter(r => r.value > 0),
+                { band, ordered: true }),
+            image: cmShotFor(s, pick.species),
+            explain: 'Most ' + pick.species + ' visits were around ' + fmtHourShort(peak)
+                   + '. Different birds keep different hours at the same feeder, so '
+                   + '"when is it busy" has a different answer for every one of them.',
+            about_bird: pick.species,
+        };
+    },
+},
+
 {
     // MA.6.GR.1.1 — plot rational ordered pairs in ALL FOUR quadrants.
     //

@@ -357,6 +357,17 @@ const CLASSROOM_TEMPLATE_STANDARDS = {
     'partner-count':        ['SC.K.N.1.1', 'SC.K.N.1.2'],
 
     'lang-base-words':      ['ELA.2.V.1.2', 'ELA.1.V.1.2'],
+
+    // ── Statistics the community site already draws ──────────────────
+    //
+    // These close no gap — every benchmark was covered before them. They
+    // exist for variety, and they tag to benchmarks that were already
+    // served, which is the normal case and not a problem: a benchmark
+    // deserves more than one question.
+    'stat-streak':          ['MA.3.DP.1.2', 'MA.3.AR.3.3'],
+    'stat-new-arrival':     ['SC.3.L.17.1', 'SC.4.L.17.1'],
+    'stat-pair-days':       ['SC.7.L.17.2', 'SC.7.N.1.6'],
+    'stat-species-hour':    ['MA.3.M.2.1', 'MA.3.DP.1.2'],
 };
 
 // ════════════════════════════════════════════════════════════════════
