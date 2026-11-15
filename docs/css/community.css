@@ -3903,44 +3903,60 @@
 .classroom-row-close:hover .classroom-row-name { color: var(--color-gray-900); }
 .classroom-pane-right { flex: 1 1 auto; min-width: 0; }
 
-/* ── The panel's own header, and the way out ───────────────────────
+/* ── A panel's own header, and the way out ─────────────────────────
    ⚠ THE CLOSE BUTTON HAS TO BE ON SCREEN AT EVERY WIDTH.
 
-   The Close in the left column (.classroom-row-close) is reachable only
-   while that column is sticky, and it is sticky only while the panes sit
-   side by side. Below 720px they stack — correctly, a sticky column there
-   would pin itself over the pane it introduces — so the column, and the
-   only visible way out of a panel that fills the entire window, scrolls
-   off the top. Measured on a phone with a lesson review open: 2961px of
-   content in an 812px window, with Close at top:-921 and nothing else to
-   press. Escape still worked, which is no help on a tablet.
+   Both of these panels put their Close at the end of their content: the
+   classroom panel in its left column, the community panel in a button row
+   at the bottom. Both are fine until the panel is taller than the window,
+   which is most of the time — a lesson review runs to sixty questions, and
+   the community panel carries two rosters.
 
-   So the title bar stays put and carries the close.
+   The classroom one was reported twice. Its column Close is pinned only
+   while the two panes sit side by side; below 720px they stack (correctly,
+   a sticky column there would pin itself over the pane it introduces) and
+   the column scrolls off the top, leaving a panel that fills the whole
+   window with no visible way out. Measured on a phone with a review open:
+   2961px of content in an 812px window, Close at top:-921, nothing else to
+   press. Escape worked, which is no help on a tablet.
 
-   The box loses its top padding and the bar supplies its own, rather than
-   the bar wearing a negative top margin to cancel it. Tried that first:
-   a sticky element whose margin box starts above the scrollport settles a
-   margin's worth too low when it sticks, so a 24px band of the lesson
-   review showed ABOVE the title bar the whole way down. The horizontal
-   negative margins are still needed and are not the same problem - they
-   only widen the opaque background out to the edges of the box, without
-   which the content scrolls up through the gap either side. */
-#classroom-panel-modal .mod-admin-box { padding-top: 0; }
-#classroom-panel-modal .classroom-panel-head {
+   So the title bar stays put and carries the close, at the top right where
+   a dialog's close belongs. The Close each panel already had stays too —
+   each is still the right thing in its place, and neither costs anything.
+
+   ⚠ THE BAR MUST NOT WEAR A NEGATIVE TOP MARGIN to cancel the box's
+   padding. That was the first attempt: a sticky element whose margin box
+   starts above the scrollport settles a margin's worth too low when it
+   sticks, so a 24px band of the content showed ABOVE the title bar the
+   whole way down. The box loses its padding-top instead and the bar
+   supplies its own. The horizontal negative margins are a different matter
+   and are still needed, so the opaque background reaches the edges rather
+   than letting content scroll up either side.
+
+   --head-pad is the box's own horizontal padding. It is a variable so the
+   margin that cancels it cannot drift from it: the two panels pad
+   differently (1.75rem and 1.5rem) and a hardcoded pair would be two more
+   numbers to keep in step. */
+.mod-panel-head {
+    --head-pad: 1.5rem;
     position: sticky; top: 0; z-index: 6;
     display: flex; align-items: center; justify-content: space-between;
     gap: 1rem;
-    margin: 0 -1.75rem 1rem;
-    padding: 0.85rem 1.75rem;
+    margin: 0 calc(var(--head-pad) * -1) 1rem;
+    padding: 0.85rem var(--head-pad);
     background: var(--bg-card);
     border-bottom: 1px solid var(--border);
 }
-#classroom-panel-modal .classroom-panel-head h3 { margin-bottom: 0; }
+.mod-panel-head h3 { margin-bottom: 0; }
 
-/* 40px square: a close button is the one control on this panel somebody
+#classroom-panel-modal .mod-panel-head { --head-pad: 1.75rem; }
+#classroom-panel-modal .mod-admin-box,
+#community-panel-modal .mod-admin-box { padding-top: 0; }
+
+/* 40px square: a close button is the one control on these panels somebody
    reaches for in a hurry, often one-handed, and the ✕ glyph itself is
    small. */
-.classroom-head-close {
+.mod-head-close {
     flex: 0 0 auto;
     width: 40px; height: 40px;
     display: flex; align-items: center; justify-content: center;
@@ -3949,7 +3965,7 @@
     background: var(--bg-card); color: var(--color-gray-500);
     font-family: inherit; cursor: pointer;
 }
-.classroom-head-close:hover {
+.mod-head-close:hover {
     border-color: var(--color-gray-500); color: var(--color-gray-900);
 }
 

@@ -13,7 +13,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="BirdWatchAI">
-    <link rel="stylesheet" href="css/community.css?v=1eb2db27">
+    <link rel="stylesheet" href="css/community.css?v=51e86ab1">
 </head>
 <body>
 <!-- Top navbar with auth controls -->
@@ -637,7 +637,17 @@
 <!-- Community owner / moderator panel: approve feeder join requests, invite people -->
 <div id="community-panel-modal" role="dialog" aria-modal="true">
     <div class="mod-admin-box">
-        <h3>Manage Community</h3>
+        <!-- Sticky, with the close button in it. Same reasoning as the
+             classroom panel (see .mod-panel-head): this box holds two
+             rosters and runs past the bottom of the window as soon as a
+             community has a few members, which left the Close at the end of
+             the content several scrolls away. The Close button row at the
+             bottom stays; this is the one that is always reachable. -->
+        <div class="mod-panel-head">
+            <h3>Manage Community</h3>
+            <button type="button" class="mod-head-close"
+                    onclick="closeCommunityPanel()" aria-label="Close">&times;</button>
+        </div>
 
         <!-- Shown when the signed-in user manages nothing yet. The nav button is
              visible to any signed-in user so someone who has just bought can reach
@@ -932,9 +942,9 @@
              way out. Reported twice now, the second time as "I frequently
              have trouble finding the close button when pages are expanded".
              Top-right is where a dialog's close belongs anyway. -->
-        <div class="classroom-panel-head">
+        <div class="mod-panel-head">
             <h3>Classroom</h3>
-            <button type="button" class="classroom-head-close"
+            <button type="button" class="mod-head-close"
                     onclick="closeClassroomPanel()" aria-label="Close">&times;</button>
         </div>
 
