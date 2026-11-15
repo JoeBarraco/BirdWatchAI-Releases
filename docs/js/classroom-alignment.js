@@ -335,6 +335,28 @@ const CLASSROOM_TEMPLATE_STANDARDS = {
     // is geographic information, and the class is constructing the chart
     // rather than reading one.
     'build-bar-chart':      ['MA.5.DP.1.1', 'MA.4.DP.1.1', 'SS.5.G.1.4'],
+
+    // ── The last four ────────────────────────────────────────────────
+    //
+    // MA.6.DP.1.5 says CREATE a histogram, and this one does: the raw
+    // daily counts are handed over unsorted and the class bins them
+    // before a single bar goes up. Reading one is MA.6.DP.1.4, which
+    // histogram-spread already has.
+    'build-histogram':      ['MA.6.DP.1.5', 'MA.6.DP.1.4'],
+
+    // MA.6.GR.1.1 wants a point PLOTTED in all four quadrants, so the
+    // class plots one on a real grid. Counts and temperatures are
+    // positive and never leave quadrant I; day-to-day CHANGES are signed,
+    // which is what lets feeder data meet that clause at all.
+    'plot-the-change':      ['MA.6.GR.1.1', 'MA.6.NSO.1.2'],
+
+    // SC.K.N.1.1 is "collaborate with a partner to collect information",
+    // which is an activity — and this is the only question in the set
+    // that claims it, because the pair really does collect the
+    // information: both count the clip alone, then compare.
+    'partner-count':        ['SC.K.N.1.1', 'SC.K.N.1.2'],
+
+    'lang-base-words':      ['ELA.2.V.1.2', 'ELA.1.V.1.2'],
 };
 
 // ════════════════════════════════════════════════════════════════════

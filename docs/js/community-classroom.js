@@ -2048,6 +2048,101 @@ function cmDaysSeenSeries(s, limit) {
         .filter(r => r.value > 0);
 }
 
+/**
+ * A four-quadrant grid the class plots a point on.
+ *
+ * MA.6.GR.1.1 says "plot rational number ordered pairs in all four
+ * quadrants", and every other way of asking it is a quiz ABOUT plotting:
+ * name the quadrant, read off a point somebody else placed. The verb is
+ * plot, so the class plots.
+ *
+ * ⚠ THE DATA HAS TO REACH ALL FOUR QUADRANTS, which is why it is
+ * CHANGES rather than counts. Visits and temperature are both positive
+ * numbers and would never leave the first quadrant; day-to-day change in
+ * each is signed by nature — colder and quieter is genuinely (−, −).
+ * That is also the only honest way the benchmark's "all four quadrants"
+ * clause is met by feeder data at all.
+ */
+function classroomGridHtml(q, revealed) {
+    const g = q.grid;
+    if (!g) return '';
+
+    const R = g.range;                    // the grid runs -R..R on both axes
+    const W = 620, pad = 40;
+    const plot = W - pad * 2;
+    const unit = plot / (R * 2);
+    const X = v => pad + (v + R) * unit;
+    const Y = v => pad + (R - v) * unit;
+
+    let grid = '';
+    for (let i = -R; i <= R; i++) {
+        grid += `<line x1="${X(i)}" y1="${pad}" x2="${X(i)}" y2="${W - pad}"
+                       class="${i === 0 ? 'cc-axis-line' : 'cc-grid'}"></line>
+                 <line x1="${pad}" y1="${Y(i)}" x2="${W - pad}" y2="${Y(i)}"
+                       class="${i === 0 ? 'cc-axis-line' : 'cc-grid'}"></line>`;
+    }
+    // Only every other number, or the labels collide at projector size.
+    for (let i = -R; i <= R; i++) {
+        if (i === 0 || i % 2) continue;
+        grid += `<text x="${X(i)}" y="${Y(0) + 26}" class="cc-axis mid">${i}</text>
+                 <text x="${X(0) - 12}" y="${Y(i) + 8}" class="cc-axis end">${i}</text>`;
+    }
+
+    // Every cell is a target, so the class can be wrong in a readable way.
+    let cells = '';
+    if (!revealed) {
+        for (let x = -R; x <= R; x++) {
+            for (let y = -R; y <= R; y++) {
+                cells += `<circle cx="${X(x)}" cy="${Y(y)}" r="${unit * 0.42}"
+                                  class="cc-grid-hit" onclick="classroomGridPlot(${x},${y})"></circle>`;
+            }
+        }
+    }
+
+    const put = q.grid_at;
+    const right = put && put.x === g.target.x && put.y === g.target.y;
+    const mark = put
+        ? `<circle cx="${X(put.x)}" cy="${Y(put.y)}" r="11"
+                   class="cc-grid-mark ${q.grid_checked ? (right ? 'ok' : 'bad') : ''}"></circle>`
+        : '';
+    const truth = (revealed || (q.grid_checked && !right))
+        ? `<circle cx="${X(g.target.x)}" cy="${Y(g.target.y)}" r="13" class="cc-grid-truth"></circle>`
+        : '';
+
+    return `
+      <figure class="classroom-chart cc-grid">
+        <svg viewBox="0 0 ${W} ${W}" role="img" aria-label="${esc(g.caption)}">
+          ${grid}${cells}${truth}${mark}
+          <text x="${W - pad + 4}" y="${Y(0) - 10}" class="cc-axis-title end">${esc(g.xLabel)}</text>
+          <text x="${X(0) + 10}" y="${pad - 12}" class="cc-axis-title">${esc(g.yLabel)}</text>
+        </svg>
+        <figcaption>${esc(g.caption)}</figcaption>
+      </figure>`;
+}
+
+function classroomGridPlot(x, y) {
+    const S = classroomSession;
+    if (!S || S.revealed) return;
+    const q = S.questions[S.index];
+    if (!q || !q.grid) return;
+    q.grid_at = { x, y };
+    q.grid_checked = false;
+    renderClassroomStage();
+}
+
+function classroomGridCheck() {
+    const S = classroomSession;
+    if (!S || S.revealed) return;
+    const q = S.questions[S.index];
+    if (!q || !q.grid || !q.grid_at) return;
+
+    const right = q.grid_at.x === q.grid.target.x && q.grid_at.y === q.grid.target.y;
+    q.grid_checked = true;
+    if (q.grid_scored) { renderClassroomStage(); return; }
+    q.grid_scored = true;
+    answerClassroomQuestion(right ? 0 : 1);
+}
+
 function classroomBuildChartHtml(q, revealed) {
     const b = q.build;
     if (!b) return '';
@@ -2164,6 +2259,18 @@ function classroomChoicesBlock(S, q, choices) {
     // the chart is graded. Offering the two record options as buttons as
     // well would be two ways to answer one question, and the wrong one is
     // a tap away.
+    if (q.grid && !S.revealed) {
+        return `<div class="cc-build-foot">
+            <button class="classroom-btn-primary big" ${q.grid_at ? '' : 'disabled'}
+                    onclick="classroomGridCheck()">
+                ${q.grid_at ? (q.grid_checked ? 'Check it again' : 'Plot it — check')
+                            : 'Tap where the point goes'}</button>
+            ${q.grid_checked
+                ? '<p class="classroom-muted">The ringed point is where it should be.</p>'
+                : ''}
+        </div>`;
+    }
+
     if (q.build && !S.revealed) {
         return `<div class="cc-build-foot">
             <button class="classroom-btn-primary big" onclick="classroomBuildCheck()">
@@ -2217,6 +2324,7 @@ function classroomEvidenceHtml(q, revealed) {
     // and a photograph beside it would be something else to look at while
     // they are meant to be reading a table.
     if (q.build) return classroomBuildChartHtml(q, revealed);
+    if (q.grid)  return classroomGridHtml(q, revealed);
     if (q.video && q.video.url) return classroomClipHtml(q, revealed);
     // image_on_reveal: a photo that would answer the question, held back until
     // the answer is up. Before then the slide falls through to whatever else
@@ -8821,6 +8929,197 @@ ${jumbled.split('').join(' ')}`,
         };
     },
 },
+
+{
+    // MA.6.GR.1.1 — plot rational ordered pairs in ALL FOUR quadrants.
+    //
+    // Counts and temperatures are positive, so a chart of them never
+    // leaves the first quadrant and the benchmark's own clause goes
+    // unmet. CHANGES are signed by nature: a day that was colder and
+    // quieter than the one before is genuinely (−, −). That is what
+    // makes the feeder able to carry this at all.
+    id: 'plot-the-change',
+    category: 'math',
+    title: 'Plot the day',
+    bands: ['6-8'],
+    build({ s14, rng }) {
+        // Days that have both a temperature and a previous day to compare
+        // with, as (change in temperature, change in visits).
+        const pts = [];
+        for (let i = 1; i < s14.days.length; i++) {
+            const a = s14.days[i - 1], b = s14.days[i];
+            const ta = s14.dayTemp.get(a.day), tb = s14.dayTemp.get(b.day);
+            if (!ta || !tb || ta.n < 3 || tb.n < 3) continue;
+            const dT = Math.round(tb.sum / tb.n) - Math.round(ta.sum / ta.n);
+            const dV = b.n - a.n;
+            if (dT === 0 || dV === 0) continue;         // on an axis, not in a quadrant
+            pts.push({ day: b.day, x: dT, y: dV });
+        }
+        if (pts.length < 3) return null;
+
+        // Small enough to read on a grid. Visits swing far more than
+        // degrees do, so the y value is scaled to tens and the prompt
+        // says so rather than quietly redefining the number.
+        const usable = pts.map(p => ({ ...p, y: Math.round(p.y / 10) }))
+                          .filter(p => Math.abs(p.x) <= 8 && Math.abs(p.y) <= 8 && p.y !== 0);
+        if (!usable.length) return null;
+
+        const pick = cmShuffle(usable, rng)[0];
+
+        return {
+            prompt: `On ${cmDayProse(pick.day)} it was ${Math.abs(pick.x)}° `
+                  + `${pick.x > 0 ? 'warmer' : 'colder'} than the day before, and we had `
+                  + `about ${Math.abs(pick.y)} ten${Math.abs(pick.y) === 1 ? '' : 's'} `
+                  + `${pick.y > 0 ? 'more' : 'fewer'} visits. Plot that day as `
+                  + `(${pick.x}, ${pick.y}).`,
+            choices: [{ label: 'We plotted it correctly' }, { label: 'We needed another go' }],
+            correct_index: 0,
+            grid: {
+                range: 8, target: { x: pick.x, y: pick.y },
+                caption: 'Change from the day before',
+                xLabel: 'degrees warmer →',
+                yLabel: '↑ tens more visits',
+            },
+            explain: `(${pick.x}, ${pick.y}) — along first, then up or down. `
+                   + `${pick.x < 0 ? 'A negative x goes LEFT of zero' : 'A positive x goes RIGHT of zero'} `
+                   + `and ${pick.y < 0 ? 'a negative y goes DOWN' : 'a positive y goes UP'}, which puts `
+                   + `it in quadrant ${pick.x > 0 && pick.y > 0 ? 'I'
+                      : pick.x < 0 && pick.y > 0 ? 'II'
+                      : pick.x < 0 ? 'III' : 'IV'}.`,
+        };
+    },
+},
+
+{
+    // MA.6.DP.1.5 — "create box plots and histograms to represent sets of
+    // numerical data". A histogram is bars over BINS, so the build
+    // machinery already fits; what makes it a histogram rather than a bar
+    // chart is that the class has to decide which bin each day falls in
+    // before they can build anything.
+    //
+    // The raw numbers are listed in the prompt rather than pre-sorted into
+    // the table, because sorting them IS the work. Every other build hands
+    // the class a finished table; this one hands them a pile.
+    id: 'build-histogram',
+    category: 'analysis',
+    title: 'Build the histogram',
+    bands: ['6-8'],
+    build({ s14 }) {
+        const vals = s14.days.map(d => d.n).filter(n => n > 0);
+        if (vals.length < 8) return null;
+
+        const max = Math.max(...vals), min = Math.min(...vals);
+        if (max - min < 4) return null;                 // nothing to bin
+
+        const width = cmNiceStep(max - min);
+        const bins = new Map();
+        vals.forEach(v => {
+            const b = Math.floor(v / width) * width;
+            bins.set(b, (bins.get(b) || 0) + 1);
+        });
+        if (bins.size < 3 || bins.size > 6) return null;
+
+        const series = [...bins.entries()].sort((a, b) => a[0] - b[0])
+            .map(([b, n]) => ({ label: `${b}–${b + width - 1}`, value: n }));
+
+        const spec = cmBuildSpec('Our histogram', series,
+            { kind: 'bars', unit: 'day', maxPresses: 10, maxRows: 6 });
+        if (!spec) return null;
+
+        return {
+            prompt: `Here are our daily visit counts: ${vals.join(', ')}. Sort them into `
+                  + `the bins and build the histogram — each bar counts the DAYS that `
+                  + `fell in that range.`,
+            choices: [{ label: 'We built it correctly' }, { label: 'We needed another go' }],
+            correct_index: 0,
+            build: spec,
+            explain: `Each bar counts days, not visits — that is the difference between a `
+                   + `histogram and the bar chart of the week. The bins are `
+                   + `${width} wide, so a day with ${vals[0]} visits goes in the `
+                   + `${Math.floor(vals[0] / width) * width}–${
+                     Math.floor(vals[0] / width) * width + width - 1} bin.`,
+        };
+    },
+},
+
+{
+    // ELA.2.V.1.2 — base words and affixes. Bird vocabulary is unusually
+    // honest material for this: a feeder really is a thing that feeds,
+    // and a nestling really is a small thing in a nest, so the affix is
+    // doing visible work rather than being a spelling rule.
+    id: 'lang-base-words',
+    category: 'language',
+    title: 'Words inside words',
+    bands: ['k-2'],
+    needsData: false,
+    build({ rng }) {
+        const picks = [
+            { word: 'FEEDER',   base: 'feed',  affix: '-er',
+              means: 'a thing that feeds', also: 'teacher, baker, singer' },
+            { word: 'NESTLING', base: 'nest',  affix: '-ling',
+              means: 'a little one in the nest', also: 'duckling, gosling' },
+            { word: 'SINGING',  base: 'sing',  affix: '-ing',
+              means: 'doing it right now', also: 'flying, eating, looking' },
+        ];
+        const p = cmShuffle(picks, rng)[0];
+
+        const built = cmChoices(p.base.toUpperCase(),
+            picks.filter(x => x.base !== p.base).map(x => x.base.toUpperCase())
+                 .concat(['BIRD']).slice(0, 3), rng);
+        if (!built) return null;
+
+        return {
+            prompt: `Find the smaller word hiding inside ${p.word}.`,
+            ...built,
+            explain: `${p.base.toUpperCase()} + ${p.affix} = ${p.word} — `
+                   + `${p.means}. The same ending turns up in ${p.also}, so once you `
+                   + `can spot it you can work out words nobody has taught you.`,
+        };
+    },
+},
+
+{
+    // SC.K.N.1.1 — "collaborate with a partner to collect information."
+    //
+    // ⚠ THIS IS AN ACTIVITY, AND THE QUESTION HAS TO BE HONEST ABOUT
+    // THAT. It sat uncovered through three batches because there is no
+    // multiple choice that makes a child collaborate. What there is: a
+    // clip both partners watch, a count they each make ALONE, and then a
+    // comparison — and the comparison is a real answer the class can
+    // report, which is what makes this a question rather than an
+    // instruction with a tick box after it.
+    //
+    // The information really is collected by the pair, which is the
+    // benchmark. That it also lands on "two careful people can disagree"
+    // is the same lesson SC.2.N.1.2 teaches three years later.
+    id: 'partner-count',
+    category: 'science',
+    title: 'Count it with a partner',
+    bands: ['k-2'],
+    build({ s, rng }) {
+        const clip = cmPickClip(s, rng);
+        if (!clip) return null;
+
+        const built = cmChoices('Watch it again together and count out loud',
+            ['The one who counted more is right',
+             'The one who finished first is right',
+             'Stop counting and pick a number'], rng);
+        if (!built) return null;
+
+        return {
+            prompt: 'Watch with your partner. Both of you count the birds on your own '
+                  + '— no talking. Now compare. If your numbers are different, what '
+                  + 'should you do?',
+            ...built,
+            clip: { url: clip.video_url, detection_id: clip.id },
+            explain: 'Two people watching the same thing often count differently, and '
+                   + 'that is not one of you being careless — it is why scientists '
+                   + 'collect information together and check each other. Watching again '
+                   + 'and counting out loud is what settles it.',
+            detection_id: clip.id,
+        };
+    },
+},
 ];
 
 /**
@@ -13551,6 +13850,10 @@ function classroomFootControls(S, last, joinMode) {
         if (q && q.build) {
             return '<span class="classroom-muted">Ask the class how tall each bar should be, '
                  + 'then press Check.</span>';
+        }
+        if (q && q.grid) {
+            return '<span class="classroom-muted">Ask the class where the point goes, '
+                 + 'then tap it on the grid.</span>';
         }
         return '<span class="classroom-muted">Poll the room, then tap the class’s answer.</span>';
     }
