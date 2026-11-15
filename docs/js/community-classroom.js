@@ -8364,9 +8364,15 @@ async function reviewClassroomQuestions(roomId) {
 // classroom module has to keep working if a later script 404s, so every
 // one of these returns empty rather than throwing.
 
-function cmStandardChipsHtml(templateId) {
+function cmStandardChipsHtml(templateId, band) {
     if (typeof CLASSROOM_TEMPLATE_STANDARDS === 'undefined') return '';
-    const codes = CLASSROOM_TEMPLATE_STANDARDS[templateId] || [];
+    // Band-filtered for the same reason classroomStandardsFor is: a
+    // template serving K-2 and 3-5 claims benchmarks from both, but the
+    // question on screen was built for one of them.
+    const codes = (CLASSROOM_TEMPLATE_STANDARDS[templateId] || []).filter(c => {
+        const s = (typeof CLASSROOM_STANDARDS !== 'undefined' && CLASSROOM_STANDARDS[c]) || null;
+        return !band || !s || s.bands.includes(band);
+    });
     if (!codes.length) return '';
 
     return `<div class="cc-stds">${codes.map(c => {
@@ -8454,7 +8460,7 @@ function classroomReviewItem(q, i) {
                 ${q.from_partner ? '<span class="classroom-pill partner">partner data</span>' : ''}
                 ${q.scope === 'community' ? '<span class="classroom-pill">pooled data</span>' : ''}
             </div>
-            ${cmStandardChipsHtml(q.template_id)}
+            ${cmStandardChipsHtml(q.template_id, q.grade_band)}
             ${slide ? `<div class="classroom-review-slide">${slide}</div>` : ''}
             ${classroomIntroHtml(q)}
             <p class="classroom-review-prompt">${esc(q.prompt)}</p>

@@ -58,10 +58,10 @@ There are eleven suites, each needing the migrations it builds on applied first:
 | `history-lessons.test.sql` | subscription + history lessons | 13 |
 | `feedback-instant.test.sql` | feedback digest + feedback instant | 16 |
 | `teacher-questions.test.sql` | teacher questions only | 49 |
-| `history-standards.test.sql` | subscription + history lessons + history standards | 14 |
+| `history-standards.test.sql` | subscription + history lessons + history standards | 16 |
 
 Every check prints `PASS` or `FAIL ***`. Grep for `FAIL`. As of the last run:
-249 checks, 0 failures.
+251 checks, 0 failures.
 
 **`history-standards.test.sql` must be applied AFTER
 `setup-classroom-history-lessons.sql`**, not instead of it. Both define

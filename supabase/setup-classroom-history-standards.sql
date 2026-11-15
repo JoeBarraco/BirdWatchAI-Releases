@@ -3,10 +3,11 @@
 --  standards a lesson covered
 -- ════════════════════════════════════════════════════════════════════
 --
---  classroom_session_answers has stored template_id since the table was
---  written — it is `not null` there — but classroom_session_history never
---  returned it, because until now nothing on the client needed to know
---  WHICH question a row had been.
+--  classroom_session_answers has stored template_id and grade_band since
+--  the table was written — both are `not null` there — but
+--  classroom_session_history returned neither, because until now nothing
+--  on the client needed to know WHICH question a row had been, or at what
+--  band it was asked.
 --
 --  The alignment map (docs/js/classroom-alignment.js) is keyed by exactly
 --  that id. Without it the "Florida standards covered" block under each
@@ -61,9 +62,16 @@ begin
              select json_agg(json_build_object(
                       'id',             a.id,
                       'asked_at',       a.asked_at,
-                      -- The only new key. Everything else is byte-for-byte
+                      -- The two new keys. Everything else is byte-for-byte
                       -- what setup-classroom-history-lessons.sql returned.
+                      --
+                      -- grade_band is here for the same reason template_id
+                      -- is: a template that serves two bands claims
+                      -- benchmarks from both, so without knowing which band
+                      -- a question was ASKED at, a fifth-grade lesson would
+                      -- report a kindergarten benchmark as covered.
                       'template_id',    a.template_id,
+                      'grade_band',     a.grade_band,
                       'category',       a.category,
                       'prompt',         a.prompt,
                       'choices',        a.choices,

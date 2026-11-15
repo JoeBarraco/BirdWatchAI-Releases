@@ -45,11 +45,13 @@ begin
 
   if not exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
                   where n.nspname = 'public' and p.proname = 'classroom_session_history'
-                    and pg_get_functiondef(p.oid) like '%template_id%') then
-    raise exception 'the installed classroom_session_history does not mention '
-                    'template_id — apply setup-classroom-history-standards.sql';
+                    and pg_get_functiondef(p.oid) like '%template_id%'
+                    and pg_get_functiondef(p.oid) like '%grade_band%') then
+    raise exception 'the installed classroom_session_history does not return '
+                    'template_id and grade_band — apply '
+                    'setup-classroom-history-standards.sql';
   end if;
-  perform t_ok('…and its body returns template_id', true);
+  perform t_ok('…and its body returns template_id and grade_band', true);
 
   insert into auth.users (id, email) values (owner_id, 'head@std.example')
     on conflict (id) do nothing;
@@ -90,6 +92,17 @@ begin
     (select array_agg(e->>'template_id' order by e->>'template_id')
        from json_array_elements(q->'questions') e)
     = array['box-quartile','scatter-temp','word-jumble']);
+
+  -- Without the band, a template serving two bands would have every one of
+  -- its benchmarks counted as covered, and a fifth-grade lesson would
+  -- report a kindergarten one.
+  perform t_ok('every question also carries the band it was asked at',
+    not exists (select 1 from json_array_elements(q->'questions') e
+                 where e->>'grade_band' is null));
+
+  perform t_ok('and it is the band that was stored',
+    (select count(distinct e->>'grade_band') from json_array_elements(q->'questions') e) = 1
+    and (select min(e->>'grade_band') from json_array_elements(q->'questions') e) = '3-5');
 
   raise notice '';
   raise notice '── B. Nothing else about the shape moved ──';

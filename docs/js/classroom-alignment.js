@@ -263,12 +263,29 @@ const CLASSROOM_TEMPLATE_STANDARDS = {
  *
  * Takes whatever carries a template id — a live question, a history row —
  * so the lesson report and the challenge preview can share one path.
+ *
+ * ⚠ FILTERED BY THE BAND THE QUESTION WAS ASKED AT.
+ * A template that serves K-2 and 3-5 claims benchmarks from both, because
+ * it genuinely exercises both — at the band it was built for. The set of
+ * codes is a property of the TEMPLATE; what a given lesson covered is a
+ * property of the question as asked. Without this filter a fifth-grade
+ * lesson reported MA.K.DP.1.1, which is the exact failure the header of
+ * this file calls out: a coverage report flattering the lesson.
+ *
+ * A question with no band recorded falls back to every code the template
+ * claims. That is the honest fallback for a row written before the band
+ * was stored — better to over-list on old history than to silently drop
+ * a lesson's coverage to nothing.
  */
 function classroomStandardsFor(items) {
     const seen = new Set();
     (items || []).forEach(q => {
-        const id = q && (q.template_id || q.templateId || q.id);
-        (CLASSROOM_TEMPLATE_STANDARDS[id] || []).forEach(c => seen.add(c));
+        const id   = q && (q.template_id || q.templateId || q.id);
+        const band = q && (q.grade_band || q.band);
+        (CLASSROOM_TEMPLATE_STANDARDS[id] || []).forEach(c => {
+            const s = CLASSROOM_STANDARDS[c];
+            if (!band || !s || s.bands.includes(band)) seen.add(c);
+        });
     });
     return Object.keys(CLASSROOM_STANDARDS).filter(c => seen.has(c));
 }
