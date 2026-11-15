@@ -9671,9 +9671,13 @@ ${jumbled.split('').join(' ')}`,
 
         const GROUPS = { mammal: 'A mammal', reptile: 'A reptile',
                          amphibian: 'An amphibian', insect: 'An insect' };
+        // "A bird" goes in FIRST. It is the distractor that matters, because
+        // the camera is a bird camera and the class has spent the lesson
+        // being told that is what it watches - and building the list the
+        // other way round sliced it off the end every time.
         const built = cmChoices(GROUPS[group],
-            Object.keys(GROUPS).filter(k => k !== group).map(k => GROUPS[k])
-                  .concat(['A bird']).slice(0, 3), rng);
+            ['A bird'].concat(cmShuffle(Object.keys(GROUPS)
+                .filter(k => k !== group).map(k => GROUPS[k]), rng)).slice(0, 3), rng);
         if (!built) return null;
 
         const n = s14.others.get(name);
