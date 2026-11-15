@@ -1650,6 +1650,11 @@ function cmWindow(src, days) {
 //           K–2 when the numbers outgrow dots.
 
 const CHART_MAX_BARS = 8;      // beyond this the labels collide on screen
+// Hours are the exception the cap's own comment warns about. "6a" and "12p"
+// are two and three characters, so eighteen of them fit where eight species
+// names do not — and an hours chart cut at eight loses the afternoon, which
+// is where half the interesting things at a feeder happen.
+const CHART_MAX_HOURS = 18;
 const DOTS_MAX_VALUE = 20;     // a row of more than 20 dots stops being countable
 const DOTS_MAX_ROWS  = 7;      // a week
 
@@ -9584,7 +9589,11 @@ ${jumbled.split('').join(' ')}`,
         let second = null;
         span.forEach(x => {
             if (Math.abs(x.h - peak.h) < 2) return;
-            if (x.n < mean) return;
+            // Better than an average hour is not enough on a quiet feeder:
+            // twenty-one visits at dawn and five at three o'clock is one
+            // spell and a trickle, and calling the trickle a second peak put
+            // a conclusion in a class's mouth that the chart does not carry.
+            if (x.n < Math.max(4, peak.n * 0.25)) return;
             const a = Math.min(peak.h, x.h), b = Math.max(peak.h, x.h);
             const trough = span.filter(y => y.h > a && y.h < b)
                                .reduce((m, y) => Math.min(m, y.n), Infinity);
@@ -9622,7 +9631,7 @@ ${jumbled.split('').join(' ')}`,
             ...built,
             chart: cmChart('Visits by hour, whole fortnight',
                 span.map(x => ({ label: fmtHourShort(x.h), value: x.n, key: String(x.h) })),
-                { band, ordered: true, kind: 'line' }),
+                { band, ordered: true, kind: 'line', maxBars: CHART_MAX_HOURS }),
             explain: 'Our busiest hour was ' + fmtHourShort(peak.h) + ' with '
                    + peak.n + ' visits, against ' + mean.toFixed(1) + ' in an average hour'
                    + (twoPeaked
@@ -9926,7 +9935,7 @@ ${jumbled.split('').join(' ')}`,
             chart: cmChart(pick.species + ' by hour',
                 hours.map((n, h) => ({ label: fmtHourShort(h), value: n, key: String(h) }))
                      .filter(r => r.value > 0),
-                { band, ordered: true }),
+                { band, ordered: true, maxBars: CHART_MAX_HOURS }),
             image: cmShotFor(s, pick.species),
             explain: 'Most ' + pick.species + ' visits were around ' + fmtHourShort(peak)
                    + '. Different birds keep different hours at the same feeder, so '
@@ -10359,7 +10368,8 @@ function cmOwnChart(spec, source, band) {
         caption = 'Visits by species this week';
     } else if (spec.source === 'hours') {
         series = s.byHour.map((n, h) => ({ label: fmtHourShort(h), value: n, key: String(h) }))
-                         .filter(r => r.value > 0);
+                         .filter(r => r.value > 0)
+                         .slice(0, CHART_MAX_HOURS);
         caption = 'When the birds came';
     }
     if (!series || series.length < 2) return null;
