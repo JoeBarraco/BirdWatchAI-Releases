@@ -4010,6 +4010,27 @@
 .mod-panel-head h3 { margin-bottom: 0; }
 
 #classroom-panel-modal .mod-panel-head { --head-pad: 1.75rem; }
+
+/* The mark and school beside "Classroom". Wraps rather than truncating: a
+   school's full name is the point, and on a phone the brand can take its own
+   line above the title. The lesson bar's sizes are for a projector bar the
+   room should ignore; here a teacher is meant to see it, so a step larger. */
+.classroom-panel-title {
+    display: flex; flex-wrap: wrap; align-items: baseline;
+    gap: 0.15rem 0; min-width: 0;
+}
+#classroom-panel-brand .classroom-stage-mark   { font-size: 0.85rem; }
+#classroom-panel-brand .classroom-stage-school { font-size: 0.95rem; white-space: normal; }
+/* The lesson bar hides the mark below 720px to save room for the question
+   counter. The panel header has no counter, so keep it. The id outranks the
+   class inside the media query, so order does not matter here. */
+#classroom-panel-brand .classroom-stage-mark   { display: inline; }
+/* On a phone the brand wraps onto its own line above "Classroom", and the
+   divider that separates it from the title on one line is left standing
+   beside nothing. */
+@media (max-width: 720px) {
+    #classroom-panel-brand .classroom-stage-brand { border-right: 0; padding-right: 0; }
+}
 #classroom-panel-modal .mod-admin-box,
 #community-panel-modal .mod-admin-box { padding-top: 0; }
 /* The box's own bottom padding, published so the sticky Close in the right

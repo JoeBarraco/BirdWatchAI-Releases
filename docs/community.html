@@ -13,7 +13,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="BirdWatchAI">
-    <link rel="stylesheet" href="css/community.css?v=e2a816d7">
+    <link rel="stylesheet" href="css/community.css?v=11b9c084">
 </head>
 <body>
 <!-- Top navbar with auth controls -->
@@ -943,7 +943,13 @@
              have trouble finding the close button when pages are expanded".
              Top-right is where a dialog's close belongs anyway. -->
         <div class="mod-panel-head">
-            <h3>Classroom</h3>
+            <!-- The panel fills the window and covers the site navbar, so
+                 without this a teacher in Classroom sees no BirdWatchAI and
+                 no school anywhere. Filled by classroomPanelBrand(). -->
+            <div class="classroom-panel-title">
+                <span id="classroom-panel-brand"></span>
+                <h3>Classroom</h3>
+            </div>
             <button type="button" class="mod-head-close"
                     onclick="closeClassroomPanel()" aria-label="Close">&times;</button>
         </div>
@@ -1242,7 +1248,7 @@
      longer exists. Swapping the two would make that half of the check silently
      do nothing. -->
 <script src="js/classroom-standards.js?v=f2e3de89"></script>
-<script src="js/community-classroom.js?v=0c6c96d6"></script>
+<script src="js/community-classroom.js?v=d28e1f8f"></script>
 <script src="js/classroom-alignment.js?v=5fb47dbc"></script>
 <!-- Interactive chart runtime: crosshair tooltips on the trend chart, per-species hover rows on
      the Activity / Calendar / Rarity Mix charts. No-op until a [data-bw-chart] element appears. -->

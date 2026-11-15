@@ -11296,7 +11296,28 @@ function openClassroomPanel() {
     if (mine.length) {
         classroomCommunityId = sel.value;
         refreshClassroomPanel();
+    } else {
+        // No school to name, but the mark still belongs on the header.
+        classroomPanelBrand();
     }
+}
+
+/**
+ * The BirdWatchAI mark and the school's name, on the Classroom panel header.
+ *
+ * Asked for as "I dont see the birdwatch banner inside of classrooms" after
+ * the mark went onto the lesson bar only. The panel is full-screen, so it
+ * covers the site navbar: from opening Classroom until a lesson starts,
+ * neither BirdWatchAI nor the school appeared anywhere on screen.
+ *
+ * Reuses cmStageBrandHtml so the panel and the projector say the same thing
+ * the same way. Called from refreshClassroomPanel, which runs on open and on
+ * every change of community, so the school shown is always the one whose
+ * classes are listed underneath it.
+ */
+function classroomPanelBrand() {
+    const slot = document.getElementById('classroom-panel-brand');
+    if (slot) slot.innerHTML = cmStageBrandHtml();
 }
 
 function closeClassroomPanel() {
@@ -11337,6 +11358,7 @@ async function onClassroomCommunityChange() {
 }
 
 async function refreshClassroomPanel() {
+    classroomPanelBrand();
     const list = document.getElementById('classroom-list');
     if (!list || !classroomCommunityId) return;
     list.innerHTML = '<div class="classroom-muted">Loading…</div>';
