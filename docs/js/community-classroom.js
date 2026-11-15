@@ -9558,11 +9558,67 @@ function cmOwnChart(spec, source, band) {
     if (spec.kind === 'picto') {
         return cmPictograph(caption, series, { band });
     }
-    return cmChart(caption, series, {
+
+    const chart = cmChart(caption, series, {
         band, kind: spec.kind,
         ordered: spec.source === 'days' || spec.source === 'hours',
         hours:   spec.source === 'hours',
     });
+
+    // ⚠ cmChart SUBSTITUTES RATHER THAN REFUSES. Asked for a shape the
+    // data cannot carry — a line across species, a circle of twenty-four
+    // hours — it quietly returns a different one, which is right inside a
+    // lesson and wrong here: a teacher who picks Line and is handed bars
+    // has been ignored without being told. Reported as exactly that, with
+    // five combinations named.
+    //
+    // So a teacher's explicit choice is honoured or refused, never
+    // swapped. cmOwnChartWhyNot turns the refusal into a sentence.
+    if (!chart || chart.kind !== spec.kind) return null;
+    return chart;
+}
+
+/**
+ * Why a shape cannot be drawn over this data, in words a teacher can act
+ * on. Null when it can.
+ *
+ * These are the same rules CHART_KINDS_OK enforces, said out loud. They
+ * are duplicated deliberately: that table answers "may I?" in a boolean,
+ * and a dropdown needs "why not, and what should I pick instead?".
+ */
+function cmOwnChartWhyNot(kind, source, band) {
+    if (!kind) return null;
+
+    if (kind === 'line' && source === 'species') {
+        return 'A line says the things along the bottom run in order and that the gaps '
+             + 'between them mean something. Species have no order, so a line would draw '
+             + 'a trend that does not exist. Try days or hours — or bars for species.';
+    }
+    if (kind === 'donut' && source !== 'species') {
+        return 'A circle shows how a whole splits up, which needs a handful of slices — '
+             + 'seven days or twenty-four hours are too many to tell apart. Circles work '
+             + 'over species.';
+    }
+    if (kind === 'dots' && band !== 'k-2') {
+        return 'A tally draws one mark per visit, which only stays countable for K–2 '
+             + 'numbers. For this grade band try bars, or a picture graph with a key.';
+    }
+    if (kind === 'dots' && source !== 'days') {
+        return 'A tally draws one mark per visit, so it needs short rows. Species and '
+             + 'hours run too long to count. Try it over days, or use bars.';
+    }
+    return null;
+}
+
+/**
+ * The sources a given shape can honestly be drawn over.
+ *
+ * Used to rebuild the second dropdown when the first changes, so a
+ * teacher cannot pick a pair that will not draw.
+ */
+function cmOwnChartSources(kind, band) {
+    return ['days', 'species', 'hours']
+        .filter(src => !cmOwnChartWhyNot(kind, src, band));
 }
 
 // Short hour label for a teacher's hour chart. cmChart's own clock path
@@ -10564,20 +10620,12 @@ function openClassroomOwnForm(id) {
                     <span>Shape</span>
                     <select id="cc-own-chart-kind" onchange="classroomOwnChartChanged()">
                         <option value="">No chart</option>
-                        <option value="bars">Bar chart</option>
-                        <option value="hbars">Bars, lying down</option>
-                        <option value="line">Line</option>
-                        <option value="dots">Tally (one mark per visit)</option>
-                        <option value="picto">Picture graph with a key</option>
-                        <option value="donut">Circle, for shares of a whole</option>
+                        ${cmOwnChartKindOptions(room0 ? room0.grade_band : 'k-2')}
                     </select>
                 </label>
                 <label class="classroom-field">
                     <span>Over what</span>
                     <select id="cc-own-chart-source" onchange="classroomOwnChartChanged()">
-                        <option value="days">Each day this week</option>
-                        <option value="species">Each species</option>
-                        <option value="hours">Each hour of the day</option>
                     </select>
                 </label>
             </div>
@@ -10622,7 +10670,11 @@ function openClassroomOwnForm(id) {
     const kindEl = document.getElementById('cc-own-chart-kind');
     const srcEl  = document.getElementById('cc-own-chart-source');
     if (kindEl && classroomOwn.chart) kindEl.value = classroomOwn.chart.kind || '';
-    if (srcEl  && classroomOwn.chart) srcEl.value  = classroomOwn.chart.source || 'days';
+    renderClassroomOwnChartSources();
+    if (srcEl && classroomOwn.chart && classroomOwn.chart.source) {
+        const opt = [...srcEl.options].some(o => o.value === classroomOwn.chart.source);
+        if (opt) srcEl.value = classroomOwn.chart.source;
+    }
 
     document.getElementById('cc-own-prompt').focus();
     classroomOwn.mediaTab = 'photo';
@@ -10747,7 +10799,70 @@ function classroomOwnDropStandard(code) {
     renderClassroomOwnStandards();
 }
 
+const CC_CHART_KIND_LABELS = {
+    bars:  'Bar chart',
+    hbars: 'Bars, lying down',
+    line:  'Line',
+    dots:  'Tally (one mark per visit)',
+    picto: 'Picture graph with a key',
+    donut: 'Circle, for shares of a whole',
+};
+
+/**
+ * Only the shapes this grade band can actually use.
+ *
+ * A tally draws one mark per visit and stays countable only at K-2
+ * numbers, so for 3-5 and 6-8 it has no valid source at all. Offering it
+ * there would empty the "Over what" list the moment it was chosen, which
+ * is a worse way to learn the rule than not being offered it.
+ */
+function cmOwnChartKindOptions(band) {
+    return Object.keys(CC_CHART_KIND_LABELS)
+        .filter(k => cmOwnChartSources(k, band).length)
+        .map(k => `<option value="${esc(k)}">${esc(CC_CHART_KIND_LABELS[k])}</option>`)
+        .join('');
+}
+
+const CC_CHART_SOURCE_LABELS = {
+    days:    'Each day this week',
+    species: 'Each species',
+    hours:   'Each hour of the day',
+};
+
+/**
+ * Rebuild "Over what" to hold only what the chosen shape can draw.
+ *
+ * ⚠ THE COMBINATIONS ARE NOT ALL LEGAL, and the form used to offer every
+ * one of them. Reported with five named: Line over species, Tally over
+ * species, Tally over hours, Circle over days, Circle over hours. Each
+ * picked a shape the data cannot carry, cmChart quietly substituted
+ * another, and the teacher got a chart they had not asked for.
+ *
+ * Removing them from the list is better than explaining them after the
+ * fact: the only way to find out used to be to pick one and look.
+ */
+function renderClassroomOwnChartSources() {
+    const kindEl = document.getElementById('cc-own-chart-kind');
+    const srcEl  = document.getElementById('cc-own-chart-source');
+    if (!kindEl || !srcEl) return;
+
+    const room = classroomList.find(r => r.id === classroomOwn.roomId);
+    const band = room ? room.grade_band : 'k-2';
+    const kind = kindEl.value;
+
+    const allowed = kind ? cmOwnChartSources(kind, band) : Object.keys(CC_CHART_SOURCE_LABELS);
+    const wanted  = srcEl.value || (classroomOwn.chart && classroomOwn.chart.source) || 'days';
+
+    srcEl.innerHTML = allowed.map(src =>
+        `<option value="${esc(src)}">${esc(CC_CHART_SOURCE_LABELS[src])}</option>`).join('');
+    // Keep what they had if it survives; otherwise fall to the first that
+    // works rather than leaving the select showing a value it has lost.
+    srcEl.value = allowed.includes(wanted) ? wanted : (allowed[0] || '');
+    srcEl.disabled = !kind;
+}
+
 function classroomOwnChartChanged() {
+    renderClassroomOwnChartSources();
     const kind = document.getElementById('cc-own-chart-kind').value;
     const src  = document.getElementById('cc-own-chart-source').value;
     classroomOwn.chart = kind ? { kind, source: src || 'days' } : null;
@@ -10782,11 +10897,19 @@ function renderClassroomOwnChartPreview() {
     }
 
     const room  = classroomList.find(r => r.id === classroomOwn.roomId);
-    const chart = cmOwnChart(classroomOwn.chart, classroomOwn.source,
-                             room ? room.grade_band : 'k-2');
+    const band  = room ? room.grade_band : 'k-2';
+    const chart = cmOwnChart(classroomOwn.chart, classroomOwn.source, band);
+
+    // A refusal has two very different causes and a teacher needs to know
+    // which: the pair cannot be drawn at all, or it can and there is not
+    // enough data this week.
+    const why = cmOwnChartWhyNot(classroomOwn.chart.kind, classroomOwn.chart.source, band);
+
     box.innerHTML = chart
         ? `<p class="classroom-muted">This is what the class would see this week:</p>
            ${classroomChartHtml(chart, false)}`
+        : why
+        ? `<p class="classroom-muted">${esc(why)}</p>`
         : '<p class="classroom-muted">Your feeders have not recorded enough this week '
         + 'to draw that one. The question still works — it just goes up without a '
         + 'chart until there is more data.</p>';
