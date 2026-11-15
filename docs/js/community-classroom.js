@@ -10499,8 +10499,19 @@ function renderClassroomActions() {
             <div class="classroom-group-row">
                 <button class="classroom-btn" onclick="reviewClassroomQuestions('${escJs(r.id)}')">🔍 Review questions</button>
                 <button class="classroom-btn" onclick="showClassroomHistory('${escJs(r.id)}')">📊 Previous lessons</button>
-                <button class="classroom-btn" onclick="showClassroomOwnQuestions('${escJs(r.id)}')"
-                        title="Questions you write for this class">✍️ My questions</button>
+                <!-- ⚠ THE VERB IS ON THE BUTTON, deliberately. It said "My
+                     questions", and a teacher reported: "it was not obvious
+                     to me that in order to create a new question I had to
+                     press the 'my questions' button." Quite right — that
+                     label names a place, and somebody looking for a way to
+                     WRITE one has no reason to think it is behind it.
+                     Straight to the empty form when there are none yet,
+                     because on a class with no questions the list is a page
+                     saying "None yet" with the real action one more press
+                     away. -->
+                <button class="classroom-btn" onclick="writeClassroomQuestion('${escJs(r.id)}')"
+                        title="Write your own questions for this class, and see the ones you have">
+                    ✍️ Write a question</button>
             </div>
         </div>
 
@@ -10529,6 +10540,20 @@ function renderClassroomActions() {
 // watch the pane reload three times.
 
 let classroomOwn = { roomId: null, items: [], editing: null, photos: null, photo: null };
+
+/**
+ * The door a teacher looking to write a question will actually try.
+ *
+ * Goes to the list when the class already has questions — they will want
+ * to see them — and straight to a blank form when it has none, because
+ * an empty list is a dead end with the real action behind another press.
+ */
+async function writeClassroomQuestion(roomId) {
+    await showClassroomOwnQuestions(roomId);
+    if (classroomOwn.roomId === roomId && !(classroomOwn.items || []).length) {
+        openClassroomOwnForm(null);
+    }
+}
 
 async function showClassroomOwnQuestions(roomId) {
     const room = classroomList.find(r => r.id === roomId);
