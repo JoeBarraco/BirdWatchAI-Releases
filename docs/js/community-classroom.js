@@ -14040,6 +14040,47 @@ function hideClassroomHistory() {
  * feeder has nothing to say should not leave an empty session in the history
  * every time a teacher tries.
  */
+/**
+ * This class's feeder badge standing, and what is new since last lesson.
+ *
+ * ⚠ NEVER BLOCKS THE LESSON. Badges are decoration on the way in; a
+ * failure here must cost the opening slide and nothing else, so every
+ * path returns null rather than throwing. A class standing in front of a
+ * projector does not care why the rank is missing.
+ *
+ * "Since last lesson" is remembered per classroom in localStorage rather
+ * than stored: it is a nicety, it is per-teacher-per-device by nature,
+ * and it is not worth a column or a migration.
+ */
+async function cmClassroomBadges(room) {
+    try {
+        if (!room || !room.home_feeder_id) return null;
+        if (typeof ensureBadgeStats !== 'function'
+         || typeof badgesForFeederId !== 'function') return null;
+
+        await ensureBadgeStats();
+        const res = badgesForFeederId(room.home_feeder_id);
+        if (!res || !res.rank) return null;
+
+        const key = 'cc-badges-' + room.id;
+        let seen = [];
+        try { seen = JSON.parse(localStorage.getItem(key) || '[]'); } catch { seen = []; }
+
+        const ids = (res.earned || []).map(b => b.id);
+        const fresh = (res.earned || []).filter(b => !seen.includes(b.id));
+
+        try { localStorage.setItem(key, JSON.stringify(ids)); } catch { /* private window */ }
+
+        // First lesson on this device: everything looks new, which would
+        // be a wall of badges claiming to be this week's. Show the rank
+        // and nothing else until there is a real "since".
+        return { rank: res.rank, next: res.next, count: res.count, total: res.total,
+                 fresh: seen.length ? fresh.slice(0, 4) : [] };
+    } catch {
+        return null;
+    }
+}
+
 async function startClassroomSession(id, mode) {
     const room = classroomList.find(r => r.id === id);
     if (!room) return;
@@ -14101,8 +14142,15 @@ async function startClassroomSession(id, mode) {
         return;
     }
 
+    // The feeder's badge standing, for the opening slide. Suggested as
+    // "start the lessons with the school's bird feeder badge level and
+    // possibly badges earned since last lesson" — and the second half is
+    // the better half: a level that never moves is wallpaper, while
+    // "you earned two since Tuesday" is a reason to look.
+    const badges = await cmClassroomBadges(room);
+
     classroomSession = {
-        id: sess.id, room, source, questions, mode,
+        id: sess.id, room, source, questions, mode, badges,
         // Say so on the board rather than letting a teacher wonder why none
         // of today's questions mention their feeder.
         noData: !!no_data,
@@ -14235,6 +14283,7 @@ function renderClassroomStage() {
 
         <div class="classroom-stage-body">
           <div class="classroom-fit">
+            ${cmBadgeOpenerHtml(S)}
             ${classroomSlideTopHtml(S, q)}
             ${classroomChoicesBlock(S, q, choices)}
             ${reveal}
@@ -14258,6 +14307,31 @@ function renderClassroomStage() {
  * from — everything above this point is the same screen in both modes, which
  * is what the design notes ask for.
  */
+/**
+ * The feeder's badge standing, across the top of the FIRST question only.
+ *
+ * ⚠ FIRST QUESTION ONLY, and that is the whole design. A rank strip on
+ * every slide is furniture the class stops seeing by question three, and
+ * it competes for the height the chart and the choices need. On the way
+ * in it is a reason to care about the feeder; after that it is clutter.
+ *
+ * Nothing is clickable: a lesson is running, and a teacher who taps
+ * through to a badge page has lost the room.
+ */
+function cmBadgeOpenerHtml(S) {
+    const b = S.badges;
+    if (!b || S.index !== 0 || S.revealed) return '';
+
+    return `
+      <div class="cc-badge-open">
+        <span class="cc-badge-rank">${esc(b.rank.icon || '')} ${esc(b.rank.name)}</span>
+        <span class="classroom-muted">${b.count} of ${b.total} badges${
+            b.next ? ` · next: ${esc(b.next.name)}` : ''}</span>
+        ${b.fresh.length ? `<span class="cc-badge-new">New since last lesson: ${
+            b.fresh.map(x => `${esc(x.icon || '')} ${esc(x.name)}`).join(', ')}</span>` : ''}
+      </div>`;
+}
+
 function classroomFootControls(S, last, joinMode) {
     if (S.revealed) {
         return last

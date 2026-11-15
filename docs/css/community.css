@@ -4940,6 +4940,19 @@
 .cc-own-chart-preview .cc-thumb { width: 34px; }
 .cc-own-chart-preview figcaption { font-size: 0.72rem; }
 
+/* ── The badge strip that opens a lesson ───────────────────────────
+   One line, on the first question only. Deliberately quiet: it is a
+   reason to care about the feeder on the way in, not a thing to read. */
+.cc-badge-open {
+    display: flex; flex-wrap: wrap; align-items: baseline;
+    justify-content: center; gap: 0.5rem 1.2rem;
+    padding: 0.4rem 0.8rem; margin-bottom: 0.8vmin;
+    border-bottom: 1px solid var(--border);
+    font-size: clamp(0.8rem, 1.8vmin, 1.2rem);
+}
+.cc-badge-rank { font-weight: 700; color: var(--color-gray-900); }
+.cc-badge-new  { color: var(--color-primary); font-weight: 600; }
+
 /* ── A chart the class builds ───────────────────────────────────────
    Sized for a room, not a mouse: the + and − are the only controls in
    the whole module a teacher presses repeatedly while thirty children
