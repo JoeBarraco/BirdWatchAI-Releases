@@ -2563,10 +2563,26 @@ function classroomEvidenceHtml(q, revealed) {
     if (q.build) return classroomBuildChartHtml(q, revealed);
     if (q.grid)  return classroomGridHtml(q, revealed);
     if (q.video && q.video.url) return classroomClipHtml(q, revealed);
+    // ⚠ A CHART BEATS A PHOTOGRAPH. This chain returns ONE thing, and a
+    // photo used to outrank the chart below it — so a question carrying
+    // both drew the bird and never drew the chart. A teacher found it in a
+    // live lesson: "Use the key. About how many times did a Mourning Dove
+    // visit?" came up as a photograph of a dove, and she flagged it with
+    // "I don't see a key". There was no key because there was no chart.
+    //
+    // Three questions were in that state - picto-read, stat-species-hour
+    // and stat-streak - and all three are unanswerable without the chart,
+    // because the chart IS the question in each. A photo never is: it is
+    // the bird the question happens to be about, and the reveal already
+    // names that bird with a "read more" button.
+    //
+    // So the rule is positional rather than per-template: nothing that is
+    // only illustration may displace the evidence a class has to read.
+    const chartWins = !!q.chart;
     // image_on_reveal: a photo that would answer the question, held back until
     // the answer is up. Before then the slide falls through to whatever else
     // it has, which for a puzzle is nothing — the letters are the evidence.
-    const showImage = q.image && (revealed || !q.image_on_reveal);
+    const showImage = q.image && (revealed || !q.image_on_reveal) && !chartWins;
     const shot = showImage ? classroomShotHtml(q, revealed) : '';
     const map  = q.map   ? classroomMapHtml(q.map, revealed) : '';
 
@@ -2575,11 +2591,14 @@ function classroomEvidenceHtml(q, revealed) {
     const sound = q.sound ? classroomSoundHtml(q, revealed) : '';
 
     if (shot && map) return `<div class="classroom-evidence-pair">${shot}${map}</div>`;
-    if (map)  return map;
+    // A map alongside a chart is the same trap as a photo: plot-the-change
+    // and friends read their chart. Only let a map through where there is
+    // no chart to lose.
+    if (map && !chartWins)  return map;
     // A photo AND a song: the bird above, the button below, which is the
     // pairing the reveal of a "who sings this?" question wants.
     if (shot) return sound ? `${shot}${sound}` : shot;
-    if (sound) return sound;
+    if (sound && !chartWins) return sound;
     return classroomChartHtml(q.chart, revealed);
 }
 

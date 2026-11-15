@@ -214,10 +214,203 @@ const CLASSROOM_STANDARDS = {
     "MU.3.H.1.3": { subject: "Music", bands: ["3-5"], text: "Identify timbre(s) in music from a variety of cultures." },
 };
 
-// cpalms.org has no stable per-code URL, so the search page carries the code
-// as its keyword. A teacher lands on the benchmark they were promised.
+
+// ── Where a benchmark actually lives on cpalms.org ──────────────────
+//
+// ⚠ THIS USED TO BE A SEARCH LINK, AND IT DID NOT WORK.
+//
+// The old URL put the code in a `keyword` parameter:
+//     /Public/search/Standard?keyword=MA.3.DP.1.1
+// and the comment above it said cpalms.org had no stable per-code URL, so
+// "a teacher lands on the benchmark they were promised". They did not. That
+// page ignores the parameter entirely and opens the unfiltered browser —
+// all 7130 benchmarks, nothing typed in the box. A teacher reported it:
+// "When I click on the standards from the Florida state cpalms link it
+// doesn't bring me to the exact standard, just a search window."
+//
+// There IS a stable per-benchmark page. It is keyed by an internal numeric
+// id rather than by the code, which is presumably why the first attempt
+// reached for search:
+//     https://www.cpalms.org/PreviewStandard/Preview/15339   → MA.3.DP.1.1
+//
+// So the ids are resolved once, here, rather than looked up at runtime.
+// Every one of the 157 was read off cpalms.org's own standard search
+// (/Search/GetSearchStandard), kept only where the search returned EXACTLY
+// one card and that card's title was the code being asked for, and spot
+// checked against the rendered pages. A runtime lookup would put a network
+// round trip, and a dependency on that endpoint keeping its shape, between
+// a teacher and a link that has to work in front of a class.
+//
+// A code with no id here still gets the old search page. That is a poor
+// link, but it is a working one, and it is what a NEW benchmark tagged in
+// classroom-alignment.js will get until its id is added.
+const CLASSROOM_STANDARD_CPALMS_IDS = {
+    "MA.K.DP.1.1": 15253,
+    "MA.1.DP.1.1": 15278,
+    "MA.1.DP.1.2": 15279,
+    "MA.2.DP.1.1": 15305,
+    "MA.2.DP.1.2": 15306,
+    "MA.3.DP.1.1": 15339,
+    "MA.3.DP.1.2": 15340,
+    "MA.4.DP.1.1": 15377,
+    "MA.4.DP.1.2": 15378,
+    "MA.4.DP.1.3": 15379,
+    "MA.5.DP.1.1": 15414,
+    "MA.5.DP.1.2": 15415,
+    "MA.6.DP.1.1": 15449,
+    "MA.6.DP.1.2": 15450,
+    "MA.6.DP.1.3": 15451,
+    "MA.6.DP.1.4": 15452,
+    "MA.6.DP.1.5": 15453,
+    "MA.6.DP.1.6": 15454,
+    "MA.7.DP.1.1": 15480,
+    "MA.7.DP.1.2": 15481,
+    "MA.7.DP.1.3": 15482,
+    "MA.7.DP.1.4": 15483,
+    "MA.7.DP.1.5": 15484,
+    "MA.7.DP.2.1": 15485,
+    "MA.7.DP.2.2": 15486,
+    "MA.7.DP.2.3": 15487,
+    "MA.8.DP.1.1": 15523,
+    "MA.8.DP.1.2": 15524,
+    "MA.8.DP.1.3": 15525,
+    "MA.8.DP.2.2": 15527,
+    "MA.8.DP.2.3": 15528,
+    "MA.K.NSO.1.3": 15234,
+    "MA.2.AR.3.1": 15293,
+    "MA.6.NSO.1.2": 15417,
+    "MA.K.NSO.1.1": 15232,
+    "MA.K.NSO.1.4": 15235,
+    "MA.1.NSO.1.4": 15257,
+    "MA.1.NSO.2.3": 15260,
+    "MA.1.AR.1.2": 15265,
+    "MA.2.NSO.1.3": 15282,
+    "MA.2.NSO.1.4": 15283,
+    "MA.2.AR.1.1": 15290,
+    "MA.3.NSO.1.4": 15310,
+    "MA.3.NSO.2.1": 15311,
+    "MA.3.AR.1.2": 15321,
+    "MA.3.AR.3.3": 15327,
+    "MA.4.AR.3.2": 15367,
+    "MA.5.AR.1.1": 15395,
+    "MA.3.FR.1.1": 15315,
+    "MA.3.FR.2.1": 15318,
+    "MA.4.FR.1.3": 15355,
+    "MA.6.AR.3.1": 15438,
+    "MA.6.AR.3.2": 15439,
+    "MA.6.AR.3.4": 15441,
+    "MA.6.AR.3.5": 15874,
+    "MA.2.M.2.1": 15298,
+    "MA.3.M.1.2": 15329,
+    "MA.3.M.2.1": 15330,
+    "MA.3.M.2.2": 15331,
+    "MA.4.M.2.1": 15370,
+    "MA.2.GR.1.3": 15302,
+    "MA.3.GR.1.3": 15334,
+    "MA.6.GR.1.1": 15442,
+    "SC.K.N.1.1": 1547,
+    "SC.K.N.1.2": 1548,
+    "SC.K.N.1.5": 1551,
+    "SC.1.N.1.2": 1567,
+    "SC.1.N.1.3": 1568,
+    "SC.1.N.1.4": 1569,
+    "SC.2.N.1.2": 1597,
+    "SC.2.N.1.4": 1599,
+    "SC.2.N.1.5": 1600,
+    "SC.3.N.1.2": 1627,
+    "SC.3.N.1.3": 1628,
+    "SC.3.N.1.6": 1634,
+    "SC.3.N.1.7": 1635,
+    "SC.4.N.1.4": 1630,
+    "SC.4.N.1.6": 1668,
+    "SC.4.N.1.7": 1669,
+    "SC.5.N.1.6": 1710,
+    "SC.5.N.2.1": 1711,
+    "SC.6.N.1.2": 1717,
+    "SC.7.N.1.2": 1774,
+    "SC.7.N.1.4": 1783,
+    "SC.7.N.1.6": 1785,
+    "SC.8.N.1.3": 1822,
+    "SC.7.E.6.6": 1798,
+    "SC.4.L.16.4": 1698,
+    "SC.4.L.17.3": 1703,
+    "SC.7.L.15.2": 1806,
+    "SC.7.L.15.3": 1807,
+    "SC.7.L.17.1": 1813,
+    "SC.K.L.14.3": 1565,
+    "SC.1.L.14.1": 1591,
+    "SC.1.L.16.1": 1594,
+    "SC.1.L.17.1": 1595,
+    "SC.2.L.16.1": 1623,
+    "SC.2.L.17.1": 1624,
+    "SC.2.L.17.2": 1625,
+    "SC.3.L.15.1": 1659,
+    "SC.3.L.17.1": 1650,
+    "SC.4.L.16.3": 1664,
+    "SC.4.L.17.1": 1701,
+    "SC.4.L.17.2": 1702,
+    "SC.4.L.17.4": 1704,
+    "SC.5.L.15.1": 1744,
+    "SC.5.L.17.1": 1745,
+    "SC.6.L.15.1": 1780,
+    "SC.7.L.17.2": 1814,
+    "SC.7.L.17.3": 1815,
+    "ELA.1.F.1.2": 14923,
+    "ELA.1.V.1.2": 14948,
+    "ELA.3.C.3.1": 15224,
+    "ELA.6.V.1.2": 15052,
+    "ELA.1.V.1.3": 14949,
+    "ELA.2.V.1.2": 15000,
+    "ELA.3.V.1.2": 15229,
+    "ELA.3.V.1.3": 15230,
+    "ELA.4.V.1.2": 14979,
+    "ELA.5.V.1.2": 15028,
+    "ELA.6.V.1.3": 15053,
+    "ELA.2.R.2.2": 14983,
+    "ELA.1.R.2.1": 14930,
+    "ELA.1.R.2.3": 14932,
+    "ELA.2.R.2.1": 14982,
+    "ELA.3.R.2.4": 15214,
+    "ELA.4.R.2.4": 14964,
+    "ELA.5.R.2.4": 15013,
+    "SS.3.G.1.3": 2966,
+    "SS.6.G.1.1": 3155,
+    "SS.6.G.4.2": 3172,
+    "SS.1.G.1.2": 2914,
+    "SS.2.G.1.3": 2946,
+    "SS.3.G.1.1": 2964,
+    "SS.3.G.2.2": 2971,
+    "SS.4.G.1.3": 3024,
+    "SS.5.G.1.2": 3068,
+    "SS.5.G.1.4": 3070,
+    "SS.5.G.1.6": 3072,
+    "VA.1.O.1.1": 4580,
+    "VA.3.C.1.2": 4628,
+    "VA.4.C.1.2": 4662,
+    "VA.4.O.1.2": 4680,
+    "VA.5.C.1.2": 4699,
+    "VA.68.C.3.1": 4749,
+    "MU.3.O.1.1": 4039,
+    "MU.3.S.2.1": 4033,
+    "MU.3.S.3.4": 4037,
+    "MU.K.C.1.2": 3958,
+    "MU.K.O.1.2": 3970,
+    "MU.1.C.1.2": 3978,
+    "MU.2.O.1.1": 4015,
+    "MU.1.C.1.3": 3979,
+    "MU.2.C.1.4": 4004,
+    "MU.2.O.3.1": 4017,
+    "MU.2.S.3.4": 4013,
+    "MU.3.H.1.3": 4045,
+};
+
 function classroomStandardUrl(code) {
-    return 'https://www.cpalms.org/Public/search/Standard?keyword=' + encodeURIComponent(code);
+    const id = CLASSROOM_STANDARD_CPALMS_IDS[code];
+    if (id) return 'https://www.cpalms.org/PreviewStandard/Preview/' + id;
+    // No id on file: the search page is wrong but it is not broken, and a
+    // benchmark tagged since this map was built should still go somewhere.
+    return 'https://www.cpalms.org/Public/search/Standard?keyword='
+         + encodeURIComponent(code);
 }
 
 // Short label for a chip: the code alone. The full text belongs in a tooltip

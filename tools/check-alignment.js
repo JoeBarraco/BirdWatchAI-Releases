@@ -70,18 +70,38 @@ const result = vm.runInContext(
     read('docs/js/classroom-standards.js') + '\n' +
     read('docs/js/classroom-alignment.js') + '\n' +
     `;(() => {
+        const PREVIEW = 'https://www.cpalms.org/PreviewStandard/Preview/';
         const covered = new Set([].concat(...Object.values(CLASSROOM_TEMPLATE_STANDARDS)));
         return {
             templates: CLASSROOM_TEMPLATES.length,
             tagged:    Object.values(CLASSROOM_TEMPLATE_STANDARDS).filter(v => v.length).length,
             benchmarks: Object.keys(CLASSROOM_STANDARDS).length,
             covered:   covered.size,
+            // Every benchmark needs a cpalms id, or its chip links to the
+            // unfiltered standards browser - which is the bug a teacher
+            // reported rather than a cosmetic gap. A code added to the
+            // catalogue without one fails here instead of in a classroom.
+            noLink: Object.keys(CLASSROOM_STANDARDS)
+                      .filter(k => !CLASSROOM_STANDARD_CPALMS_IDS[k]),
+            badLink: Object.keys(CLASSROOM_STANDARDS).filter(k => {
+                      const u = classroomStandardUrl(k);
+                      return u.indexOf(PREVIEW) !== 0
+                          || !/^[0-9]+$/.test(u.slice(PREVIEW.length));
+                     }),
             gaps: Object.entries(CLASSROOM_STANDARDS)
                     .filter(([k]) => !covered.has(k))
                     .map(([k, v]) => [k, v.bands.join('/'), v.subject, v.text]),
         };
     })()`,
     ctx);
+
+if (result.noLink.length || result.badLink.length) {
+    console.error('✗ benchmarks with no direct cpalms link: '
+                  + (result.noLink.join(', ') || 'none'));
+    console.error('✗ benchmarks whose link is not a direct preview URL: '
+                  + (result.badLink.join(', ') || 'none'));
+    process.exit(1);
+}
 
 if (warned) {
     console.error(warned);

@@ -143,6 +143,7 @@ const ALIGN=(()=>{vm.runInContext(read('docs/js/classroom-alignment.js'),ctx);
 const only=process.argv.slice(2).find(a=>!a.startsWith('--'))||null;
 let built=0, nulled=0, threw=0; const kinds=new Set();
 const chartHtml=vm.runInContext('classroomChartHtml',ctx);
+const evidenceHtml=vm.runInContext('classroomEvidenceHtml',ctx);
 const problems=[], nulls=[];
 const neverBuilt=[];
 for(const t of T){
@@ -167,6 +168,22 @@ for(const t of T){
               const html=chartHtml(q.chart,rev);
               if(typeof html!=='string'||!html.length) throw new Error('chart '+q.chart.kind+' rendered empty');
               kinds.add(q.chart.kind);
+            }
+            // ⚠ AND THE CHART HAS TO REACH THE SLIDE. classroomEvidenceHtml
+            // returns ONE thing from a priority chain, so a question carrying
+            // a photo as well as a chart used to draw the photo and drop the
+            // chart entirely. Rendering the chart alone cannot see that: it
+            // renders perfectly, into a slide that never asks for it. Three
+            // questions shipped unanswerable that way - picto-read told a
+            // class to "use the key" over a photograph of a bird - and a
+            // teacher caught one in a lesson. Build the evidence a class
+            // actually sees, and check the chart is in it.
+            for(const rev of [false,true]){
+              const ev=evidenceHtml(q,rev);
+              if(typeof ev!=='string'||ev.indexOf('classroom-chart')<0){
+                throw new Error('chart '+q.chart.kind+' never reaches the slide'
+                  +(rev?' (revealed)':'')+' - outranked in classroomEvidenceHtml');
+              }
             }
           }
         } else { nulled++; nulls.push(`${t.id}/${band}/${label}`); }
