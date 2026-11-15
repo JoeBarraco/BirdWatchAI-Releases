@@ -11482,8 +11482,11 @@ function cmStandardsSummaryHtml(questions, label) {
                 puzzles mostly. They are there because a class enjoys them, not because
                 a standard asks for them.</p>` : ''}
             <p class="classroom-muted">
-                Codes link to CPALMS, Florida's official standards site. Check one before
-                you quote it: the claim is ours, the benchmark is theirs.</p>
+                Benchmark codes and wording come from CPALMS, Florida's official
+                standards site, and each code links to it. Which questions match
+                which benchmark is BirdWatchAI's own judgement, not Florida's —
+                please check a code against CPALMS before relying on it in a
+                report or a lesson plan.</p>
         </details>`;
 }
 

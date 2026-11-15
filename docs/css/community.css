@@ -4568,19 +4568,26 @@
    further once a reveal is on screen (floor 0.14 against 0.26), so the
    picture pays for the words rather than the other way round. */
 .classroom-reveal-head {
-    font-size: clamp(1.25rem, 3.2vmin, 2.4rem); font-weight: 700;
+    font-size: clamp(1.4rem, 4.2vmin, 3.2rem); font-weight: 700;
 }
 .classroom-reveal-head.ok      { color: #2eaa4f; }
 .classroom-reveal-head.miss    { color: #e74c3c; }
 .classroom-reveal-head.pending { color: #c97a00; }
 .classroom-reveal-body {
-    font-size: clamp(1.1rem, 2.7vmin, 2rem);
+    /* ⚠ RAISED TWICE. The first pass took this from 2.0vmin to 2.7 and a
+       teacher came back with "the reveal text is still too small" — so I
+       measured it instead of guessing again: on a 883px-tall window the
+       body rendered at 23.8px against a 44px prompt, 54% of the sentence
+       it answers, with the fit scale sitting at 0.99 and therefore not
+       the cause. 3.9vmin puts it near 80% of the prompt, which is where
+       text a teacher reads aloud belongs. */
+    font-size: clamp(1.3rem, 3.9vmin, 2.9rem);
     /* gray-700 against the card is fine on a monitor and washes out on a
        projector, which is the only place this text matters. */
     color: var(--color-gray-900); margin-top: 0.8vmin; line-height: 1.45;
 }
 .classroom-fact {
-    font-size: clamp(1rem, 2.4vmin, 1.7rem);
+    font-size: clamp(1.15rem, 3.3vmin, 2.4rem);
     color: var(--color-gray-700); margin-top: 1.2vmin;
     line-height: 1.45; max-width: 60ch; margin-inline: auto;
 }
