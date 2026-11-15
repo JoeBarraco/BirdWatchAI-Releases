@@ -2726,13 +2726,27 @@ function classroomBarsHtml(chart, revealed) {
         // one long word.
         const label = String(s.label);
         const lines = cmWrapLabel(label, 3);
-        // 0.55em per character is the usual approximation for a
-        // proportional face; the floor keeps it readable from the back of
-        // a room even when that means a little overlap on the very worst
-        // name.
+        // Shrink first, on an estimate — 0.58em per character for this
+        // bold face — so most labels simply get a slightly smaller size
+        // and look normal.
         const longest = Math.max(...lines.map(l => l.length), 1);
-        const labelSize = Math.max(17, Math.min(30, (group * 0.92) / (longest * 0.55)));
+        const labelSize = Math.max(16, Math.min(30, (group * 0.92) / (longest * 0.58)));
         const lineStep = Math.round(labelSize * 0.92);
+
+        // ⚠ THEN GUARANTEE IT, because the estimate is not a measurement.
+        // A per-character factor is wrong for any string that is mostly
+        // narrow or mostly wide letters, and "Streptopelia chinensis"
+        // overran its slot at a size the estimate said would fit — the
+        // same overlap the flag was about, just less of it.
+        //
+        // textLength with spacingAndGlyphs makes the browser fit the text
+        // to an exact width, so this cannot be wrong. Applied ONLY to
+        // lines the estimate says are still too wide, because textLength
+        // forces a width rather than capping one: on a short label it
+        // would stretch "Blue Jay" across the whole slot.
+        const maxW = group * 0.94;
+        const fitAttr = ln => (ln.length * 0.58 * labelSize > maxW)
+            ? ` textLength="${maxW.toFixed(1)}" lengthAdjust="spacingAndGlyphs"` : '';
 
         // An explicit second line, for a series that carries two facts per
         // bar. Flagged on the weather chart: "the x-axis labels need to be on
@@ -2773,7 +2787,7 @@ function classroomBarsHtml(chart, revealed) {
                  + lines.map((ln, k) =>
                      `<text x="${cx}" y="${H - padB + 28 + labelDrop + k * lineStep}"
                             class="cc-label" font-size="${labelSize.toFixed(1)}"
-                            text-anchor="middle">${esc(ln)}</text>`).join('');
+                            text-anchor="middle"${fitAttr(ln)}>${esc(ln)}</text>`).join('');
         }
 
         return `<rect x="${cx - barW / 2}" y="${y(s.value)}" width="${barW}" height="${h}"
@@ -2785,7 +2799,7 @@ function classroomBarsHtml(chart, revealed) {
              + lines.map((ln, k) =>
                  `<text x="${cx}" y="${H - padB + 28 + labelDrop + k * lineStep}"
                         class="cc-label" font-size="${labelSize.toFixed(1)}"
-                        text-anchor="middle">${esc(ln)}</text>`).join('')
+                        text-anchor="middle"${fitAttr(ln)}>${esc(ln)}</text>`).join('')
              + subLine;
     }).join('');
 
