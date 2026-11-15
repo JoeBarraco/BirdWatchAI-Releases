@@ -1975,6 +1975,16 @@ function cmBuildSpec(caption, series, opts) {
 
     const presses = o.maxPresses || 12;
 
+    // ⚠ THE UNIT IS NOT ALWAYS "VISIT". build-tally counts DAYS and
+    // build-bar-chart counts KINDS OF BIRD, and a key reading "= 1 visit"
+    // over a chart of days is the chart contradicting its own table.
+    const unit  = o.unit || 'visit';
+    // "kind of bird" does not pluralise by adding an s to the end, so the
+    // plural is carried rather than derived. build-bar-chart only ever
+    // uses a step of 1 today, but a trap that is only unreachable by
+    // accident is still a trap.
+    const units = o.units || (unit + 's');
+
     if (o.scaled) {
         // Smallest key that keeps every row inside the press budget.
         const step = (o.steps || [2, 5, 10, 20, 25]).find(p => Math.round(max / p) <= presses);
@@ -1986,7 +1996,7 @@ function cmBuildSpec(caption, series, opts) {
         if (heights.size < 2) return null;
 
         return {
-            kind: o.kind || 'picto', scaled: true,
+            kind: o.kind || 'picto', scaled: true, unit, units,
             caption, step, top: Math.max(...rows.map(r => target(r.value))),
             series: rows.map((r, i) => ({
                 label: r.label,
@@ -2002,7 +2012,7 @@ function cmBuildSpec(caption, series, opts) {
     if (max > presses) return null;
 
     return {
-        kind: o.kind || 'bars',
+        kind: o.kind || 'bars', unit, units,
         caption, step: 1, top: max,
         series: rows.map((r, i) => ({
             label: r.label,
@@ -2084,8 +2094,11 @@ function classroomBuildChartHtml(q, revealed) {
     return `
       <figure class="classroom-chart cc-build">
         <div class="cc-build-key">
-          ${unit ? `<span class="cc-dot"></span> = ${step} visit${step === 1 ? '' : 's'}`
-                 : `Each step is ${step} visit${step === 1 ? '' : 's'}`}
+          ${(() => {
+              const word = step === 1 ? (b.unit || 'visit') : (b.units || 'visits');
+              return unit ? `<span class="cc-dot"></span> = ${step} ${esc(word)}`
+                          : `Each step is ${step} ${esc(word)}`;
+          })()}
         </div>
         <table class="cc-build-table"><tbody>
           ${b.series.map(s => `<tr><td>${esc(s.label)}</td><td>${
@@ -8724,7 +8737,7 @@ ${jumbled.split('').join(' ')}`,
         // short enough for a five-year-old to build by pressing, and the
         // numbers are exact rather than rounded.
         const spec = cmBuildSpec('Days each bird came', cmDaysSeenSeries(s, 4),
-            { kind: 'tally', maxPresses: 7, maxRows: 4 });
+            { kind: 'tally', unit: 'day', maxPresses: 7, maxRows: 4 });
         if (!spec) return null;
 
         return {
@@ -8751,7 +8764,8 @@ ${jumbled.split('').join(' ')}`,
     bands: ['3-5'],
     build({ s }) {
         const spec = cmBuildSpec('Our picture graph', cmSpeciesSeries(s, 5),
-            { kind: 'picto', scaled: true, steps: [2, 5, 10, 20, 25], maxPresses: 10 });
+            { kind: 'picto', scaled: true, unit: 'visit',
+              steps: [2, 5, 10, 20, 25], maxPresses: 10 });
         if (!spec) return null;
 
         return {
@@ -8789,7 +8803,8 @@ ${jumbled.split('').join(' ')}`,
             .filter(r => r.value > 0);
 
         const spec = cmBuildSpec('Kinds of bird each day', perDay,
-            { kind: 'bars', maxPresses: 12, maxRows: 5 });
+            { kind: 'bars', unit: 'kind of bird', units: 'kinds of bird',
+              maxPresses: 12, maxRows: 5 });
         if (!spec) return null;
 
         return {
