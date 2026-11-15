@@ -44,7 +44,7 @@ docker exec bwai-pgtest psql -U postgres -q -f /tmp/reminders-schema.sql
 docker exec bwai-pgtest psql -U postgres -q -f /tmp/school-reminders.test.sql
 ```
 
-There are ten suites, each needing the migrations it builds on applied first:
+There are eleven suites, each needing the migrations it builds on applied first:
 
 | Suite | Needs | Checks |
 |---|---|---|
@@ -58,9 +58,17 @@ There are ten suites, each needing the migrations it builds on applied first:
 | `history-lessons.test.sql` | subscription + history lessons | 13 |
 | `feedback-instant.test.sql` | feedback digest + feedback instant | 16 |
 | `teacher-questions.test.sql` | teacher questions only | 49 |
+| `history-standards.test.sql` | subscription + history lessons + history standards | 14 |
 
 Every check prints `PASS` or `FAIL ***`. Grep for `FAIL`. As of the last run:
-235 checks, 0 failures.
+249 checks, 0 failures.
+
+**`history-standards.test.sql` must be applied AFTER
+`setup-classroom-history-lessons.sql`**, not instead of it. Both define
+`classroom_session_history`, so the file applied last is the one installed.
+Applying them the other way round leaves the old body in place and the suite
+stops at section 0 — which is the point of section 0, and it was verified by
+doing exactly that.
 
 The challenge suites need `setup-school-subscription.sql` applied even though
 they test neither subscriptions nor money: its trigger refuses to create a

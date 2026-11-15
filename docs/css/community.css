@@ -4855,6 +4855,37 @@
     color: var(--color-gray-500); font-style: italic;
 }
 
+/* ── Florida standards chips ───────────────────────────────────────
+   Small, quiet, and never between the teacher and the question. A
+   benchmark code is a thing you check once when you are planning and
+   ignore for the rest of term, so it must not compete with the prompt. */
+.cc-stds { display: flex; flex-wrap: wrap; gap: 0.3rem; margin: 0.15rem 0 0.4rem; }
+
+.cc-std {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.68rem; font-weight: 600; letter-spacing: 0.01em;
+    padding: 0.1rem 0.4rem; border-radius: 5px;
+    border: 1px solid var(--border);
+    background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+    color: var(--color-gray-900); text-decoration: none;
+    white-space: nowrap;
+}
+.cc-std:hover { border-color: var(--color-primary); text-decoration: underline; }
+
+.cc-std-summary { margin: 0.6rem 0; }
+.cc-std-group h5 {
+    margin: 0.6rem 0 0.25rem; font-size: 0.82rem;
+    color: var(--color-gray-500); text-transform: uppercase; letter-spacing: 0.04em;
+}
+.cc-std-group ul { margin: 0; padding-left: 0; list-style: none; }
+.cc-std-group li {
+    display: flex; gap: 0.5rem; align-items: baseline;
+    padding: 0.2rem 0; font-size: 0.82rem; line-height: 1.35;
+}
+/* The code column does not shrink. A wrapped benchmark code is unreadable
+   and unsearchable, and it is the part a teacher copies out. */
+.cc-std-group li .cc-std { flex: 0 0 auto; }
+
 /* ── Scaled pictograph ─────────────────────────────────────────────
    The tally chart with a key. Everything is inherited from .dots on
    purpose: the two charts should look like the same chart, because the

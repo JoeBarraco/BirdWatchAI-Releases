@@ -8273,10 +8273,92 @@ async function reviewClassroomQuestions(roomId) {
                    had nothing to say about this week's data.</span>`
                 : ''}
         </p>
+        ${cmStandardsSummaryHtml(questions, 'this set')}
         <div class="classroom-review-list">
             ${questions.map((q, i) => classroomReviewItem(q, i)).join('')}
         </div>
         <button class="classroom-btn" onclick="closeClassroomRight()">Close</button>`;
+}
+
+// ── Standards on screen ─────────────────────────────────────────────
+//
+// The alignment map is worth nothing to a teacher until they can see it
+// without leaving the panel, and worth less than nothing if they have to
+// take our word for what a code means. So every chip carries the
+// benchmark's own text in its tooltip and links to CPALMS, where the same
+// words are, under Florida's name rather than ours.
+//
+// Rendered from classroom-alignment.js, which may not have loaded — the
+// classroom module has to keep working if a later script 404s, so every
+// one of these returns empty rather than throwing.
+
+function cmStandardChipsHtml(templateId) {
+    if (typeof CLASSROOM_TEMPLATE_STANDARDS === 'undefined') return '';
+    const codes = CLASSROOM_TEMPLATE_STANDARDS[templateId] || [];
+    if (!codes.length) return '';
+
+    return `<div class="cc-stds">${codes.map(c => {
+        const s = (typeof CLASSROOM_STANDARDS !== 'undefined' && CLASSROOM_STANDARDS[c]) || null;
+        return `<a class="cc-std" target="_blank" rel="noopener"
+                   href="${esc(classroomStandardUrl(c))}"
+                   title="${esc(s ? s.text : c)}">${esc(c)}</a>`;
+    }).join('')}</div>`;
+}
+
+/**
+ * What a set of questions covered, grouped by subject.
+ *
+ * Deliberately lists the benchmarks rather than counting them. "Covers 9
+ * standards" is a number a teacher cannot check and would be right not to
+ * trust; a list of codes is one they can take to a curriculum meeting.
+ *
+ * Questions that claim nothing are counted and said out loud. A lesson is
+ * allowed to contain a word puzzle for its own sake, and hiding that from
+ * the summary would make the coverage look denser than it is.
+ */
+function cmStandardsSummaryHtml(questions, label) {
+    if (typeof CLASSROOM_TEMPLATE_STANDARDS === 'undefined'
+     || typeof CLASSROOM_STANDARDS === 'undefined') return '';
+
+    const qs = questions || [];
+    const codes = classroomStandardsFor(qs);
+    const untagged = qs.filter(q => {
+        const id = q && (q.template_id || q.templateId);
+        return !(CLASSROOM_TEMPLATE_STANDARDS[id] || []).length;
+    }).length;
+
+    if (!codes.length && !untagged) return '';
+
+    const bySubject = new Map();
+    codes.forEach(c => {
+        const s = CLASSROOM_STANDARDS[c];
+        if (!s) return;
+        if (!bySubject.has(s.subject)) bySubject.set(s.subject, []);
+        bySubject.get(s.subject).push(c);
+    });
+
+    return `
+        <details class="classroom-details cc-std-summary">
+            <summary>Florida standards covered${codes.length ? ` (${codes.length})` : ''}</summary>
+            ${[...bySubject.entries()].map(([subject, cs]) => `
+                <div class="cc-std-group">
+                    <h5>${esc(subject)}</h5>
+                    <ul>${cs.map(c => `
+                        <li>
+                            <a class="cc-std" target="_blank" rel="noopener"
+                               href="${esc(classroomStandardUrl(c))}">${esc(c)}</a>
+                            <span>${esc(CLASSROOM_STANDARDS[c].text)}</span>
+                        </li>`).join('')}</ul>
+                </div>`).join('')}
+            ${untagged ? `<p class="classroom-muted">
+                ${untagged} question${untagged === 1 ? '' : 's'} in ${esc(label || 'this set')}
+                ${untagged === 1 ? 'is' : 'are'} not aligned to a benchmark — the word
+                puzzles mostly. They are there because a class enjoys them, not because
+                a standard asks for them.</p>` : ''}
+            <p class="classroom-muted">
+                Codes link to CPALMS, Florida's official standards site. Check one before
+                you quote it: the claim is ours, the benchmark is theirs.</p>
+        </details>`;
 }
 
 function classroomReviewItem(q, i) {
@@ -8298,7 +8380,9 @@ function classroomReviewItem(q, i) {
                 <span class="classroom-pill">${esc(q.own ? 'your question' : q.category)}</span>
                 <code class="classroom-review-tid">${esc(q.template_id)}</code>
                 ${q.from_partner ? '<span class="classroom-pill partner">partner data</span>' : ''}
+                ${q.scope === 'community' ? '<span class="classroom-pill">pooled data</span>' : ''}
             </div>
+            ${cmStandardChipsHtml(q.template_id)}
             ${slide ? `<div class="classroom-review-slide">${slide}</div>` : ''}
             ${classroomIntroHtml(q)}
             <p class="classroom-review-prompt">${esc(q.prompt)}</p>
@@ -10317,6 +10401,7 @@ async function showClassroomHistory(id) {
             ${cmHistoryGroupHtml('Missed', '❌', missed, true)}
             ${cmHistoryGroupHtml('Correct', '✅', right, false)}
             ${cmHistoryGroupHtml('Waiting on the birds', '⏳', waiting, false)}
+            ${cmStandardsSummaryHtml(qs, 'this lesson')}
             ${qs.length ? '' : '<p class="classroom-muted">No questions were recorded for this lesson.</p>'}
         </details>`;
     }).join('');
