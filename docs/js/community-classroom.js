@@ -2426,12 +2426,7 @@ function cmPictograph(caption, series, opts) {
     // benchmark that wants a tally chart already has one. Only offer this
     // shape where a real scale is warranted.
     //
-    // `exactFor` is how a QUESTION about one row stays answerable: the key
-    // has to divide that row exactly, or the class reads 9½ birds off a
-    // chart drawn for 99 visits and answers 95. The row being asked about
-    // must be readable to the visit, whatever the others round to.
-    const per = o.per || SCALES.find(p => max / p <= 10
-                    && (o.exactFor == null || o.exactFor % p === 0));
+    const per = o.per || SCALES.find(p => max / p <= 10);
     if (!per) return null;
 
     // ⚠ A ROW SMALLER THAN HALF THE KEY CANNOT BE DRAWN HONESTLY.
@@ -6206,37 +6201,57 @@ ${jumbled.split('').join(' ')}`,
         const top = s.species.slice(0, band === 'k-2' ? 4 : 5);
         if (top.length < 3) return null;
 
-        // The row being asked about must divide by the key EXACTLY, or the
-        // chart cannot be read to the visit and every answer is a near
-        // miss. Walk the species rather than always taking the second: a
-        // question that is unanswerable as drawn is worse than a lesson
-        // with one fewer question in it.
-        let chart = null, pick = null;
-        for (const cand of top.slice(1)) {
-            const c = cmPictograph('Visits this week', cmSpeciesSeries(s, top.length),
-                                   { band, highlight: cand.species, exactFor: cand.n });
-            // And it has to survive the small-row filter, or the bird being
-            // asked about is not on the chart at all.
-            if (c && c.series.some(r => r.key === cand.species)) { chart = c; pick = cand; break; }
-        }
+        // ⚠ THE QUESTION ASKS "ABOUT HOW MANY", AND IT HAS TO.
+        //
+        // The first version of this asked for the exact count, which a
+        // pictograph cannot give: 46 visits against a key of 10 is drawn as
+        // four and a half birds, and a class reading the chart perfectly
+        // answers 45. Requiring the key to divide the row exactly was the
+        // obvious fix and it was wrong too — against real counts (99, 46,
+        // 36) no round key divides any of them, and the question simply
+        // stopped building.
+        //
+        // So the question matches what the chart can actually say. Reading
+        // a pictograph to the nearest half symbol IS the skill
+        // MA.3.DP.1.2 names; pretending it is exact would teach a habit
+        // that falls apart on the first real chart a child meets. The
+        // explain says the true count and why it differs, which is a
+        // better lesson than the one the exact question was trying to give.
+        const chart = cmPictograph('Visits this week', cmSpeciesSeries(s, top.length),
+                                   { band, highlight: top[1].species });
+        // Null when no scale above 1 is warranted — at that size the tally
+        // chart is the right chart and already exists.
         if (!chart) return null;
 
-        const built = cmChoices(String(pick.n),
+        // Whatever the small-row filter left, second row down: the top row
+        // is the one a class can answer by recognising "the longest", which
+        // is not the same as using the key.
+        const pick = chart.series[1];
+        if (!pick) return null;
+
+        const units  = Math.round((pick.value / chart.per) * 2) / 2;
+        const shown  = units * chart.per;
+        const half   = units % 1 ? '½' : '';
+        const label  = `${Math.floor(units) || ''}${half}`;
+
+        const built = cmChoices(`about ${shown}`,
             // The wrong answer this question is FOR: the number of symbols,
-            // read straight off the picture without using the key.
-            [String(Math.round(pick.n / chart.per))]
-                .concat(cmNumberDistractors(pick.n, rng, 2).map(String)), rng);
+            // read straight off the picture without using the key at all.
+            [`about ${units}`, `about ${shown * 2}`, `about ${Math.round(shown / 2)}`], rng);
         if (!built) return null;
 
         return {
-            prompt: `Use the key. How many times did a ${pick.species} visit?`,
+            prompt: `Use the key. About how many times did a ${pick.label} visit?`,
             ...built,
             chart,
-            image: cmShotFor(s, pick.species),
-            explain: `${pick.n / chart.per} bird symbols, and each one stands for `
-                   + `${chart.per} visits — so ${pick.n}, not `
-                   + `${pick.n / chart.per}.`,
-            about_bird: pick.species,
+            image: cmShotFor(s, pick.key),
+            explain: `${label} bird symbol${units === 1 ? '' : 's'}, and each one stands `
+                   + `for ${chart.per} visits — so about ${shown}, not ${units}. `
+                   + (pick.value === shown
+                      ? 'Here the chart happens to land exactly on the real count.'
+                      : `The real count was ${pick.value}: a picture graph rounds to the `
+                        + `nearest half symbol, which is why the question says "about".`),
+            about_bird: pick.key,
         };
     },
 },
