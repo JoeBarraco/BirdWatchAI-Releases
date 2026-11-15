@@ -9611,6 +9611,35 @@ function cmOwnChartWhyNot(kind, source, band) {
 }
 
 /**
+ * Why THIS WEEK'S numbers defeated a shape that is otherwise legal.
+ *
+ * ⚠ "NOT ENOUGH DATA" IS NOT ALWAYS THE REASON, and saying it when the
+ * opposite is true sends a teacher looking for more birds. A tally draws
+ * one mark per visit: on a feeder taking thirty-five visits a day it
+ * fails because there are too MANY, and the fix is a picture graph with
+ * a key rather than waiting a week.
+ */
+function cmOwnChartDataWhyNot(spec, source) {
+    const thin = 'Your feeders have not recorded enough this week to draw that one. '
+               + 'The question still works — it just goes up without a chart until '
+               + 'there is more data.';
+    if (!spec || !source) return thin;
+
+    if (spec.kind === 'dots') {
+        const s = cmWindow(source, 7);
+        const vals = spec.source === 'species' ? s.species.map(x => x.n)
+                   : spec.source === 'hours'   ? s.byHour.filter(n => n > 0)
+                   : s.days.map(d => d.n);
+        if (vals.length && Math.max(...vals) > DOTS_MAX_VALUE) {
+            return 'There are too many visits this week to draw one mark each — the rows '
+                 + 'would run off the board. A picture graph with a key counts the same '
+                 + 'data in a few symbols.';
+        }
+    }
+    return thin;
+}
+
+/**
  * The sources a given shape can honestly be drawn over.
  *
  * Used to rebuild the second dropdown when the first changes, so a
@@ -10910,9 +10939,8 @@ function renderClassroomOwnChartPreview() {
            ${classroomChartHtml(chart, false)}`
         : why
         ? `<p class="classroom-muted">${esc(why)}</p>`
-        : '<p class="classroom-muted">Your feeders have not recorded enough this week '
-        + 'to draw that one. The question still works — it just goes up without a '
-        + 'chart until there is more data.</p>';
+        : `<p class="classroom-muted">${esc(cmOwnChartDataWhyNot(classroomOwn.chart,
+                                                                 classroomOwn.source))}</p>`;
 }
 
 function renderClassroomOwnPhotos() {
