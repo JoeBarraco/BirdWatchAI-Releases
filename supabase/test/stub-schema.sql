@@ -164,7 +164,22 @@ create table if not exists community_detections (
     feeder_id   uuid not null,
     species     text,
     image_url   text,
+    -- Added for setup-classroom-teacher-questions-2.sql, which lets a
+    -- teacher attach a CLIP as well as a photograph. The stub drifts from
+    -- production whenever a migration reaches a column nothing here had
+    -- yet; this is one of those.
+    video_url   text,
     detected_at timestamptz not null default now()
+);
+
+-- Which feeders belong to which community, and whether they are approved.
+-- The teacher-question media check reads it: a question may use any feeder
+-- approved in its classroom's community, not only the classroom's own.
+create table if not exists community_feeders (
+    community_id uuid not null,
+    feeder_id    uuid not null,
+    status       text not null default 'approved',
+    primary key (community_id, feeder_id)
 );
 
 create or replace function community_role(p_community_id uuid, p_user_id uuid)

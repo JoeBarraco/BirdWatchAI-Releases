@@ -44,7 +44,7 @@ docker exec bwai-pgtest psql -U postgres -q -f /tmp/reminders-schema.sql
 docker exec bwai-pgtest psql -U postgres -q -f /tmp/school-reminders.test.sql
 ```
 
-There are eleven suites, each needing the migrations it builds on applied first:
+There are twelve suites, each needing the migrations it builds on applied first:
 
 | Suite | Needs | Checks |
 |---|---|---|
@@ -59,9 +59,17 @@ There are eleven suites, each needing the migrations it builds on applied first:
 | `feedback-instant.test.sql` | feedback digest + feedback instant | 16 |
 | `teacher-questions.test.sql` | teacher questions only | 49 |
 | `history-standards.test.sql` | subscription + history lessons + history standards | 16 |
+| `teacher-questions-2.test.sql` | subscription + teacher questions + teacher questions 2 | 28 |
 
 Every check prints `PASS` or `FAIL ***`. Grep for `FAIL`. As of the last run:
-251 checks, 0 failures.
+279 checks, 0 failures.
+
+**Sharing a teacher's question has four conditions and they all have to
+hold at once** — shared, same community, same grade band, not your own.
+Any one of them failing open means a lesson quietly acquires somebody
+else's question; `teacher-questions-2.test.sql` section D checks each
+separately for that reason. Adoption is deliberately opt-in at both ends:
+sharing only OFFERS a question.
 
 **`history-standards.test.sql` must be applied AFTER
 `setup-classroom-history-lessons.sql`**, not instead of it. Both define
