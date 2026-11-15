@@ -3021,6 +3021,16 @@ function classroomBarsHtml(chart, revealed) {
         const longest = Math.max(...lines.map(l => l.length), 1);
         const labelSize = Math.max(16, Math.min(30, (group * 0.92) / (longest * 0.58)));
         const lineStep = Math.round(labelSize * 0.92);
+        // ⚠ AN INLINE STYLE, NOT A font-size="" ATTRIBUTE. An SVG
+        // presentation attribute loses to ANY stylesheet rule, and
+        // .cc-label sets 30px — so this size was computed and then thrown
+        // away, and every label drew at 30px whatever its slot. Thirteen
+        // hour labels ("10 am" in a 70-unit slot) ran into each other, which
+        // was flagged on quiet-hours, and the textLength guarantee below
+        // was judging fit at a size the browser never used. Inline style
+        // outranks the class; the class stays as the default for the other
+        // charts' labels, which set no size of their own.
+        const labelStyle = `style="font-size:${labelSize.toFixed(1)}px"`;
 
         // ⚠ THEN GUARANTEE IT, because the estimate is not a measurement.
         // A per-character factor is wrong for any string that is mostly
@@ -3075,7 +3085,7 @@ function classroomBarsHtml(chart, revealed) {
                  + thumb
                  + lines.map((ln, k) =>
                      `<text x="${cx}" y="${H - padB + 28 + labelDrop + k * lineStep}"
-                            class="cc-label" font-size="${labelSize.toFixed(1)}"
+                            class="cc-label" ${labelStyle}
                             text-anchor="middle"${fitAttr(ln)}>${esc(ln)}</text>`).join('');
         }
 
@@ -3087,7 +3097,7 @@ function classroomBarsHtml(chart, revealed) {
              + thumb
              + lines.map((ln, k) =>
                  `<text x="${cx}" y="${H - padB + 28 + labelDrop + k * lineStep}"
-                        class="cc-label" font-size="${labelSize.toFixed(1)}"
+                        class="cc-label" ${labelStyle}
                         text-anchor="middle"${fitAttr(ln)}>${esc(ln)}</text>`).join('')
              + subLine;
     }).join('');
@@ -8331,9 +8341,16 @@ ${jumbled.split('').join(' ')}`,
              + `${Math.abs(lng).toFixed(1)}° ${ew} of the Equator`], rng);
         if (!built) return null;
 
+        // "Where is that?" read as "find the spot on the map", and a teacher
+        // asked whether the class should pick the quadrant or the exact place
+        // and wanted finer gridlines for the latter. Neither: every choice
+        // carries the same two numbers, and what differs is which one is
+        // latitude and which way each points. The prompt now asks THAT.
+        // Finer gridlines were deliberately not added — they would invite
+        // reading off a location the choices never test.
         return {
             prompt: `A feeder in this lesson sits at ${lat.toFixed(1)}, `
-                  + `${lng.toFixed(1)}. Where is that?`,
+                  + `${lng.toFixed(1)}. Which of these says where it is?`,
             ...built,
             geo: { lat, lng,
                    caption: 'The Equator and the Prime Meridian divide the world in four' },
