@@ -12291,10 +12291,14 @@ function renderClassroomList() {
         //   feedback". Reported exactly that way: "I keep thinking this is
         //   where I provide question feedback." It is the opposite: the
         //   place where what everyone else sent in gets read and dealt with.
-        //   "Flags & suggestions" rather than "flagged questions" because
-        //   both land in this pile — a flag on a question and a suggestion
-        //   from Suggest a question are the same table and the same screen.
-        { kind: 'feedback',  icon: '💬', label: 'Review flags & suggestions',
+        //   ⚠ "Review flags", two words, because the column is 210px wide
+        //   and "Review flags & suggestions" wrapped onto a second line —
+        //   taller than every other row and ragged next to them. Seen on
+        //   the live site. The pane it opens is still headed "Flags &
+        //   suggestions", where there is room to say both; the row only has
+        //   to be the door, and "flags" is the word this app already uses
+        //   for the act ("flag anything that reads badly").
+        { kind: 'feedback',  icon: '💬', label: 'Review flags',
           // The counts ARE the description once you know what the row is, so
           // they replace the sentence rather than crowding in beside it. The
           // sentence comes back whenever the count is unknown.
@@ -12401,6 +12405,18 @@ function renderClassroomActions() {
         : (r.home_feeder_id ? '' : ' disabled title="Set a home feeder first"');
 
     box.innerHTML = `
+        <!-- ⚠ TWO BOXES: what this class IS, then what you can DO with it.
+             Everything in here was one undifferentiated stack — a title, a
+             line of grey text, three headings — and at a glance the headings
+             were the only structure, so the class's own name and its feeder
+             read as a caption on the first button group rather than as the
+             subject of the whole pane. Boxing them says which is which
+             before a word is read.
+             The feeder line belongs in the FIRST box, with the name: the
+             status light and "6 questions a session" describe the class, and
+             a teacher checks them to decide whether to press On the board —
+             they are not themselves something to press. -->
+        <div class="classroom-box classroom-box-what">
         <div class="classroom-actions-head">
             <h4 class="classroom-h">${esc(r.name)}</h4>
             <span class="classroom-pill">${esc(GRADE_BAND_LABELS[r.grade_band] || r.grade_band)}</span>
@@ -12437,7 +12453,9 @@ function renderClassroomActions() {
             · ${r.questions_per_session || 8} question${(r.questions_per_session || 8) === 1 ? '' : 's'} a session
             ${r.is_mine ? '' : ` · taught by ${esc(r.teacher_label)}`}
         </div>
+        </div>
 
+        <div class="classroom-box classroom-box-do">
         <div class="classroom-group">
             <div class="classroom-group-title">Start a lesson</div>
             <div class="classroom-group-row">
@@ -12488,7 +12506,7 @@ function renderClassroomActions() {
                 <button class="classroom-btn" onclick="showClassroomHistory('${escJs(r.id)}')">📊 Previous lessons</button>
             </div>
         </div>
-
+        </div>
 
         <div class="classroom-pending" id="classroom-pending-${esc(r.id)}"></div>`;
 }
@@ -14426,8 +14444,21 @@ async function showClassroomFeedback() {
         </div>
         <div class="classroom-review-list">
         ${items.map(f => `
-            <div class="classroom-review-q">
+            <!-- ⚠ THE STATE IS ON THE CARD, not inferred from the absence of
+                 a button. With "Show closed" on, an open card and a closed
+                 one were the same card; the only difference was that one
+                 ended in "✓ Mark closed" and the other did not, and reading
+                 a list by noticing which cards are MISSING a button is not
+                 reading, it is proofreading. Reported from the live site.
+                 So: a status pill first in the head, where the eye lands,
+                 and an accent down the left edge — amber for open, green for
+                 closed — so the state is legible while scrolling past at
+                 speed, before any word is read. The pill carries the word
+                 too, because colour alone is not a label. -->
+            <div class="classroom-review-q ${f.resolved_at ? 'is-closed' : 'is-open'}">
                 <div class="classroom-review-head">
+                    <span class="classroom-pill ${f.resolved_at ? 'done' : 'todo'}">${
+                        f.resolved_at ? '✓ Closed' : '● Open'}</span>
                     <span class="classroom-pill${f.kind === 'suggestion' ? ' partner' : ''}">${
                         f.kind === 'suggestion' ? 'suggestion' : esc(REASONS[f.reason] || f.reason)}</span>
                     ${f.kind === 'suggestion' ? ''

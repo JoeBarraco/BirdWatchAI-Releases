@@ -4218,10 +4218,36 @@
     color: inherit; font: inherit;
 }
 .classroom-row:hover { border-color: var(--color-primary-light); }
+
+/* ⚠ THE SELECTED ROW HAS TO BE OBVIOUS FROM THE OTHER SIDE OF THE PANE.
+   It was a 1px border and a 12% tint, which is a difference you find by
+   comparing rows rather than one you simply see — and this column is the
+   only thing saying WHICH class the whole right-hand side belongs to, on a
+   screen where the two are a metre apart. Reported as needing "more
+   salience".
+   Three signals instead of one, because any single one of them fails
+   somewhere: the bar survives a greyscale or colour-blind reading where the
+   tint does not, the tint survives a 1px bar lost to a low-DPI scale, and
+   the weight survives both.
+   ⚠ inset box-shadow for the bar, NOT border-left. A wider border would
+   reflow the text by its width every time the selection moved, so the whole
+   column would twitch on each press. The shadow is painted inside the
+   existing padding and moves nothing. */
 .classroom-row.on {
     border-color: var(--color-primary);
-    background: color-mix(in srgb, var(--color-primary) 12%, var(--bg-card));
+    background: color-mix(in srgb, var(--color-primary) 20%, var(--bg-card));
+    box-shadow: inset 3px 0 0 var(--color-primary);
 }
+/* ⚠ NOT tinting the name with --color-primary. In dark mode that token is
+   #5aab72, a light green, which on this row's tinted background is a
+   contrast drop dressed up as emphasis. Weight carries it in both themes,
+   and the name stays the colour that is readable. School rows sit at 600,
+   so this is a real step for them; class rows are already 700. */
+.classroom-row.on .classroom-row-name { font-weight: 700; }
+/* The meta line comes out of its muted grey while the row is the live one:
+   on the selected row it is the feeder and the status light, which is the
+   detail a teacher is actually checking before starting a lesson. */
+.classroom-row.on .classroom-row-meta { color: var(--color-gray-700); }
 .classroom-row-name {
     font-weight: 700; font-size: 0.86rem; color: var(--color-gray-900);
     overflow-wrap: anywhere;
@@ -4242,8 +4268,12 @@
 .classroom-row-act {
     background: color-mix(in srgb, var(--color-gray-500) 5%, var(--bg-card));
 }
+/* ⚠ Must match .classroom-row.on's tint, not the old 12%. This rule comes
+   later and would otherwise quietly undo the stronger selected state for
+   the school rows alone — the bar and the border would be there, the tint
+   would not, and only these five rows would look half-selected. */
 .classroom-row-act.on {
-    background: color-mix(in srgb, var(--color-primary) 12%, var(--bg-card));
+    background: color-mix(in srgb, var(--color-primary) 20%, var(--bg-card));
 }
 
 /* The open half of "6 open · 12 closed" on the feedback row. Darker and
@@ -4338,6 +4368,35 @@
     }
 }
 
+
+/* ── The two boxes in the class pane ───────────────────────────────
+   What this class IS (name, the three buttons that act on it, its feeder
+   and status light), then what you can DO with it (the three timing
+   groups). The pane was one flat stack where the uppercase group titles
+   were the only structure on offer, so the class's own name read as a
+   caption on the Start a lesson group instead of as the subject of
+   everything below it.
+   A real border, not a background tint: the tint is already spoken for by
+   the selected row in the column beside this, and two different meanings
+   for "slightly shaded" in one view is how both stop meaning anything.
+   ⚠ The boxes sit inside #classroom-actions' 680px cap, so they are the
+   width of a reading column, not of the window. */
+.classroom-box {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.75rem 0.85rem;
+    background: var(--bg-card);
+}
+.classroom-box + .classroom-box { margin-top: 0.7rem; }
+
+/* The title box's own meta line already has margin-top, and the box adds
+   padding, so without this the name and its feeder drift apart. */
+.classroom-box-what .classroom-card-meta { margin-top: 0.3rem; }
+
+/* First group in the "do" box starts flush with the padding — the 0.8rem
+   that separates the groups from each other would read as a gap at the top
+   of the box, which is the box looking badly fitted rather than roomy. */
+.classroom-box-do .classroom-group:first-child { margin-top: 0; }
 
 /* Grouped by WHEN you would do it, not by what the code calls it. */
 .classroom-group { margin-top: 0.8rem; }
@@ -4663,6 +4722,36 @@
 /* A flagged card stays visibly flagged for the rest of the pass, so
    somebody working down a list of eight can see where they have been. */
 .classroom-review-q.flagged { border-color: #c97a00; }
+
+/* ── Open vs closed, in the flags list ─────────────────────────────
+   ⚠ These two states USED TO LOOK IDENTICAL. With "Show closed" on, the
+   only thing telling them apart was that an open card ended in a "✓ Mark
+   closed" button and a closed one did not — a difference you find by
+   checking for something's absence, which is proofreading, not reading.
+   Reported from the live site.
+   An edge accent carries it: amber is already this file's "needs a human"
+   colour (.classroom-warn, .classroom-review-q.flagged), green is already
+   done. Both are paired with a pill that says the word, because a
+   red-green edge on its own is no label at all for the people most likely
+   to be let down by it.
+   ⚠ NOT opacity on the closed card. Half of what makes a closed item worth
+   keeping is the note explaining what was done about it, and fading that
+   to 60% to signal "handled" makes the useful part the hardest to read. It
+   is settled, not unimportant. The background steps back; the text does
+   not move. */
+.classroom-review-q.is-open {
+    border-left: 3px solid #c97a00;
+}
+.classroom-review-q.is-closed {
+    border-left: 3px solid var(--color-primary);
+    background: color-mix(in srgb, var(--color-gray-500) 6%, var(--bg-card));
+}
+.classroom-pill.todo {
+    background: #c97a00; color: #fff;
+}
+.classroom-pill.done {
+    background: var(--color-primary); color: #fff;
+}
 
 .classroom-review-head {
     display: flex; align-items: center; gap: 6px;
