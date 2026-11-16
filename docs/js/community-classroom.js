@@ -11617,7 +11617,8 @@ function buildDataFreeQuestions(room, o) {
     // o.all is review, which permutes the canonical list itself — see the
     // long note on the main path for why that has to be the canonical one.
     const ordered = o.all ? lessonOrder
-                          : classroomApplyQuestionOrder(lessonOrder, mode, o, seed);
+                          : classroomApplyQuestionOrder(lessonOrder, mode, o,
+                                                            classroomOrderSeed(room, seed));
     const offered = CLASSROOM_TEMPLATES.filter(t =>
         classroomTemplateAllowed(t, band, picked)).length;
     return {
@@ -12189,7 +12190,8 @@ function buildClassroomQuestions(room, data, opts) {
     // what the class is asked.
     const mode    = classroomQuestionOrderFor(room, o);
     const ordered = o.all ? lessonOrder
-                          : classroomApplyQuestionOrder(lessonOrder, mode, o, seed);
+                          : classroomApplyQuestionOrder(lessonOrder, mode, o,
+                                                            classroomOrderSeed(room, seed));
 
     // How many templates this band HAS, against how many could say anything
     // about this week. The gap is the useful number: a band that offers forty
@@ -14162,11 +14164,25 @@ function classroomQuestionOrderFor(room, o) {
  * identification block the lesson order keeps at the front: pinning four
  * of eight would leave 'Random' looking broken.
  *
+ * ⚠ EXCEPT UNDER RANDOM, WHICH SHUFFLES THE OPENER TOO. Asked for in so
+ * many words: "Make Random reshuffle each time I pick it, including the
+ * first question." With the opener held, Random's first card never moved,
+ * and in a review list where one card fills the panel that read as Random
+ * doing nothing. Random is the teacher saying "not the careful order", so
+ * it gets none of it. Best and worst still keep the opener: those are
+ * about the rest of the list, not about how the lesson begins.
+ *
  * Seeded, not live-random, so the lesson and the review of it draw the
- * same order on the same day. A Random that reshuffled between the two
- * would make review a lie about the board.
+ * same order. A Random that reshuffled between the two would make review
+ * a lie about the board. The seed includes the room's question_order_seed
+ * (see classroomOrderSeed), which is what lets each pick be a new shuffle
+ * without the two falling out of step.
  */
 function classroomOrderPermutation(list, mode, scoreOf, seed) {
+    if (mode === 'random' && list && list.length >= 2) {
+        return classroomOrderIndices(list, mode, scoreOf,
+                                     cmRng(seed + '|order|' + mode));
+    }
     if (!mode || mode === 'lesson' || !list || list.length < 3) {
         return (list || []).map((_, i) => i);
     }
@@ -14175,6 +14191,22 @@ function classroomOrderPermutation(list, mode, scoreOf, seed) {
     return [0].concat(
         classroomOrderIndices(tail, mode, scoreOf, cmRng(seed + '|order|' + mode))
             .map(i => i + 1));
+}
+
+/**
+ * The seed the order is drawn with: the lesson's own, plus the room's
+ * shuffle seed when it has one.
+ *
+ * The lesson's seed alone is the room and the day, which made Random one
+ * shuffle per day however many times it was picked. Each pick now writes a
+ * new question_order_seed to the classroom (setup-classroom-question-
+ * shuffle.sql), and review and the lesson both mix it in here, so a new
+ * pick is a new order on both. A room without one, including every room
+ * before that SQL is applied, gets exactly the seed it had before.
+ */
+function classroomOrderSeed(room, seed) {
+    const s = room && room.question_order_seed;
+    return s ? `${seed}|${s}` : seed;
 }
 
 /** The same permutation, applied — which is all the lesson needs. */
@@ -14315,28 +14347,41 @@ function classroomReviewOrder() {
     // what review draws is what the board draws, not a second ordering
     // that happens to agree most of the time. The opener is held in place
     // here as well, because classroomOrderPermutation is where that rule
-    // lives — one implementation, not two that look alike.
+    // lives — one implementation, not two that look alike. The room's
+    // shuffle seed goes in the same way the lesson's does, through
+    // classroomOrderSeed, and is read fresh each time so a new pick shows.
     return classroomOrderPermutation(
         classroomReviewQuestions,
         classroomReviewSort,
         classroomReviewScore,
-        classroomReviewSeed);
+        classroomOrderSeed(classroomReviewRoom, classroomReviewSeed));
 }
 
 function classroomReviewSortHtml() {
     const opt = (v, label) => `<option value="${v}"${
         classroomReviewSort === v ? ' selected' : ''}>${label}</option>`;
-    return `<label class="classroom-review-sort">
+    // "Shuffle again" because a select does not fire `change` when the
+    // option already chosen is chosen again. Without it, "reshuffle each
+    // time I pick it" would only be true for a teacher who knew to pick
+    // something else first. Shown only under Random, the one sort a second
+    // press can change.
+    return `<div class="classroom-review-sort">
+        <label>
         <span>Sort</span>
         <select class="classroom-select" onchange="setClassroomReviewSort(this.value)"
                 title="This is the order the class is asked in, not just the order of
                        this list. It is saved for this classroom and used by the next
-                       lesson. The opening question stays first either way.">
+                       lesson. The opening question stays first, except under Random,
+                       which shuffles everything and draws a new order each time.">
             ${opt('lesson', 'Lesson order')}
             ${opt('best', 'Best rated first')}
             ${opt('worst', 'Worst rated first')}
             ${opt('random', 'Random')}
-        </select></label>`;
+        </select></label>
+        <button type="button" class="classroom-btn" id="classroom-review-reshuffle"
+                onclick="reshuffleClassroomReview()"
+                ${classroomReviewSort === 'random' ? '' : 'hidden'}>↻ Shuffle again</button>
+        </div>`;
 }
 
 /**
@@ -14386,7 +14431,16 @@ function classroomReviewResort() {
 function setClassroomReviewSort(value) {
     classroomReviewSort = ['lesson', 'best', 'worst', 'random'].includes(value)
         ? value : 'lesson';
-    classroomReviewResort();
+    const again = document.getElementById('classroom-review-reshuffle');
+    if (again) again.hidden = classroomReviewSort !== 'random';
+
+    // Picking Random is a new shuffle every time, not a return to the one
+    // the room had. reshuffleClassroomReview re-sorts the list itself.
+    if (classroomReviewSort === 'random' && classroomReviewRoom) {
+        reshuffleClassroomReview();
+    } else {
+        classroomReviewResort();
+    }
 
     if (!classroomReviewRoom) return;
 
@@ -14409,6 +14463,57 @@ function setClassroomReviewSort(value) {
         // like a silent failure.
         if (error) showToast('Sorted — but this order could not be saved for next time.');
     }).catch(() => {});
+}
+
+/**
+ * A new Random order: a fresh seed on the classroom, and the list redrawn
+ * in it.
+ *
+ * Shown at once, kept only if it saves. The lesson reads the seed from the
+ * classroom, so a seed that never reached the server is an order the
+ * class will not be asked in. Leaving it on screen would be review lying
+ * about the board, the one thing it exists not to do. So on failure the
+ * previous seed goes back and the list moves back with it.
+ *
+ * Both copies of the room are kept in step for the reason
+ * setClassroomReviewSort gives: a lesson started from this panel without
+ * reloading reads classroomList, not the review's copy.
+ */
+function reshuffleClassroomReview() {
+    const room = classroomReviewRoom;
+    if (!room) return;
+    const listed = classroomList.find(r => r.id === room.id);
+    const before = room.question_order_seed || null;
+
+    let seed = '';
+    try {
+        const b = crypto.getRandomValues(new Uint8Array(8));
+        seed = Array.from(b, x => x.toString(16).padStart(2, '0')).join('');
+    } catch {
+        seed = Math.random().toString(36).slice(2, 14);
+    }
+
+    const put = s => {
+        room.question_order_seed = s;
+        if (listed) listed.question_order_seed = s;
+        classroomReviewResort();
+    };
+    put(seed);
+
+    const undo = () => {
+        // Only undo our own shuffle. If a second press has already landed
+        // a newer seed, that one is the teacher's latest choice and its own
+        // save decides whether it stays.
+        if (room.question_order_seed !== seed) return;
+        put(before);
+        // PGRST202 here means setup-classroom-question-shuffle.sql is not
+        // applied yet, and Random is still one shuffle per day.
+        showToast('Could not save a new shuffle, so the list is back to the order the lesson will use.');
+    };
+    sbRpc('classroom_set_question_order_seed', {
+        p_classroom_id: room.id,
+        p_seed:         seed,
+    }, true).then(({ error }) => { if (error) undo(); }).catch(undo);
 }
 
 /**
