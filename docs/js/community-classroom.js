@@ -12704,6 +12704,25 @@ async function loadClassroomRatings(roomId) {
 }
 
 /**
+ * What the REST OF THE SCHOOL said, as { template_id: {up, down} }.
+ *
+ * Counts of CLASSES, not of teachers: the ratings table is keyed by
+ * classroom, so a teacher running four classes can put four of them on one
+ * question. Everything that draws this number has to say "classes".
+ *
+ * Non-fatal on exactly the same terms as loadClassroomRatings. Before
+ * setup-classroom-rating-counts.sql is applied the call fails with PGRST202,
+ * and review must still open: it simply shows no tallies, and the sort has
+ * nothing to sort by.
+ */
+async function loadClassroomRatingCounts(communityId) {
+    if (!communityId) return {};
+    const { data, error } = await sbRpc('classroom_template_rating_counts',
+        { p_community_id: communityId }, true);
+    return (!error && data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
+}
+
+/**
  * The ratings a lesson should honour, or null for none.
  *
  * ⚠ NOT DURING A NARROWED CHALLENGE. A challenge that names its questions
@@ -12751,6 +12770,21 @@ function classroomRatingOrder(list, ratings, recentIds) {
 // because each has its own room and its own question list.
 let classroomReviewRatings = {};
 
+// The school's tallies, and how review is currently ordered. Both belong to
+// review alone: the live stage is on a projector in front of a class, where
+// a count of what other classes thought is noise, and where there is no list
+// to sort. 'lesson' | 'best' | 'worst'.
+let classroomReviewCounts = {};
+let classroomReviewSort = 'lesson';
+
+// What THIS class had rated when the tallies were fetched, so its own thumb
+// can be taken back out of them and the current one put in. Without it a
+// teacher pressing 👍 would watch the tally sit still while the tooltip
+// claims their thumb is counted — true of the server's number, visibly false
+// of the one on screen. Recomputing from this snapshot rather than nudging a
+// running total also means pressing the same thumb ten times cannot drift.
+let classroomReviewCountsOwn = {};
+
 function classroomRateButtonsHtml(where, i, current) {
     // aria-pressed rather than a class alone, so a screen reader announces
     // which thumb is down — the visual state is the whole message here.
@@ -12761,6 +12795,121 @@ function classroomRateButtonsHtml(where, i, current) {
     return btn(1, '👍', 'More of this one: it comes up sooner in this class’s lessons. Press again to clear.')
          + btn(-1, '👎', 'Less of this one: it goes to the back of this class’s lessons. '
                        + 'To stop it altogether, untick it in the question picker. Press again to clear.');
+}
+
+/**
+ * The tally as it should read right now: the school's figure with this
+ * class's own thumb taken out and its current one put back in.
+ *
+ * The server counted whatever this class had rated when the tallies were
+ * fetched. A teacher who presses 👍 a second later has changed one of the
+ * rows behind that number, so the number has to move with them — otherwise
+ * the tooltip's promise that their thumb is counted is visibly false.
+ *
+ * Recomputed from the snapshot rather than nudged, so pressing the same
+ * thumb ten times cannot drift, and clamped at zero so a stale tally can
+ * never render a negative count.
+ */
+function classroomRateCountFor(tid) {
+    const c = classroomReviewCounts[tid];
+    const was = classroomReviewCountsOwn[tid] || 0;   // already in the server's figure
+    const now = classroomReviewRatings[tid] || 0;     // what this class says this moment
+    return {
+        up:   Math.max(0, ((c && c.up)   || 0) - (was > 0 ? 1 : 0) + (now > 0 ? 1 : 0)),
+        down: Math.max(0, ((c && c.down) || 0) - (was < 0 ? 1 : 0) + (now < 0 ? 1 : 0)),
+    };
+}
+
+/**
+ * What the rest of the school said about this question, or nothing at all.
+ *
+ * Nothing at all is the point of the early return. A template nobody has
+ * rated would otherwise draw "👍 0 👎 0" beside every other question in the
+ * list, which is a column of zeroes saying only that the feature exists.
+ *
+ * The wording is CLASSES, deliberately. The tally counts rows in a table
+ * keyed by classroom, so one teacher with four classes can be four of these
+ * numbers, and "4 teachers" would be a lie the shape of the data invites.
+ * It includes this class's own thumb, which is worth saying: a teacher who
+ * has just pressed 👍 and then reads "1 class" should know they are looking
+ * at themselves rather than at a colleague agreeing with them.
+ */
+function classroomRateCountHtml(tid) {
+    const { up, down } = classroomRateCountFor(tid);
+    if (!up && !down) return '';
+
+    const classes = n => `${n} class${n === 1 ? '' : 'es'}`;
+    const tip = `In this school: ${classes(up)} rated this up, ${classes(down)} down. `
+              + 'This class’s own thumb is counted. Tallies never change what a class '
+              + 'is asked — only the room’s own thumb does that.';
+    return `<span class="classroom-rate-count" title="${esc(tip)}">`
+         + `<span class="classroom-rate-count-up">👍 ${up}</span>`
+         + `<span class="classroom-rate-count-down">👎 ${down}</span></span>`;
+}
+
+// up − down, read through the same adjustment the number on screen gets, so
+// the sort agrees with what the teacher can see. A question four classes
+// liked and one disliked outranks one a single class liked, and both outrank
+// anything nobody has touched.
+function classroomReviewScore(q) {
+    if (!q || !q.template_id) return 0;
+    const { up, down } = classroomRateCountFor(q.template_id);
+    return up - down;
+}
+
+/**
+ * The order review should draw in, as positions keyed by lesson index.
+ *
+ * ⚠ THE QUESTION ARRAY IS NEVER REORDERED. classroomReviewQuestions stays in
+ * lesson order because its index is baked into every handler on the card —
+ * rateClassroomQuestion('review', i, …) and openClassroomFlag(i, …) — and
+ * into the data-q attribute they are found by. Sorting the array would point
+ * every one of them at a different question. What moves is the DRAWING: the
+ * list is a flex column, so a CSS `order` per card is the whole mechanism.
+ *
+ * That also means a half-typed flag form survives a re-sort, which it would
+ * not if the list were rebuilt from innerHTML.
+ *
+ * Ties keep lesson order, so switching to a rating sort on a school with no
+ * ratings yet visibly does nothing rather than shuffling the list.
+ */
+function classroomReviewOrder() {
+    const idx = classroomReviewQuestions.map((q, i) => i);
+    if (classroomReviewSort === 'lesson') return idx;
+    const dir = classroomReviewSort === 'best' ? -1 : 1;
+    return idx.sort((a, b) =>
+        (classroomReviewScore(classroomReviewQuestions[a])
+       - classroomReviewScore(classroomReviewQuestions[b])) * dir || a - b);
+}
+
+function classroomReviewSortHtml() {
+    const opt = (v, label) => `<option value="${v}"${
+        classroomReviewSort === v ? ' selected' : ''}>${label}</option>`;
+    return `<label class="classroom-review-sort">
+        <span>Sort</span>
+        <select class="classroom-select" onchange="setClassroomReviewSort(this.value)"
+                title="Reorders this list only. What the class is actually asked is
+                       unchanged: that follows this room's own thumbs.">
+            ${opt('lesson', 'Lesson order')}
+            ${opt('best', 'Best rated first')}
+            ${opt('worst', 'Worst rated first')}
+        </select></label>`;
+}
+
+/**
+ * Re-sort the review list in place.
+ *
+ * Only the `order` style moves. Nothing is rebuilt, so an open flag form and
+ * whatever is typed into it stay exactly where they were.
+ */
+function setClassroomReviewSort(value) {
+    classroomReviewSort = ['lesson', 'best', 'worst'].includes(value) ? value : 'lesson';
+    const list = document.getElementById('classroom-review-list');
+    if (!list) return;
+    classroomReviewOrder().forEach((qIndex, position) => {
+        const card = list.querySelector(`.classroom-review-q[data-q="${qIndex}"]`);
+        if (card) card.style.order = position;
+    });
 }
 
 /**
@@ -12796,6 +12945,13 @@ async function rateClassroomQuestion(where, i, value) {
             || classroomSession.questions[classroomSession.index] !== q)) return;
         const box = document.getElementById(boxId);
         if (box) box.innerHTML = classroomRateButtonsHtml(where, i, map[tid] || 0);
+        // The school tally sits beside the thumbs in review and includes this
+        // class, so it has to move with them — forward on the press and back
+        // again if the save fails. The stage has no tally to repaint.
+        if (where !== 'live') {
+            const tally = document.getElementById(`classroom-rate-count-${i}`);
+            if (tally) tally.innerHTML = classroomRateCountHtml(tid);
+        }
     };
     if (next) map[tid] = next; else delete map[tid];
     paint();
@@ -12834,17 +12990,26 @@ async function reviewClassroomQuestions(roomId) {
     // with the board would be worse than no review.
     // Ratings too, both to order the list the way the lesson will and so
     // each question's thumbs show what this class already said about it.
-    const [data, challenge, own, ratings] = await Promise.all([
+    // The school's tallies come alongside, for display only: they are drawn
+    // beside each question and scored by the sort, and they touch neither
+    // buildClassroomQuestions below nor the lesson a class is actually asked.
+    const [data, challenge, own, ratings, counts] = await Promise.all([
         loadClassroomData(room),
         classroomActiveChallenge(roomId),
         loadClassroomOwnQuestions(roomId),
         loadClassroomRatings(roomId),
+        loadClassroomRatingCounts(classroomCommunityId),
     ]);
     const { questions, source, built, offered } =
         buildClassroomQuestions(room, data, { all: true, challenge, own, ratings });
     classroomReviewRoom = room;
     classroomReviewQuestions = questions;
     classroomReviewRatings = ratings;
+    classroomReviewCounts = counts;
+    // Snapshot, not a reference: classroomReviewRatings is mutated in place as
+    // thumbs are pressed, and this has to keep saying what the server's
+    // tallies already had in them when they were fetched.
+    classroomReviewCountsOwn = Object.assign({}, ratings);
 
     if (!questions.length) {
         box.innerHTML = `<div class="classroom-muted">
@@ -12884,10 +13049,18 @@ async function reviewClassroomQuestions(roomId) {
                 : ''}
         </p>
         ${cmStandardsSummaryHtml(questions, 'this set')}
-        <div class="classroom-review-list">
+        ${classroomReviewSortHtml()}
+        <div class="classroom-review-list" id="classroom-review-list">
             ${questions.map((q, i) => classroomReviewItem(q, i)).join('')}
         </div>
         <button class="classroom-btn classroom-right-close" onclick="closeClassroomRight()">Close</button>`;
+
+    // The cards are written in lesson order; this lays the chosen sort over
+    // them. It matters on the FIRST draw too, because the sort is remembered
+    // across rooms: a teacher who picked "best rated first" and then opened
+    // another class would otherwise see that still selected above a list in
+    // lesson order.
+    setClassroomReviewSort(classroomReviewSort);
 }
 
 // ── Standards on screen ─────────────────────────────────────────────
@@ -13054,6 +13227,8 @@ function classroomReviewItem(q, i) {
                 <button class="classroom-btn" onclick="openClassroomFlag(${i}, 'suggestion')">💡 Suggest an improvement</button>
                 <span class="classroom-rate" id="classroom-rate-${i}">${
                     classroomRateButtonsHtml('review', i, classroomReviewRatings[q.template_id] || 0)}</span>
+                <span class="classroom-rate-count-box" id="classroom-rate-count-${i}">${
+                    classroomRateCountHtml(q.template_id)}</span>
             </div>
             <div class="classroom-flag-form" id="classroom-flag-${i}"></div>
         </div>`;
