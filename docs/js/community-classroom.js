@@ -11871,6 +11871,7 @@ async function refreshClassroomPanel() {
     await loadClassroomPublicFeeders();
     await loadClassroomStaff();
     await loadClassroomSchoolStatus();
+    await loadClassroomFeedbackCounts();
 
     renderClassroomTerm();
 
@@ -12033,6 +12034,36 @@ async function loadClassroomSchoolStatus() {
         return;
     }
     if (data && typeof data === 'object') classroomSchool = data;
+}
+
+/**
+ * How much is in the feedback pile, for the badge on its row.
+ *
+ * null means "do not know", which is NOT the same as zero and must not be
+ * drawn as one: a row reading "Nothing open" when the count simply failed to
+ * load tells somebody there is no work waiting when there may be plenty. The
+ * row falls back to its descriptive text instead.
+ *
+ * Fails silently and leaves it null on every error, including the database
+ * that has not had setup-classroom-feedback-counts.sql applied yet (PGRST202
+ * — same window loadClassroomSchoolStatus documents, where the page is live
+ * minutes before the SQL is pasted in). A count on a row is decoration; it is
+ * never worth an error message, and never worth blocking the panel.
+ */
+let classroomFeedbackCounts = null;
+
+async function loadClassroomFeedbackCounts() {
+    classroomFeedbackCounts = null;
+    if (!classroomCommunityId) return;
+
+    const { data, error } = await sbRpc('classroom_feedback_counts',
+        { p_community_id: classroomCommunityId }, true);
+    if (error || !data || typeof data !== 'object') return;
+
+    const open   = Number(data.open);
+    const closed = Number(data.closed);
+    if (!Number.isFinite(open) || !Number.isFinite(closed)) return;
+    classroomFeedbackCounts = { open, closed };
 }
 
 // Can this community start lessons right now? Unknown counts as yes — see
@@ -12204,7 +12235,7 @@ function renderClassroomList() {
     //                    moderator get the controls, inside the panel
     //   Suggest          teacher, moderator, owner  (classroom_suggest_question)
     //   Suggest anything everyone — it writes no question, only a note
-    //   Question feedback everyone, since teachers were given read access
+    //   Review flags   everyone, since teachers were given read access
     //
     // Two states can block a new class even where the role allows it: the
     // term has lapsed, or the plan's class limit is used up. Both say so on
@@ -12216,6 +12247,26 @@ function renderClassroomList() {
                   : full   ? `This school’s plan covers ${rooms.limit} `
                            + `class${rooms.limit === 1 ? '' : 'es'} — archive one, or upgrade`
                   : '';
+
+    // "6 open · 12 closed" on the feedback row, so the size of the pile is
+    // visible without opening it — the point of the row is that there is
+    // work in it, and a row that never says so gets walked past.
+    //
+    // ⚠ null, not 0, when the count did not load: "Nothing open" on a school
+    // with nine open flags is worse than saying nothing at all. Both forms
+    // are built here so the plain one can go in the title attribute.
+    const fb = classroomFeedbackCounts;
+    const fbMetaText = fb
+        ? `${fb.open ? `${fb.open} open` : 'Nothing open'} · ${fb.closed} closed`
+        : '';
+    // Open is the actionable half and carries the weight; closed is there to
+    // show the pile moves, which is the only evidence a teacher gets that
+    // flagging a question led anywhere.
+    const fbMetaHtml = fb
+        ? (fb.open ? `<strong class="classroom-row-open">${fb.open} open</strong>`
+                   : '<span class="classroom-muted">Nothing open</span>')
+          + ` · ${fb.closed} closed`
+        : '';
 
     const schoolRows = [
         { kind: 'new',       icon: '✚',  label: 'New class',
@@ -12234,16 +12285,30 @@ function renderClassroomList() {
         // of it, so "anything else" is what now separates the two.
         { kind: 'idea',      icon: '💡', label: 'Suggest anything else',
           meta: 'The site, the lessons, anything at all' },
-        { kind: 'feedback',  icon: '💬', label: 'Question feedback',
-          meta: classroomCanAssign() ? 'What teachers have flagged'
-                                     : 'What has been flagged, and what was done' },
+        // ⚠ "Review", not "Question feedback". The old label named the
+        //   SUBJECT and left the verb off, and a reader supplies the
+        //   commonest verb themselves — "this is where I give question
+        //   feedback". Reported exactly that way: "I keep thinking this is
+        //   where I provide question feedback." It is the opposite: the
+        //   place where what everyone else sent in gets read and dealt with.
+        //   "Flags & suggestions" rather than "flagged questions" because
+        //   both land in this pile — a flag on a question and a suggestion
+        //   from Suggest a question are the same table and the same screen.
+        { kind: 'feedback',  icon: '💬', label: 'Review flags & suggestions',
+          // The counts ARE the description once you know what the row is, so
+          // they replace the sentence rather than crowding in beside it. The
+          // sentence comes back whenever the count is unknown.
+          meta: fbMetaText || (classroomCanAssign()
+                                     ? 'What teachers have flagged'
+                                     : 'What has been flagged, and what was done'),
+          metaHtml: fbMetaHtml },
     ].map(a => `
         <button type="button" class="classroom-row classroom-row-act${
                 classroomPickIs(a.kind) ? ' on' : ''}"${a.disabled ? ' disabled' : ''}
                 ${a.disabled ? `title="${esc(a.meta)}"` : ''}
                 onclick="pickClassroomAction('${a.kind}')">
             <span class="classroom-row-name">${a.icon} ${esc(a.label)}</span>
-            <span class="classroom-row-meta">${esc(a.meta)}</span>
+            <span class="classroom-row-meta">${a.metaHtml || esc(a.meta)}</span>
         </button>`).join('');
 
     const schoolGroup = `
@@ -12293,7 +12358,8 @@ function renderClassroomList() {
  *
  * Grouped by WHEN rather than by what the code calls them. Starting a lesson
  * is the thing you came to do and is at the top, in the two modes the design
- * notes describe. Review and Results are between-lessons work. Edit, Link and
+ * notes describe. Then the week either side of it: looking the questions over
+ * and writing one before, reading the results after. Edit, Link and
  * Delete are touched a few times a year and sit last, quietly — they used to
  * hide behind a "⋯" on every card, which is a lot of machinery for three
  * buttons that now have room to simply exist.
@@ -12382,11 +12448,24 @@ function renderClassroomActions() {
             </div>
         </div>
 
+        <!-- ⚠ TWO GROUPS, not the one "Between lessons" that was here.
+             That heading held a thing you do BEFORE a lesson (look over the
+             questions, write one) and a thing you do AFTER it (read how it
+             went), and the mixing is what made "Review questions" ambiguous:
+             under "Between lessons" it reads just as easily as "review the
+             questions from the lesson that just finished", which is the one
+             thing it does not do. Reported as exactly that confusion.
+             Splitting by tense fixes the label without touching the label —
+             "Previous lessons" under "After a lesson" cannot be misread, and
+             "Review questions" under "Before a lesson" is plainly prep.
+             The cost is a fourth heading, and on a class with no history
+             "After a lesson" stands over a single button. Worth it: the
+             alternative was renaming the button to something longer that
+             still sat next to its own opposite. -->
         <div class="classroom-group">
-            <div class="classroom-group-title">Between lessons</div>
+            <div class="classroom-group-title">Before a lesson</div>
             <div class="classroom-group-row">
                 <button class="classroom-btn" onclick="reviewClassroomQuestions('${escJs(r.id)}')">🔍 Review questions</button>
-                <button class="classroom-btn" onclick="showClassroomHistory('${escJs(r.id)}')">📊 Previous lessons</button>
                 <!-- ⚠ THE VERB IS ON THE BUTTON, deliberately. It said "My
                      questions", and a teacher reported: "it was not obvious
                      to me that in order to create a new question I had to
@@ -12400,6 +12479,13 @@ function renderClassroomActions() {
                 <button class="classroom-btn" onclick="writeClassroomQuestion('${escJs(r.id)}')"
                         title="Write your own questions for this class, and see the ones you have">
                     ✍️ Write a question</button>
+            </div>
+        </div>
+
+        <div class="classroom-group">
+            <div class="classroom-group-title">After a lesson</div>
+            <div class="classroom-group-row">
+                <button class="classroom-btn" onclick="showClassroomHistory('${escJs(r.id)}')">📊 Previous lessons</button>
             </div>
         </div>
 
@@ -14251,13 +14337,24 @@ async function sendClassroomSuggestion() {
 // The counts by template come first because the actionable question is which
 // TEMPLATE keeps drawing complaints, not which question drew one.
 
-// Handled items are off by default — the open pile is the work. The toggle
-// exists because for a TEACHER the handled ones are the whole point: they are
+// ⚠ THE WORD IS "CLOSED", everywhere a person can read it. It was "handled",
+// which says somebody dealt with it and stops there; "closed" says the item
+// has a state and that this is the end of it, which is what an owner working
+// through a pile is actually doing. Open/closed is also the pair the row in
+// the left-hand column now counts, and a screen that says "closed" under a
+// row that says "12 closed" is one vocabulary instead of two.
+// The DATABASE still says resolved_at / resolved_note / p_include_resolved,
+// deliberately untouched: renaming a column to match a button is a migration
+// with nothing to show for it, and every one of those names is already the
+// right word for what the column holds.
+//
+// Closed items are off by default — the open pile is the work. The toggle
+// exists because for a TEACHER the closed ones are the whole point: they are
 // the only evidence that flagging a question led anywhere.
-let classroomFeedbackShowHandled = false;
+let classroomFeedbackShowClosed = false;
 
-function toggleClassroomFeedbackHandled() {
-    classroomFeedbackShowHandled = !classroomFeedbackShowHandled;
+function toggleClassroomFeedbackClosed() {
+    classroomFeedbackShowClosed = !classroomFeedbackShowClosed;
     showClassroomFeedback();
 }
 
@@ -14270,7 +14367,7 @@ async function showClassroomFeedback() {
 
     const { data, error } = await sbRpc('classroom_feedback_list',
         { p_community_id: classroomCommunityId,
-          p_include_resolved: classroomFeedbackShowHandled }, true);
+          p_include_resolved: classroomFeedbackShowClosed }, true);
     if (error) {
         box.innerHTML = `<div class="classroom-error">${esc(error.message || 'Could not load.')}</div>`
                       + '<button class="classroom-btn classroom-right-close" onclick="closeClassroomRight()">Close</button>';
@@ -14288,17 +14385,17 @@ async function showClassroomFeedback() {
         ? data.can_resolve
         : classroomCanAssign();
 
-    const handledToggle = `<button class="classroom-btn" onclick="toggleClassroomFeedbackHandled()">${
-        classroomFeedbackShowHandled ? '← Open only' : '🗂 Show handled'}</button>`;
+    const closedToggle = `<button class="classroom-btn" onclick="toggleClassroomFeedbackClosed()">${
+        classroomFeedbackShowClosed ? '← Open only' : '🗂 Show closed'}</button>`;
 
     if (!items.length) {
         box.innerHTML = '<div class="classroom-muted">'
-                      + (classroomFeedbackShowHandled
-                          ? 'Nothing here yet, handled items included.'
-                          : 'No open feedback. Use "Review questions" on a class to go '
+                      + (classroomFeedbackShowClosed
+                          ? 'Nothing here yet, closed items included.'
+                          : 'Nothing open. Use "Review questions" on a class to go '
                           + 'through a lesson and flag anything that reads badly.')
                       + '</div>'
-                      + `<div class="classroom-form-actions">${handledToggle}`
+                      + `<div class="classroom-form-actions">${closedToggle}`
                       + '<button class="classroom-btn classroom-right-close" onclick="closeClassroomRight()">Close</button></div>';
         return;
     }
@@ -14309,23 +14406,23 @@ async function showClassroomFeedback() {
                       idea: 'new question idea', other: 'other' };
 
     // Kept so the bulk action acts on exactly what is on screen — and only on
-    // what is still open, since "show handled" puts already-resolved items on
+    // what is still open, since "show closed" puts already-resolved items on
     // screen too and re-resolving one would overwrite the note explaining
     // what was done about it the first time.
     classroomFeedbackShown = items.filter(f => !f.resolved_at).map(f => f.id);
 
     box.innerHTML = `
-        <h4 class="classroom-h">Question feedback (${items.length}${
-            classroomFeedbackShowHandled ? '' : ' open'})</h4>
+        <h4 class="classroom-h">Flags &amp; suggestions (${items.length}${
+            classroomFeedbackShowClosed ? '' : ' open'})</h4>
         <p class="classroom-muted">Most flagged templates:
             ${byTemplate.slice(0, 5).map(t => `<code>${esc(t.template_id)}</code> ×${t.n}`).join(' · ')}</p>
         ${canResolve ? '' : '<p class="classroom-muted">You can read these and add '
-            + 'your own. Marking them handled is for whoever runs the community.</p>'}
+            + 'your own. Closing them is for whoever runs the community.</p>'}
         <div class="classroom-form-actions">
             ${canResolve && classroomFeedbackShown.length
                 ? `<button class="classroom-btn" onclick="resolveAllClassroomFeedback()">
-                ✓ Mark all ${classroomFeedbackShown.length} as addressed</button>` : ''}
-            ${handledToggle}
+                ✓ Close all ${classroomFeedbackShown.length}</button>` : ''}
+            ${closedToggle}
         </div>
         <div class="classroom-review-list">
         ${items.map(f => `
@@ -14342,13 +14439,13 @@ async function showClassroomFeedback() {
                 <p class="classroom-review-prompt">${esc(f.prompt)}</p>
                 ${f.comment ? `<p class="classroom-flag-note">“${esc(f.comment)}”</p>` : ''}
                 ${f.resolved_at
-                    ? `<p class="classroom-muted">✓ Handled ${esc(
+                    ? `<p class="classroom-muted">✓ Closed ${esc(
                         new Date(f.resolved_at).toLocaleDateString(undefined,
                             { month: 'short', day: 'numeric' }))}${
                         f.resolved_note ? ` — ${esc(f.resolved_note)}` : ''}</p>`
                     : ''}
                 ${canResolve && !f.resolved_at
-                    ? `<button class="classroom-btn" onclick="resolveClassroomFeedback('${esc(f.id)}')">Mark handled</button>`
+                    ? `<button class="classroom-btn" onclick="resolveClassroomFeedback('${esc(f.id)}')">✓ Mark closed</button>`
                     : ''}
             </div>`).join('')}
         </div>
@@ -14362,7 +14459,7 @@ let classroomFeedbackShown = [];
 /**
  * Clear the whole visible list in one call, with a note saying what was done.
  *
- * The note is the point. "Addressed" with no record of HOW is barely better
+ * The note is the point. "Closed" with no record of HOW is barely better
  * than deleting the row: the next person to read that template has no idea a
  * teacher once complained about it, or what changed in response. It is also
  * what makes "show me what is new since last time" a question the database
@@ -14373,7 +14470,7 @@ async function resolveAllClassroomFeedback() {
     if (!ids.length) return;
 
     const note = window.prompt(
-        `Mark all ${ids.length} as addressed.\n\n`
+        `Close all ${ids.length}.\n\n`
         + 'What was done about them? (recorded against every one)', '');
     // Cancel means cancel. An empty string means they pressed OK with nothing
     // typed, which is a deliberate "no note" rather than a mistake.
@@ -14383,17 +14480,34 @@ async function resolveAllClassroomFeedback() {
         { p_ids: ids, p_note: note.trim() || null }, true);
 
     if (error) {
-        showToast('Could not mark them: ' + (error.message || 'unknown error'));
+        showToast('Could not close them: ' + (error.message || 'unknown error'));
         return;
     }
-    showToast(`${data == null ? ids.length : data} marked as addressed.`);
+    showToast(`${data == null ? ids.length : data} closed.`);
     await showClassroomFeedback();
+    await refreshClassroomFeedbackBadge();
 }
 
 async function resolveClassroomFeedback(id) {
     const { error } = await sbRpc('classroom_feedback_resolve', { p_id: id }, true);
     if (error) { showToast('Error: ' + (error.message || 'could not update')); return; }
     showClassroomFeedback();
+    refreshClassroomFeedbackBadge();
+}
+
+/**
+ * Re-count after closing something, so the row on the left agrees with the
+ * pane on the right.
+ *
+ * Without this the badge keeps the number it was drawn with: close the last
+ * six and the column still says "6 open" beside a screen that says nothing
+ * is. Re-counted rather than decremented, because the bulk close returns how
+ * many it actually touched and a colleague may have closed others meanwhile —
+ * arithmetic on a stale number just produces a different wrong one.
+ */
+async function refreshClassroomFeedbackBadge() {
+    await loadClassroomFeedbackCounts();
+    renderClassroomList();
 }
 
 /**

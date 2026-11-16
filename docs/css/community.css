@@ -4246,6 +4246,18 @@
     background: color-mix(in srgb, var(--color-primary) 12%, var(--bg-card));
 }
 
+/* The open half of "6 open · 12 closed" on the feedback row. Darker and
+   bolder than the meta line it sits in, because it is the only number on
+   that row anybody has to do anything about; the closed count stays the
+   colour of the rest of the line, where it reads as reassurance rather
+   than as a second task. Not red — a pile of flags is the system working,
+   not an error, and a column of alarm-coloured rows teaches people to
+   stop seeing it. */
+.classroom-row-open {
+    font-weight: 700;
+    color: var(--color-gray-900);
+}
+
 /* Disabled means the server would refuse it — the term has lapsed, or the
    plan's classes are all used. It stays in the column rather than
    disappearing: a row that vanishes leaves a teacher wondering where "New
@@ -4266,27 +4278,64 @@
     border-top: 1px solid var(--border);
 }
 
+/* ⚠ CAPPED, and the cap is what makes the title line below work at all.
+   .classroom-head-actions sets Edit/Link/Delete apart with margin-left:auto,
+   which on a laptop is a nudge of a couple of centimetres. The right pane
+   takes everything left over after the 210px class column, so on a 2560px
+   screen that same rule throws those three the better part of a metre from
+   the name they act on. Reported from the live site: "I didn't even notice
+   them."
+   The cap, not a rewrite of the title line: the grouping was right, it just
+   stopped being legible past about 900px. This pane is two short button rows
+   and a line of meta — a reading column, never a banner. The meta line wraps
+   inside it, which beats a single 1700px line of partner names.
+   ⚠ ON #classroom-actions, NOT on .classroom-pane-right. The pane also holds
+   Review questions, Previous lessons and the class form, and those earn every
+   pixel they can get — charts, result tables, a question list. Capping the
+   pane would squeeze them to pay for a problem they do not have. */
+#classroom-actions { max-width: 680px; }
+
 .classroom-actions-head {
     display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
 }
 .classroom-actions-head .classroom-h { margin: 0; }
-/* The three that act on the class itself, on the title line.
-   margin-left:auto pushes them to the far end, so the name and its grade
-   pill stay together on the left and these sit apart from them rather
-   than reading as more of the title. They wrap to their own line on a
-   narrow pane, which .classroom-actions-head already allows. */
+/* The three that act on the class itself, BESIDE the name — not pushed to
+   the far end of the line.
+   ⚠ margin-left:auto was here, and the cap above is not enough on its own:
+   inside a 680px pane it still left a 409px canyon between "Art Room" and
+   Edit, measured. The rule was solving the right problem the wrong way. What
+   it wanted was for these three not to read as more of the title, and a
+   separator says that in 1px where 409px of nothing only said "unrelated,
+   and somewhere else".
+   So: a hairline and a little air. They sit where the thing they act on is,
+   which is what makes them findable, and the border keeps them from being
+   mistaken for part of the name. Still last in the source order, still
+   wrapping to their own line on a narrow pane.
+   ⚠ The border goes with a left margin, not instead of one — flush against
+   a 0.5rem flex gap it reads as an underline on the grade pill. */
 .classroom-head-actions {
     display: flex; gap: 6px; flex-wrap: wrap;
-    margin-left: auto;
+    margin-left: 0.35rem;
+    padding-left: 0.75rem;
+    border-left: 1px solid var(--border);
 }
 
-/* Stacked, these wrap onto a line of their own, and margin-left:auto then
-   strands them against the right edge with a hole where the title was.
+
+/* Narrow enough and these wrap onto a line of their own, where the hairline
+   points at nothing above it — a stub of rule hanging off the left of three
+   buttons reads as damage, not as a separator. It only means anything while
+   they are on the title line beside the name, so below the breakpoint where
+   the panes stack it goes away entirely.
    ⚠ This block has to sit AFTER the rule above, not up in the 720px block
    with the pane stacking it belongs to: same specificity, so the later one
-   wins, and from up there it lost silently. */
+   wins, and from up there it lost silently.
+   (It used to clear margin-left:auto, which stranded them against the right
+   edge with a hole where the title was. That rule is gone — see above — but
+   the stacking problem it was written for is not.) */
 @media (max-width: 720px) {
-    .classroom-head-actions { margin-left: 0; }
+    .classroom-head-actions {
+        margin-left: 0; padding-left: 0; border-left: 0;
+    }
 }
 
 
