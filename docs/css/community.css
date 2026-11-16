@@ -4687,22 +4687,29 @@
    paper or a PDF — and every browser's "Save as PDF" is already a PDF
    writer, so this needs a stylesheet rather than a library.
 
-   `visibility` rather than `display` on the ancestors: the history box
-   sits inside a positioned modal, and display:none-ing its parents
-   collapses the box along with them. */
+   ⚠ PRINTED FROM A COPY, #cc-print-root, appended to <body> by
+   printClassroomHistory. The history box itself sits inside the fixed
+   classroom panel, and Chrome repeats fixed content on every printed page,
+   which laid page one's summary over the lessons on every later page. The
+   copy is a direct child of <body>, so hiding its siblings is enough and it
+   flows from page to page like any document. */
+#cc-print-root { display: none; }
 @media print {
-    body.cc-printing * { visibility: hidden; }
-    body.cc-printing #classroom-history,
-    body.cc-printing #classroom-history * { visibility: visible; }
-    body.cc-printing #classroom-history {
-        position: absolute; left: 0; top: 0; width: 100%;
-        border: 0; padding: 0; background: #fff; color: #000;
+    body.cc-printing > *:not(#cc-print-root) { display: none !important; }
+    body.cc-printing #cc-print-root {
+        display: block; position: static;
+        background: #fff; color: #000; font-size: 11pt;
     }
-    body.cc-printing #classroom-history .classroom-btn,
-    body.cc-printing .classroom-hexport { display: none !important; }
-    /* Keep a lesson and its questions on one sheet where they fit. */
-    body.cc-printing .classroom-hlesson { break-inside: avoid; border-color: #999; }
-    body.cc-printing .classroom-hstat   { border-color: #999; }
+    body.cc-printing { background: #fff !important; overflow: visible !important; }
+    body.cc-printing #cc-print-root .classroom-hlesson { border-color: #999; }
+    body.cc-printing #cc-print-root .classroom-hstat   { border-color: #999; }
+    /* A question, not a whole lesson, is the unit kept on one sheet: a long
+       lesson cannot fit on one page, and asking for that just leaves blank
+       half-pages behind it. */
+    body.cc-printing #cc-print-root .classroom-hq,
+    body.cc-printing #cc-print-root .classroom-hstat,
+    body.cc-printing #cc-print-root tr { break-inside: avoid; }
+    body.cc-printing #cc-print-root .classroom-hlesson > summary { break-after: avoid; }
 }
 .cc-print-head { display: none; }
 @media print { .cc-print-head { display: block; margin-bottom: 0.6rem; } }

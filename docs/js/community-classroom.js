@@ -17300,10 +17300,19 @@ async function showClassroomHistory(id) {
     // Kept for the exports, so a print or a CSV is exactly what is on screen
     // rather than a second fetch that might disagree with it.
     const room = classroomList.find(r => r.id === id);
-    classroomHistoryShown = { id, name: room ? room.name : 'Class', sessions };
+    classroomHistoryShown = {
+        id,
+        name:      room ? room.name : 'Class',
+        community: cmHistoryCommunityName(),
+        teacher:   cmHistoryTeacherName(room),
+        sessions,
+    };
+    const hs = classroomHistoryShown;
 
     box.innerHTML = '<h4 class="classroom-h">Previous lessons</h4>'
-                  + `<div class="cc-print-head"><strong>${esc(classroomHistoryShown.name)}</strong>`
+                  + `<div class="cc-print-head"><strong>${esc(hs.name)}</strong>`
+                  + (hs.teacher ? ` · ${esc(hs.teacher)}` : '')
+                  + (hs.community ? ` · ${esc(hs.community)}` : '')
                   + ` — previous lessons, printed ${esc(new Date().toLocaleDateString())}</div>`
                   + `<div class="classroom-hexport">
                         <button class="classroom-btn" onclick="printClassroomHistory()">🖨 Print / Save as PDF</button>
@@ -17313,33 +17322,92 @@ async function showClassroomHistory(id) {
                   + '<button class="classroom-btn" onclick="hideClassroomHistory()">Close</button>';
 }
 
+function cmHistoryCommunityName() {
+    const c = (typeof myCommunities !== 'undefined' && Array.isArray(myCommunities))
+        ? myCommunities.find(x => x && x.id === classroomCommunityId) : null;
+    return (c && (c.name || c.slug)) || '';
+}
+
+/**
+ * The teacher, as a printout or a filename should name them.
+ *
+ * teacher_label is the profile's display name, but falls back to the
+ * account's email when there is none. An email address must not land in a
+ * filename that gets attached and forwarded, so only the part before the @
+ * is kept in that case.
+ */
+function cmHistoryTeacherName(room) {
+    const label = String((room && room.teacher_label) || '').trim();
+    if (!label || label === 'Teacher') return '';
+    return label.includes('@') ? label.split('@')[0] : label;
+}
+
+/**
+ * "<Community> - <Classroom> - <Teacher> - lessons YYYY-MM-DD", with the
+ * parts that are missing left out. Characters Windows will not take in a
+ * filename are dropped, because Chrome names a saved PDF after this.
+ */
+function cmHistoryFileBase(h) {
+    const day = new Date();
+    const ymd = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}`
+              + `-${String(day.getDate()).padStart(2, '0')}`;
+    return [h.community, h.name, h.teacher, `lessons ${ymd}`]
+        .map(p => String(p || '').replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim())
+        .filter(Boolean)
+        .join(' - ');
+}
+
 /**
  * Print, which is also how you get a PDF.
  *
  * Every browser's print dialog can write a PDF, so this needs a stylesheet
- * and not a PDF library — a vendored one would be a few hundred KB to
- * reproduce, worse, something the platform already does.
+ * and not a PDF library.
  *
- * Every <details> is forced open first and put back afterwards: an unopened
- * one prints as a bare summary line, so a teacher would get a sheet of dates
- * and no questions, which is the opposite of the point.
+ * ⚠ THE HISTORY IS COPIED OUT TO A TOP-LEVEL ELEMENT AND PRINTED FROM THERE.
+ * It used to be printed in place, by hiding everything else with
+ * `visibility`. But the box lives inside the classroom panel, which is
+ * position:fixed, and Chrome repeats fixed content on EVERY printed page —
+ * so the first page's summary and standards table were laid over the
+ * lessons on every page after it. A copy that is a direct child of <body>,
+ * with everything else display:none, flows from page to page like any
+ * document.
+ *
+ * Every <details> in the copy is opened: an unopened one prints as a bare
+ * summary line, a sheet of dates and no questions.
+ *
+ * The page title is swapped while printing because it is what Chrome and
+ * Edge name the saved PDF after; otherwise every export is called
+ * "Community Feed - BirdWatchAI.pdf".
  */
 function printClassroomHistory() {
     const box = document.getElementById('classroom-history');
     if (!box) return;
 
-    const opened = [...box.querySelectorAll('details:not([open])')];
-    opened.forEach(d => { d.open = true; });
+    document.getElementById('cc-print-root')?.remove();
+    const root = document.createElement('div');
+    root.id = 'cc-print-root';
+    root.innerHTML = box.innerHTML;
+    root.querySelectorAll('details').forEach(d => { d.open = true; });
+    root.querySelectorAll('button, .classroom-hexport').forEach(el => el.remove());
+    document.body.appendChild(root);
     document.body.classList.add('cc-printing');
 
+    const oldTitle = document.title;
+    if (classroomHistoryShown) document.title = cmHistoryFileBase(classroomHistoryShown);
+
+    let done = false;
     const restore = () => {
+        if (done) return;
+        done = true;
         document.body.classList.remove('cc-printing');
-        opened.forEach(d => { d.open = false; });
+        root.remove();
+        document.title = oldTitle;
         window.removeEventListener('afterprint', restore);
     };
     window.addEventListener('afterprint', restore);
     window.print();
-    // Safari fires afterprint unreliably; this costs nothing when it did.
+    // Safari fires afterprint unreliably. window.print() blocks until the
+    // dialog closes in the browsers that matter, so this does not race it.
     setTimeout(restore, 3000);
 }
 
@@ -17389,8 +17457,7 @@ function exportClassroomHistoryCsv() {
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
     a.href     = url;
-    a.download = `classroom-${(h.name || 'class').toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
-               + `-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `${cmHistoryFileBase(h)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
 }
