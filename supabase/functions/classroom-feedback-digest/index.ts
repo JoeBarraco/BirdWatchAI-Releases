@@ -132,6 +132,15 @@ function card(r: Row, communityName: string, classroomName: string, author: stri
   // Rendering both the same way read as "(no comment left)" above the actual
   // suggestion, demoted into the quiet context block. So the lead is
   // whichever column actually holds what the person wrote.
+  //
+  // The tag under an idea says "an idea or suggestion", not "a new question
+  // they would like". Two forms now file through classroom_suggest_question —
+  // the question-idea box in the panel and the general suggestion area — and
+  // both store reason 'idea' with nothing to tell them apart. Most of what
+  // arrives through the general one is not a question ("Maths should be
+  // Math", "open the classroom full screen"), and calling every one of them a
+  // question request misread the bulk of the digest. If the two ever need
+  // separating, it wants a column on the row, not a guess from the wording.
   const isIdea = !r.comment && (r.reason === 'idea' || r.template_id === 'suggestion');
   const lead = isIdea ? (r.prompt || '') : (r.comment || '');
   const context = isIdea ? '' : (r.prompt || '');
@@ -147,7 +156,7 @@ function card(r: Row, communityName: string, classroomName: string, author: stri
              : '<em style="color:#7a756d;">(nothing written)</em>'}
     </p>
     <p style="margin:0 0 0.6rem;font-size:0.82rem;color:#4a4640;">
-      &mdash; ${esc(author)}${isIdea ? ' &middot; a new question they would like' : ''}
+      &mdash; ${esc(author)}${isIdea ? ' &middot; an idea or suggestion' : ''}
     </p>
     ${context ? `<p style="margin:0 0 0.6rem;font-size:0.82rem;color:#4a4640;border-left:3px solid #e8e4de;padding-left:0.7rem;">
       ${esc(String(context).replace(/\n/g, ' / '))}</p>` : ''}
