@@ -134,6 +134,37 @@ const WORLDS = [0,1,2].map(seed => {
 });
 const s14 = WORLDS[0].s14, pool = WORLDS[0].pool;
 
+// ── Two months of history, for the month templates ─────────────────
+//
+// Pinned to the 16th, not today. The month questions refuse to say anything
+// in the first week of a month, so a harness run on the 3rd would report
+// all three as "never built" and teach whoever ran it to ignore that list.
+//
+// The three seeds are three different stories on purpose: this month busier
+// per day, last month busier per day, and a near tie - so the "About the
+// same" branch and the unequal-totals trap both get built. Seed 1 also
+// grows a newcomer that only turns up this month.
+const MONTH_NOW = new Date(2026, 10, 16, 10, 0, 0);
+function makeLongRows(seed, now){
+  const rows=[]; const thisStart=new Date(now.getFullYear(), now.getMonth(), 1);
+  for(let d=62; d>=0; d--){
+    const day=new Date(now.getTime() - d*86400000);
+    const thisMonth = day >= thisStart;
+    const base = !thisMonth ? 22 : [30, 15, 22][seed];
+    const n = base + ((d*7 + seed*5) % 9);
+    for(let i=0;i<n;i++){
+      const tm=new Date(day); tm.setHours(6+(i*3)%12, (i*13)%60, 0, 0);
+      if(tm > now) continue;
+      rows.push({feeder_id:'f1', detected_at:tm.toISOString(),
+        species: (seed===1 && thisMonth && i===0) ? 'Yellow-rumped Warbler'
+               : SP[(d+i+seed)%SP.length]});
+    }
+  }
+  return rows;
+}
+const cmMonthSummary=vm.runInContext('cmMonthSummary',ctx);
+WORLDS.forEach(w => { w.months = cmMonthSummary(makeLongRows(w.seed, MONTH_NOW), MONTH_NOW); });
+
 const cmWindow=vm.runInContext('cmWindow',ctx);
 const cmRng=vm.runInContext('cmRng',ctx);
 const T=vm.runInContext('CLASSROOM_TEMPLATES',ctx);
@@ -151,13 +182,13 @@ for(const t of T){
   let anyBuilt=false;
   for(const band of t.bands){
     const pairs=[];
-    WORLDS.forEach(w=>{ pairs.push(['single:'+w.seed,w.s14],['pool:'+w.seed,w.pool]); });
-    for(const [label,src] of pairs){
+    WORLDS.forEach(w=>{ pairs.push(['single:'+w.seed,w.s14,w.months],['pool:'+w.seed,w.pool,w.months]); });
+    for(const [label,src,months] of pairs){
       const s=cmWindow(src,7);
       if(src.isPool){ s.isPool=true; s.feeders=src.feeders.map(f=>cmWindow(f,7)); }
       try{
         const q=t.build({s, s14:src, band, rng:cmRng(t.id+band+label),
-                         feeder:src.name, source:src,
+                         feeder:src.name, source:src, months,
                          room:{id:'r1', grade_band:band, name:'Room A'}});
         if(q && q.prompt){
           built++; anyBuilt=true;
@@ -198,7 +229,11 @@ let lessons = 0;
 for (const band of ['k-2', '3-5', '6-8']) {
   for (const [label, src] of [['single', s14], ['pool', pool]]) {
     const data = { home: src, partners: [], all: [src], each: src.feeders || [src],
-                   pooled: src.isPool ? src : null, scope: src.isPool ? 'community' : 'home' };
+                   pooled: src.isPool ? src : null, scope: src.isPool ? 'community' : 'home',
+                   // Against the real clock here, because buildClassroomQuestions
+                   // reads it. Early in a month that builds no month question,
+                   // which is correct; this pass is about not throwing.
+                   longRows: makeLongRows(1, new Date()) };
     try {
       const res = buildAll({ id: 'r1', grade_band: band, name: 'Room A' }, data, { all: true });
       if (!res || !Array.isArray(res.questions)) throw new Error('no questions array');

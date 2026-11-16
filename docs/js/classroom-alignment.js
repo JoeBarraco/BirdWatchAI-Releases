@@ -69,6 +69,18 @@ const CLASSROOM_TEMPLATE_STANDARDS = {
     'species-rank':        ['MA.3.DP.1.2'],
     'species-on-day':      ['MA.3.DP.1.2'],
     'week-over-week':      ['MA.7.DP.1.2'],
+    // Subtracting two multi-digit counts read off a bar graph: exactly the
+    // "two-step problem" MA.3.DP.1.2 and the multi-digit subtraction of
+    // MA.3.NSO.2.1, with MA.4.DP.1.3 for the fourth graders in the band.
+    'month-same-days':     ['MA.3.DP.1.2', 'MA.3.NSO.2.1', 'MA.4.DP.1.3'],
+    // Visits per day across two unequal spans is a unit rate, computed and
+    // then compared - MA.6.AR.3.2 and the "including comparisons" of 3.5.
+    'month-per-day':       ['MA.6.AR.3.2', 'MA.6.AR.3.5'],
+    // A bird that arrives with the change of month is an animal responding
+    // to the season. Same claim stat-new-arrival makes, on a span long
+    // enough to make it more honestly. 3-5 only: there is no 6-8 seasons
+    // benchmark in the catalogue, and the 6-8 slide claims nothing.
+    'month-newcomer':      ['SC.3.L.17.1', 'SC.4.L.17.1'],
 
     // ── Time ───────────────────────────────────────────────────────────
     'busiest-day':         ['MA.1.DP.1.2', 'MA.2.DP.1.2', 'MA.3.DP.1.2'],
