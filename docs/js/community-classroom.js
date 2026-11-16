@@ -1569,6 +1569,11 @@ async function loadClassroomData(room) {
               + `&detected_at=gte.${encodeURIComponent(since)}`
               + `&order=detected_at.desc`;
 
+    // Started now, awaited after the main read, so the two run side by side
+    // and a lesson with no month questions in it waits on nothing extra.
+    const olderPending = cmWantsMonths(room)
+        ? cmFetchMonthRows(ids, since) : Promise.resolve(null);
+
     let rows = [];
     try {
         rows = await fetchAllRows(url, hasAuthSession()) || [];
@@ -1621,7 +1626,172 @@ async function loadClassroomData(room) {
         { isPool: true, feeders: each.filter(x => x.total > 0) }
     ) : null;
 
-    return { home, partners, all: [home, ...partners].filter(Boolean), each, pooled, scope };
+    // The month questions' rows: everything from the 1st of last month,
+    // pared to the three fields they read. The last fortnight is already in
+    // hand, so only the older stretch was fetched; the two are joined here.
+    // Null when the lesson cannot use them or the read failed, and every
+    // month template treats null as "sit this one out".
+    const older = await olderPending;
+    const longRows = older
+        ? older.concat(rows.map(r => ({ feeder_id: r.feeder_id, species: r.species,
+                                         detected_at: r.detected_at })))
+        : null;
+
+    return { home, partners, all: [home, ...partners].filter(Boolean), each, pooled, scope,
+             longRows };
+}
+
+// ── This month against last ──────────────────────────────────
+//
+// Asked for from a 6-8 class: "Perhaps the classroom questions should have
+// the option of more than just last weeks data. We could weave in 'This
+// Year, This Month, Last Month, etc' for larger datasets to make it more
+// interesting."
+//
+// NOT done by widening CLASSROOM_WINDOW_DAYS, which is the obvious way and
+// the wrong one. A hundred-odd prompts say "this week" or "two weeks", and
+// cmWindow's whole job is to stop those quietly answering from a longer
+// span — the same trap "fortnight" was. A month is a different question, so
+// it gets its own templates reading their own data, and nothing that
+// already exists sees a single extra row.
+//
+// "This year" is left out on purpose. Ten months of raw detections for every
+// lesson is a lot of rows to page through to draw two or three bars; that
+// wants a monthly count computed on the server, which is its own change.
+
+// A comparison needs this many finished days of THIS month before it says
+// anything. Three days of November against three of October is noise.
+const CM_MONTH_MIN_DAYS = 7;
+
+// And each span needs birds on at least this share of its days. A feeder
+// installed on October 20th has a quiet October because it was not there,
+// not because the birds were not — and "November was busier" would be a
+// fact about the installer.
+const CM_MONTH_MIN_COVER = 0.6;
+
+/**
+ * Should this lesson fetch the month rows at all?
+ *
+ * Only when a month template could make it into the lesson: right band, and
+ * not unticked by the teacher. The read is the one cost this feature adds,
+ * and a K-2 class (which gets none of these) should not pay it.
+ *
+ * A challenge's own picks are not known yet when the data loads, so a
+ * challenge that names a month question in a room whose own list unticked
+ * it goes without. That is the conservative way round: a missing optional
+ * question, never an unexpected download.
+ */
+function cmWantsMonths(room) {
+    const band = (room && room.grade_band) || 'k-2';
+    const picked = classroomPickSet(room, null);
+    return CLASSROOM_TEMPLATES.some(t => t.needsMonths
+                                     && classroomTemplateAllowed(t, band, picked));
+}
+
+/**
+ * Detections from the 1st of last month up to where the fortnight read
+ * starts, with only the fields a month comparison reads.
+ *
+ * Three columns, not twelve: these rows are counted and never shown, so the
+ * photo URLs, temperatures and coordinates would be paid for and dropped.
+ * Never throws. A month question missing is fine; a lesson that fails to
+ * start because of one is not.
+ */
+async function cmFetchMonthRows(ids, untilIso) {
+    const now = new Date();
+    const from = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
+    const url = `${SUPABASE_URL}/rest/v1/community_detections`
+              + `?select=feeder_id,species,detected_at`
+              + `&feeder_id=in.(${ids.join(',')})`
+              + `&detected_at=gte.${encodeURIComponent(from)}`
+              + `&detected_at=lt.${encodeURIComponent(untilIso)}`
+              + `&order=detected_at.desc`;
+    try {
+        return await fetchAllRows(url, hasAuthSession()) || null;
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * The month rows for whichever source the lesson settled on.
+ *
+ * Follows cmPickSource rather than making its own choice: if the questions
+ * this week come from the partner feeder, "this month at the courtyard"
+ * beside "this week at the library" would be two feeders on one slide.
+ */
+function cmMonthsFor(data, source) {
+    if (!data || !Array.isArray(data.longRows) || !source) return null;
+    const rows = source.isPool
+        ? data.longRows
+        : data.longRows.filter(r => r.feeder_id === source.feederId);
+    return rows.length ? cmMonthSummary(rows) : null;
+}
+
+/**
+ * Tallies for this month so far and the whole of last month.
+ *
+ * By DAY OF THE MONTH, so a template can compare the first n days of each,
+ * which is the only fair race while this month is unfinished. Today is left
+ * out of the visit counts for the reason 3247f45 gave for days: a day that
+ * is not over has not finished counting, and at 9am it always loses. It is
+ * kept for "which birds came" — a bird seen this morning came.
+ *
+ * `now` is a parameter so the template check can pin the date; a harness
+ * run on the 3rd of a month would otherwise find nothing to build.
+ */
+function cmMonthSummary(rows, now) {
+    const today = now || new Date();
+    const y = today.getFullYear(), m = today.getMonth();
+    const lastStart = new Date(y, m - 1, 1);
+    const thisStart = new Date(y, m, 1);
+    const todayKey  = cmDayKey(today);
+
+    const thisByDay = new Map(), lastByDay = new Map();
+    const thisSpecies = new Map(), lastSpecies = new Map();
+    const bump = (map, k) => map.set(k, (map.get(k) || 0) + 1);
+
+    for (const r of rows) {
+        // The same cleaning cmSummarize does, so a deer is not a visit and
+        // a scientific name is not a second species.
+        if (!cmIsBird(r.species)) continue;
+        const sp = cmSpeciesName(r.species);
+        const dt = new Date(r.detected_at);
+        if (dt < lastStart || dt > today) continue;
+        if (dt < thisStart) {
+            bump(lastByDay, dt.getDate());
+            bump(lastSpecies, sp);
+        } else {
+            bump(thisSpecies, sp);
+            if (cmDayKey(dt) !== todayKey) bump(thisByDay, dt.getDate());
+        }
+    }
+
+    const upTo = (map, n) => {
+        let t = 0;
+        map.forEach((c, d) => { if (d <= n) t += c; });
+        return t;
+    };
+    const cover = (map, n) => n > 0
+        ? [...map.keys()].filter(d => d <= n).length / n : 0;
+    // US English month names whatever the browser's locale. The class-facing
+    // text is written in it (1eeb321), and a French laptop on the projector
+    // should not turn October into "octobre" mid-sentence.
+    const name  = d => d.toLocaleDateString('en-US', { month: 'long' });
+    const short = d => d.toLocaleDateString('en-US', { month: 'short' });
+
+    return {
+        thisName: name(thisStart), lastName: name(lastStart),
+        thisShort: short(thisStart), lastShort: short(lastStart),
+        // Finished days of this month: on the 16th, days 1-15.
+        daysDone: today.getDate() - 1,
+        lastLen: new Date(y, m, 0).getDate(),
+        thisSpecies, lastSpecies,
+        thisVisits: n => upTo(thisByDay, n),
+        lastVisits: n => upTo(lastByDay, n),
+        thisCover:  n => cover(thisByDay, n),
+        lastCover:  n => cover(lastByDay, n),
+    };
 }
 
 // What the slides call the pooled set. The community's own name when we
@@ -4363,6 +4533,169 @@ const CLASSROOM_TEMPLATES = [
                            [{ label: 'Last week', value: prevTotal, key: 'prev' },
                             { label: 'This week', value: s.total,   key: 'now' }], { band }),
             explain: `This week: ${s.total}. Last week: ${prevTotal}.`,
+        };
+    },
+},
+
+// ── This month against last (cmMonthSummary) ─────────────────
+//
+// Three questions, each for a different reason a month is worth looking at:
+// bigger numbers to subtract (3-5), a fair comparison of unequal spans
+// (6-8), and the seasons, which a fortnight is too short to show.
+
+{
+    id: 'month-same-days',
+    category: 'comparison',
+    title: 'This month against last',
+    bands: ['3-5'],
+    needsMonths: true,
+    build({ months, band, rng, feeder }) {
+        if (!months) return null;
+        // The first n days of EACH month. This month is not over, so all of
+        // last month against part of this one is a race with a head start,
+        // and a class that answers "October" has read the chart correctly
+        // and learned something false.
+        const n = Math.min(months.daysDone, months.lastLen);
+        if (n < CM_MONTH_MIN_DAYS) return null;
+        if (months.thisCover(n) < CM_MONTH_MIN_COVER
+            || months.lastCover(n) < CM_MONTH_MIN_COVER) return null;
+
+        const now = months.thisVisits(n), prev = months.lastVisits(n);
+        if (now < 10 || prev < 10) return null;
+        const diff = Math.abs(now - prev);
+        // A difference that equals one of the bars would make the lesson
+        // builder hide the bar values (an option matching a plotted number
+        // looks like a give-away), and this question is subtraction OF
+        // those values. Rare enough to skip rather than special-case.
+        if (diff < 3 || diff === now || diff === prev) return null;
+
+        const busy  = now > prev ? months.thisName : months.lastName;
+        const quiet = now > prev ? months.lastName : months.thisName;
+        const chart = cmChart(`Visits in the first ${n} days of each month`,
+            [{ label: `${months.lastShort} 1–${n}`, value: prev, key: 'last' },
+             { label: `${months.thisShort} 1–${n}`, value: now,  key: 'now' }],
+            // Bars, explicitly: the rotation could hand two values a donut,
+            // and a donut shows shares, not the gap between two numbers.
+            { band, kind: 'bars' });
+        if (!chart) return null;
+
+        // The sum is the mistake a class actually makes on "how many more",
+        // so it is offered; nothing that equals a bar is, for the reason above.
+        const wrong = [now + prev].concat(cmNumberDistractors(diff, rng, 4))
+            .filter(v => v > 0 && v !== now && v !== prev).map(String);
+        const built = cmChoices(String(diff), wrong, rng);
+        if (!built) return null;
+
+        return {
+            prompt: `How many more visits did ${feeder} get in the first ${n} days of `
+                  + `${busy} than in the first ${n} days of ${quiet}?`,
+            ...built,
+            chart,
+            explain: `${Math.max(now, prev)} − ${Math.min(now, prev)} = ${diff}. Both bars `
+                   + `count days 1 to ${n}, so it is a fair race: ${months.thisName} is `
+                   + `not over yet, and all of ${months.lastName} against part of it `
+                   + `would give ${months.lastName} a head start.`,
+        };
+    },
+},
+
+{
+    id: 'month-per-day',
+    category: 'comparison',
+    title: 'Busier, day for day?',
+    bands: ['6-8'],
+    needsMonths: true,
+    build({ months, rng, feeder }) {
+        if (!months) return null;
+        // The unequal spans ARE the question here. A whole month's total
+        // beside half a month's is the trap; visits per day is the way out
+        // of it, and that is MA.6.AR.3.2 in the plainest form a feeder offers.
+        const n = months.daysDone, len = months.lastLen;
+        if (n < CM_MONTH_MIN_DAYS) return null;
+        if (months.thisCover(n) < CM_MONTH_MIN_COVER
+            || months.lastCover(len) < CM_MONTH_MIN_COVER) return null;
+
+        const now = months.thisVisits(n), prev = months.lastVisits(len);
+        if (now < 20 || prev < 20) return null;
+        const rNow = now / n, rPrev = prev / len;
+        const gap = Math.abs(rNow - rPrev) / Math.max(rNow, rPrev);
+
+        // Within 5% is a tie. Between 5% and 15% the honest answer depends
+        // on rounding and on a day that has not happened yet, so the question
+        // waits for a month with something clearer to say.
+        let answer;
+        if (gap < 0.05) answer = 'About the same';
+        else if (gap < 0.15) return null;
+        else answer = rNow > rPrev ? months.thisName : months.lastName;
+
+        const one = v => (Math.round(v * 10) / 10).toString();
+        const opts = cmShuffle([months.thisName, months.lastName, 'About the same'], rng);
+        // Said only when it happened: the bigger total belonging to the
+        // quieter month is the lesson, and inventing it when it did not
+        // occur would teach the trap as a rule. Never on a tie - the first
+        // build said it under "About the same", where there is no quieter
+        // month for the total to belong to.
+        const trap = answer !== 'About the same'
+            && ((prev > now && rNow > rPrev) || (now > prev && rPrev > rNow));
+        return {
+            // "Its first n days", not "n days": today is not counted, so on
+            // the 16th the class is looking at the 1st to the 15th, and a
+            // student who counts the calendar should get the same number.
+            prompt: `In ${months.lastName}, ${feeder} had ${prev} visits in ${len} days. `
+                  + `In the first ${n} days of ${months.thisName} it has had ${now} visits. `
+                  + 'Day for day, which month has been busier?',
+            choices: opts.map(l => ({ label: l })),
+            correct_index: opts.indexOf(answer),
+            explain: `${months.lastName}: ${prev} ÷ ${len} ≈ ${one(rPrev)} visits a day. `
+                   + `${months.thisName}: ${now} ÷ ${n} ≈ ${one(rNow)} a day.`
+                   + (trap ? ` The bigger total belongs to the quieter month: `
+                           + `it just had more days to collect them.` : ''),
+        };
+    },
+},
+
+{
+    id: 'month-newcomer',
+    category: 'science',
+    title: 'New this month',
+    bands: ['3-5', '6-8'],
+    needsMonths: true,
+    build({ months, s14, rng, feeder }) {
+        if (!months) return null;
+        // "Never once in all of October" is only a fact if the feeder was
+        // watching for most of October.
+        if (months.lastCover(months.lastLen) < CM_MONTH_MIN_COVER) return null;
+
+        // Twice at least. A single sighting is as likely to be the camera
+        // misreading a bird it sees every day, and a class told that a
+        // misread is a new arrival has been taught the wrong thing about
+        // evidence.
+        const fresh = [...months.thisSpecies.entries()]
+            .filter(([sp, c]) => c >= 2 && !months.lastSpecies.has(sp)).map(e => e[0]);
+        // Regulars in both months, so every wrong option is plainly wrong.
+        const both = [...months.thisSpecies.keys()]
+            .filter(sp => (months.lastSpecies.get(sp) || 0) >= 3);
+        if (!fresh.length || both.length < 2) return null;
+
+        const answer = cmShuffle(fresh, rng)[0];
+        const built = cmChoices(answer, cmShuffle(both, rng).slice(0, 3), rng);
+        if (!built) return null;
+        const c = months.thisSpecies.get(answer);
+
+        return {
+            prompt: `One of these birds came to ${feeder} in ${months.thisName} but `
+                  + `never once in all of ${months.lastName}. Which one?`,
+            ...built,
+            // At the reveal only: the photo names the bird. Often null - the
+            // newcomer may not be in the fortnight's photos - and the
+            // question stands without it.
+            image: cmShotFor(s14, answer),
+            image_on_reveal: true,
+            explain: `The ${answer}: ${c} visits so far in ${months.thisName}, none in `
+                   + `${months.lastName}. The others came in both. A month is long `
+                   + 'enough to see the seasons at work: birds move with the weather '
+                   + 'and with what there is to eat, and some only arrive for part of the year.',
+            about_bird: answer,
         };
     },
 },
@@ -11116,6 +11449,8 @@ function buildClassroomQuestions(room, data, opts) {
 
     const s    = cmWindow(source, 7);
     const s14  = source;
+    // Null unless the loader fetched them; the month templates sit out then.
+    const months = cmMonthsFor(data, source);
     const band = room.grade_band || 'k-2';
     const seed = `${room.id}|${cmDayKey(new Date())}|${source.feederId}`;
 
@@ -11130,7 +11465,8 @@ function buildClassroomQuestions(room, data, opts) {
         if (!classroomTemplateAllowed(t, band, picked)) continue;
         let q = null;
         try {
-            q = t.build({ s, s14, band, rng: cmRng(seed + '|' + t.id), feeder, source, room });
+            q = t.build({ s, s14, band, rng: cmRng(seed + '|' + t.id), feeder, source, room,
+                          months });
         } catch (e) {
             // A template that throws sits the week out rather than taking the
             // lesson down with it — but it says so. Swallowing this silently
