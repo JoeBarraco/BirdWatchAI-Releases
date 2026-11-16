@@ -10200,6 +10200,22 @@ ${jumbled.split('').join(' ')}`,
     bands: ['k-2', '3-5'],
     needsData: false,
     build({ rng }) {
+        // Off until the recording is replaced. Flagged in a lesson: "Sound
+        // makes it difficult to come to this conclusion." It does: the clip
+        // in community-bird-sounds.js (XC457078) plays about two hoots, a
+        // pause, then six, and the answer is four then five. This question
+        // is graded on the class's ears agreeing with the written pattern,
+        // so a clip that does not match makes the RIGHT answer sound wrong,
+        // which is worse than not asking. Returning null drops it the same
+        // way a feeder with too little data does; nothing else changes.
+        // The Barred Owl clip still plays in bird-by-sound and the two music
+        // fallbacks, where it only has to sound like an owl, not count hoots.
+        // To bring this back: pick a clean "who-cooks-for-you / who-cooks-
+        // for-you-all" call BY EAR, point tools/fetch-bird-sounds.js at it,
+        // regenerate, and delete this line. The code below it is kept as it
+        // was so that is the whole of the undo.
+        return null;
+
         const rec = cmPlayableSound('Barred Owl');
         if (!rec) return null;
 
