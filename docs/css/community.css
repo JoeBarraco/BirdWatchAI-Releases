@@ -173,6 +173,22 @@
             border-bottom: 3px solid var(--color-primary);
         }
 
+        /* The mark beside "Community Feed": the bird, or the selected
+           community's logo (renderFeedTitleMark). The logo is sized to the
+           heading's cap height and a bit over, so a crest reads as the
+           page's emblem without pushing the title down the page. White tile
+           for the same reason as the classroom's: a dark crest on a
+           transparent background disappears in the dark theme. */
+        .feed-title-mark.has-logo img {
+            height: 1.5em; width: auto; max-width: 4em;
+            object-fit: contain; vertical-align: middle;
+            margin-right: 0.15em; position: relative; top: -0.08em;
+            background: #fff; border-radius: 8px; padding: 3px;
+        }
+        @media (max-width: 720px) {
+            .feed-title-mark.has-logo img { height: 1.2em; }
+        }
+
         .page-subtitle {
             color: var(--color-gray-500);
             margin-bottom: 1.5rem;
@@ -4171,6 +4187,23 @@
     padding: 5px 8px; border-radius: 6px;
     border: 1px solid var(--border);
     background: var(--bg-card); color: var(--color-gray-700);
+}
+/* The school's crest under the community picker (classroomCommunityCrest).
+   Full column width and up to 120px tall: this is the one place on the
+   panel it is meant to be looked at, unlike the text-sized copy in the
+   header. Same white tile as the header copy, for the dark theme. */
+.classroom-community-crest {
+    display: flex; justify-content: center;
+    padding: 0.4rem 0 0.7rem; margin-bottom: 0.2rem;
+    border-bottom: 1px solid var(--border);
+}
+.classroom-community-crest[hidden] { display: none; }
+/* One rule between picker and crest, not two stacked. */
+.classroom-community-pick:has(+ .classroom-community-crest:not([hidden])) { border-bottom: 0; padding-bottom: 0.2rem; }
+.classroom-community-crest img {
+    max-width: 100%; max-height: 120px; width: auto; height: auto;
+    object-fit: contain;
+    background: #fff; border-radius: 8px; padding: 4px;
 }
 .classroom-community-select:focus,
 .classroom-select:focus { outline: none; border-color: var(--color-primary); }

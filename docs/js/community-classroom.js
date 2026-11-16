@@ -11793,6 +11793,32 @@ function openClassroomPanel() {
 function classroomPanelBrand() {
     const slot = document.getElementById('classroom-panel-brand');
     if (slot) slot.innerHTML = cmStageBrandHtml();
+    classroomCommunityCrest();
+}
+
+/**
+ * The school's crest, large, under the community picker.
+ *
+ * Asked for: "make the community logo larger ... maybe when in classroom it
+ * shows under the community drop down?" The header copy stays text-sized on
+ * purpose (it is shared with the projector bar, where a big crest competes
+ * with the question); this is the place to see it properly, beside the list
+ * of the school's classes.
+ *
+ * Same https-only rule as cmStageBrandHtml, and the same onerror: a logo
+ * that has gone hides the whole block rather than leaving a broken image.
+ */
+function classroomCommunityCrest() {
+    const box = document.getElementById('classroom-community-crest');
+    if (!box) return;
+    const c = (typeof myCommunities !== 'undefined' && Array.isArray(myCommunities))
+        ? myCommunities.find(x => x && x.id === classroomCommunityId) : null;
+    const logo = c && typeof c.logo_url === 'string' && /^https:\/\//i.test(c.logo_url)
+        ? c.logo_url : null;
+    if (!logo) { box.hidden = true; box.innerHTML = ''; return; }
+    box.innerHTML = `<img src="${esc(logo)}" alt="${esc((c.name || '') + ' logo')}"
+                          onerror="this.parentNode.hidden = true">`;
+    box.hidden = false;
 }
 
 function closeClassroomPanel() {

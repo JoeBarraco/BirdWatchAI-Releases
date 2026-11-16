@@ -167,6 +167,7 @@ function renderCommunityFilter() {
     if (!myCommunities.length) {
         group.style.display = 'none';
         selectedCommunity = '';
+        renderFeedTitleMark();
         return;
     }
 
@@ -178,10 +179,44 @@ function renderCommunityFilter() {
         ).join('');
     sel.value = prev && myCommunities.some(c => c.id === prev) ? prev : '';
     selectedCommunity = sel.value;
+    renderFeedTitleMark();
+}
+
+/**
+ * The mark beside "Community Feed": the selected community's logo, or the
+ * bird when there is none.
+ *
+ * Asked for: "on the main community site, when just the community is
+ * selected/visible it shows to the left of community feed instead of the
+ * pink bird." Only while ONE community is selected. "All I can see" is
+ * every community you belong to plus the public feed, and putting one
+ * school's crest over that would claim the whole page for it.
+ *
+ * https only, as on the classroom header, and onerror puts the bird back
+ * rather than leaving a broken image at the top of the page.
+ */
+function renderFeedTitleMark() {
+    const mark = document.getElementById('feed-title-mark');
+    if (!mark) return;
+    const c = selectedCommunity ? myCommunities.find(x => x && x.id === selectedCommunity) : null;
+    const logo = c && typeof c.logo_url === 'string' && /^https:\/\//i.test(c.logo_url)
+        ? c.logo_url : null;
+    if (!logo) { mark.classList.remove('has-logo'); mark.textContent = '🐦'; return; }
+    mark.classList.add('has-logo');
+    mark.innerHTML = `<img src="${esc(logo)}" alt="${esc((c.name || '') + ' logo')}"
+                           onerror="renderFeedTitleMarkFallback(this)">`;
+}
+
+function renderFeedTitleMarkFallback(img) {
+    const mark = img && img.parentNode;
+    if (!mark) return;
+    mark.classList.remove('has-logo');
+    mark.textContent = '🐦';
 }
 
 async function onCommunityFilterChange(value) {
     selectedCommunity = value || '';
+    renderFeedTitleMark();
     await loadCommunityFeederIndex();
     await scopeDropdownsToCommunity(true);
     if (typeof refilter === 'function') await refilter();
@@ -702,6 +737,7 @@ async function clearCommunityLogo(communityId) {
 async function communityLogoSaved(communityId, msg) {
     await loadMyCommunities();
     renderCommunityLogo(communityId);
+    renderFeedTitleMark();
     if (typeof classroomPanelBrand === 'function') classroomPanelBrand();
     showToast(msg);
 }
