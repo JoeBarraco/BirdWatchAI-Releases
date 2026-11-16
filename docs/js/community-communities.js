@@ -488,6 +488,7 @@ async function refreshCommunityPanel() {
     }
 
     renderCommunityCode(cid);
+    renderCommunityLogo(cid);
     renderCommunityStats(cid);   // independent; let it load in parallel
     refreshCommunityMembers();   // ditto
 
@@ -567,6 +568,142 @@ function renderCommunityCode(communityId) {
         <span style="color:var(--color-gray-500);">
             — feeder owners enter this in Settings → Community
         </span>`;
+}
+
+// ── Community logo ───────────────────────────────────────
+//
+// A school's crest, shown on the Classroom panel header and the lesson bar.
+// It belongs to the community rather than to a feeder because a community
+// is normally several feeders: borrowing one feeder's logo had no single
+// answer the moment a school had two. setup-community-logos.sql has the
+// storage and permission side.
+//
+// Owner only, in the UI and on the server (community_set_logo and the
+// upload policy both check). A logo is the community's identity, like its
+// name; moderators look after feeders and people.
+
+// The longest side, in pixels, a logo is stored at. The header shows it at
+// roughly 30px, so 256 is retina-sharp with room to spare, and a PNG that
+// size stays well under the bucket's 512 KB limit.
+const COMMUNITY_LOGO_PX = 256;
+
+function renderCommunityLogo(communityId) {
+    const el = document.getElementById('community-logo-line');
+    if (!el) return;
+    const c = myCommunities.find(x => x.id === communityId);
+    if (!c || c.role !== 'owner') { el.style.display = 'none'; el.innerHTML = ''; return; }
+
+    el.style.display = '';
+    el.innerHTML = `
+        <span style="color:var(--color-gray-500);">Logo:</span>
+        ${c.logo_url
+            ? `<img class="community-logo-preview" src="${esc(c.logo_url)}" alt="">`
+            : '<span style="color:var(--color-gray-500);">none</span>'}
+        <label class="community-logo-pick">
+            <input type="file" accept="image/png,image/jpeg,image/webp"
+                   onchange="uploadCommunityLogo('${esc(c.id)}', this)">
+            ${c.logo_url ? 'Replace' : 'Upload'}
+        </label>
+        ${c.logo_url
+            ? `<button type="button" onclick="clearCommunityLogo('${esc(c.id)}')">Remove</button>` : ''}
+        <span class="community-logo-hint">Shown on Classroom and above every lesson.</span>
+        <span id="community-logo-status" class="community-logo-hint"></span>`;
+}
+
+/**
+ * Shrink an image file to a square-ish PNG no larger than COMMUNITY_LOGO_PX.
+ *
+ * Done in the browser so a phone photo of the school sign does not go up
+ * as a 6 MB JPEG, and so what is stored is always a PNG regardless of what
+ * was picked. Transparency survives, which a crest usually has. Never
+ * upscales: a 64px badge stays 64px rather than turning to mush.
+ */
+async function communityLogoPng(file) {
+    const url = URL.createObjectURL(file);
+    try {
+        const img = await new Promise((resolve, reject) => {
+            const i = new Image();
+            i.onload = () => resolve(i);
+            i.onerror = () => reject(new Error('That file is not an image this browser can read.'));
+            i.src = url;
+        });
+        const scale = Math.min(1, COMMUNITY_LOGO_PX / Math.max(img.naturalWidth, img.naturalHeight));
+        const w = Math.max(1, Math.round(img.naturalWidth * scale));
+        const h = Math.max(1, Math.round(img.naturalHeight * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        return await new Promise((resolve, reject) =>
+            canvas.toBlob(b => b ? resolve(b) : reject(new Error('Could not prepare the image.')),
+                          'image/png'));
+    } finally {
+        URL.revokeObjectURL(url);
+    }
+}
+
+async function uploadCommunityLogo(communityId, input) {
+    const file = input && input.files && input.files[0];
+    if (!file) return;
+    const status = document.getElementById('community-logo-status');
+    const say = (msg, bad) => {
+        if (status) { status.textContent = msg; status.style.color = bad ? '#e74c3c' : ''; }
+    };
+
+    // No SVG, deliberately: an SVG is a document that can carry script, and
+    // this image is shown to every member of the community. The bucket
+    // refuses it too; saying so here is just kinder than a storage error.
+    if (!/^image\/(png|jpeg|webp)$/.test(file.type)) {
+        say('Please choose a PNG, JPEG or WebP image.', true);
+        input.value = '';
+        return;
+    }
+
+    try {
+        say('Uploading…');
+        const png = await communityLogoPng(file);
+
+        // A new path every time: the URL is what browsers and the screensaver
+        // cache by, so a replaced logo has to change its URL to be seen.
+        const path = `${communityId}/logo-${Date.now()}.png`;
+        const headers = sbHeaders(true);
+        headers['Content-Type'] = 'image/png';
+        const res = await fetch(`${SUPABASE_URL}/storage/v1/object/community-logos/${path}`,
+                                { method: 'POST', headers, body: png });
+        if (!res.ok) {
+            let msg = `Upload failed (${res.status})`;
+            try { const j = await res.json(); if (j && j.message) msg = j.message; } catch { /* keep */ }
+            throw new Error(msg);
+        }
+
+        const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/community-logos/${path}`;
+        const { error } = await sbRpc('community_set_logo',
+            { p_community_id: communityId, p_logo_url: publicUrl }, true);
+        if (error) throw new Error(error.message || 'Could not save the logo.');
+
+        await communityLogoSaved(communityId, 'Logo saved.');
+    } catch (e) {
+        say(e.message || 'Upload failed.', true);
+    } finally {
+        if (input) input.value = '';
+    }
+}
+
+async function clearCommunityLogo(communityId) {
+    if (!confirm('Remove the community logo? You can upload a new one at any time.')) return;
+    const { error } = await sbRpc('community_set_logo',
+        { p_community_id: communityId, p_logo_url: null }, true);
+    if (error) { showToast(error.message || 'Could not remove the logo.'); return; }
+    await communityLogoSaved(communityId, 'Logo removed.');
+}
+
+// Reload the communities list (which is where logo_url comes from) and
+// redraw everything that shows the logo, so the owner sees the change
+// without reopening anything.
+async function communityLogoSaved(communityId, msg) {
+    await loadMyCommunities();
+    renderCommunityLogo(communityId);
+    if (typeof classroomPanelBrand === 'function') classroomPanelBrand();
+    showToast(msg);
 }
 
 async function copyCommunityCode(slug) {

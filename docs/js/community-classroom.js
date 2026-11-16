@@ -3399,126 +3399,36 @@ function classroomDotsHtml(chart, revealed) {
  * Asked for: "when in clasroom mode the title should still show the
  * birdwatch header at the top but maybe also the school and school logo."
  *
- * THE LOGO IS THE HOME FEEDER'S. Communities have no logo field; feeders
- * do (feeders.logo_url, setup-feeder-logos.sql), and a school's feeder is
- * where a school already puts its crest. Borrowing it costs no migration, no
- * second upload and no second moderation story: it is the image the school
- * already shows next to every one of its sightings. The price is that an
- * owner who uploaded a photo of the feeder gets that instead of a crest,
- * which still says "ours", and a school that wants the two to differ is the
- * point at which a real community logo becomes worth building.
+ * THE LOGO IS THE COMMUNITY'S (communities.logo_url, set by the owner in
+ * the Communities panel; setup-community-logos.sql). The first cut borrowed
+ * the home feeder's logo, and the first real community it met showed why
+ * not: a community is normally several feeders, its classes point at
+ * different ones, and "the school's logo" had no single answer. The school
+ * is the community, so the crest is the community's.
  *
- * Pass the feeder whose logo to show; null shows none. The image is purely
- * decorative (alt="") because the school's name is printed right beside it,
- * and a screen reader saying the name twice helps nobody.
+ * Purely decorative (alt="") because the school's name is printed right
+ * beside it, and a screen reader saying the name twice helps nobody.
  *
  * Deliberately quiet: this bar sits above a lesson for the whole period and
  * the room is meant to be looking at the question, not at us.
  */
-function cmStageBrandHtml(logoFeederId) {
+function cmStageBrandHtml() {
     const c = (typeof myCommunities !== 'undefined' && Array.isArray(myCommunities))
         ? myCommunities.find(x => x && x.id === classroomCommunityId) : null;
     const school = c && (c.name || c.slug);
-    const logo = cmFeederLogoUrl(logoFeederId);
-    // onerror removes rather than hides: a signed link that has expired, or
-    // a file the owner has since deleted, must not leave a broken-image icon
-    // on the projector for the rest of the period.
+    // https only. The server already insists on this community's own folder
+    // of the logo bucket; checking the scheme again costs nothing, and the
+    // projector is not where to find out that ever changed.
+    const logo = c && typeof c.logo_url === 'string' && /^https:\/\//i.test(c.logo_url)
+        ? c.logo_url : null;
+    // onerror removes rather than hides: a file that has gone must not
+    // leave a broken-image icon on the projector for the rest of the period.
     return `<span class="classroom-stage-brand">
                 <span class="classroom-stage-mark">🐦 BirdWatchAI</span>
                 ${logo ? `<img class="classroom-stage-logo" src="${esc(logo)}" alt=""
                                onerror="this.remove()">` : ''}
                 ${school ? `<span class="classroom-stage-school">${esc(school)}</span>` : ''}
             </span>`;
-}
-
-// feeder id -> logo_url exactly as stored: a public URL, a private:// marker,
-// or null. Stored raw rather than signed so a private logo is re-read from
-// signedUrlCache on every render, and quietly drops out once its link
-// expires instead of handing an <img> a dead URL.
-const cmFeederLogoCache = new Map();
-
-// Which community classroomList was loaded for — see cmPanelLogoFeeder.
-let cmPanelListCommunity = null;
-
-/**
- * Fetch (once) and, for a private feeder, sign the logo of one feeder.
- *
- * Awaited before a lesson starts, because the stage bar is rendered on
- * every slide and a logo that pops in on slide three is a distraction. Never
- * throws and never blocks for long: any failure — no such column on an older
- * backend (the same 400 maybeRetryWithoutLogo guards the feed against), a
- * private row RLS will not show, a signing error — is cached as "no logo",
- * which is exactly what the header showed before.
- */
-async function cmLoadFeederLogo(feederId) {
-    if (!feederId || cmFeederLogoCache.has(feederId)) {
-        const raw = cmFeederLogoCache.get(feederId);
-        // A cached private marker may still need re-signing if a previous
-        // link has run out — a panel left open past two hours, say.
-        if (raw && typeof isPrivateMedia === 'function' && isPrivateMedia(raw)
-            && !cmFeederLogoUrl(feederId) && typeof signPrivateMedia === 'function') {
-            try { await signPrivateMedia([{ feeders: { logo_url: raw } }]); } catch { /* none */ }
-        }
-        return;
-    }
-    let raw = null;
-    try {
-        const res = await fetch(
-            `${SUPABASE_URL}/rest/v1/feeders?id=eq.${encodeURIComponent(feederId)}`
-            + '&select=logo_url',
-            { headers: sbHeaders(true) });
-        if (res.ok) {
-            const rows = await res.json();
-            raw = (Array.isArray(rows) && rows[0] && rows[0].logo_url) || null;
-        }
-        // signPrivateMedia fills signedUrlCache as a side effect; the object
-        // passed is a throwaway shaped like the feed rows it was written for.
-        if (raw && typeof isPrivateMedia === 'function' && isPrivateMedia(raw)
-            && typeof signPrivateMedia === 'function') {
-            await signPrivateMedia([{ feeders: { logo_url: raw } }]);
-        }
-    } catch {
-        raw = null;
-    }
-    cmFeederLogoCache.set(feederId, raw);
-}
-
-/**
- * A logo URL fit for an <img>, or null.
- *
- * https only. logo_url is written by feeder owners through an RPC, and
- * whatever validation that does today, the projector is not the place to
- * find out it changed: a header that shows nothing is a fine failure.
- */
-function cmFeederLogoUrl(feederId) {
-    if (!feederId) return null;
-    const raw = cmFeederLogoCache.get(feederId);
-    if (!raw) return null;
-    let url = raw;
-    if (typeof isPrivateMedia === 'function' && isPrivateMedia(raw)) {
-        const hit = typeof signedUrlCache !== 'undefined' ? signedUrlCache.get(raw) : null;
-        url = hit && hit.expiresAt > Date.now() ? hit.url : null;
-    }
-    return url && /^https:\/\//i.test(url) ? url : null;
-}
-
-/**
- * Whose logo the Classroom PANEL shows, which is a harder question than the
- * stage's: the panel lists every class in a community, and each class has
- * its own home feeder.
- *
- * Only when they all agree. A school with one feeder — the ordinary case —
- * gets its crest; a community whose classes watch different feeders gets
- * none, because putting one school's crest above another school's classes
- * is worse than showing no crest at all.
- */
-function cmPanelLogoFeeder() {
-    // refreshClassroomPanel draws the brand before the new community's class
-    // list arrives, while classroomList still holds the old one. Without
-    // this the previous school's crest would flash above the new name.
-    if (cmPanelListCommunity !== classroomCommunityId) return null;
-    const ids = new Set((classroomList || []).map(r => r && r.home_feeder_id).filter(Boolean));
-    return ids.size === 1 ? [...ids][0] : null;
 }
 
 function classroomGeoHtml(geo, revealed) {
@@ -11882,7 +11792,7 @@ function openClassroomPanel() {
  */
 function classroomPanelBrand() {
     const slot = document.getElementById('classroom-panel-brand');
-    if (slot) slot.innerHTML = cmStageBrandHtml(cmPanelLogoFeeder());
+    if (slot) slot.innerHTML = cmStageBrandHtml();
 }
 
 function closeClassroomPanel() {
@@ -11960,23 +11870,8 @@ async function refreshClassroomPanel() {
         return;
     }
     classroomList = Array.isArray(data) ? data : [];
-    cmPanelListCommunity = classroomCommunityId;
     renderClassroomList();
     renderClassroomForm();
-    // The panel's logo depends on the class list, so it can only be chosen
-    // now. Not awaited: the list is what a teacher came for, and the crest
-    // can arrive a moment after it.
-    const logoFeeder = cmPanelLogoFeeder();
-    if (logoFeeder) {
-        const forCommunity = classroomCommunityId;
-        cmLoadFeederLogo(logoFeeder).then(() => {
-            // A teacher who switched community while this was in flight must
-            // not get the previous school's crest above the new list.
-            if (classroomCommunityId === forCommunity) classroomPanelBrand();
-        });
-    } else {
-        classroomPanelBrand();
-    }
     classroomList.forEach(r => cmResolvePendingPredictions(r));
 }
 
@@ -16325,18 +16220,31 @@ function hideClassroomHistory() {
  * "Since last lesson" is remembered per classroom in localStorage rather
  * than stored: it is a nicety, it is per-teacher-per-device by nature,
  * and it is not worth a column or a migration.
+ *
+ * ⚠ THE FEEDER THE LESSON IS ABOUT, OR NONE. This used to be the home
+ * feeder's badges whatever the lesson was built from, which put one
+ * feeder's rank above a lesson drawn from every feeder in the community
+ * (a class set to "All community feeders"), or above a partner feeder's
+ * data when the home feeder was too quiet to carry the lesson. Pointed
+ * out as "this doesn't make sense unless the lessons are based upon a
+ * single feeder" - and it does not. So the badges follow `source`, the
+ * summary the questions were actually built from, and a pooled lesson
+ * gets no strip at all: a community has no badge standing of its own.
  */
-async function cmClassroomBadges(room) {
+async function cmClassroomBadges(room, source) {
     try {
-        if (!room || !room.home_feeder_id) return null;
+        if (!room || !source || source.isPool || !source.feederId) return null;
         if (typeof ensureBadgeStats !== 'function'
          || typeof badgesForFeederId !== 'function') return null;
 
         await ensureBadgeStats();
-        const res = badgesForFeederId(room.home_feeder_id);
+        const res = badgesForFeederId(source.feederId);
         if (!res || !res.rank) return null;
 
-        const key = 'cc-badges-' + room.id;
+        // Keyed by feeder as well as class: a class whose lesson falls back
+        // to a partner feeder must not have that feeder's badges counted as
+        // "already seen" against its home feeder next time, or the reverse.
+        const key = 'cc-badges-' + room.id + '-' + source.feederId;
         let seen = [];
         try { seen = JSON.parse(localStorage.getItem(key) || '[]'); } catch { seen = []; }
 
@@ -16422,13 +16330,7 @@ async function startClassroomSession(id, mode) {
     // possibly badges earned since last lesson" — and the second half is
     // the better half: a level that never moves is wallpaper, while
     // "you earned two since Tuesday" is a reason to look.
-    // Fetched alongside the badges, not after: both are small reads that
-    // gate the first slide, and the stage bar redraws on every slide, so the
-    // logo has to be in hand before the first one rather than popping in.
-    const [badges] = await Promise.all([
-        cmClassroomBadges(room),
-        cmLoadFeederLogo(room && room.home_feeder_id),
-    ]);
+    const badges = await cmClassroomBadges(room, source);
 
     classroomSession = {
         id: sess.id, room, source, questions, mode, badges,
@@ -16541,7 +16443,7 @@ function renderClassroomStage() {
     stage.innerHTML = `
         <div class="classroom-stage-bar">
             <div>
-                ${cmStageBrandHtml(S.room.home_feeder_id)}
+                ${cmStageBrandHtml()}
                 <strong>${esc(S.room.name)}</strong>
                 <span class="classroom-pill">${esc(band)}</span>
                 ${S.noData ? '<span class="classroom-pill warn">Feeder quiet — '
@@ -17184,7 +17086,7 @@ function renderClassroomLobby() {
     stage.innerHTML = `
         <div class="classroom-stage-bar">
             <div>
-                ${cmStageBrandHtml(S.room.home_feeder_id)}
+                ${cmStageBrandHtml()}
                 <strong>${esc(S.room.name)}</strong>
                 <span class="classroom-pill">${esc(GRADE_BAND_LABELS[S.room.grade_band] || S.room.grade_band)}</span>
             </div>

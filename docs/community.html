@@ -13,7 +13,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="BirdWatchAI">
-    <link rel="stylesheet" href="css/community.css?v=475c1ca6">
+    <link rel="stylesheet" href="css/community.css?v=e791a517">
 </head>
 <body>
 <!-- Top navbar with auth controls -->
@@ -789,6 +789,11 @@
              private community cannot be joined without it. -->
         <div id="community-code-line" style="margin-bottom:0.75rem;font-size:0.85rem;"></div>
 
+        <!-- The community's own logo, owner only. Shown on the Classroom panel
+             header and the lesson bar. See setup-community-logos.sql for why
+             it belongs to the community rather than to any one feeder. -->
+        <div id="community-logo-line" class="community-logo-line" style="display:none;"></div>
+
         <!-- Two columns from 720px up, so feeders and people are visible together
              instead of one scrolled past the other. -->
         <div class="community-panel-cols">
@@ -1248,7 +1253,7 @@
      script renders buttons wired to functions that don't exist, and against a
      cached stylesheet renders the tier rows as bare links. css/community.css is
      pinned to v=7 for the same reason. -->
-<script src="js/community-communities.js?v=43d1868d"></script>
+<script src="js/community-communities.js?v=ad83ec7a"></script>
 <!-- QR for the classroom lobby's join code. Same-origin on purpose: the
      lobby is the screen that must work when a lesson starts, and a CDN
      blocked by school wifi at that moment ends the lesson.
@@ -1272,7 +1277,7 @@
      longer exists. Swapping the two would make that half of the check silently
      do nothing. -->
 <script src="js/classroom-standards.js?v=f2e3de89"></script>
-<script src="js/community-classroom.js?v=d4724cb9"></script>
+<script src="js/community-classroom.js?v=1de9685d"></script>
 <script src="js/classroom-alignment.js?v=baa9d5c4"></script>
 <!-- Interactive chart runtime: crosshair tooltips on the trend chart, per-species hover rows on
      the Activity / Calendar / Rarity Mix charts. No-op until a [data-bw-chart] element appears. -->
