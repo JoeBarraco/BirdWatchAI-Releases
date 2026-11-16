@@ -11747,6 +11747,19 @@ async function loadClassroomOwnQuestions(roomId) {
     if (typeof signPrivateMedia === 'function') {
         try { await signPrivateMedia(data); } catch { /* shown unsigned, or not at all */ }
     }
+    // A chart set to the week its photo was taken needs that week, which
+    // the lesson's own fortnight does not hold. Fetched here because this
+    // is the one async step review and the lesson both take before the
+    // (synchronous) build. In parallel, and never fatal: a week that
+    // cannot be read leaves the question without a chart, not the lesson
+    // without the question.
+    await Promise.all(data.map(async x => {
+        if (!x || !cmOwnChartIsPhotoWeek(x.chart_spec)) return;
+        const a = cmOwnChartAnchor(
+            { at: x.photo_at, feeder: x.photo_feeder_id },
+            { at: x.clip_at,  feeder: x.clip_feeder_id });
+        x.chart_week = a ? await cmFetchPhotoWeek(a.feeder, a.at) : null;
+    }));
     return data;
 }
 
@@ -11781,22 +11794,138 @@ async function loadClassroomOwnQuestions(roomId) {
  * Null whenever the source has nothing to draw, which is an ordinary
  * outcome: the question still works, it simply has no chart beside it.
  */
-function cmOwnChart(spec, source, band, year) {
-    if (!spec || !spec.kind || !source) return null;
+/**
+ * True when a teacher's chart covers the week its photo was taken rather
+ * than the week the lesson runs.
+ *
+ * "I can click on a picture of a bird from 3 months ago, but the data is
+ * not necessarily applicable to that time for the chart." The picker
+ * reaches back a term or a school year; a chart that always showed this
+ * week sat beside an August photo with November's numbers. So the
+ * teacher chooses, and the old behaviour stays the default.
+ *
+ * Never for a year chart, which is the school year whatever the photo.
+ */
+function cmOwnChartIsPhotoWeek(spec) {
+    return !!(spec && spec.window === 'photo' && spec.source !== 'months');
+}
 
-    const s = cmWindow(source, 7);
+/** Where a question's chart week is anchored: its photo, else its clip. */
+function cmOwnChartAnchor(photo, clip) {
+    const ok = m => m && m.at && m.feeder;
+    return ok(photo) ? { at: photo.at, feeder: photo.feeder }
+         : ok(clip)  ? { at: clip.at,  feeder: clip.feeder }
+         : null;
+}
+
+// One fetch per feeder and day, however many questions or preview
+// redraws ask for it. A promise is cached, so two at once share it.
+const cmPhotoWeekCache = new Map();
+
+/**
+ * The seven days ending on the day `at` falls on, at `feederId`, as a
+ * summary cmOwnChart can draw from. Null when it cannot be read.
+ *
+ * ⚠ THE FEEDER THAT TOOK THE PHOTO, not the class's lesson source. A
+ * chart beside a photo is about where the photo came from; a pooled
+ * lesson's week from the photo's week would be three feeders' numbers
+ * captioned as though they were one.
+ *
+ * Only the best photo of each species is signed, not the week's every
+ * row: the species chart labels its bars with one picture each, and
+ * signing a few hundred private URLs to draw six would be the slow part
+ * of opening a lesson.
+ */
+function cmFetchPhotoWeek(feederId, at) {
+    if (!feederId || !at) return Promise.resolve(null);
+    const end = new Date(at);
+    if (isNaN(end)) return Promise.resolve(null);
+    const dayKey = cmDayKey(end);
+    const key = `${feederId}|${dayKey}`;
+    if (cmPhotoWeekCache.has(key)) return cmPhotoWeekCache.get(key);
+
+    const p = (async () => {
+        const days = cmDayKeysEnding(end, 7);
+        const from = cmDayStart(days[0]);
+        const to   = cmDayStart(dayKey);
+        to.setDate(to.getDate() + 1);
+        const url = `${SUPABASE_URL}/rest/v1/community_detections`
+                  + `?select=feeder_id,species,detected_at,image_url,confidence`
+                  + `&feeder_id=eq.${encodeURIComponent(feederId)}`
+                  + `&detected_at=gte.${encodeURIComponent(from.toISOString())}`
+                  + `&detected_at=lt.${encodeURIComponent(to.toISOString())}`
+                  + `&order=detected_at.desc`;
+        let rows;
+        try { rows = await fetchAllRows(url, hasAuthSession()); } catch { rows = null; }
+        if (!Array.isArray(rows)) return null;
+
+        const best = new Map();
+        for (const r of rows) {
+            if (!r.image_url) continue;
+            const b = best.get(r.species);
+            if (!b || cmConfPct(r) > cmConfPct(b)) best.set(r.species, r);
+        }
+        if (best.size && typeof signPrivateMedia === 'function') {
+            try { await signPrivateMedia([...best.values()]); } catch { /* unlabelled bars */ }
+        }
+
+        const s = cmSummarize(feederId, null, rows, false, null);
+        // Every day of the seven, empty ones included, ending on the photo's
+        // day — the summary fills from today when given a window, which is
+        // the wrong seven days here.
+        s.days = days.map(day => ({ day, n: s.byDay.get(day) || 0 }));
+        s.weekFrom = days[0];
+        s.weekTo   = dayKey;
+        return s;
+    })();
+    cmPhotoWeekCache.set(key, p);
+    // A failed read is not remembered; the next lesson tries again.
+    p.then(v => { if (!v) cmPhotoWeekCache.delete(key); });
+    return p;
+}
+
+/** "Aug 10–16", or "Jul 28 – Aug 3" across a month. */
+function cmWeekSpanLabel(fromKey, toKey) {
+    const a = cmDayStart(fromKey), b = cmDayStart(toKey);
+    const mon = d => d.toLocaleDateString(undefined, { month: 'short' });
+    return a.getMonth() === b.getMonth()
+        ? `${mon(a)} ${a.getDate()}–${b.getDate()}`
+        : `${mon(a)} ${a.getDate()} – ${mon(b)} ${b.getDate()}`;
+}
+
+function cmOwnChart(spec, source, band, year, week) {
+    if (!spec || !spec.kind) return null;
+
+    // The photo's week, or nothing. Falling back to this week when that
+    // week cannot be read would put the wrong numbers under the photo
+    // without a word — the exact fault this option exists to fix.
+    const photoWeek = cmOwnChartIsPhotoWeek(spec);
+    if (photoWeek ? !week : !source) return null;
+
+    const s = photoWeek ? week : cmWindow(source, 7);
+    // A photo from last school year says which year; one from this year
+    // does not need to.
+    const endDay = photoWeek ? cmDayStart(week.weekTo) : null;
+    const yr = endDay && endDay.getFullYear() !== new Date().getFullYear()
+        ? `, ${endDay.getFullYear()}` : '';
+    const span = photoWeek ? cmWeekSpanLabel(week.weekFrom, week.weekTo) + yr : '';
     let series = null, caption = '', bars = 0;
     if (spec.source === 'days') {
         series = cmDaySeries(s);
-        caption = 'Visits each day this week';
+        // The day chart adds "Mon 10 to Sun 16" to its own caption, so this
+        // names the month rather than repeating the dates.
+        caption = photoWeek
+            ? `Visits each day, the week of the photo (${endDay.toLocaleDateString(
+                  undefined, { month: 'short', year: 'numeric' })})`
+            : 'Visits each day this week';
     } else if (spec.source === 'species') {
         series = cmSpeciesSeries(s, 6);
-        caption = 'Visits by species this week';
+        caption = photoWeek ? `Visits by species, ${span}` : 'Visits by species this week';
     } else if (spec.source === 'hours') {
         series = s.byHour.map((n, h) => ({ label: fmtHourShort(h), value: n, key: String(h) }))
                          .filter(r => r.value > 0)
                          .slice(0, CHART_MAX_HOURS);
-        caption = 'When the birds came';
+        caption = photoWeek ? `When the birds came, ${span}` : 'When the birds came';
     } else if (spec.source === 'months') {
         // The same rollup the year questions read, and the same rule about
         // the current month: it has not finished counting, so a bar for it
@@ -11978,7 +12107,7 @@ function cmOwnLessonQuestions(room, o, band, seed, source, year) {
             // A chart over the class's own data, built here rather than
             // stored: the spec says which shape over which series, and the
             // numbers are whatever this week actually holds.
-            chart: cmOwnChart(x.chart_spec, source, band, year),
+            chart: cmOwnChart(x.chart_spec, source, band, year, x.chart_week),
             // The feeder burns the species name into the bottom of every
             // snapshot. A teacher asking "who is this?" over their own photo
             // would be handing out the answer, so the caption is cropped
@@ -13089,7 +13218,8 @@ function renderClassroomOwnList() {
                         esc(x.from_classroom || 'another class')}</span>`}
                     ${x.shared ? '<span class="classroom-pill">shared</span>' : ''}
                     ${x.video_url ? '<span class="classroom-pill">clip</span>' : ''}
-                    ${x.chart_spec ? '<span class="classroom-pill">chart</span>' : ''}
+                    ${x.chart_spec ? `<span class="classroom-pill">${
+                        cmOwnChartIsPhotoWeek(x.chart_spec) ? 'chart · photo’s week' : 'chart'}</span>` : ''}
                 </div>
                 <p class="classroom-review-prompt">${esc(x.prompt)}</p>
                 ${(x.standards && x.standards.length) ? `<div class="cc-stds">${
@@ -13152,10 +13282,12 @@ function openClassroomOwnForm(id) {
     const room0 = classroomList.find(r => r.id === classroomOwn.roomId);
     classroomOwn.editing = x ? x.id : null;
     classroomOwn.photo = x && x.detection_id
-        ? { id: x.detection_id, url: x.image_url } : null;
+        ? { id: x.detection_id, url: x.image_url,
+            at: x.photo_at, feeder: x.photo_feeder_id } : null;
 
     classroomOwn.clip = x && x.clip_detection_id
-        ? { id: x.clip_detection_id, url: x.video_url } : null;
+        ? { id: x.clip_detection_id, url: x.video_url,
+            at: x.clip_at, feeder: x.clip_feeder_id } : null;
     classroomOwn.chart = (x && x.chart_spec) ? { ...x.chart_spec } : null;
     classroomOwn.standards = (x && Array.isArray(x.standards)) ? x.standards.slice() : [];
 
@@ -13211,8 +13343,11 @@ function openClassroomOwnForm(id) {
             </p>
             <p class="classroom-muted">
                 Drawn fresh each lesson from whatever the feeders have recorded that
-                week — or that school year, if you count by month — and the shape is
-                saved, the numbers never are. A chart saved in October would otherwise
+                week — or that school year, if you count by month — unless you set
+                <em>Chart covers</em> to the week the photo was taken, which draws the
+                seven days ending on the photo's (or clip's) date, from the feeder that
+                took it. Either way the shape is saved and the numbers are not. A chart
+                saved in October would otherwise
                 still be showing October in March, which is why the preview below
                 changes as the weeks go by.
             </p>
@@ -13231,6 +13366,14 @@ function openClassroomOwnForm(id) {
                 <label class="classroom-field">
                     <span>Over what</span>
                     <select id="cc-own-chart-source" onchange="classroomOwnChartChanged()">
+                    </select>
+                </label>
+                <label class="classroom-field">
+                    <span>Chart covers</span>
+                    <select id="cc-own-chart-window" onchange="classroomOwnChartChanged()"
+                            title="The week the lesson runs keeps the chart current. The week the photo was taken matches the chart to an older photo or clip.">
+                        <option value="">The lesson’s week</option>
+                        <option value="photo">The photo’s week</option>
                     </select>
                 </label>
             </div>
@@ -13279,6 +13422,11 @@ function openClassroomOwnForm(id) {
     if (srcEl && classroomOwn.chart && classroomOwn.chart.source) {
         const opt = [...srcEl.options].some(o => o.value === classroomOwn.chart.source);
         if (opt) srcEl.value = classroomOwn.chart.source;
+    }
+    const winEl = document.getElementById('cc-own-chart-window');
+    if (winEl) {
+        winEl.value = cmOwnChartIsPhotoWeek(classroomOwn.chart) ? 'photo' : '';
+        winEl.disabled = !classroomOwn.chart || classroomOwn.chart.source === 'months';
     }
 
     document.getElementById('cc-own-prompt').focus();
@@ -13403,10 +13551,11 @@ function cmOwnMediaFromSummaries(data) {
     });
     return {
         photos: [...bestShot.values()].slice(0, 24).map(r => ({
-            id: r.id, url: r.image_url, species: r.species, at: r.detected_at })),
+            id: r.id, url: r.image_url, species: r.species, at: r.detected_at,
+            feeder: r.feeder_id })),
         clips: [...bestClip.values()].slice(0, 24).map(r => ({
             id: r.id, url: r.video_url, poster: r.image_url,
-            species: r.species, at: r.detected_at })),
+            species: r.species, at: r.detected_at, feeder: r.feeder_id })),
     };
 }
 
@@ -13443,10 +13592,11 @@ async function loadClassroomOwnPhotos() {
         classroomOwn.media[key] = got
             ? {
                 photos: (got.photos || []).map(r => ({
-                    id: r.id, url: r.image_url, species: r.species, at: r.detected_at })),
+                    id: r.id, url: r.image_url, species: r.species, at: r.detected_at,
+                    feeder: r.feeder_id })),
                 clips: (got.clips || []).map(r => ({
                     id: r.id, url: r.video_url, poster: r.image_url,
-                    species: r.species, at: r.detected_at })),
+                    species: r.species, at: r.detected_at, feeder: r.feeder_id })),
               }
             : cmOwnMediaFromSummaries(classroomOwn.data);
     }
@@ -13635,7 +13785,14 @@ function classroomOwnChartChanged() {
     renderClassroomOwnChartSources();
     const kind = document.getElementById('cc-own-chart-kind').value;
     const src  = document.getElementById('cc-own-chart-source').value;
-    classroomOwn.chart = kind ? { kind, source: src || 'days' } : null;
+    const winEl = document.getElementById('cc-own-chart-window');
+    // A year chart is the school year whatever the photo, so the choice is
+    // greyed out there rather than offered and ignored.
+    if (winEl) winEl.disabled = !kind || src === 'months';
+    const win = winEl && !winEl.disabled ? winEl.value : '';
+    classroomOwn.chart = kind
+        ? { kind, source: src || 'days', ...(win === 'photo' ? { window: 'photo' } : {}) }
+        : null;
     renderClassroomOwnChartPreview();
 }
 
@@ -13661,13 +13818,44 @@ function renderClassroomOwnChartPreview() {
                       + 'its own, or with a photo.</p>';
         return;
     }
+    const room  = classroomList.find(r => r.id === classroomOwn.roomId);
+    const band  = room ? room.grade_band : 'k-2';
+
+    // The photo's week: fetched, then drawn. Needs a photo or clip picked
+    // first, and says so rather than drawing this week in its place.
+    if (cmOwnChartIsPhotoWeek(classroomOwn.chart)) {
+        const why = cmOwnChartWhyNot(classroomOwn.chart.kind, classroomOwn.chart.source, band);
+        if (why) { box.innerHTML = `<p class="classroom-muted">${esc(why)}</p>`; return; }
+        const a = cmOwnChartAnchor(classroomOwn.photo, classroomOwn.clip);
+        if (!a) {
+            box.innerHTML = '<p class="classroom-muted">Pick a photo or clip above first. '
+                + 'This chart covers the seven days ending on the day it was taken.</p>';
+            return;
+        }
+        const spec = classroomOwn.chart;
+        box.innerHTML = '<p class="classroom-muted">Loading that week…</p>';
+        cmFetchPhotoWeek(a.feeder, a.at).then(week => {
+            // Only if nothing has changed while it loaded.
+            if (classroomOwn.chart !== spec || !document.body.contains(box)) return;
+            const b2 = cmOwnChartAnchor(classroomOwn.photo, classroomOwn.clip);
+            if (!b2 || b2.at !== a.at || b2.feeder !== a.feeder) return;
+            const chart = cmOwnChart(spec, null, band, null, week);
+            box.innerHTML = chart
+                ? `<p class="classroom-muted">This is what the class would see, from the
+                   week the photo was taken:</p>${classroomChartHtml(chart, false)}`
+                : `<p class="classroom-muted">${week
+                    ? 'That feeder did not record enough in the week of the photo to draw this one. '
+                      + 'Try another shape, or the week of the lesson.'
+                    : 'Could not read the week the photo was taken.'} The question still works without a chart.</p>`;
+        });
+        return;
+    }
+
     if (!classroomOwn.source) {
         box.innerHTML = '<p class="classroom-muted">Loading this class’s data…</p>';
         return;
     }
 
-    const room  = classroomList.find(r => r.id === classroomOwn.roomId);
-    const band  = room ? room.grade_band : 'k-2';
     const chart = cmOwnChart(classroomOwn.chart, classroomOwn.source, band,
                              classroomOwn.year);
 
@@ -13753,13 +13941,21 @@ function renderClassroomOwnPhotos() {
 function pickClassroomOwnMedia(id) {
     const clips = classroomOwn.mediaTab === 'clip';
     const key   = clips ? 'clip' : 'photo';
-    if (!id) { classroomOwn[key] = null; renderClassroomOwnPhotos(); return; }
+    if (!id) {
+        classroomOwn[key] = null;
+        renderClassroomOwnPhotos();
+        if (cmOwnChartIsPhotoWeek(classroomOwn.chart)) renderClassroomOwnChartPreview();
+        return;
+    }
 
     const pool = (clips ? classroomOwn.clips : classroomOwn.photos) || [];
     const all  = pool.concat(classroomOwn[key] ? [classroomOwn[key]] : []);
     const p = all.find(x => x.id === id);
-    classroomOwn[key] = p ? { id: p.id, url: p.url } : null;
+    // The date and feeder ride along: a chart set to "the week the photo
+    // was taken" is anchored on them.
+    classroomOwn[key] = p ? { id: p.id, url: p.url, at: p.at, feeder: p.feeder } : null;
     renderClassroomOwnPhotos();
+    if (cmOwnChartIsPhotoWeek(classroomOwn.chart)) renderClassroomOwnChartPreview();
 }
 
 // Kept under its old name: the review list still calls it.
