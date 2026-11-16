@@ -1161,6 +1161,28 @@ function cmDayKeysEnding(today, count) {
 }
 
 /**
+ * The days of a summary that are both over and on the record.
+ *
+ * Today is dropped because it is not finished: a bird that has not come
+ * YET has not broken a streak, and half a day's visits is not a daily
+ * total to put in a box plot (the same reason 3247f45 gave for "there were
+ * 0 visits on Sunday" on a Sunday morning).
+ *
+ * Leading empty days are dropped because they are not quiet days, they are
+ * days before the feeder was watching. A camera installed on day nine of
+ * the fortnight would otherwise give the class eight zeros to explain, and
+ * a median of nothing. Empty days AFTER the first visit stay in: those are
+ * real days on which no bird came, and leaving them out is exactly what
+ * made the streak and the spread questions wrong.
+ */
+function cmCompleteDays(s) {
+    const today = cmDayKey(new Date());
+    const days  = (s.days || []).filter(d => d.day !== today);
+    const first = days.findIndex(d => d.n > 0);
+    return first < 0 ? [] : days.slice(first);
+}
+
+/**
  * What counts as a bird.
  *
  * The detector reports what it sees, and what turns up at a feeder is not
@@ -1597,15 +1619,26 @@ async function loadClassroomData(room) {
         return (p && p.display_name) || 'a partner feeder';
     };
 
+    // ⚠ EVERY CALENDAR DAY, NOT EVERY DAY WITH A DETECTION. Without the
+    // window, cmSummarize lists only the days that had a row, so a quiet
+    // Wednesday was not a zero on the fortnight - it was not there at all.
+    // Flagged on stat-streak as "the X axis skipped days between Tuesday and
+    // Sunday", and it was worse than it looked: the streak walked that list
+    // as if it were consecutive, so Tuesday-then-Sunday counted as two days
+    // IN A ROW, and plot-the-change called Sunday "the day before" Tuesday.
+    // The 7-day summary (cmWindow) has always passed its window; this is
+    // the fortnight catching up. Templates that meant "days with birds" now
+    // say so with d.n > 0, and the ones that need whole days use
+    // cmCompleteDays.
     const home = room.home_feeder_id
         ? cmSummarize(room.home_feeder_id, nameOf(room.home_feeder_id),
-                      byFeeder.get(room.home_feeder_id) || [], true)
+                      byFeeder.get(room.home_feeder_id) || [], true, CLASSROOM_WINDOW_DAYS)
         : null;
 
     const partners = (room.partners || [])
         .filter(p => p.feeder_id)
         .map(p => cmSummarize(p.feeder_id, nameOf(p.feeder_id),
-                              byFeeder.get(p.feeder_id) || [], false));
+                              byFeeder.get(p.feeder_id) || [], false, CLASSROOM_WINDOW_DAYS));
 
     // Every feeder that came back, named — including the community ones the
     // classroom never listed. Comparison questions need the parts, not just
@@ -1615,14 +1648,14 @@ async function loadClassroomData(room) {
         const own = id === room.home_feeder_id ? home
                   : partners.find(p => p.feederId === id);
         return own || cmSummarize(id, pooledNames.get(id) || 'a feeder',
-                                  byFeeder.get(id) || [], false);
+                                  byFeeder.get(id) || [], false, CLASSROOM_WINDOW_DAYS);
     }).filter(Boolean);
 
     // The pile itself. Built from the rows rather than by merging summaries,
     // so every derived figure — byHour, daySpec, the temperature average —
     // is computed over the whole set instead of being averaged twice.
     const pooled = rows.length ? Object.assign(
-        cmSummarize(null, cmPoolName(), rows, false),
+        cmSummarize(null, cmPoolName(), rows, false, CLASSROOM_WINDOW_DAYS),
         { isPool: true, feeders: each.filter(x => x.total > 0) }
     ) : null;
 
@@ -2583,7 +2616,21 @@ function classroomBuildChartHtml(q, revealed) {
     const b = q.build;
     if (!b) return '';
 
-    const vals = q.build_values || b.series.map(() => 0);
+    // ⚠ OUTSIDE A LESSON THIS IS A PICTURE, NOT A CONTROL. The review pass
+    // renders the same slide, but classroomBuildBump and classroomBuildCheck
+    // act on the live session's current question - so in review the + and -
+    // were drawn, looked live, and did nothing. Flagged twice in one evening:
+    // "The buttons don't work to build the chart" and "Building the chart
+    // doesn't work". A reviewer is judging whether a class could build this,
+    // and the useful thing to show them is the finished chart, so that is
+    // what review gets: target heights, no buttons, and a line saying so.
+    const live = !!(classroomSession
+        && classroomSession.questions
+        && classroomSession.questions[classroomSession.index] === q);
+    const preview = !live;
+
+    const vals = preview ? b.series.map(s => s.target)
+                         : (q.build_values || b.series.map(() => 0));
     const top  = b.top;
     const step = b.step;
 
@@ -2611,13 +2658,13 @@ function classroomBuildChartHtml(q, revealed) {
             <span class="cc-build-label">${esc(s.label)}</span>
             ${body}
             <span class="cc-build-val">${v}</span>
-            <span class="cc-build-btns">
+            ${preview ? '' : `<span class="cc-build-btns">
               <button type="button" class="classroom-btn" ${revealed ? 'disabled' : ''}
                       onclick="classroomBuildBump(${i}, -1)" aria-label="Lower ${esc(s.label)}">−</button>
               <button type="button" class="classroom-btn" ${revealed ? 'disabled' : ''}
                       onclick="classroomBuildBump(${i}, 1)" aria-label="Raise ${esc(s.label)}">+</button>
-            </span>
-            ${done && v !== s.target
+            </span>`}
+            ${!preview && done && v !== s.target
               ? `<span class="cc-build-target">should be ${s.target}</span>` : ''}
           </div>`;
     }).join('');
@@ -2627,8 +2674,11 @@ function classroomBuildChartHtml(q, revealed) {
         <div class="cc-build-key">
           ${(() => {
               const word = step === 1 ? (b.unit || 'visit') : (b.units || 'visits');
+              // "Each step is 1 kind of bird" - flagged as "the term step is
+              // confusing", and fairly: the class never sees a step, it sees
+              // a + button. So the key names the thing they press.
               return unit ? `<span class="cc-dot"></span> = ${step} ${esc(word)}`
-                          : `Each step is ${step} ${esc(word)}`;
+                          : `Each press of + adds ${step} ${esc(word)}`;
           })()}
         </div>
         <table class="cc-build-table"><tbody>
@@ -2636,6 +2686,8 @@ function classroomBuildChartHtml(q, revealed) {
               s.count != null ? s.count : s.target}</td></tr>`).join('')}
         </tbody></table>
         <div class="cc-build-rows">${rows}</div>
+        ${preview ? `<p class="classroom-muted cc-build-preview">In the lesson the class
+            builds this with + and −. This is the finished chart.</p>` : ''}
         <figcaption>${esc(b.caption)}</figcaption>
       </figure>`;
 }
@@ -3346,24 +3398,127 @@ function classroomDotsHtml(chart, revealed) {
  *
  * Asked for: "when in clasroom mode the title should still show the
  * birdwatch header at the top but maybe also the school and school logo."
- * The first two are here.
  *
- * ⚠ THERE IS NO SCHOOL LOGO TO SHOW. logo_url is a column on FEEDERS
- * (setup-feeder-logos.sql); communities have no such field, so a school
- * crest needs a column, an upload and a moderation story rather than a line
- * of markup here. The name goes up now and the crest can follow it.
+ * THE LOGO IS THE HOME FEEDER'S. Communities have no logo field; feeders
+ * do (feeders.logo_url, setup-feeder-logos.sql), and a school's feeder is
+ * where a school already puts its crest. Borrowing it costs no migration, no
+ * second upload and no second moderation story: it is the image the school
+ * already shows next to every one of its sightings. The price is that an
+ * owner who uploaded a photo of the feeder gets that instead of a crest,
+ * which still says "ours", and a school that wants the two to differ is the
+ * point at which a real community logo becomes worth building.
+ *
+ * Pass the feeder whose logo to show; null shows none. The image is purely
+ * decorative (alt="") because the school's name is printed right beside it,
+ * and a screen reader saying the name twice helps nobody.
  *
  * Deliberately quiet: this bar sits above a lesson for the whole period and
  * the room is meant to be looking at the question, not at us.
  */
-function cmStageBrandHtml() {
+function cmStageBrandHtml(logoFeederId) {
     const c = (typeof myCommunities !== 'undefined' && Array.isArray(myCommunities))
         ? myCommunities.find(x => x && x.id === classroomCommunityId) : null;
     const school = c && (c.name || c.slug);
+    const logo = cmFeederLogoUrl(logoFeederId);
+    // onerror removes rather than hides: a signed link that has expired, or
+    // a file the owner has since deleted, must not leave a broken-image icon
+    // on the projector for the rest of the period.
     return `<span class="classroom-stage-brand">
                 <span class="classroom-stage-mark">🐦 BirdWatchAI</span>
+                ${logo ? `<img class="classroom-stage-logo" src="${esc(logo)}" alt=""
+                               onerror="this.remove()">` : ''}
                 ${school ? `<span class="classroom-stage-school">${esc(school)}</span>` : ''}
             </span>`;
+}
+
+// feeder id -> logo_url exactly as stored: a public URL, a private:// marker,
+// or null. Stored raw rather than signed so a private logo is re-read from
+// signedUrlCache on every render, and quietly drops out once its link
+// expires instead of handing an <img> a dead URL.
+const cmFeederLogoCache = new Map();
+
+// Which community classroomList was loaded for — see cmPanelLogoFeeder.
+let cmPanelListCommunity = null;
+
+/**
+ * Fetch (once) and, for a private feeder, sign the logo of one feeder.
+ *
+ * Awaited before a lesson starts, because the stage bar is rendered on
+ * every slide and a logo that pops in on slide three is a distraction. Never
+ * throws and never blocks for long: any failure — no such column on an older
+ * backend (the same 400 maybeRetryWithoutLogo guards the feed against), a
+ * private row RLS will not show, a signing error — is cached as "no logo",
+ * which is exactly what the header showed before.
+ */
+async function cmLoadFeederLogo(feederId) {
+    if (!feederId || cmFeederLogoCache.has(feederId)) {
+        const raw = cmFeederLogoCache.get(feederId);
+        // A cached private marker may still need re-signing if a previous
+        // link has run out — a panel left open past two hours, say.
+        if (raw && typeof isPrivateMedia === 'function' && isPrivateMedia(raw)
+            && !cmFeederLogoUrl(feederId) && typeof signPrivateMedia === 'function') {
+            try { await signPrivateMedia([{ feeders: { logo_url: raw } }]); } catch { /* none */ }
+        }
+        return;
+    }
+    let raw = null;
+    try {
+        const res = await fetch(
+            `${SUPABASE_URL}/rest/v1/feeders?id=eq.${encodeURIComponent(feederId)}`
+            + '&select=logo_url',
+            { headers: sbHeaders(true) });
+        if (res.ok) {
+            const rows = await res.json();
+            raw = (Array.isArray(rows) && rows[0] && rows[0].logo_url) || null;
+        }
+        // signPrivateMedia fills signedUrlCache as a side effect; the object
+        // passed is a throwaway shaped like the feed rows it was written for.
+        if (raw && typeof isPrivateMedia === 'function' && isPrivateMedia(raw)
+            && typeof signPrivateMedia === 'function') {
+            await signPrivateMedia([{ feeders: { logo_url: raw } }]);
+        }
+    } catch {
+        raw = null;
+    }
+    cmFeederLogoCache.set(feederId, raw);
+}
+
+/**
+ * A logo URL fit for an <img>, or null.
+ *
+ * https only. logo_url is written by feeder owners through an RPC, and
+ * whatever validation that does today, the projector is not the place to
+ * find out it changed: a header that shows nothing is a fine failure.
+ */
+function cmFeederLogoUrl(feederId) {
+    if (!feederId) return null;
+    const raw = cmFeederLogoCache.get(feederId);
+    if (!raw) return null;
+    let url = raw;
+    if (typeof isPrivateMedia === 'function' && isPrivateMedia(raw)) {
+        const hit = typeof signedUrlCache !== 'undefined' ? signedUrlCache.get(raw) : null;
+        url = hit && hit.expiresAt > Date.now() ? hit.url : null;
+    }
+    return url && /^https:\/\//i.test(url) ? url : null;
+}
+
+/**
+ * Whose logo the Classroom PANEL shows, which is a harder question than the
+ * stage's: the panel lists every class in a community, and each class has
+ * its own home feeder.
+ *
+ * Only when they all agree. A school with one feeder — the ordinary case —
+ * gets its crest; a community whose classes watch different feeders gets
+ * none, because putting one school's crest above another school's classes
+ * is worse than showing no crest at all.
+ */
+function cmPanelLogoFeeder() {
+    // refreshClassroomPanel draws the brand before the new community's class
+    // list arrives, while classroomList still holds the old one. Without
+    // this the previous school's crest would flash above the new name.
+    if (cmPanelListCommunity !== classroomCommunityId) return null;
+    const ids = new Set((classroomList || []).map(r => r && r.home_feeder_id).filter(Boolean));
+    return ids.size === 1 ? [...ids][0] : null;
 }
 
 function classroomGeoHtml(geo, revealed) {
@@ -4517,7 +4672,9 @@ const CLASSROOM_TEMPLATES = [
         // logging on Tuesday.
         const prevTotal = s14.total - s.total;
         if (s.total < 8 || prevTotal < 8) return null;
-        const prevDays = s14.days.filter(d =>
+        // Days WITH visits: every calendar day is listed now, so counting
+        // days alone would always find seven and the guard would never bite.
+        const prevDays = s14.days.filter(d => d.n > 0 &&
             cmDayStart(d.day).getTime() < Date.now() - 7 * 86400000).length;
         if (prevDays < 4) return null;
 
@@ -5470,7 +5627,9 @@ const CLASSROOM_TEMPLATES = [
     build({ s, s14, band, rng }) {
         const prev = s14.total - s.total;
         if (s.total < 10 || prev < 10) return null;
-        const prevDays = s14.days.filter(d =>
+        // Days WITH visits: every calendar day is listed now, so counting
+        // days alone would always find seven and the guard would never bite.
+        const prevDays = s14.days.filter(d => d.n > 0 &&
             cmDayStart(d.day).getTime() < Date.now() - 7 * 86400000).length;
         if (prevDays < 4) return null;
 
@@ -6341,15 +6500,29 @@ ${jumbled.split('').join(' ')}`,
             cmShuffle(pool2, rng).slice(0, 3).map(x => x.species), rng);
         if (!built) return null;
 
+        // A photograph on every answer. Asked for as "Would be better with
+        // photos of the birds": a question about what color a bird IS asks
+        // a class to remember a titmouse, when the skill on the page is
+        // sorting colors. Showing the birds turns recall into looking.
+        //
+        // This feeder's own photos only, as everywhere else in the lesson,
+        // and all four or none - three photos and one bare name would make
+        // the odd one out the one the eye goes to.
+        const photos = built.choices.map(c => cmSpeciesPhoto(s, c.label));
+        if (photos.every(Boolean)) {
+            built.choices = built.choices.map((c, i) => ({ ...c, photo: photos[i] }));
+        }
+
         return {
             prompt: 'Artists call red, yellow and blue the PRIMARY colors — '
                   + 'you cannot mix any other paints to make them. Which of these '
-                  + (flip ? 'birds IS wearing a primary color?'
-                          : 'birds is NOT wearing a primary color?'),
+                  // Not "wearing": "birds don't wear colors, they are colors".
+                  + (flip ? 'birds IS mostly a primary color?'
+                          : 'birds is NOT mostly a primary color?'),
             ...built,
             explain: flip
                 ? `The ${answer.species} is ${answer.look.color}, which is one of the `
-                  + 'three. Every other bird here is wearing a color you could mix '
+                  + 'three. Every other bird here is a color you could mix '
                   + 'from other paints.'
                 : `The ${answer.species} is ${answer.look.color}, which is not `
                   + 'red, yellow or blue. The others are.',
@@ -6669,8 +6842,11 @@ ${jumbled.split('').join(' ')}`,
         const built = cmChoices(answer, [answer === 'Even' ? 'Odd' : 'Even'], rng);
         if (!built) return null;
         return {
+            // "Is THAT odd or even" pointed at two numbers - flagged as
+            // "ambiguous if this is number of birds or day of month", since
+            // the date sits right beside the count. Name the number.
             prompt: `${pick.value} birds came on ${cmDayProse(pick.key)}. `
-                  + 'Is that an odd number or an even number?',
+                  + `Is ${pick.value} an odd number or an even number?`,
             ...built,
             explain: pick.value % 2 === 0
                 ? `${pick.value} splits into two equal groups, so it is even.`
@@ -6807,9 +6983,13 @@ ${jumbled.split('').join(' ')}`,
                                 cmNumberDistractors(answer, rng, 3).map(String), rng);
         if (!built) return null;
         return {
+            // "Altogether" read as including the day already named - flagged
+            // as "not clear whether you're asking for the total ... over the
+            // last three days or ... including the next three days". The
+            // answer is the next n days only, so the prompt now says so.
             prompt: `There were ${pick.value} visits on ${cmDayProse(pick.key)}. `
-                  + `If the next ${weeks} days were each exactly the same, how `
-                  + 'many visits would that be altogether?',
+                  + `If each of the next ${weeks} days also had ${pick.value} visits, `
+                  + `how many visits would those ${weeks} days have altogether?`,
             ...built,
             explain: `${pick.value} × ${weeks} = ${answer}.`,
         };
@@ -7631,13 +7811,21 @@ ${jumbled.split('').join(' ')}`,
     needsData: false,
     build({ rng }) {
         const picks = [
+            // Each carries its own question. One shared "what does it mean to
+            // call someone ..." fitted the night owl and nothing else -
+            // flagged on "a little bird told me" as "Sentence is odd". You
+            // call someone a night owl; you SAY a little bird told you.
             { idiom: 'a night owl',        means: 'Someone who stays up late',
+              ask: 'What does it mean to call someone "a night owl"?',
               others: ['Someone who is very wise', 'Someone who is hard to find', 'Someone who eats little'] },
             { idiom: 'to eat like a bird', means: 'To eat very little',
+              ask: 'What does it mean to say someone "eats like a bird"?',
               others: ['To eat very fast', 'To eat standing up', 'To eat only seeds'] },
             { idiom: 'a little bird told me', means: 'I heard it from someone I will not name',
+              ask: 'What does someone mean when they say "a little bird told me"?',
               others: ['I guessed it', 'I read it somewhere', 'I made it up'] },
             { idiom: 'the early bird gets the worm', means: 'Whoever starts first does best',
+              ask: 'What does it mean when someone says "the early bird gets the worm"?',
               others: ['Mornings are difficult', 'Worms wake up early', 'Patience is rewarded'] },
         ];
         const pick = cmShuffle(picks, rng)[0];
@@ -7645,7 +7833,7 @@ ${jumbled.split('').join(' ')}`,
         if (!built) return null;
         return {
             template_id: 'lang-idiom-' + pick.idiom.replace(/\W+/g, '-'),
-            prompt: `What does it mean to call someone "${pick.idiom}"?`,
+            prompt: pick.ask,
             ...built,
             explain: 'An idiom means something the words alone do not say — which '
                    + 'is why they are hard for anyone learning the language.',
@@ -7672,6 +7860,13 @@ ${jumbled.split('').join(' ')}`,
             explain: 'The chickadee says "chick-a-dee-dee-dee" and was named for it. '
                    + 'So were the killdeer, the whip-poor-will and the cuckoo.',
             about_bird: 'Carolina Chickadee',
+            // Asked for as "Maybe play the sound?" - and the recording is the
+            // proof of the answer, so it waits for the reveal. Played before,
+            // "chick-a-dee-dee-dee" would answer the question for the class
+            // the moment the button was pressed. Null where the browser
+            // cannot play it, which leaves the question exactly as it was.
+            sound: cmPlayableSound('Carolina Chickadee'),
+            sound_on_reveal: true,
         };
     },
 },
@@ -8059,7 +8254,9 @@ ${jumbled.split('').join(' ')}`,
     title: 'Reading a box plot',
     bands: ['6-8'],
     build({ s14, rng }) {
-        const vals = s14.days.map(d => d.n);
+        // Whole days, zeros included: a day nobody came is a daily total of
+        // 0, and dropping it pushed the median up.
+        const vals = cmCompleteDays(s14).map(d => d.n);
         if (vals.length < 8) return null;
 
         const chart = cmBoxPlot('Daily visits over the last two weeks', vals,
@@ -8102,7 +8299,8 @@ ${jumbled.split('').join(' ')}`,
     title: 'The shape of the data',
     bands: ['6-8'],
     build({ s14, band, rng }) {
-        const vals = s14.days.map(d => d.n);
+        // Whole days, zeros included - see box-quartile.
+        const vals = cmCompleteDays(s14).map(d => d.n);
         if (vals.length < 10) return null;
 
         const max = Math.max(...vals), min = Math.min(...vals);
@@ -8454,8 +8652,11 @@ ${jumbled.split('').join(' ')}`,
         if (!built) return null;
 
         return {
-            prompt: 'Three of these you can SEE in the photo. One is something '
-                  + 'somebody worked out. Which is the inference?',
+            // "Worked out" was flagged: "It should be what somebody inferred".
+            // The word is the lesson, so the prompt uses it and says what it
+            // means in the same breath.
+            prompt: 'Three of these you can SEE in the photo. One is an INFERENCE: '
+                  + 'something somebody figured out from clues. Which is the inference?',
             ...built,
             image: { url: shot.image_url, detection_id: shot.id },
             explain: 'An observation is what the senses record; an inference is what '
@@ -9585,7 +9786,10 @@ ${jumbled.split('').join(' ')}`,
         if (!built) return null;
 
         return {
-            prompt: 'Putting up a feeder is something PEOPLE did to this place. What '
+            // Capitals in a prompt are for the word that flips the answer -
+            // NOT, DIFFERENT, IN A ROW. "PEOPLE" flips nothing, and a class
+            // asked "why is people all caps?", which is the right question.
+            prompt: 'Putting up a feeder is something people did to this place. What '
                   + 'does it change?',
             ...built,
             explain: 'A feeder concentrates birds somewhere they would not otherwise '
@@ -9711,7 +9915,10 @@ ${jumbled.split('').join(' ')}`,
             prompt: 'Listen. Which written pattern matches the rhythm you heard?',
             ...built,
             sound: rec,
-            explain: 'Eight syllables, said twice, with the stress falling on COOKS '
+            // Was "Eight syllables, said twice", which the pattern above does
+            // not have: it is four hoots, then five. A wrong count in the one
+            // sentence that explains the rhythm is worse than no count.
+            explain: 'Four hoots, then five, with the stress falling on COOKS '
                    + 'both times. Birders write songs down as words for exactly this '
                    + 'reason — a written pattern you can check against what your ears '
                    + 'just did is how you learn to trust them.',
@@ -10023,7 +10230,7 @@ ${jumbled.split('').join(' ')}`,
     title: 'What else could it be?',
     bands: ['6-8'],
     build({ s14, rng }) {
-        if (s14.tempCoverage < 0.5 || s14.days.length < 7) return null;
+        if (s14.tempCoverage < 0.5 || s14.days.filter(d => d.n > 0).length < 7) return null;
 
         const built = cmChoices(
             'Watch for other things that change with the cold, like daylight and wind',
@@ -10642,7 +10849,9 @@ ${jumbled.split('').join(' ')}`,
     title: 'Days in a row',
     bands: ['3-5'],
     build({ s14, band, rng }) {
-        const days = s14.days;
+        // Every finished day since the feeder started, in order. A run is
+        // only a run if the list has no holes in it - see cmCompleteDays.
+        const days = cmCompleteDays(s14);
         if (days.length < 8) return null;
 
         // ⚠ PER SPECIES, NOT PER FEEDER. The first version asked for the
@@ -10684,7 +10893,13 @@ ${jumbled.split('').join(' ')}`,
             chart: cmChart(pick.species + ' each day',
                 days.map(d => ({ label: cmDayAxisLabel(d.day),
                                  value: onDay.has(d.day) ? 1 : 0, key: d.day })),
-                { band, kind: 'bars', plain: true, showValues: false }),
+                // maxBars: every day, or the streak is answered from bars
+                // the class cannot see. The default cap of eight kept the
+                // FIRST eight days of the fortnight, so a run in the second
+                // week was counted in the answer and missing from the chart -
+                // the other half of "the X axis skipped days".
+                { band, kind: 'bars', plain: true, showValues: false,
+                  maxBars: days.length }),
             image: cmShotFor(s14, pick.species),
             explain: best + ' days in a row. A single missed day breaks a run, so '
                    + 'counting one means hunting for the gaps rather than for the '
@@ -11667,7 +11882,7 @@ function openClassroomPanel() {
  */
 function classroomPanelBrand() {
     const slot = document.getElementById('classroom-panel-brand');
-    if (slot) slot.innerHTML = cmStageBrandHtml();
+    if (slot) slot.innerHTML = cmStageBrandHtml(cmPanelLogoFeeder());
 }
 
 function closeClassroomPanel() {
@@ -11745,8 +11960,23 @@ async function refreshClassroomPanel() {
         return;
     }
     classroomList = Array.isArray(data) ? data : [];
+    cmPanelListCommunity = classroomCommunityId;
     renderClassroomList();
     renderClassroomForm();
+    // The panel's logo depends on the class list, so it can only be chosen
+    // now. Not awaited: the list is what a teacher came for, and the crest
+    // can arrive a moment after it.
+    const logoFeeder = cmPanelLogoFeeder();
+    if (logoFeeder) {
+        const forCommunity = classroomCommunityId;
+        cmLoadFeederLogo(logoFeeder).then(() => {
+            // A teacher who switched community while this was in flight must
+            // not get the previous school's crest above the new list.
+            if (classroomCommunityId === forCommunity) classroomPanelBrand();
+        });
+    } else {
+        classroomPanelBrand();
+    }
     classroomList.forEach(r => cmResolvePendingPredictions(r));
 }
 
@@ -16192,7 +16422,13 @@ async function startClassroomSession(id, mode) {
     // possibly badges earned since last lesson" — and the second half is
     // the better half: a level that never moves is wallpaper, while
     // "you earned two since Tuesday" is a reason to look.
-    const badges = await cmClassroomBadges(room);
+    // Fetched alongside the badges, not after: both are small reads that
+    // gate the first slide, and the stage bar redraws on every slide, so the
+    // logo has to be in hand before the first one rather than popping in.
+    const [badges] = await Promise.all([
+        cmClassroomBadges(room),
+        cmLoadFeederLogo(room && room.home_feeder_id),
+    ]);
 
     classroomSession = {
         id: sess.id, room, source, questions, mode, badges,
@@ -16268,6 +16504,8 @@ function renderClassroomStage() {
                     ${bar}
                     <span class="classroom-choice-key">${String.fromCharCode(65 + i)}</span>
                     ${c.swatch ? `<span class="classroom-swatch" style="background:${esc(c.swatch)}"></span>` : ''}
+                    ${c.photo ? `<img class="classroom-choice-photo" src="${esc(c.photo)}" alt=""
+                                      onerror="this.remove()">` : ''}
                     <span class="classroom-choice-label">${esc(c.label)}</span>
                     ${tally}
                 </button>`;
@@ -16303,7 +16541,7 @@ function renderClassroomStage() {
     stage.innerHTML = `
         <div class="classroom-stage-bar">
             <div>
-                ${cmStageBrandHtml()}
+                ${cmStageBrandHtml(S.room.home_feeder_id)}
                 <strong>${esc(S.room.name)}</strong>
                 <span class="classroom-pill">${esc(band)}</span>
                 ${S.noData ? '<span class="classroom-pill warn">Feeder quiet — '
@@ -16946,7 +17184,7 @@ function renderClassroomLobby() {
     stage.innerHTML = `
         <div class="classroom-stage-bar">
             <div>
-                ${cmStageBrandHtml()}
+                ${cmStageBrandHtml(S.room.home_feeder_id)}
                 <strong>${esc(S.room.name)}</strong>
                 <span class="classroom-pill">${esc(GRADE_BAND_LABELS[S.room.grade_band] || S.room.grade_band)}</span>
             </div>

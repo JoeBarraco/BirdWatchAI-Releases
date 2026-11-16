@@ -3728,6 +3728,19 @@
     font-size: 0.82rem; font-weight: 700;
     color: var(--color-gray-900); white-space: nowrap;
 }
+/* The home feeder's logo, beside the school's name. Sized to the text it
+   sits with, not to the bar: a crest is recognised at a glance, and at
+   lesson-bar size anything bigger competes with the question. align-self
+   because the brand lines its text up on the baseline, and an image on a
+   baseline sits too high. The white tile is for the panel's green header,
+   where a dark crest on a transparent background would vanish; on the
+   lesson bar's light card it is barely visible, which is the point. */
+.classroom-stage-logo {
+    align-self: center;
+    height: 1.6em; width: auto; max-width: 4.5em;
+    object-fit: contain;
+    background: #fff; border-radius: 4px; padding: 1px;
+}
 /* On a narrow screen the room name and the question counter matter more. */
 @media (max-width: 720px) {
     .classroom-stage-mark { display: none; }
@@ -5053,6 +5066,16 @@
    of its own: the room is already looking at the options, and a separate
    chart would split their attention across the screen. */
 .classroom-choice { position: relative; overflow: hidden; }
+
+/* A bird's photo on its own answer button (art-primary-color). Big enough
+   to judge a color from across the room, small enough that four of them
+   still fit where four text answers did. Cover, not contain: a feeder shot
+   is mostly feeder, and the crop is what puts the bird in the box. */
+.classroom-choice-photo {
+    flex: 0 0 auto;
+    width: 11vmin; height: 11vmin; min-width: 56px; min-height: 56px;
+    object-fit: cover; border-radius: 10px;
+}
 
 .classroom-bar {
     position: absolute; inset: 0 auto 0 0;
