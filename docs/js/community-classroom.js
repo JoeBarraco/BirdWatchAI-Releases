@@ -14493,15 +14493,29 @@ async function reviewClassroomQuestions(roomId) {
     // only: since the Sort control became this room's question_order, they
     // are what 'best' and 'worst' sort BY, in the lesson as well as here.
     // That is the whole point — review now shows the order the class gets.
-    const [data, challenge, own, ratings, counts] = await Promise.all([
+    //
+    // ⚠ AND THE RECENT LIST, WHICH REVIEW USED TO LEAVE OUT. The lesson
+    // sends questions this class was asked in the last fortnight to the
+    // back BEFORE the teacher's order goes on top. Review skipped that, so
+    // it handed classroomOrderPermutation a different list than the lesson
+    // did. The same seed over two different lists is two different
+    // shuffles: a class with any past lessons was asked something other
+    // than the cards review had marked "in the next lesson". Reported as
+    // "I don't see the random selection changing anything", which is what
+    // that looks like from the board. Recent only reorders, never drops,
+    // so review still shows every question; it just shows them in the
+    // order the lesson will use.
+    const [data, recent, challenge, own, ratings, counts] = await Promise.all([
         loadClassroomData(room),
+        loadClassroomRecentTemplates(roomId),
         classroomActiveChallenge(roomId),
         loadClassroomOwnQuestions(roomId),
         loadClassroomRatings(roomId),
         loadClassroomRatingCounts(classroomCommunityId),
     ]);
     const { questions, source, built, offered, seed, mode } =
-        buildClassroomQuestions(room, data, { all: true, challenge, own, ratings, counts });
+        buildClassroomQuestions(room, data,
+            { all: true, recent, challenge, own, ratings, counts });
     classroomReviewRoom = room;
     classroomReviewQuestions = questions;
     classroomReviewRatings = ratings;
