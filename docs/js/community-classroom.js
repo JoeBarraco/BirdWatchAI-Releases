@@ -1892,10 +1892,22 @@ function cmSchoolYear(now) {
  * most birds" question off the same data.
  */
 function cmWantsYear(room) {
-    const band = (room && room.grade_band) || 'k-2';
-    const picked = classroomPickSet(room, null);
-    return CLASSROOM_TEMPLATES.some(t => t.needsYear
-                                     && classroomTemplateAllowed(t, band, picked));
+    // ⚠ NO LONGER CONDITIONAL, and the reason is the teacher's own charts.
+    // It used to ask whether a year TEMPLATE could reach this lesson, which
+    // was answerable from the room alone. Now "Each month this school year"
+    // is a chart source a teacher can pick in their own question, and
+    // whether any of this room's own questions uses it is NOT known here —
+    // o.own is loaded further down the lesson path, and a room that unticked
+    // every year template may still have a teacher chart that needs the
+    // rollup. Asking anyway would have been the wrong way round: a chart
+    // that silently fails to draw in front of a class is worse than a read.
+    //
+    // Affordable because of what the read is. 13,500 raw rows was worth
+    // avoiding; this is one RPC returning ~35 server-side rows, which is
+    // less than one photo on the slide. Kept as a function rather than
+    // deleted so the shape of the decision stays visible, and so a room
+    // argument is there if it ever needs to say no again.
+    return !!room;
 }
 
 /**
@@ -11577,10 +11589,19 @@ function buildDataFreeQuestions(room, o) {
     // cmOwnChart returns null and the question goes up without one.
     const own = cmOwnLessonQuestions(room, o, band, seed, null);
     // A quiet feeder is when a class leans hardest on this small set, so the
-    // teacher's thumbs matter more here, not less.
-    const ordered = own.front.concat(classroomRatingOrder(
+    // teacher's thumbs matter more here, not less — and so does the order
+    // they chose, which is applied last here exactly as it is on the main
+    // path. A room set to Random that fell back to lesson order the one
+    // morning the feeder was quiet would look like the setting had been
+    // forgotten.
+    const mode = classroomQuestionOrderFor(room, o);
+    const lessonOrder = own.front.concat(classroomRatingOrder(
         cmShuffle(out.concat(own.pool), cmRng(seed + '|order')),
         classroomRatingsFor(o), new Set(Array.isArray(o.recent) ? o.recent : [])));
+    // o.all is review, which permutes the canonical list itself — see the
+    // long note on the main path for why that has to be the canonical one.
+    const ordered = o.all ? lessonOrder
+                          : classroomApplyQuestionOrder(lessonOrder, mode, o, seed);
     const offered = CLASSROOM_TEMPLATES.filter(t =>
         classroomTemplateAllowed(t, band, picked)).length;
     return {
@@ -11588,6 +11609,8 @@ function buildDataFreeQuestions(room, o) {
         built: ordered.length,
         offered,
         no_data: true,
+        seed,
+        mode,
     };
 }
 
@@ -11741,11 +11764,11 @@ async function loadClassroomOwnQuestions(roomId) {
  * Null whenever the source has nothing to draw, which is an ordinary
  * outcome: the question still works, it simply has no chart beside it.
  */
-function cmOwnChart(spec, source, band) {
+function cmOwnChart(spec, source, band, year) {
     if (!spec || !spec.kind || !source) return null;
 
     const s = cmWindow(source, 7);
-    let series = null, caption = '';
+    let series = null, caption = '', bars = 0;
     if (spec.source === 'days') {
         series = cmDaySeries(s);
         caption = 'Visits each day this week';
@@ -11757,6 +11780,20 @@ function cmOwnChart(spec, source, band) {
                          .filter(r => r.value > 0)
                          .slice(0, CHART_MAX_HOURS);
         caption = 'When the birds came';
+    } else if (spec.source === 'months') {
+        // The same rollup the year questions read, and the same rule about
+        // the current month: it has not finished counting, so a bar for it
+        // sits below months that ran their course for a reason that is the
+        // calendar rather than the birds.
+        if (!year || !year.done || year.done.length < 2) return null;
+        series = year.done.map(m => ({ label: m.short, value: m.visits, key: m.key }));
+        caption = `Visits each month, ${year.yearLabel}`;
+        // ⚠ Twelve, not cmChart's default eight. A school year is twelve
+        // bars long and the default keeps the FIRST eight, so a May peak
+        // would be cut out of its own chart and the class would hunt for a
+        // bar that was never drawn — the fault 0da6d0e fixed on the streak
+        // chart. The year templates pass this for the same reason.
+        bars = 12;
     }
     if (!series || series.length < 2) return null;
 
@@ -11766,8 +11803,10 @@ function cmOwnChart(spec, source, band) {
 
     const chart = cmChart(caption, series, {
         band, kind: spec.kind,
-        ordered: spec.source === 'days' || spec.source === 'hours',
+        ordered: spec.source === 'days' || spec.source === 'hours'
+                 || spec.source === 'months',
         hours:   spec.source === 'hours',
+        ...(bars ? { maxBars: bars } : {}),
     });
 
     // ⚠ cmChart SUBSTITUTES RATHER THAN REFUSES. Asked for a shape the
@@ -11801,8 +11840,8 @@ function cmOwnChartWhyNot(kind, source, band) {
     }
     if (kind === 'donut' && source !== 'species') {
         return 'A circle shows how a whole splits up, which needs a handful of slices — '
-             + 'seven days or twenty-four hours are too many to tell apart. Circles work '
-             + 'over species.';
+             + 'seven days, twelve months or twenty-four hours are too many to tell '
+             + 'apart. Circles work over species.';
     }
     if (kind === 'dots' && band !== 'k-2') {
         return 'A tally draws one mark per visit, which only stays countable for K–2 '
@@ -11811,6 +11850,16 @@ function cmOwnChartWhyNot(kind, source, band) {
     if (kind === 'dots' && source !== 'days') {
         return 'A tally draws one mark per visit, so it needs short rows. Species and '
              + 'hours run too long to count. Try it over days, or use bars.';
+    }
+    // ── Months ───────────────────────────────────────────────────
+    // Twelve bars of a few hundred visits each. Bars, bars lying down and
+    // a line all read fine at that size; the other three do not, and each
+    // fails for the reason it already fails elsewhere — too many slices,
+    // too many marks, too big a key.
+    if (source === 'months' && kind === 'picto') {
+        return 'A picture graph needs a key small enough to count against — over a '
+             + 'whole year each symbol would have to stand for a hundred visits or '
+             + 'more, and the rows would not line up. Try bars or a line.';
     }
     return null;
 }
@@ -11829,6 +11878,16 @@ function cmOwnChartDataWhyNot(spec, source) {
                + 'The question still works — it just goes up without a chart until '
                + 'there is more data.';
     if (!spec || !source) return thin;
+
+    // A year chart fails for a reason that is the calendar, not the birds,
+    // and saying "not enough this week" would send a teacher looking at
+    // their feeders when the answer is to wait for November to end. Two
+    // finished months is cmYearSummary's own floor.
+    if (spec.source === 'months') {
+        return 'There are not enough finished months yet to draw a year. A month counts '
+             + 'once it is over — this one is still going — so the chart appears on its '
+             + 'own as the school year fills up. The question works without it until then.';
+    }
 
     if (spec.kind === 'dots') {
         const s = cmWindow(source, 7);
@@ -11851,7 +11910,7 @@ function cmOwnChartDataWhyNot(spec, source) {
  * teacher cannot pick a pair that will not draw.
  */
 function cmOwnChartSources(kind, band) {
-    return ['days', 'species', 'hours']
+    return ['days', 'species', 'hours', 'months']
         .filter(src => !cmOwnChartWhyNot(kind, src, band));
 }
 
@@ -11863,7 +11922,7 @@ function fmtHourShort(h) {
     return h < 12 ? h + 'a' : (h - 12) + 'p';
 }
 
-function cmOwnLessonQuestions(room, o, band, seed, source) {
+function cmOwnLessonQuestions(room, o, band, seed, source, year) {
     const none = { front: [], pool: [] };
     if (o.challenge) return none;
 
@@ -11902,7 +11961,7 @@ function cmOwnLessonQuestions(room, o, band, seed, source) {
             // A chart over the class's own data, built here rather than
             // stored: the spec says which shape over which series, and the
             // numbers are whatever this week actually holds.
-            chart: cmOwnChart(x.chart_spec, source, band),
+            chart: cmOwnChart(x.chart_spec, source, band, year),
             // The feeder burns the species name into the bottom of every
             // snapshot. A teacher asking "who is this?" over their own photo
             // would be handing out the answer, so the caption is cropped
@@ -12063,7 +12122,7 @@ function buildClassroomQuestions(room, data, opts) {
     // The teacher's own: the new ones go straight after the opening
     // identification question; the rest join the pool, where the recent-repeat
     // ordering below treats them exactly like any template.
-    const own = cmOwnLessonQuestions(room, o, band, seed, source);
+    const own = cmOwnLessonQuestions(room, o, band, seed, source, year);
 
     const rng = cmRng(seed + '|order');
     const ident = out.filter(q => q.category === 'identification');
@@ -12093,8 +12152,28 @@ function buildClassroomQuestions(room, data, opts) {
     // own.front is left alone — those are questions the teacher has just
     // written, and they asked for them by writing them.
     const ratings = classroomRatingsFor(o);
-    const ordered = classroomRatingOrder(ident, ratings, new Set(recent))
+    const lessonOrder = classroomRatingOrder(ident, ratings, new Set(recent))
         .concat(own.front, classroomRatingOrder(rest, ratings, new Set(recent)));
+
+    // And last of all, the order the teacher picked in Review questions —
+    // on top of everything above, because it is the one of these the
+    // teacher stated out loud. 'lesson' (the default, and what every
+    // classroom had before question_order existed) leaves it untouched.
+    //
+    // ⚠ NOT APPLIED FOR o.all, WHICH IS REVIEW, and that is what keeps the
+    // two in step rather than merely similar. Review re-sorts in place when
+    // the dropdown changes — CSS `order` per card, so a half-typed flag
+    // form survives — and it has to be able to show an order the lesson has
+    // not been built in yet. If the array it held were already permuted,
+    // applying the next mode to THAT would not be applying it to the
+    // canonical list, and a Random chosen in review would shuffle
+    // differently from the Random the board draws. So the canonical order
+    // goes out, review permutes it with this same function and this same
+    // seed, and the first classroomQuizSize of review's list is exactly
+    // what the class is asked.
+    const mode    = classroomQuestionOrderFor(room, o);
+    const ordered = o.all ? lessonOrder
+                          : classroomApplyQuestionOrder(lessonOrder, mode, o, seed);
 
     // How many templates this band HAS, against how many could say anything
     // about this week. The gap is the useful number: a band that offers forty
@@ -12113,6 +12192,11 @@ function buildClassroomQuestions(room, data, opts) {
         built:   ordered.length,
         offered,
         source,
+        // Review needs both to draw the lesson's order over the canonical
+        // list it was just handed. Harmless to the lesson, which has had
+        // the order applied already.
+        seed,
+        mode,
     };
 }
 
@@ -12897,7 +12981,8 @@ function renderClassroomActions() {
 // handful of rows, and a teacher switching three questions off should not
 // watch the pane reload three times.
 
-let classroomOwn = { roomId: null, items: [], editing: null, photos: null, photo: null };
+let classroomOwn = { roomId: null, items: [], editing: null, photos: null, photo: null,
+                     range: '14', media: null, data: null, year: null };
 
 /**
  * The door a teacher looking to write a question will actually try.
@@ -12941,10 +13026,18 @@ async function showClassroomOwnQuestions(roomId) {
     }
     // The photo choices survive a reload of the list for the same class:
     // fetching a fortnight of detections again because a question was
-    // switched off would be the slow part of a fast screen.
+    // switched off would be the slow part of a fast screen. The same now
+    // goes for every span the teacher has already looked at, and for the
+    // year rollup the chart preview draws from — all of them keyed to the
+    // room, so switching class still clears the lot.
+    const same = classroomOwn.roomId === roomId;
     classroomOwn = {
         roomId, items, editing: null, photo: null,
-        photos: classroomOwn.roomId === roomId ? classroomOwn.photos : null,
+        photos: same ? classroomOwn.photos : null,
+        range:  same ? (classroomOwn.range || '14') : '14',
+        media:  same ? classroomOwn.media : null,
+        data:   same ? classroomOwn.data  : null,
+        year:   same ? classroomOwn.year  : null,
     };
     renderClassroomOwnList();
 }
@@ -13073,6 +13166,11 @@ function openClassroomOwnForm(id) {
                 class's own. The species label burnt into the bottom stays hidden
                 until the answer is shown, so "who is this?" still works.
             </p>
+            <p class="classroom-muted">
+                Reach back as far as you like: each bird's clearest few shots from
+                the span you pick, newest span first. The date under a thumbnail is
+                when it was taken.
+            </p>
             <div class="cc-own-media-tabs">
                 <button type="button" class="classroom-btn" id="cc-own-tab-photo"
                         onclick="classroomOwnMediaTab('photo')">Photos</button>
@@ -13080,7 +13178,7 @@ function openClassroomOwnForm(id) {
                         onclick="classroomOwnMediaTab('clip')">Clips</button>
             </div>
             <div class="cc-own-photos" id="cc-own-photos">
-                <div class="classroom-muted">Loading the last two weeks’ media…</div>
+                <div class="classroom-muted">Looking through the feeders’ media…</div>
             </div>
         </details>
 
@@ -13093,9 +13191,10 @@ function openClassroomOwnForm(id) {
             </p>
             <p class="classroom-muted">
                 Drawn fresh each lesson from whatever the feeders have recorded that
-                week — the shape is saved, the numbers never are. A chart saved in
-                October would otherwise still be showing October in March, which is
-                why the preview below changes as the weeks go by.
+                week — or that school year, if you count by month — and the shape is
+                saved, the numbers never are. A chart saved in October would otherwise
+                still be showing October in March, which is why the preview below
+                changes as the weeks go by.
             </p>
             <p class="classroom-muted">
                 A clip takes the slide if you pick one, so a question with both shows
@@ -13177,43 +13276,201 @@ function openClassroomOwnForm(id) {
  * Only these, and the server checks it: a question can only ever show a
  * picture the class's own camera took.
  */
+// ── How far back the picker may reach ────────────────────────
+//
+// Asked for: "why can't the teacher choose older data when writing
+// questions? currently it only shows clips/photos from today."
+//
+// It was never today — it was the same fortnight the lesson reads. But
+// it kept ONE shot per species, capped the list at 24 and put no date on
+// any thumbnail, so what a teacher actually got was a dozen pictures
+// with nothing on screen to say when any of them was taken. Three things
+// made one fortnight look like one morning, and all three are answered
+// here: a span to choose, several shots of each bird, and the date under
+// every one.
+const CC_OWN_RANGES = [
+    { key: '14',   label: 'Last 2 weeks' },
+    { key: '90',   label: 'Last 3 months' },
+    { key: 'year', label: 'This school year' },
+];
+
+// Shots of the SAME bird to offer. The server ranks by confidence, so
+// the first is still the clearest; the rest are there so a teacher who
+// does not want THAT cardinal has another one to reach for.
+const CC_OWN_PER_SPECIES = 4;
+
+/**
+ * What a range key means, as [from, to).
+ *
+ * 'year' follows cmSchoolYear rather than counting back 365 days, so it
+ * agrees with the year questions and with the chart source of the same
+ * name. The other two count back from now.
+ */
+function cmOwnRangeSpan(key, now) {
+    const end = now || new Date();
+    if (key === 'year') {
+        const yr = cmSchoolYear(end);
+        return { from: yr.start, to: yr.end };
+    }
+    const days = key === '90' ? 90 : CLASSROOM_WINDOW_DAYS;
+    return { from: new Date(end.getTime() - days * 86400000),
+             to:   new Date(end.getTime() + 86400000) };
+}
+
+function cmOwnRangeLabel(key) {
+    const r = CC_OWN_RANGES.find(x => x.key === key);
+    return r ? r.label.toLowerCase() : 'the last two weeks';
+}
+
+/**
+ * The few photos and clips per species that the picker can show.
+ *
+ * ⚠ ON THE SERVER, and that is the whole reason the span can be opened
+ * up at all. A school year on the test community is ~6,600 detections
+ * and very nearly every one carries both a photo and a clip. Paging that
+ * into a modal to draw forty thumbnails is the waste
+ * classroom_year_months was written to avoid, and worse here, because
+ * every private:// row fetched has to be signed afterwards.
+ * classroom_media_picks returns about 40 rows for a whole year.
+ *
+ * Returns null rather than throwing when the RPC is not there yet, so
+ * this page ships ahead of its SQL and the caller falls back to the
+ * fortnight it already holds.
+ */
+async function cmFetchOwnMedia(ids, rangeKey) {
+    if (!ids || !ids.length) return null;
+    const span = cmOwnRangeSpan(rangeKey);
+    const { data, error } = await sbRpc('classroom_media_picks', {
+        p_feeder_ids:  ids,
+        p_from:        span.from.toISOString(),
+        p_to:          span.to.toISOString(),
+        p_per_species: CC_OWN_PER_SPECIES,
+        // The client's own list, so there is never a second copy of it in
+        // SQL to fall out of step with this one.
+        p_exclude:     [...CM_NOT_BIRDS.keys()],
+    }, hasAuthSession());
+    if (error || !data || !Array.isArray(data.photos)) return null;
+
+    // Private-school media arrives as private:// markers and cannot go in
+    // a src until it is signed — the same pass the feed and the lesson
+    // read both make. One call for both lists: they hold the same objects.
+    const rows = data.photos.concat(data.clips || []);
+    if (typeof signPrivateMedia === 'function') {
+        try { await signPrivateMedia(rows); } catch { /* fall through unsigned */ }
+    }
+    return data;
+}
+
+/**
+ * The picker's old source, kept as the fallback for a database that has
+ * not had setup-classroom-media-picks.sql applied.
+ *
+ * One shot per species out of the fortnight already in hand, which is
+ * exactly what the picker offered before this change — so a page running
+ * ahead of its SQL is no worse than it used to be, rather than empty.
+ */
+function cmOwnMediaFromSummaries(data) {
+    const bestShot = new Map(), bestClip = new Map();
+    // Snapshots and clips arrive highest-confidence first, so the first
+    // seen per species is its clearest.
+    (data.all || []).concat(data.each || []).forEach(s => {
+        (s.snapshots || []).forEach(r => {
+            if (!bestShot.has(r.species)) bestShot.set(r.species, r);
+        });
+        (s.clips || []).forEach(r => {
+            if (!bestClip.has(r.species)) bestClip.set(r.species, r);
+        });
+    });
+    return {
+        photos: [...bestShot.values()].slice(0, 24).map(r => ({
+            id: r.id, url: r.image_url, species: r.species, at: r.detected_at })),
+        clips: [...bestClip.values()].slice(0, 24).map(r => ({
+            id: r.id, url: r.video_url, poster: r.image_url,
+            species: r.species, at: r.detected_at })),
+    };
+}
+
 async function loadClassroomOwnPhotos() {
     const room = classroomList.find(r => r.id === classroomOwn.roomId);
     if (!room) return;
-    if (!classroomOwn.photos) {
-        // ⚠ THE WHOLE COMMUNITY, not just this class's feeders. Asked for:
-        // "you should be able to choose photos/clips from any feeder
-        // accessible to the teacher on the community site." Loading the
-        // room with question_scope forced to 'community' reuses the pooling
-        // path rather than writing a second way to reach the same rows —
-        // and the server checks the detection independently anyway, so this
-        // widening is a convenience, not the permission.
-        const data = await loadClassroomData({ ...room, question_scope: 'community' });
 
-        const bestShot = new Map(), bestClip = new Map();
-        // Snapshots and clips arrive highest-confidence first, so the first
-        // seen per species is its clearest.
-        (data.all || []).concat(data.each || []).forEach(s => {
-            (s.snapshots || []).forEach(r => {
-                if (!bestShot.has(r.species)) bestShot.set(r.species, r);
-            });
-            (s.clips || []).forEach(r => {
-                if (!bestClip.has(r.species)) bestClip.set(r.species, r);
-            });
-        });
-        classroomOwn.photos = [...bestShot.values()].slice(0, 24)
-            .map(r => ({ id: r.id, url: r.image_url, species: r.species }));
-        classroomOwn.clips = [...bestClip.values()].slice(0, 24)
-            .map(r => ({ id: r.id, url: r.video_url, poster: r.image_url, species: r.species }));
-        // Kept so the chart preview can draw this class's REAL numbers.
-        // Explaining a chart in words was the thing a teacher said did not
-        // work — "I have no idea how to create a chart question" — so the
-        // form shows the chart instead.
-        classroomOwn.source = cmPickSource(data);
+    // ⚠ THE WHOLE COMMUNITY, not just this class's feeders. Asked for:
+    // "you should be able to choose photos/clips from any feeder
+    // accessible to the teacher on the community site." Loading the
+    // room with question_scope forced to 'community' reuses the pooling
+    // path rather than writing a second way to reach the same rows —
+    // and the server checks the detection independently anyway, so this
+    // widening is a convenience, not the permission.
+    //
+    // Loaded once however many spans the teacher looks at: the range
+    // governs the thumbnails, while this is what the chart preview draws
+    // this class's REAL numbers from. Explaining a chart in words was the
+    // thing a teacher said did not work — "I have no idea how to create a
+    // chart question" — so the form shows the chart instead.
+    if (!classroomOwn.data) {
+        classroomOwn.data   = await loadClassroomData({ ...room, question_scope: 'community' });
+        classroomOwn.source = cmPickSource(classroomOwn.data);
+        // For the month chart source, which reads the same rollup the year
+        // questions do rather than a second one of its own.
+        classroomOwn.year   = cmYearFor(classroomOwn.data, classroomOwn.source);
     }
+
+    const key = classroomOwn.range || '14';
+    classroomOwn.media = classroomOwn.media || {};
+    if (!classroomOwn.media[key]) {
+        const ids = (classroomOwn.data.each || []).map(x => x.feederId).filter(Boolean);
+        const got = await cmFetchOwnMedia(ids, key);
+        classroomOwn.media[key] = got
+            ? {
+                photos: (got.photos || []).map(r => ({
+                    id: r.id, url: r.image_url, species: r.species, at: r.detected_at })),
+                clips: (got.clips || []).map(r => ({
+                    id: r.id, url: r.video_url, poster: r.image_url,
+                    species: r.species, at: r.detected_at })),
+              }
+            : cmOwnMediaFromSummaries(classroomOwn.data);
+    }
+
+    classroomOwn.photos = classroomOwn.media[key].photos;
+    classroomOwn.clips  = classroomOwn.media[key].clips;
+
     renderClassroomOwnPhotos();
     // The preview could not draw before the data arrived.
     renderClassroomOwnChartPreview();
+}
+
+/**
+ * Switch the span the thumbnails come from.
+ *
+ * Renders once before the fetch so the tab the teacher pressed goes down
+ * immediately — a year's worth is one RPC, but it is not instant, and a
+ * button that does nothing for half a second reads as broken.
+ */
+async function classroomOwnRange(key) {
+    if (!CC_OWN_RANGES.some(r => r.key === key)) return;
+    classroomOwn.range = key;
+    const cached = classroomOwn.media && classroomOwn.media[key];
+    if (!cached) {
+        classroomOwn.loading = true;
+        renderClassroomOwnPhotos();
+        classroomOwn.loading = false;
+    }
+    await loadClassroomOwnPhotos();
+}
+
+/**
+ * The date under a thumbnail. Short, because it sits under a picture in a
+ * grid and the year is almost always this one.
+ */
+function cmOwnWhen(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    try {
+        return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    } catch {
+        return '';
+    }
 }
 
 function classroomOwnMediaTab(which) {
@@ -13309,10 +13566,17 @@ function cmOwnChartKindOptions(band) {
         .join('');
 }
 
+// ⚠ 'months' IS THE ONLY ONE OF THESE THE WEEK'S DATA CANNOT DRAW. The
+// other three come off the fortnight every lesson already loads; this one
+// reads the school-year rollup, which is why cmOwnChart takes a `year`
+// and why cmWantsYear no longer asks whether a year TEMPLATE is in the
+// lesson — a teacher's own chart can need it now, and that is not
+// knowable when the data loads.
 const CC_CHART_SOURCE_LABELS = {
     days:    'Each day this week',
     species: 'Each species',
     hours:   'Each hour of the day',
+    months:  'Each month this school year',
 };
 
 /**
@@ -13384,15 +13648,17 @@ function renderClassroomOwnChartPreview() {
 
     const room  = classroomList.find(r => r.id === classroomOwn.roomId);
     const band  = room ? room.grade_band : 'k-2';
-    const chart = cmOwnChart(classroomOwn.chart, classroomOwn.source, band);
+    const chart = cmOwnChart(classroomOwn.chart, classroomOwn.source, band,
+                             classroomOwn.year);
 
     // A refusal has two very different causes and a teacher needs to know
     // which: the pair cannot be drawn at all, or it can and there is not
     // enough data this week.
     const why = cmOwnChartWhyNot(classroomOwn.chart.kind, classroomOwn.chart.source, band);
 
+    const when = classroomOwn.chart.source === 'months' ? 'right now' : 'this week';
     box.innerHTML = chart
-        ? `<p class="classroom-muted">This is what the class would see this week:</p>
+        ? `<p class="classroom-muted">This is what the class would see ${esc(when)}:</p>
            ${classroomChartHtml(chart, false)}`
         : why
         ? `<p class="classroom-muted">${esc(why)}</p>`
@@ -13406,10 +13672,13 @@ function renderClassroomOwnPhotos() {
 
     const clips = classroomOwn.mediaTab === 'clip';
     const pick  = clips ? classroomOwn.clip : classroomOwn.photo;
-    const list  = (clips ? classroomOwn.clips : classroomOwn.photos || []).slice();
+    // ⚠ The `|| []` goes round the WHOLE pick, not just one arm. Written
+    // the other way it guards photos and leaves clips to throw on .slice()
+    // the first time the Clips tab is opened before its list has loaded.
+    const list  = ((clips ? classroomOwn.clips : classroomOwn.photos) || []).slice();
 
-    // A question saved with older media keeps it on offer, even though it
-    // has dropped out of the fortnight the picker shows.
+    // A question saved with older media keeps it on offer, even when it is
+    // outside the span the picker is currently showing.
     if (pick && !list.some(p => p.id === pick.id)) {
         list.unshift({ id: pick.id, url: pick.url, species: clips ? 'Current clip' : 'Current photo' });
     }
@@ -13419,21 +13688,38 @@ function renderClassroomOwnPhotos() {
         if (b) b.classList.toggle('on', classroomOwn.mediaTab === k);
     });
 
+    const range  = classroomOwn.range || '14';
+    const ranges = `<div class="cc-own-ranges">${CC_OWN_RANGES.map(r =>
+        `<button type="button" class="classroom-btn cc-own-range${r.key === range ? ' on' : ''}"
+                 onclick="classroomOwnRange('${escJs(r.key)}')">${esc(r.label)}</button>`).join('')}</div>`;
+
+    if (classroomOwn.loading) {
+        box.innerHTML = ranges + `<p class="classroom-muted">Looking through ${
+            esc(cmOwnRangeLabel(range))}…</p>`;
+        return;
+    }
+
     const none = clips ? 'No clip' : 'No photo';
-    box.innerHTML = `
-        <button type="button" class="cc-own-photo none${pick ? '' : ' on'}"
-                onclick="pickClassroomOwnMedia(null)">${none}</button>
-        ${list.map(p => `
+    box.innerHTML = ranges + `
+        <div class="cc-own-grid">
+            <button type="button" class="cc-own-photo none${pick ? '' : ' on'}"
+                    onclick="pickClassroomOwnMedia(null)">${none}</button>
+            ${list.map(p => `
             <button type="button" class="cc-own-photo${pick && pick.id === p.id ? ' on' : ''}"
-                    onclick="pickClassroomOwnMedia('${escJs(p.id)}')" title="${esc(p.species || '')}">
+                    onclick="pickClassroomOwnMedia('${escJs(p.id)}')"
+                    title="${esc([p.species || '', cmOwnWhen(p.at)].filter(Boolean).join(' — '))}">
                 ${clips
                     ? `<video src="${esc(p.url || '')}" muted preload="metadata"
                              ${p.poster ? `poster="${esc(p.poster)}"` : ''}></video>
                        <span class="cc-own-play" aria-hidden="true">▶</span>`
                     : `<img src="${esc(p.url || '')}" alt="${esc(p.species || '')}">`}
+                ${cmOwnWhen(p.at)
+                    ? `<span class="cc-own-when">${esc(cmOwnWhen(p.at))}</span>` : ''}
             </button>`).join('')}
-        ${list.length ? '' : `<span class="classroom-muted">No ${
-            clips ? 'clips' : 'photos'} from this community's feeders in the last two weeks.</span>`}`;
+        </div>
+        ${list.length ? '' : `<p class="classroom-muted">No ${
+            clips ? 'clips' : 'photos'} from this community's feeders in ${
+            esc(cmOwnRangeLabel(range))}.</p>`}`;
 }
 
 /**
@@ -13770,6 +14056,118 @@ function classroomRatingOrder(list, ratings, recentIds) {
     return up.concat(mid, down);
 }
 
+// ── The order the teacher chose ──────────────────────────────
+//
+// Review questions has had a Sort control for a while, and its tooltip
+// said what it did not do: "Reorders this list only. What the class is
+// actually asked is unchanged." A teacher sorting a list of the very
+// questions their class is about to be asked reasonably expects to have
+// changed something. Asked for directly: a Random option, and that
+// changing the order should change the lesson too.
+//
+// So the sort is now the room's question_order, stored on the classroom,
+// and ONE function puts both the lesson and the review list in it. Two
+// implementations would be two chances for the board to disagree with
+// the page the teacher approved it on, which is the one thing review
+// exists to prevent.
+
+/**
+ * The permutation `mode` asks for, as indices into `list`.
+ *
+ * Indices rather than a reordered array because review needs exactly
+ * that: its cards carry a data-q of the LESSON index, every handler on
+ * them is closed over it, and what moves on a re-sort is a CSS `order`
+ * per card. The lesson maps the indices back to questions.
+ *
+ * Ties keep the order they arrived in, so choosing 'best' on a school
+ * that has not rated anything yet visibly does nothing rather than
+ * shuffling the list for no stated reason.
+ */
+function classroomOrderIndices(list, mode, scoreOf, rng) {
+    const idx = list.map((_, i) => i);
+    if (mode === 'random') return cmShuffle(idx, rng);
+    if (mode !== 'best' && mode !== 'worst') return idx;
+
+    const dir = mode === 'best' ? -1 : 1;
+    const at  = i => (list[i] && list[i].template_id && scoreOf)
+                   ? (Number(scoreOf(list[i].template_id)) || 0) : 0;
+    return idx.sort((a, b) => (at(a) - at(b)) * dir || a - b);
+}
+
+/**
+ * up − down from a tallies map, for the lesson.
+ *
+ * ⚠ REVIEW DOES NOT USE THIS ONE, and the difference is deliberate.
+ * Review scores through classroomReviewScore, which takes this class's
+ * own thumb back out of the server's figure and puts the current one in
+ * — so it scores on what the tallies WILL say once the thumb just
+ * pressed has saved, which is what the lesson will then read. Scoring
+ * review on the raw fetched numbers instead would have made review
+ * disagree with the board whenever a teacher rated something and then
+ * started the lesson, which is the ordinary way round to do it.
+ *
+ * Neither re-sorts on a thumb press: the number under the question
+ * changes, the list does not move until the sort is chosen again. A list
+ * that reshuffled under the hand pressing it would be unusable.
+ */
+function classroomCountScorer(counts) {
+    return tid => {
+        const c = counts && counts[tid];
+        return c ? ((Number(c.up) || 0) - (Number(c.down) || 0)) : 0;
+    };
+}
+
+/**
+ * Which order this lesson should use.
+ *
+ * ⚠ NOT DURING A NARROWED CHALLENGE, and for a sharper reason than the
+ * one classroomRatingsFor gives. A lesson is capped — ordered.slice(0,
+ * quizSize) — so reordering does not merely rearrange the questions, it
+ * decides WHICH ONES SURVIVE THE CAP. One class shuffling a challenge
+ * whose questions were chosen for everybody taking part would quietly
+ * drop some of them, which is exactly the opt-out a challenge exists to
+ * prevent. An 'any' challenge names nothing, so the order still applies.
+ */
+function classroomQuestionOrderFor(room, o) {
+    const ch = o && o.challenge;
+    if (ch && ch.question_mode && ch.question_mode !== 'any') return 'lesson';
+    const m = room && room.question_order;
+    return (m === 'best' || m === 'worst' || m === 'random') ? m : 'lesson';
+}
+
+/**
+ * Apply the teacher's order on top of the lesson's own.
+ *
+ * ⚠ THE FIRST QUESTION STAYS WHERE IT IS. Starting a class on a photo of
+ * a bird works where starting on a percentage does not, and that opener
+ * is a design decision rather than a preference a dropdown should be
+ * able to undo — the same ground on which classroomRatingOrder refuses
+ * to let a thumb move it. ONE question, though, not the whole
+ * identification block the lesson order keeps at the front: pinning four
+ * of eight would leave 'Random' looking broken.
+ *
+ * Seeded, not live-random, so the lesson and the review of it draw the
+ * same order on the same day. A Random that reshuffled between the two
+ * would make review a lie about the board.
+ */
+function classroomOrderPermutation(list, mode, scoreOf, seed) {
+    if (!mode || mode === 'lesson' || !list || list.length < 3) {
+        return (list || []).map((_, i) => i);
+    }
+    // Index 0 held back, then the rest ordered and shifted up by one.
+    const tail = list.slice(1);
+    return [0].concat(
+        classroomOrderIndices(tail, mode, scoreOf, cmRng(seed + '|order|' + mode))
+            .map(i => i + 1));
+}
+
+/** The same permutation, applied — which is all the lesson needs. */
+function classroomApplyQuestionOrder(list, mode, o, seed) {
+    return classroomOrderPermutation(list, mode,
+                                     classroomCountScorer(o && o.counts), seed)
+        .map(i => list[i]);
+}
+
 // Review and the live stage each keep their own copy of the ratings,
 // because each has its own room and its own question list.
 let classroomReviewRatings = {};
@@ -13780,6 +14178,12 @@ let classroomReviewRatings = {};
 // to sort. 'lesson' | 'best' | 'worst'.
 let classroomReviewCounts = {};
 let classroomReviewSort = 'lesson';
+
+// The lesson's own seed, handed back by buildClassroomQuestions, so that
+// a Random chosen here shuffles exactly the way the board will. Without
+// it review would draw one shuffle and the class would be asked another,
+// and review would be a confident lie about the lesson.
+let classroomReviewSeed = '';
 
 // What THIS class had rated when the tallies were fetched, so its own thumb
 // can be taken back out of them and the current one put in. Without it a
@@ -13843,9 +14247,15 @@ function classroomRateCountHtml(tid) {
     if (!up && !down) return '';
 
     const classes = n => `${n} class${n === 1 ? '' : 'es'}`;
+    // ⚠ THIS SENTENCE USED TO SAY "Tallies never change what a class is
+    // asked", which was true until the Sort control became the classroom's
+    // saved question_order. On a room set to best- or worst-rated these
+    // numbers now decide the order of its lessons — and because a lesson
+    // is capped, they decide which questions reach it at all.
     const tip = `In this school: ${classes(up)} rated this up, ${classes(down)} down. `
-              + 'This class’s own thumb is counted. Tallies never change what a class '
-              + 'is asked — only the room’s own thumb does that.';
+              + 'This class’s own thumb is counted. When this classroom is sorted '
+              + 'best- or worst-rated, these tallies set the order its lessons are '
+              + 'asked in; the room’s own thumbs move a question whatever the sort.';
     return `<span class="classroom-rate-count" title="${esc(tip)}">`
          + `<span class="classroom-rate-count-up">👍 ${up}</span>`
          + `<span class="classroom-rate-count-down">👎 ${down}</span></span>`;
@@ -13855,9 +14265,14 @@ function classroomRateCountHtml(tid) {
 // the sort agrees with what the teacher can see. A question four classes
 // liked and one disliked outranks one a single class liked, and both outrank
 // anything nobody has touched.
-function classroomReviewScore(q) {
-    if (!q || !q.template_id) return 0;
-    const { up, down } = classroomRateCountFor(q.template_id);
+//
+// And because that adjustment is "the server's figure with this class's old
+// thumb taken out and its current one put in", this is also what the tallies
+// will say once the press has saved — which is what the lesson will read.
+// Review predicting the saved state is what keeps it honest about the board.
+function classroomReviewScore(tid) {
+    if (!tid) return 0;
+    const { up, down } = classroomRateCountFor(tid);
     return up - down;
 }
 
@@ -13878,12 +14293,18 @@ function classroomReviewScore(q) {
  * ratings yet visibly does nothing rather than shuffling the list.
  */
 function classroomReviewOrder() {
-    const idx = classroomReviewQuestions.map((q, i) => i);
-    if (classroomReviewSort === 'lesson') return idx;
-    const dir = classroomReviewSort === 'best' ? -1 : 1;
-    return idx.sort((a, b) =>
-        (classroomReviewScore(classroomReviewQuestions[a])
-       - classroomReviewScore(classroomReviewQuestions[b])) * dir || a - b);
+    // ⚠ THE SAME FUNCTION THE LESSON USES, over the same canonical list
+    // with the same seed. Review is handed the questions UNPERMUTED (see
+    // the note in buildClassroomQuestions) precisely so this can be true:
+    // what review draws is what the board draws, not a second ordering
+    // that happens to agree most of the time. The opener is held in place
+    // here as well, because classroomOrderPermutation is where that rule
+    // lives — one implementation, not two that look alike.
+    return classroomOrderPermutation(
+        classroomReviewQuestions,
+        classroomReviewSort,
+        classroomReviewScore,
+        classroomReviewSeed);
 }
 
 function classroomReviewSortHtml() {
@@ -13892,28 +14313,86 @@ function classroomReviewSortHtml() {
     return `<label class="classroom-review-sort">
         <span>Sort</span>
         <select class="classroom-select" onchange="setClassroomReviewSort(this.value)"
-                title="Reorders this list only. What the class is actually asked is
-                       unchanged: that follows this room's own thumbs.">
+                title="This is the order the class is asked in, not just the order of
+                       this list. It is saved for this classroom and used by the next
+                       lesson. The opening question stays first either way.">
             ${opt('lesson', 'Lesson order')}
             ${opt('best', 'Best rated first')}
             ${opt('worst', 'Worst rated first')}
+            ${opt('random', 'Random')}
         </select></label>`;
 }
 
 /**
- * Re-sort the review list in place.
+ * Move the cards into classroomReviewSort's order, and nothing else.
  *
- * Only the `order` style moves. Nothing is rebuilt, so an open flag form and
- * whatever is typed into it stay exactly where they were.
+ * ⚠ SEPARATE FROM setClassroomReviewSort, WHICH SAVES. Drawing the list
+ * calls this one. Calling the saving one to lay out a list that has just
+ * been built from the stored setting would write that setting back on
+ * every open — a harmless no-op against the database, but one that would
+ * toast "could not be saved" at a teacher who had not touched anything,
+ * on every single review, until the SQL was applied.
  */
-function setClassroomReviewSort(value) {
-    classroomReviewSort = ['lesson', 'best', 'worst'].includes(value) ? value : 'lesson';
+function classroomReviewResort() {
     const list = document.getElementById('classroom-review-list');
     if (!list) return;
+
+    // ⚠ WHICH QUESTIONS MAKE THE LESSON IS NOW PART OF WHAT THE SORT
+    // DECIDES, and that has to be visible. A lesson asks a handful of a
+    // longer list, so changing the order does not merely rearrange the
+    // questions — it changes WHICH ONES THE CLASS GETS. A teacher who
+    // picked "worst rated first" to hunt for weak questions, and was not
+    // shown that they had just moved the four worst into tomorrow's
+    // lesson, would have been caught out by a control that reads like a
+    // view. So the ones inside the cap say so.
+    const cap = classroomQuizSize(classroomReviewRoom, {});
     classroomReviewOrder().forEach((qIndex, position) => {
         const card = list.querySelector(`.classroom-review-q[data-q="${qIndex}"]`);
-        if (card) card.style.order = position;
+        if (!card) return;
+        card.style.order = position;
+        card.classList.toggle('in-lesson', position < cap);
     });
+}
+
+/**
+ * Re-sort the review list, and tell the classroom about it.
+ *
+ * Only the `order` style moves on screen. Nothing is rebuilt, so an open
+ * flag form and whatever is typed into it stay exactly where they were —
+ * which is why this is a CSS reorder and not an innerHTML pass.
+ *
+ * The save is fire-and-forget on purpose. The list has already moved, the
+ * teacher can see that it has, and blocking the reorder on a round trip
+ * to make the same thing happen a moment later would be a worse screen.
+ * If it fails, nothing silently lies: the order simply is not kept, and
+ * the next review of this room opens on what the server actually holds.
+ */
+function setClassroomReviewSort(value) {
+    classroomReviewSort = ['lesson', 'best', 'worst', 'random'].includes(value)
+        ? value : 'lesson';
+    classroomReviewResort();
+
+    if (!classroomReviewRoom) return;
+
+    // Keep the in-memory room in step — both copies of it — so starting a
+    // lesson from this same panel without reloading the list asks in the
+    // order just chosen rather than the one the server was last read for.
+    // Null, not 'lesson', because that is what the column stores.
+    const stored = classroomReviewSort === 'lesson' ? null : classroomReviewSort;
+    classroomReviewRoom.question_order = stored;
+    const listed = classroomList.find(r => r.id === classroomReviewRoom.id);
+    if (listed) listed.question_order = stored;
+
+    sbRpc('classroom_set_question_order', {
+        p_classroom_id: classroomReviewRoom.id,
+        p_order:        classroomReviewSort,
+    }, true).then(({ error }) => {
+        // PGRST202 means setup-classroom-question-order.sql has not been
+        // applied yet. The sort still works for this sitting; it is just
+        // not remembered. Said once, quietly, rather than left to look
+        // like a silent failure.
+        if (error) showToast('Sorted — but this order could not be saved for next time.');
+    }).catch(() => {});
 }
 
 /**
@@ -13994,9 +14473,10 @@ async function reviewClassroomQuestions(roomId) {
     // with the board would be worse than no review.
     // Ratings too, both to order the list the way the lesson will and so
     // each question's thumbs show what this class already said about it.
-    // The school's tallies come alongside, for display only: they are drawn
-    // beside each question and scored by the sort, and they touch neither
-    // buildClassroomQuestions below nor the lesson a class is actually asked.
+    // The school's tallies come alongside and are no longer for display
+    // only: since the Sort control became this room's question_order, they
+    // are what 'best' and 'worst' sort BY, in the lesson as well as here.
+    // That is the whole point — review now shows the order the class gets.
     const [data, challenge, own, ratings, counts] = await Promise.all([
         loadClassroomData(room),
         classroomActiveChallenge(roomId),
@@ -14004,12 +14484,20 @@ async function reviewClassroomQuestions(roomId) {
         loadClassroomRatings(roomId),
         loadClassroomRatingCounts(classroomCommunityId),
     ]);
-    const { questions, source, built, offered } =
-        buildClassroomQuestions(room, data, { all: true, challenge, own, ratings });
+    const { questions, source, built, offered, seed, mode } =
+        buildClassroomQuestions(room, data, { all: true, challenge, own, ratings, counts });
     classroomReviewRoom = room;
     classroomReviewQuestions = questions;
     classroomReviewRatings = ratings;
     classroomReviewCounts = counts;
+    classroomReviewSeed = seed || '';
+    // The dropdown opens on what this classroom is actually set to, not on
+    // whatever the last room reviewed in this sitting was. `mode` rather
+    // than room.question_order directly, because it is the one that already
+    // knows a narrowed challenge overrides the setting — showing 'Random'
+    // over a list the challenge is holding in lesson order would be the
+    // same lie this change exists to remove.
+    classroomReviewSort = mode || 'lesson';
     // Snapshot, not a reference: classroomReviewRatings is mutated in place as
     // thumbs are pressed, and this has to keep saying what the server's
     // tallies already had in them when they were fetched.
@@ -14044,8 +14532,11 @@ async function reviewClassroomQuestions(roomId) {
                 ? ` (${source.feeders.length} feeder${source.feeders.length === 1 ? '' : 's'} pooled)`
                 : source.isHome ? '' : ' (a partner feeder)'} today,
             exactly as a class would see them. A lesson shows
-            ${CLASSROOM_QUESTIONS_PER_SESSION} of these; this is the whole set, so
+            ${classroomQuizSize(room, {})} of these; this is the whole set, so
             nothing goes unreviewed just because a lesson did not pick it.
+            The ones marked <strong class="classroom-row-open">in the next lesson</strong>
+            are the ones this class will actually be asked — change
+            <strong>Sort</strong> and that changes with it.
             ${offered > built
                 ? `<br><span class="classroom-warn">${offered - built} more
                    template${offered - built === 1 ? '' : 's'} exist for this band but
@@ -14059,12 +14550,15 @@ async function reviewClassroomQuestions(roomId) {
         </div>
         <button class="classroom-btn classroom-right-close" onclick="closeClassroomRight()">Close</button>`;
 
-    // The cards are written in lesson order; this lays the chosen sort over
-    // them. It matters on the FIRST draw too, because the sort is remembered
-    // across rooms: a teacher who picked "best rated first" and then opened
-    // another class would otherwise see that still selected above a list in
-    // lesson order.
-    setClassroomReviewSort(classroomReviewSort);
+    // The cards are written in the canonical lesson order; this lays the
+    // classroom's chosen order over them. It matters on the FIRST draw
+    // above all, because that order is now a saved setting rather than a
+    // view: the list has to open showing what the class will actually be
+    // asked, not the order it happened to be built in.
+    //
+    // The non-saving one — see its header. Laying out a list that was just
+    // built from the stored setting is not the teacher choosing anything.
+    classroomReviewResort();
 }
 
 // ── Standards on screen ─────────────────────────────────────────────
@@ -16862,17 +17356,22 @@ async function startClassroomSession(id, mode) {
     stage.style.display = 'flex';
     stage.innerHTML = '<div class="classroom-stage-loading">Reading the feeder…</div>';
 
-    // Both in parallel: the recent-template list is a nicety and should not
-    // add a round trip to the wait a class is watching.
-    const [data, recent, challenge, own, ratings] = await Promise.all([
+    // All in parallel: the recent-template list is a nicety and should not
+    // add a round trip to the wait a class is watching. The school's rating
+    // tallies ride along for the same reason — they are only read when this
+    // room's question_order is 'best' or 'worst', but branching on that
+    // would make the common case no faster and the sorted case a round trip
+    // slower, and the call already answers {} when its SQL is not applied.
+    const [data, recent, challenge, own, ratings, counts] = await Promise.all([
         loadClassroomData(room),
         loadClassroomRecentTemplates(room.id),
         classroomActiveChallenge(room.id),
         loadClassroomOwnQuestions(room.id),
         loadClassroomRatings(room.id),
+        loadClassroomRatingCounts(classroomCommunityId),
     ]);
     const { questions, source, no_data } =
-        buildClassroomQuestions(room, data, { recent, challenge, own, ratings });
+        buildClassroomQuestions(room, data, { recent, challenge, own, ratings, counts });
 
     if (!questions.length) {
         // A challenge narrows the question pool, so when the pool is empty the

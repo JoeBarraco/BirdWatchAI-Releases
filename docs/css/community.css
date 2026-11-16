@@ -4723,6 +4723,30 @@
    somebody working down a list of eight can see where they have been. */
 .classroom-review-q.flagged { border-color: #c97a00; }
 
+/* ── Inside the lesson's cap ───────────────────────────────────────
+   ⚠ THIS EXISTS BECAUSE THE SORT GAINED TEETH. Review lists every
+   question the band can build; a lesson asks a handful of them. While
+   Sort only reordered this list that gap was harmless trivia, and the
+   paragraph above the list saying "a lesson shows 8 of these" covered
+   it. Now that Sort is the classroom's saved question order, reordering
+   decides WHICH ONES the class gets — so a teacher who picks "worst
+   rated first" to go hunting for duds has, in that moment, put the four
+   worst questions into tomorrow's lesson. Being told that afterwards is
+   too late; the cards have to say it while the choice is being made.
+   The marker is applied by position, not by index, so it follows the
+   cards as they are reordered rather than staying with the questions
+   that happened to be first when the list was drawn. */
+.classroom-review-q.in-lesson {
+    border-left: 3px solid var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 6%, var(--bg-card));
+}
+.classroom-review-q.in-lesson .classroom-review-head::before {
+    content: 'in the next lesson';
+    background: var(--color-primary); color: #fff;
+    border-radius: 999px; padding: 0.1rem 0.5rem;
+    font-size: 0.68rem; font-weight: 700; letter-spacing: 0.01em;
+}
+
 /* ── Open vs closed, in the flags list ─────────────────────────────
    ⚠ These two states USED TO LOOK IDENTICAL. With "Show closed" on, the
    only thing telling them apart was that an open card ended in a "✓ Mark
@@ -6046,7 +6070,10 @@
 /* The photo strip. Wraps rather than scrolls sideways: sixteen thumbnails
    fit in three rows, and a horizontal scroller inside a modal is a control
    most people never find the end of. */
-.cc-own-photos { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 0.6rem; }
+/* Holds the span buttons AND the grid now, so it is a block and the
+   thumbnails get their own flex row inside it. */
+.cc-own-photos { margin-bottom: 0.6rem; }
+.cc-own-grid   { display: flex; flex-wrap: wrap; gap: 6px; }
 .cc-own-photo {
     width: 84px; height: 63px; padding: 0; cursor: pointer;
     border: 2px solid transparent; border-radius: 6px; overflow: hidden;
@@ -6055,6 +6082,32 @@
 }
 .cc-own-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .cc-own-photo.on { border-color: var(--color-primary); }
+
+/* How far back to look. Same treatment as the Photos/Clips tabs above
+   them, because they are the same kind of control — which of these am I
+   looking at — and two different-looking button rows stacked on each
+   other would read as two unrelated things. */
+.cc-own-ranges { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.5rem; }
+.cc-own-ranges .classroom-btn.on {
+    background: var(--color-primary); color: #fff; border-color: var(--color-primary);
+}
+
+/* The date a thumbnail was taken, sat on the picture itself.
+   ⚠ THIS IS THE POINT OF THE WHOLE CHANGE. Without it the picker looked
+   like one day's birds whatever span it was showing, which is what was
+   reported. A gradient rather than a flat strip so it stays readable over
+   a pale sky and a dark branch alike. */
+.cc-own-when {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    padding: 0.35rem 0.25rem 0.1rem;
+    font-size: 0.62rem; line-height: 1; font-weight: 700; color: #fff;
+    text-align: center; pointer-events: none;
+    background: linear-gradient(to top, rgba(0,0,0,0.72), rgba(0,0,0,0));
+    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+}
+/* The "No photo" button is not a picture, so a date strip over it would
+   be a caption on nothing. */
+.cc-own-photo.none .cc-own-when { display: none; }
 
 /* ── Chart kinds beyond bars and dots ──────────────────────────────
    A class that meets the same bar chart forty times stops looking at it.
