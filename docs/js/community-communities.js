@@ -199,6 +199,15 @@ function renderFeedTitleMark() {
     const mark = document.getElementById('feed-title-mark');
     if (!mark) return;
     const c = selectedCommunity ? myCommunities.find(x => x && x.id === selectedCommunity) : null;
+
+    // And the community's name in front of "Community Feed". Asked for as
+    // "Roland Park K-8 Community Feed", and in the big heading rather than
+    // the navbar, which already says "Community Feed" on every view. Shown
+    // with or without a logo: the name is what says whose feed this is, the
+    // logo only decorates it. textContent, so a name is never markup.
+    const name = document.getElementById('feed-title-name');
+    if (name) name.textContent = c && c.name ? c.name + ' ' : '';
+
     const logo = c && typeof c.logo_url === 'string' && /^https:\/\//i.test(c.logo_url)
         ? c.logo_url : null;
     if (!logo) { mark.classList.remove('has-logo'); mark.textContent = '🐦'; return; }

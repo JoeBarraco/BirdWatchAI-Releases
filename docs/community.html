@@ -13,7 +13,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="BirdWatchAI">
-    <link rel="stylesheet" href="css/community.css?v=5c3e32b2">
+    <link rel="stylesheet" href="css/community.css?v=4431f997">
 </head>
 <body>
 <!-- Top navbar with auth controls -->
@@ -50,7 +50,7 @@
 
     <!-- The mark becomes the community's logo while one community is
          selected; see renderFeedTitleMark in community-communities.js. -->
-    <h1><span id="feed-title-mark" class="feed-title-mark">🐦</span> Community Feed</h1>
+    <h1><span id="feed-title-mark" class="feed-title-mark">🐦</span> <span id="feed-title-name"></span>Community Feed</h1>
     <p class="page-subtitle">Live bird detections shared by BirdWatchAI users around the world.</p>
 
     <!-- Bird of the Day banner -->
@@ -1261,7 +1261,7 @@
      script renders buttons wired to functions that don't exist, and against a
      cached stylesheet renders the tier rows as bare links. css/community.css is
      pinned to v=7 for the same reason. -->
-<script src="js/community-communities.js?v=1940ba21"></script>
+<script src="js/community-communities.js?v=4564ccf8"></script>
 <!-- QR for the classroom lobby's join code. Same-origin on purpose: the
      lobby is the screen that must work when a lesson starts, and a CDN
      blocked by school wifi at that moment ends the lesson.
@@ -1285,7 +1285,7 @@
      longer exists. Swapping the two would make that half of the check silently
      do nothing. -->
 <script src="js/classroom-standards.js?v=f2e3de89"></script>
-<script src="js/community-classroom.js?v=655eeea4"></script>
+<script src="js/community-classroom.js?v=6f773ff1"></script>
 <script src="js/classroom-alignment.js?v=baa9d5c4"></script>
 <!-- Interactive chart runtime: crosshair tooltips on the trend chart, per-species hover rows on
      the Activity / Calendar / Rarity Mix charts. No-op until a [data-bw-chart] element appears. -->

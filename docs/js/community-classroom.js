@@ -35,6 +35,9 @@
 let classroomCommunityId = '';     // community currently selected in the panel
 let classroomList        = [];     // classrooms in that community
 let classroomFeederOpts  = [];     // [{id, display_name}] approved feeders there
+// Public feeders from OUTSIDE this community, offered as partners only.
+// See loadClassroomPublicFeeders for why public and not "any I can see".
+let classroomPublicFeeders = [];   // [{id, display_name}]
 let classroomEditingId   = null;   // classroom being edited, or null for "new"
 // Staff who may be given a classroom: owner, moderator, teacher. Only loaded
 // when the signed-in user is an owner or moderator, because only they can
@@ -11865,6 +11868,7 @@ async function refreshClassroomPanel() {
     list.innerHTML = '<div class="classroom-muted">Loading…</div>';
 
     await loadClassroomFeederOptions();
+    await loadClassroomPublicFeeders();
     await loadClassroomStaff();
     await loadClassroomSchoolStatus();
 
@@ -11928,6 +11932,40 @@ async function loadClassroomFeederOptions() {
         classroomFeederOpts = await fres.json();
     } catch {
         classroomFeederOpts = [];
+    }
+}
+
+/**
+ * Public feeders outside this community, for the partner list only.
+ *
+ * Asked for: "allow the classroom to choose partner feeders regardless of
+ * community. They should just be obvious which community they are part of
+ * (i.e. Roland Park / Public)."
+ *
+ * ⚠ PUBLIC, NOT "EVERY FEEDER I CAN SEE". A partner is read by every
+ * teacher who runs the class, each with their own access. A private feeder
+ * from another community the editor happens to belong to would work for
+ * the editor and come back empty for every other teacher at the school.
+ * classroom_partners_set enforces the same rule
+ * (setup-classroom-partners-public.sql), so the list and the server agree.
+ *
+ * Not offered as a HOME feeder: the home feeder is the school's own, and
+ * the class's photos, badges and fallback all hang off it being theirs.
+ */
+async function loadClassroomPublicFeeders() {
+    classroomPublicFeeders = [];
+    try {
+        const res = await fetch(
+            `${SUPABASE_URL}/rest/v1/feeders?is_public=eq.true`
+            + `&select=id,display_name&order=display_name.asc`,
+            { headers: sbHeaders(true) });
+        if (!res.ok) return;
+        const own = new Set(classroomFeederOpts.map(f => f.id));
+        // A public feeder that is also in this community is listed once,
+        // under the community: that is the more specific thing to say.
+        classroomPublicFeeders = (await res.json()).filter(f => f && f.id && !own.has(f.id));
+    } catch {
+        classroomPublicFeeders = [];
     }
 }
 
@@ -14475,9 +14513,10 @@ function renderClassroomForm() {
             <p class="classroom-muted">
                 Used as a backup when your own feeder is quiet — questions drawn from a
                 partner are labelled on screen so the class knows whose feeder they are
-                looking at. Comparing feeders head-to-head comes later.
+                looking at. Your school's feeders and any public feeder can be a
+                partner. Comparing feeders head-to-head comes later.
             </p>
-            <div id="classroom-partners" class="classroom-checks"></div>
+            <div id="classroom-partners" class="classroom-partners"></div>
         </details>
         <details class="classroom-details" ontoggle="if (this.open) classroomPickLoadPreview()">
             <summary>Which questions this class can ask
@@ -14537,16 +14576,41 @@ function renderClassroomPartnerChecks() {
     const ticked  = new Set([...box.querySelectorAll('input:checked')].map(el => el.value));
     if (!ticked.size) (editing?.partners || []).forEach(p => ticked.add(p.feeder_id));
 
-    const boxes = classroomFeederOpts
-        .filter(f => f.id !== home)
-        .map(f => `
+    const check = f => `
             <label class="classroom-check">
                 <input type="checkbox" value="${esc(f.id)}"${ticked.has(f.id) ? ' checked' : ''}>
                 ${esc(f.display_name || 'Feeder')}
-            </label>`).join('');
+            </label>`;
 
-    box.innerHTML = boxes
-        || '<span class="classroom-muted">No other feeders in this community.</span>';
+    // Two groups, each headed by where its feeders come from, so a teacher
+    // can see at a glance which partner is the school's and which is a
+    // stranger's public feeder. A heading rather than a suffix on every
+    // name: "Courtyard (Roland Park K-8)" eight times over is noise.
+    const school = (typeof myCommunities !== 'undefined' && Array.isArray(myCommunities))
+        ? myCommunities.find(c => c && c.id === classroomCommunityId) : null;
+    const ownList = classroomFeederOpts.filter(f => f.id !== home);
+    const pubList = classroomPublicFeeders.filter(f => f.id !== home);
+
+    // A saved partner in neither list: a public feeder that has since gone
+    // private. Saving re-sends the whole set and the server would refuse it,
+    // so it cannot stay ticked; say so rather than let it vanish unexplained.
+    const offered = new Set([...ownList, ...pubList].map(f => f.id));
+    const gone = (editing?.partners || []).filter(p => p.feeder_id && p.feeder_id !== home
+                                                     && !offered.has(p.feeder_id));
+
+    const group = (title, list) => list.length ? `
+            <div class="classroom-partner-group">
+                <div class="classroom-partner-from">${esc(title)}</div>
+                <div class="classroom-checks">${list.map(check).join('')}</div>
+            </div>` : '';
+
+    const html = group(school && school.name ? school.name : 'This community', ownList)
+               + group('Public', pubList)
+               + (gone.length ? `<p class="classroom-muted">No longer public, so dropped when
+                     you save: ${esc(gone.map(p => p.display_name || 'a feeder').join(', '))}</p>` : '');
+
+    box.innerHTML = html
+        || '<span class="classroom-muted">No other feeders to partner with yet.</span>';
 }
 
 // ── Choosing which questions a classroom may ask ─────────
@@ -15125,7 +15189,12 @@ async function saveClassroom() {
         }, true);
         // A partner-feeder failure must not read as "the classroom wasn't
         // created" — it was, and it works without partners.
-        if (error) showToast('Classroom saved, but partner feeders did not: ' + (error.message || ''));
+        // The old server rule's wording means setup-classroom-partners-public.sql
+        // is not live yet: say that, not just "did not save", because the
+        // teacher did nothing wrong and ticking again will not help.
+        if (error) showToast(/other approved feeders in this community/i.test(error.message || '')
+            ? 'Classroom saved, but public partner feeders need a server update that is not live yet.'
+            : 'Classroom saved, but partner feeders did not: ' + (error.message || ''));
         await saveClassroomQuizSize(roomId, size, say);
         await saveClassroomTemplatePicks(roomId, say);
     }
@@ -17346,6 +17415,7 @@ function clearClassroomState() {
     classroomSession     = null;
     classroomList        = [];
     classroomFeederOpts  = [];
+    classroomPublicFeeders = [];
     classroomCommunityId = '';
     classroomEditingId   = null;
     closeClassroomPanel();

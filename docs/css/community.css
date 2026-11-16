@@ -4414,6 +4414,17 @@
     font-size: 0.8rem; color: var(--color-gray-700);
 }
 
+/* Partner feeders, grouped by where they come from: the school's own, then
+   public feeders from anywhere (renderClassroomPartnerChecks). The group
+   heading is the "which community is this" answer, so it is set like a
+   label, not like body text. */
+.classroom-partners { display: flex; flex-direction: column; gap: 0.6rem; margin-top: 0.4rem; }
+.classroom-partner-from {
+    font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--color-gray-500);
+}
+.classroom-partner-group .classroom-checks { margin-top: 0.25rem; }
+
 .classroom-form-actions { display: flex; gap: 6px; margin-top: 0.3rem; }
 
 /* ── Choosing which questions a class can ask ──────────────────────
