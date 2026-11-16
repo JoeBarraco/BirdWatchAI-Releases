@@ -13,7 +13,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="BirdWatchAI">
-    <link rel="stylesheet" href="css/community.css?v=8a6dbca7">
+    <link rel="stylesheet" href="css/community.css?v=f0b607b9">
 </head>
 <body>
 <!-- Top navbar with auth controls -->
@@ -942,6 +942,13 @@
              way out. Reported twice now, the second time as "I frequently
              have trouble finding the close button when pages are expanded".
              Top-right is where a dialog's close belongs anyway. -->
+        <!-- This header stands in for the site navbar, which the panel covers.
+             It carries the navbar's own green and white chrome so a teacher
+             does not appear to have left the site, and the three controls they
+             had a second ago: Theme, who they are, and Profile. The ids differ
+             from the navbar's because both exist at once; community-auth.js's
+             updateCommunityUI fills the pair together so they cannot disagree
+             about who is signed in. -->
         <div class="mod-panel-head">
             <!-- The panel fills the window and covers the site navbar, so
                  without this a teacher in Classroom sees no BirdWatchAI and
@@ -950,8 +957,21 @@
                 <span id="classroom-panel-brand"></span>
                 <h3>Classroom</h3>
             </div>
-            <button type="button" class="mod-head-close"
-                    onclick="closeClassroomPanel()" aria-label="Close">&times;</button>
+            <div class="classroom-panel-chrome">
+                <button type="button" class="navbar-btn" onclick="toggleTheme()"
+                        title="Toggle dark mode" aria-label="Toggle dark mode">🌙 Theme</button>
+                <span id="classroom-head-user" class="classroom-head-user" style="display:none;"></span>
+                <button type="button" id="classroom-head-profile" class="navbar-btn"
+                        onclick="openUserProfile()" title="Edit profile"
+                        style="display:none;">Profile</button>
+                <!-- Was a bare ✕. The panel fills the window, so "close" means
+                     "go back to the feed", and a glyph never said where it went
+                     — the same confusion behind "I frequently have trouble
+                     finding the close button when pages are expanded". It keeps
+                     the top-right corner that complaint earned it. -->
+                <button type="button" class="classroom-head-back"
+                        onclick="closeClassroomPanel()">← Back to Community</button>
+            </div>
         </div>
 
         <p id="classroom-panel-empty" style="display:none;font-size:0.85rem;color:var(--color-gray-500);">
@@ -1028,9 +1048,12 @@
                          here it sat with Close and read as furniture, and its
                          old title, "Suggest something", was a near-copy of the
                          row it belongs next to. -->
+                    <!-- Same words as the header's way out, because it is the
+                         same action. Two exits labelled differently read as two
+                         different places to end up. -->
                     <button type="button" class="classroom-row classroom-row-close"
                             onclick="closeClassroomPanel()">
-                        <span class="classroom-row-name">✕ Close</span>
+                        <span class="classroom-row-name">← Back to Community</span>
                     </button>
                 </div>
 
@@ -1217,7 +1240,7 @@
 <!-- Canvas re-burn of the photo's caption strip, used by the moderator edit
      modal. Must load before community-auth.js, which calls into window.bwOverlay. -->
 <script src="js/community-overlay.js?v=81687514"></script>
-<script src="js/community-auth.js?v=427e4924"></script>
+<script src="js/community-auth.js?v=da4daeb5"></script>
 <script src="js/community-remote.js?v=2748d5a4"></script>
 <!-- ?v=5: the panel gained the tier picker, the redeem form and the bulk
      roster paste. Markup,
