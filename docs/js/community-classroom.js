@@ -2434,10 +2434,15 @@ function cmDayProse(dayKey) {
  * "Fri 7" fixes both: every label has the same shape, and the number climbs
  * left to right, so the direction of time is readable without being told.
  */
+// "Sat 11/14", not "Sat 14". Asked for from a K-2 lesson: "In school we try
+// to teach Sat 11/14." A day number alone is also ambiguous on any chart
+// that reaches back past the 1st of the month. This one function names
+// days on every chart axis, answer choice and "Mon 11/10 to Sun 11/16"
+// range, so they all change together.
 function cmDayAxisLabel(dayKey) {
     const dt = cmDayStart(dayKey);
     const wd = dt.toLocaleDateString(undefined, { weekday: 'short' });
-    return wd + ' ' + dt.getDate();
+    return `${wd} ${dt.getMonth() + 1}/${dt.getDate()}`;
 }
 
 function cmDaySeries(s) {
@@ -7106,16 +7111,29 @@ ${jumbled.split('').join(' ')}`,
     title: 'Birds on one day',
     bands: ['k-2'],
     build({ s, band, rng }) {
-        const days = cmDaySeries(s).filter(d => d.value > 0 && d.value <= 20);
-        if (!days.length) return null;
+        // ⚠ COUNTED, NOT ESTIMATED, so it is drawn as a tally and asked only
+        // when it can be. Flagged: "Unable to determine exact crossing on the
+        // y-axis because labels only show every 20 detections." On a bar
+        // chart scaled to a busy day, a quiet day's bar sits between lines
+        // twenty apart. cmChartCountChoices spaced the options to that gap,
+        // so a class could still pick the right one, but "which twenty is it
+        // in?" is not counting, and counting is what K-2 is practising here.
+        // A tally is one mark per visit and reads to the unit; it fits only
+        // a week with no day over DOTS_MAX_VALUE, so a busier week skips this
+        // question and the busiest-day questions carry it instead.
+        //
+        // And never today. It was asked at 4 PM about "Monday November
+        // 16th" on that Monday: a day that is not over has not finished
+        // counting, which is why cmCompleteDays exists.
+        const series = cmCompleteDays(s)
+            .map(d => ({ label: cmDayAxisLabel(d.day), value: d.n, key: d.day }));
+        const days = series.filter(d => d.value > 0);
+        if (series.length < 2 || !days.length) return null;
         const pick = cmShuffle(days, rng)[0];
 
-        // Chart first, choices second. The options have to be spaced against
-        // the scale the class will actually be reading — see
-        // cmChartResolution. Built the other way round, a quiet Tuesday on a
-        // busy week's axis got four options inside one gridline gap.
-        const chart = cmChart('Visits each day', cmDaySeries(s),
-                              { band, highlight: pick.key });
+        const chart = cmChart('Visits each day', series,
+                              { band, kind: 'dots', highlight: pick.key });
+        if (!chart || chart.kind !== 'dots') return null;
         const built = cmChartCountChoices(pick.value, rng, chart, 3);
         if (!built) return null;
         return {
@@ -9379,7 +9397,12 @@ ${jumbled.split('').join(' ')}`,
                 : 'Two groups watched this same clip with the same tools and got '
                   + 'different counts — 3 and 4. What is the scientific thing to do?',
             ...built,
-            clip: { url: clip.video_url, detection_id: clip.id },
+            // ⚠ `video`, NOT `clip`. classroomEvidenceHtml draws q.video and
+            // nothing else; under `clip` the slide was blank, and a K-2 class
+            // was told to "count the birds" with nothing on the screen.
+            // Flagged as "Is there supposed to be something to count on the
+            // screen?" Uncropped: counting is not about the bird's name.
+            video: { url: clip.video_url, poster: clip.image_url || '', crop: false },
             explain: 'Different groups using the same tools often get slightly '
                    + 'different results, and that is normal rather than a mistake by '
                    + 'one of them. Scientists go back to the evidence and work out '
@@ -11534,7 +11557,12 @@ ${jumbled.split('').join(' ')}`,
                   + '— no talking. Now compare. If your numbers are different, what '
                   + 'should you do?',
             ...built,
-            clip: { url: clip.video_url, detection_id: clip.id },
+            // ⚠ `video`, NOT `clip`. classroomEvidenceHtml draws q.video and
+            // nothing else; under `clip` the slide was blank, and a K-2 class
+            // was told to "count the birds" with nothing on the screen.
+            // Flagged as "Is there supposed to be something to count on the
+            // screen?" Uncropped: counting is not about the bird's name.
+            video: { url: clip.video_url, poster: clip.image_url || '', crop: false },
             explain: 'Two people watching the same thing often count differently, and '
                    + 'that is not one of you being careless — it is why scientists '
                    + 'collect information together and check each other. Watching again '
@@ -11910,7 +11938,7 @@ function cmOwnChart(spec, source, band, year, week) {
     let series = null, caption = '', bars = 0;
     if (spec.source === 'days') {
         series = cmDaySeries(s);
-        // The day chart adds "Mon 10 to Sun 16" to its own caption, so this
+        // The day chart adds "Mon 11/10 to Sun 11/16" to its own caption, so this
         // names the month rather than repeating the dates.
         caption = photoWeek
             ? `Visits each day, the week of the photo (${endDay.toLocaleDateString(
