@@ -11622,7 +11622,7 @@ function buildDataFreeQuestions(room, o) {
     const offered = CLASSROOM_TEMPLATES.filter(t =>
         classroomTemplateAllowed(t, band, picked)).length;
     return {
-        questions: o.all ? ordered : ordered.slice(0, classroomQuizSize(room, o)),
+        questions: o.all ? ordered : classroomLessonCut(ordered, room, o),
         built: ordered.length,
         offered,
         no_data: true,
@@ -12205,8 +12205,10 @@ function buildClassroomQuestions(room, data, opts) {
         // questions; a review pass is for seeing everything the band can
         // currently produce, which is the only way to judge the set as a set
         // or to give feedback on a question a lesson happened not to pick.
+        // The teacher's Put in / Take out picks, last of all, through the
+        // same function review marks its cards with.
         questions: o.all ? ordered
-                         : ordered.slice(0, classroomQuizSize(room, o)),
+                         : classroomLessonCut(ordered, room, o),
         built:   ordered.length,
         offered,
         source,
@@ -14209,6 +14211,83 @@ function classroomOrderSeed(room, seed) {
     return s ? `${seed}|${s}` : seed;
 }
 
+// ── Put in / take out of the next lesson ──────────────────────────────
+//
+// "What if I want a particular question promoted or demoted to/from the
+// upcoming lesson." The sort decides which questions make the cut; these
+// are the teacher overruling it for one question at a time.
+//
+// ⚠ FOR THE NEXT LESSON ONLY. The server stops returning the picks once a
+// question has been asked after they were set (see
+// setup-classroom-next-lesson-picks.sql), so nothing is stuck in or out
+// for good. Leaving a question out for good is what the question picker
+// is for; this is "not tomorrow".
+//
+// ⚠ ONE FUNCTION FOR REVIEW AND THE LESSON, over ids in the order each has
+// already drawn. Review marks the cards "in the next lesson" from the
+// count this returns, and the lesson asks exactly that many from the front
+// of the list it returns, so the two cannot disagree about which questions
+// the picks put in.
+
+/** The room's live picks as two Sets, or null when there are none. */
+function classroomLessonPicks(room) {
+    const p = room && room.next_lesson_picks;
+    if (!p || typeof p !== 'object') return null;
+    const ins  = new Set(Array.isArray(p.in)  ? p.in  : []);
+    const outs = new Set(Array.isArray(p.out) ? p.out : []);
+    return (ins.size || outs.size) ? { ins, outs } : null;
+}
+
+/**
+ * Which positions of `ids` the lesson asks, after the picks.
+ *
+ * Returns { perm, n }: perm is a reordering of 0..ids.length-1, and the
+ * lesson is its first n entries.
+ *
+ *   - A question taken out is never in the lesson, even when the list is
+ *     too short to fill it without one. A lesson one short is what the
+ *     teacher asked for; asking it anyway would be ignoring them.
+ *   - A question put in takes the place of the last UNPICKED question
+ *     inside the cut, so every other question keeps its position and the
+ *     opener stays first.
+ *   - More put in than the lesson holds: the first `cap` of them, in the
+ *     list's own order. Review says which ones did not fit.
+ *   - Lesson order is kept among whatever is in, and among whatever is
+ *     out, so a pick moves one question and nothing else.
+ */
+function classroomLessonPickPermutation(ids, room, cap) {
+    const all = ids.map((_, i) => i);
+    const picks = classroomLessonPicks(room);
+    if (!picks) return { perm: all, n: Math.min(cap, ids.length) };
+
+    const isOut = i => picks.outs.has(ids[i]);
+    const isIn  = i => !isOut(i) && picks.ins.has(ids[i]);
+
+    const forced = all.filter(isIn).slice(0, cap);
+    const forcedSet = new Set(forced);
+    let free = cap - forced.length;
+    const lesson = new Set(forced);
+    for (const i of all) {
+        if (free <= 0) break;
+        if (forcedSet.has(i) || isOut(i) || isIn(i)) continue;
+        lesson.add(i);
+        free--;
+    }
+    const inPart  = all.filter(i => lesson.has(i));
+    const rest    = all.filter(i => !lesson.has(i));
+    return {
+        perm: inPart.concat(rest.filter(i => !isOut(i)), rest.filter(isOut)),
+        n: inPart.length,
+    };
+}
+
+/** The lesson's questions: `ordered` with the picks applied, cut to size. */
+function classroomLessonCut(ordered, room, o) {
+    const { perm, n } = classroomLessonPickPermutation(
+        ordered.map(q => q && q.template_id), room, classroomQuizSize(room, o));
+    return perm.slice(0, n).map(i => ordered[i]);
+}
+
 /** The same permutation, applied — which is all the lesson needs. */
 function classroomApplyQuestionOrder(list, mode, o, seed) {
     return classroomOrderPermutation(list, mode,
@@ -14381,6 +14460,10 @@ function classroomReviewSortHtml() {
         <button type="button" class="classroom-btn" id="classroom-review-reshuffle"
                 onclick="reshuffleClassroomReview()"
                 ${classroomReviewSort === 'random' ? '' : 'hidden'}>↻ Shuffle again</button>
+        <span class="crr-expand">
+            <button type="button" class="classroom-btn" onclick="setClassroomReviewOpen(true)">Expand all</button>
+            <button type="button" class="classroom-btn" onclick="setClassroomReviewOpen(false)">Collapse all</button>
+        </span>
         </div>`;
 }
 
@@ -14406,13 +14489,127 @@ function classroomReviewResort() {
     // shown that they had just moved the four worst into tomorrow's
     // lesson, would have been caught out by a control that reads like a
     // view. So the ones inside the cap say so.
-    const cap = classroomQuizSize(classroomReviewRoom, {});
-    classroomReviewOrder().forEach((qIndex, position) => {
+    //
+    // The teacher's Put in / Take out picks go on top of the sort, through
+    // the same function the lesson cuts with, so the cards marked here are
+    // the questions the board asks.
+    const room  = classroomReviewRoom;
+    const cap   = classroomQuizSize(room, {});
+    const order = classroomReviewOrder();
+    const { perm, n } = classroomLessonPickPermutation(
+        order.map(i => (classroomReviewQuestions[i] || {}).template_id), room, cap);
+    const picks = classroomLessonPicks(room);
+
+    // Two groups, "Next lesson" and the rest, with headings that sit in
+    // the same flex column. Cards take odd-free slots either side of the
+    // second heading so it lands exactly at the cut.
+    const head = (id, text, ord, show) => {
+        let h = document.getElementById(id);
+        if (!h) {
+            h = document.createElement('div');
+            h.id = id;
+            h.className = 'crr-group';
+            list.prepend(h);
+        }
+        h.textContent = text;
+        h.style.order = ord;
+        h.hidden = !show;
+    };
+    const restCount = order.length - n;
+    head('classroom-review-group-in',
+         `Next lesson · ${n} question${n === 1 ? '' : 's'}`
+         + (n < cap ? ` (it asks up to ${cap})` : ''), 0, true);
+    head('classroom-review-group-out',
+         `Not in the next lesson · ${restCount}`, n + 1, restCount > 0);
+
+    perm.forEach((k, position) => {
+        const qIndex = order[k];
         const card = list.querySelector(`.classroom-review-q[data-q="${qIndex}"]`);
         if (!card) return;
-        card.style.order = position;
-        card.classList.toggle('in-lesson', position < cap);
+        const inLesson = position < n;
+        card.style.order = inLesson ? position + 1 : position + 2;
+        card.classList.toggle('in-lesson', inLesson);
+
+        const tid = (classroomReviewQuestions[qIndex] || {}).template_id;
+        const pinnedIn  = !!(picks && picks.ins.has(tid) && !picks.outs.has(tid));
+        const pinnedOut = !!(picks && picks.outs.has(tid));
+        card.classList.toggle('picked', pinnedIn || pinnedOut);
+
+        const status = document.getElementById(`classroom-review-status-${qIndex}`);
+        if (status) {
+            status.textContent = inLesson
+                ? (pinnedIn ? 'in · put in by you' : 'in the next lesson')
+                : (pinnedOut ? 'out · taken out by you'
+                   : pinnedIn ? 'put in, but the lesson is full' : '');
+            status.hidden = !status.textContent;
+        }
+        const pick = document.getElementById(`classroom-review-pick-${qIndex}`);
+        if (pick) {
+            // One button, saying what pressing it does from where the card
+            // is now. A pick is undone by the same button that made it.
+            const [value, label, title] =
+                  pinnedIn  ? ['',    '↺ Undo put in',  'Let the sort decide again']
+                : pinnedOut ? ['',    '↺ Undo take out', 'Let the sort decide again']
+                : inLesson  ? ['out', '↓ Take out',      'Leave this out of the next lesson only']
+                :             ['in',  '↑ Put in',        'Ask this in the next lesson, in place of the last question the sort chose'];
+            pick.innerHTML = `<button type="button" class="classroom-btn crr-pick-btn" title="${esc(title)}"
+                onclick="event.preventDefault(); event.stopPropagation(); pickClassroomReview(${qIndex}, '${value}')">${label}</button>`;
+        }
     });
+}
+
+/** Open or close every row at once. */
+function setClassroomReviewOpen(open) {
+    document.querySelectorAll('#classroom-review-list > details.classroom-review-q')
+        .forEach(d => { d.open = !!open; });
+}
+
+/**
+ * Put a question in the next lesson, take it out, or undo either.
+ *
+ * Shown at once and kept only if it saves, for the reason
+ * reshuffleClassroomReview gives: the lesson reads the picks from the
+ * classroom, so a pick that never reached the server is a question review
+ * says is going up when it is not. The server's answer replaces the local
+ * guess, which also drops picks a lesson has already used up since review
+ * was opened.
+ */
+function pickClassroomReview(i, value) {
+    const room = classroomReviewRoom;
+    const q = classroomReviewQuestions[i];
+    if (!room || !q || !q.template_id) return;
+    const tid = q.template_id;
+    const listed = classroomList.find(r => r.id === room.id);
+    const before = room.next_lesson_picks || null;
+
+    const cur = classroomLessonPicks(room);
+    const ins  = cur ? [...cur.ins].filter(x => x !== tid)  : [];
+    const outs = cur ? [...cur.outs].filter(x => x !== tid) : [];
+    if (value === 'in')  ins.push(tid);
+    if (value === 'out') outs.push(tid);
+    const next = (ins.length || outs.length) ? { in: ins, out: outs } : null;
+
+    const put = p => {
+        room.next_lesson_picks = p;
+        if (listed && listed !== room) listed.next_lesson_picks = p;
+        classroomReviewResort();
+    };
+    put(next);
+
+    const undo = () => {
+        if (room.next_lesson_picks !== next) return;
+        put(before);
+        // PGRST202: setup-classroom-next-lesson-picks.sql is not applied.
+        showToast('Could not save that, so the list is back to what the lesson will ask.');
+    };
+    sbRpc('classroom_set_next_lesson_pick', {
+        p_classroom_id: room.id,
+        p_template_id:  tid,
+        p_pick:         value || '',
+    }, true).then(({ data, error }) => {
+        if (error) { undo(); return; }
+        if (room.next_lesson_picks === next) put(data || null);
+    }).catch(undo);
 }
 
 /**
@@ -14669,9 +14866,11 @@ async function reviewClassroomQuestions(roomId) {
             exactly as a class would see them. A lesson shows
             ${classroomQuizSize(room, {})} of these; this is the whole set, so
             nothing goes unreviewed just because a lesson did not pick it.
-            The ones marked <strong class="classroom-row-open">in the next lesson</strong>
+            The ones under <strong class="classroom-row-open">Next lesson</strong>
             are the ones this class will actually be asked — change
-            <strong>Sort</strong> and that changes with it.
+            <strong>Sort</strong> and that changes with it, or use
+            <strong>↑ Put in</strong> and <strong>↓ Take out</strong> on a question
+            to overrule it for the next lesson only. Click a line to see the slide.
             ${offered > built
                 ? `<br><span class="classroom-warn">${offered - built} more
                    template${offered - built === 1 ? '' : 's'} exist for this band but
@@ -14820,6 +15019,24 @@ function cmStandardsSummaryHtml(questions, label) {
         </details>`;
 }
 
+/**
+ * One question in review: a single summary line, with the full slide behind
+ * it.
+ *
+ * "Maybe even collapse the questions to just a Subject/Type/Data
+ * Source/Standards line, then expand as needed." Forty full slides is a
+ * long scroll to find the eight that are going up tomorrow, and that is
+ * what the list is mostly used for now that Sort decides them.
+ *
+ * ⚠ A <details>, NOT A REBUILT LIST. The card is still one element with
+ * data-q, ordered by CSS `order`, and its flag form still lives inside it,
+ * so a half-typed comment survives a re-sort or a Put in exactly as it did
+ * before. The summary line is what moves; the body is untouched.
+ *
+ * The prompt goes on the line as well. The four fields alone do not tell
+ * two counting questions apart, and the line is for recognising a question
+ * without opening it.
+ */
 function classroomReviewItem(q, i) {
     const choices = (q.choices || []).map((c, k) => {
         const right = k === q.correct_index;
@@ -14832,9 +15049,22 @@ function classroomReviewItem(q, i) {
     // the one judgement review exists to make: whether a room of children can
     // actually read the thing.
     const slide = classroomEvidenceHtml(q, false);
+    const codes = cmReviewCodes(q);
 
     return `
-        <div class="classroom-review-q" data-q="${i}">
+        <details class="classroom-review-q classroom-review-row" data-q="${i}">
+            <summary class="crr-line">
+                <span class="crr-status" id="classroom-review-status-${i}"></span>
+                <span class="crr-fields">
+                    <span class="crr-field" title="Subject">${esc(cmReviewSubject(q, codes))}</span>
+                    <span class="crr-field" title="Type">${esc(cmReviewType(q))}</span>
+                    <span class="crr-field" title="Data source">${esc(cmReviewSource(q))}</span>
+                    ${codes.length ? `<span class="crr-codes" title="${esc(codes.join(', '))}">${
+                        esc(codes.slice(0, 3).join(' · '))}${codes.length > 3 ? ` +${codes.length - 3}` : ''}</span>` : ''}
+                </span>
+                <span class="crr-pick" id="classroom-review-pick-${i}"></span>
+                <span class="crr-prompt">${esc(q.prompt)}</span>
+            </summary>
             <div class="classroom-review-head">
                 <span class="classroom-pill">${esc(
                     q.own && q.owned === false ? 'shared question'
@@ -14864,7 +15094,82 @@ function classroomReviewItem(q, i) {
                     classroomRateCountHtml(q.template_id)}</span>
             </div>
             <div class="classroom-flag-form" id="classroom-flag-${i}"></div>
-        </div>`;
+        </details>`;
+}
+
+let cmReviewTemplateIndex = null;
+function cmReviewTemplate(q) {
+    if (!cmReviewTemplateIndex) {
+        cmReviewTemplateIndex = new Map(CLASSROOM_TEMPLATES.map(t => [t.id, t]));
+    }
+    const raw = q && q.template_id;
+    const id = typeof classroomTemplateIdOf === 'function' ? classroomTemplateIdOf(raw) : raw;
+    return cmReviewTemplateIndex.get(id) || cmReviewTemplateIndex.get(raw) || null;
+}
+
+/** The benchmark codes a question claims, band-filtered, as the chips show them. */
+function cmReviewCodes(q) {
+    const band = q && q.grade_band;
+    const known = c => (typeof CLASSROOM_STANDARDS !== 'undefined' && CLASSROOM_STANDARDS[c]) || null;
+    let codes = [];
+    if (q && Array.isArray(q.standards) && q.standards.length) {
+        codes = q.standards;
+    } else if (q && typeof CLASSROOM_TEMPLATE_STANDARDS !== 'undefined') {
+        const tid = typeof classroomTemplateIdOf === 'function'
+            ? classroomTemplateIdOf(q.template_id) : q.template_id;
+        codes = CLASSROOM_TEMPLATE_STANDARDS[tid] || [];
+    }
+    return codes.filter(c => { const s = known(c); return !band || !s || s.bands.includes(band); });
+}
+
+// Florida's subject names, shortened to fit a line. The full name is in each
+// chip's tooltip once the card is open.
+const CM_REVIEW_SUBJECTS = {
+    'Mathematics (B.E.S.T.)':           'Math',
+    'English Language Arts (B.E.S.T.)': 'ELA',
+    'Science':                          'Science',
+    'Social Studies':                   'Social Studies',
+    'Music':                            'Music',
+    'Visual Art':                       'Art',
+};
+
+function cmReviewSubject(q, codes) {
+    const subs = [];
+    for (const c of codes) {
+        const s = typeof CLASSROOM_STANDARDS !== 'undefined' && CLASSROOM_STANDARDS[c];
+        const name = s ? (CM_REVIEW_SUBJECTS[s.subject] || s.subject) : null;
+        if (name && !subs.includes(name)) subs.push(name);
+    }
+    // No benchmark is a real answer and is said as one, rather than guessed
+    // from the category: the summary above the list counts these too.
+    return subs.length ? subs.join(' + ') : 'No standard';
+}
+
+/** How the class answers, and what it is shown. */
+function cmReviewType(q) {
+    const shows = q.grid ? 'puzzle'
+                : q.geo ? 'map'
+                : q.video && q.video.url ? 'clip'
+                : q.chart ? 'chart'
+                : q.image ? 'photo'
+                : q.map ? 'map'
+                : q.sound ? 'sound'
+                : 'words';
+    const how = q.poll ? 'poll' : q.correct_index == null ? 'prediction' : (q.category || 'question');
+    return `${how} · ${shows}`;
+}
+
+function cmReviewSource(q) {
+    if (q.own) return q.owned === false ? 'shared question' : 'your question';
+    // Trivia and word questions are built on the main path too, so their
+    // scope says "home" — but they read nothing from the feeder, and
+    // naming the feeder as their source would be wrong.
+    const t = cmReviewTemplate(q);
+    if (q.scope === 'none' || (t && t.needsData === false)) return 'no feeder data';
+    if (q.scope === 'community') return 'pooled feeders';
+    if (q.from_partner) return 'partner feeder';
+    const room = classroomReviewRoom;
+    return (room && room.home_feeder_name) || 'home feeder';
 }
 
 // What each kind of feedback asks for.

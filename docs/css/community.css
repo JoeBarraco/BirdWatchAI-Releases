@@ -4747,11 +4747,73 @@
     border-left: 3px solid var(--color-primary);
     background: color-mix(in srgb, var(--color-primary) 6%, var(--bg-card));
 }
-.classroom-review-q.in-lesson .classroom-review-head::before {
-    content: 'in the next lesson';
-    background: var(--color-primary); color: #fff;
+
+/* ── Review as collapsed rows ──────────────────────────────────────
+   Each question is a <details>: one summary line (status, subject, type,
+   data source, standards, the Put in / Take out button, the prompt), and
+   the full slide behind it. The "in the next lesson" pill moved from the
+   card head onto that line, written by classroomReviewResort so it can
+   also say when a teacher's pick is the reason. */
+/* The card keeps its side padding for the body (the answer list's numbers
+   hang in it); the summary line reaches back out to the card's edges. */
+.classroom-review-row { padding: 0 0.7rem; }
+.classroom-review-row > summary { margin: 0 -0.7rem; }
+.classroom-review-row[open] > summary { border-bottom: 1px solid var(--border); margin-bottom: 0.45rem; }
+.classroom-review-row[open] { padding-bottom: 0.6rem; }
+.crr-line {
+    display: grid; grid-template-columns: 0.8rem auto 1fr auto;
+    grid-template-areas: "arrow status fields pick" ". prompt prompt prompt";
+    align-items: center; gap: 0.25rem 0.5rem;
+    padding: 0.45rem 0.7rem; cursor: pointer; list-style: none;
+}
+.crr-line::-webkit-details-marker { display: none; }
+.crr-line::before {
+    content: '▸'; grid-area: arrow;
+    color: var(--color-gray-700); font-size: 1rem; line-height: 1;
+}
+.classroom-review-row[open] > .crr-line::before { content: '▾'; }
+.crr-status {
+    grid-area: status;
+    background: var(--color-gray-500); color: #fff;
     border-radius: 999px; padding: 0.1rem 0.5rem;
-    font-size: 0.68rem; font-weight: 700; letter-spacing: 0.01em;
+    font-size: 0.68rem; font-weight: 700; white-space: nowrap;
+}
+.crr-status[hidden] { display: none; }
+.classroom-review-q.in-lesson .crr-status { background: var(--color-primary); }
+.crr-fields {
+    grid-area: fields; display: flex; flex-wrap: wrap; gap: 0.25rem 0.4rem;
+    font-size: 0.76rem; color: var(--color-gray-700); min-width: 0;
+}
+.crr-field + .crr-field::before { content: '·'; margin-right: 0.4rem; color: var(--color-gray-500); }
+.crr-field:first-child { font-weight: 600; color: var(--color-gray-900); }
+.crr-codes {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.7rem; color: var(--color-gray-500);
+}
+.crr-pick { grid-area: pick; }
+.crr-pick .classroom-btn { padding: 0.15rem 0.55rem; font-size: 0.74rem; white-space: nowrap; }
+.crr-prompt {
+    grid-area: prompt;
+    font-size: 0.84rem; color: var(--color-gray-900);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.classroom-review-row[open] .crr-prompt { display: none; }
+/* A card the teacher put in or took out keeps a dashed edge, so their
+   overrides stand out from what the sort chose. */
+.classroom-review-q.picked { border-style: dashed; border-color: var(--color-primary); }
+.classroom-review-q.picked:not(.in-lesson) { border-color: var(--color-gray-500); }
+.crr-group {
+    font-size: 0.78rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.04em; color: var(--color-gray-700);
+    margin-top: 0.4rem; padding-bottom: 0.15rem; border-bottom: 2px solid var(--border);
+}
+.crr-group[hidden] { display: none; }
+.crr-expand { margin-left: auto; display: inline-flex; gap: 0.3rem; }
+@media (max-width: 560px) {
+    .crr-line { grid-template-columns: 0.8rem auto 1fr auto;
+                grid-template-areas: "arrow status . pick" ". fields fields fields"
+                                     ". prompt prompt prompt"; }
+    .crr-prompt { white-space: normal; }
 }
 
 /* ── Open vs closed, in the flags list ─────────────────────────────
