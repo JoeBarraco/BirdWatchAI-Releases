@@ -110,7 +110,34 @@ function plain(html) {
 // Candidate files, best first. Searching on the scientific name and
 // filetype:audio is what keeps a documentary narration about killdeer from
 // being picked over a recording of one.
+// ── Recordings chosen by listening, not by search order ──────────────
+//
+// The search takes the first acceptable hit, which for most birds is fine:
+// bird-by-sound only needs the clip to sound like the bird. A question that
+// asks a class to COUNT or MATCH a rhythm needs more than that, and the
+// first hit cannot be trusted to have it.
+//
+// Barred Owl: the first hit was XC457078, which its own Commons page says
+// was "Originally posted as Unknown call". It plays about two hoots, a
+// pause, then six, and "Match what you hear" asks a class to match it to
+// "Who cooks for you? Who cooks for you all?" A teacher flagged exactly
+// that. XC375201 was picked from the five acceptable Barred Owl files on
+// Commons by drawing a spectrogram of each and counting the hoots: the
+// same two-phrase call three times over, the first 1.9 s in, each phrase
+// four hoots, the last sliding down into the "all".
+//
+// A pinned file is fetched even when a different recording is already on
+// disk for that bird, so changing a pin here and rerunning is the whole
+// of replacing a recording.
+const PINNED = {
+    'Barred Owl': 'Strix varia - Northern Barred Owl XC375201.mp3',
+};
+
+const pinnedSource = name =>
+    'https://commons.wikimedia.org/wiki/File:' + name.replace(/ /g, '_');
+
 async function candidates(common, latin) {
+    if (PINNED[common]) return [PINNED[common]];
     const q = `${latin} filetype:audio`;
     const u = 'https://commons.wikimedia.org/w/api.php?action=query&format=json'
             + '&list=search&srnamespace=6&srlimit=12&srsearch=' + encodeURIComponent(q);
@@ -209,7 +236,9 @@ const slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, 
 
     for (const [common, latin] of BIRDS) {
         const have = prev[common];
-        if (have && fs.existsSync(path.join(audioDir, have.file))) {
+        const stale = have && PINNED[common]
+                   && decodeURIComponent(have.source) !== pinnedSource(PINNED[common]);
+        if (have && !stale && fs.existsSync(path.join(audioDir, have.file))) {
             kept.push({ ...have, bytes: fs.statSync(path.join(audioDir, have.file)).size });
             console.log(`  · ${common.padEnd(24)} ${have.file} (already have it)`);
             continue;

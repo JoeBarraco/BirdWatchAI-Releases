@@ -10200,22 +10200,16 @@ ${jumbled.split('').join(' ')}`,
     bands: ['k-2', '3-5'],
     needsData: false,
     build({ rng }) {
-        // Off until the recording is replaced. Flagged in a lesson: "Sound
-        // makes it difficult to come to this conclusion." It does: the clip
-        // in community-bird-sounds.js (XC457078) plays about two hoots, a
-        // pause, then six, and the answer is four then five. This question
-        // is graded on the class's ears agreeing with the written pattern,
-        // so a clip that does not match makes the RIGHT answer sound wrong,
-        // which is worse than not asking. Returning null drops it the same
-        // way a feeder with too little data does; nothing else changes.
-        // The Barred Owl clip still plays in bird-by-sound and the two music
-        // fallbacks, where it only has to sound like an owl, not count hoots.
-        // To bring this back: pick a clean "who-cooks-for-you / who-cooks-
-        // for-you-all" call BY EAR, point tools/fetch-bird-sounds.js at it,
-        // regenerate, and delete this line. The code below it is kept as it
-        // was so that is the whole of the undo.
-        return null;
-
+        // ⚠ GRADED ON THE CLASS'S EARS, so the recording is pinned. This was
+        // switched off after a teacher flagged it ("Sound makes it difficult
+        // to come to this conclusion"): the clip was XC457078, which played
+        // about two hoots, a pause, then six. It is now XC375201, picked in
+        // tools/fetch-bird-sounds.js (see PINNED there) by drawing each
+        // candidate's spectrogram and counting: the same two-phrase call
+        // three times, the first 1.9 s in, four hoots each phrase, the last
+        // sliding down into the "all". If that recording is ever swapped,
+        // listen to the new one against the explain text below before
+        // shipping it.
         const rec = cmPlayableSound('Barred Owl');
         if (!rec) return null;
 
@@ -10229,12 +10223,16 @@ ${jumbled.split('').join(' ')}`,
             prompt: 'Listen. Which written pattern matches the rhythm you heard?',
             ...built,
             sound: rec,
-            // Was "Eight syllables, said twice", which the pattern above does
-            // not have: it is four hoots, then five. A wrong count in the one
-            // sentence that explains the rhythm is worse than no count.
-            explain: 'Four hoots, then five, with the stress falling on COOKS '
-                   + 'both times. Birders write songs down as words for exactly this '
-                   + 'reason — a written pattern you can check against what your ears '
+            // Written to what the recording plays, counted off its
+            // spectrogram: four hoots, a breath, four more, and the very last
+            // one slides down. That slide is the "all" — it is not a fifth
+            // hoot, and saying "then five" sent a class counting for a note
+            // that never comes. A wrong count in the one sentence that
+            // explains the rhythm is worse than no count.
+            explain: 'The same rhythm twice: four hoots, a breath, four more. Listen '
+                   + 'for the very last hoot sliding down at the end — that slide is '
+                   + 'the ALL. Birders write songs down as words for exactly this '
+                   + 'reason: a written pattern you can check against what your ears '
                    + 'just did is how you learn to trust them.',
         };
     },

@@ -11,16 +11,16 @@
 //  notes — the slide renders what is recorded here, and if it is wrong
 //  here it is wrong on the projector.
 //
-//  Fetched: 2026-11-15
+//  Fetched: 2026-11-16
 // ════════════════════════════════════════════════════════════════════
 
 const BIRD_SOUND_FILES = {
     "Barred Owl": {
         file:    "audio/birds/barred-owl.mp3",
-        artist:  "Rob Porter",
+        artist:  "Matthias Sirch",
         licence: "CC BY-SA 4.0",
         licenceUrl: "https://creativecommons.org/licenses/by-sa/4.0",
-        source:  "https://commons.wikimedia.org/wiki/File:Strix_varia_-_Barred_Owl_XC457078.mp3",
+        source:  "https://commons.wikimedia.org/wiki/File:Strix_varia_-_Northern_Barred_Owl_XC375201.mp3",
     },
     "Carolina Chickadee": {
         file:    "audio/birds/carolina-chickadee.ogg",
