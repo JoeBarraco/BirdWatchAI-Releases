@@ -4126,14 +4126,19 @@
     padding-bottom: 0.6rem; margin-bottom: 0.2rem;
     border-bottom: 1px solid var(--border);
 }
-.classroom-community-select {
+/* .classroom-select is the same treatment for any other select on the panel
+   — the review sort uses it — so a second one cannot be added in the default
+   white chrome by forgetting this rule exists. */
+.classroom-community-select,
+.classroom-select {
     width: 100%; min-width: 0;
     font-family: inherit; font-size: 0.8rem;
     padding: 5px 8px; border-radius: 6px;
     border: 1px solid var(--border);
     background: var(--bg-card); color: var(--color-gray-700);
 }
-.classroom-community-select:focus { outline: none; border-color: var(--color-primary); }
+.classroom-community-select:focus,
+.classroom-select:focus { outline: none; border-color: var(--color-primary); }
 
 /* One class, one row. A button rather than a div: it is the only way to
    choose a class now, so it has to be reachable by keyboard. */
@@ -5759,6 +5764,32 @@
     background: rgba(46, 170, 79, 0.14);
     box-shadow: inset 0 0 0 1px var(--color-primary);
 }
+
+/* What the rest of the school said, beside this class's own thumbs. Quiet on
+   purpose: the buttons are the thing a teacher acts on, and the tally is
+   context they read. It is NOT a button and must not look like one — no
+   border, no background, no pointer — because nothing happens if it is
+   clicked. Drawn only where there is something to say; a question nobody has
+   rated renders no element at all. */
+.classroom-rate-count {
+    display: inline-flex; align-items: center; gap: 0.45rem;
+    margin-left: 0.5rem;
+    font-size: 0.76rem; line-height: 1;
+    color: var(--color-gray-500);
+    cursor: help;
+}
+.classroom-rate-count-up   { white-space: nowrap; }
+.classroom-rate-count-down { white-space: nowrap; }
+
+/* The sort control above the review list. Themed explicitly for the same
+   reason the community picker is: left alone, a select draws white-on-white
+   chrome in the middle of a dark panel. */
+.classroom-review-sort {
+    display: flex; align-items: center; gap: 0.4rem;
+    margin: 0 0 0.6rem;
+    font-size: 0.78rem; color: var(--color-gray-500);
+}
+.classroom-review-sort select { width: auto; }
 .classroom-review-q.suggested {
     border-left: 3px solid #f0a500;
     background: rgba(240, 165, 0, 0.06);
