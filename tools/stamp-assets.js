@@ -20,10 +20,26 @@
 // up for people with a warm cache, which is everyone else.
 //
 // WHAT IT DOES
-// Replaces each `?v=` with the first 8 hex of the SHA-1 of the file's own
-// bytes. The stamp then cannot be out of step with the file, because it IS the
-// file. An unchanged file keeps its stamp, so running this does not invalidate
-// caches needlessly.
+// Replaces each `?v=` with the first 8 hex of the SHA-1 of the file's content
+// with its line endings normalised to LF. The stamp then cannot be out of step
+// with the file, because it IS the file. An unchanged file keeps its stamp, so
+// running this does not invalidate caches needlessly.
+//
+// WHY LF AND NOT THE BYTES ON DISK
+// This repository is checked out with core.autocrlf=true, so a working tree on
+// Windows holds CRLF while the blob — the thing committed, and the thing
+// GitHub Pages serves — holds LF. Hashing the bytes on disk made the stamp
+// depend on how the file last reached the disk:
+//
+//   * materialised by `git checkout`  ->  CRLF  ->  one hash
+//   * written by an editor that saves LF  ->  LF  ->  a different hash
+//
+// Both are the same file as far as git is concerned, so the diff was invisible
+// while the stamp silently disagreed. community-auth.js was committed with an
+// LF-derived stamp that way, and every later run on Windows offered to change
+// it back; a run on Linux would have offered the reverse. Normalising first
+// makes the stamp the hash of what a browser actually downloads, and the same
+// on every machine.
 //
 // USAGE
 //   node tools/stamp-assets.js            rewrite the HTML in place
@@ -53,8 +69,14 @@ const HTML_FILES = [
 // Leaflet is version-pinned in its own path and is not ours to stamp.
 const ASSET_REF = /((?:src|href)=")((?!https?:|\/\/)[^"?]+\.(?:js|css))(\?[^"]*)?(")/g;
 
+// The latin1 round trip is byte-exact, so nothing but CRLF pairs is touched:
+// a UTF-8 decode and re-encode would rewrite a BOM or a lone surrogate and
+// change the hash for reasons that have nothing to do with the file's content.
+// Only \r\n is folded; a lone \r is left alone, since in these files it would
+// be data rather than a line ending.
 function shortHash(buf) {
-    return crypto.createHash('sha1').update(buf).digest('hex').slice(0, 8);
+    const lf = Buffer.from(buf.toString('latin1').replace(/\r\n/g, '\n'), 'latin1');
+    return crypto.createHash('sha1').update(lf).digest('hex').slice(0, 8);
 }
 
 let changed = 0, checked = 0, missing = 0;
