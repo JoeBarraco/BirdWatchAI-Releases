@@ -1527,9 +1527,16 @@ function classroomFitShot(img) {
  * fallback in §5 needs the partners' totals to decide whether the home feeder
  * can carry the lesson, so fetching them lazily would just mean fetching them
  * a moment later anyway.
+ *
+ * `opts.months === false` skips the month rows. Not every caller is building
+ * a lesson: the "Write a question" photo picker only wants the fortnight's
+ * snapshots, and without this it paid for two months of rows it never read.
+ * The question picker's preview leaves it on, because it shows which
+ * questions would build, and the month questions cannot build without them.
  */
-async function loadClassroomData(room) {
+async function loadClassroomData(room, opts) {
     const scope = room.question_scope || 'home';
+    const wantMonths = !(opts && opts.months === false) && cmWantsMonths(room);
 
     const ids = [];
     if (room.home_feeder_id) ids.push(room.home_feeder_id);
@@ -1571,7 +1578,7 @@ async function loadClassroomData(room) {
 
     // Started now, awaited after the main read, so the two run side by side
     // and a lesson with no month questions in it waits on nothing extra.
-    const olderPending = cmWantsMonths(room)
+    const olderPending = wantMonths
         ? cmFetchMonthRows(ids, since) : Promise.resolve(null);
 
     let rows = [];
@@ -12520,7 +12527,8 @@ async function loadClassroomOwnPhotos() {
         // path rather than writing a second way to reach the same rows —
         // and the server checks the detection independently anyway, so this
         // widening is a convenience, not the permission.
-        const data = await loadClassroomData({ ...room, question_scope: 'community' });
+        const data = await loadClassroomData({ ...room, question_scope: 'community' },
+                                             { months: false });
 
         const bestShot = new Map(), bestClip = new Map();
         // Snapshots and clips arrive highest-confidence first, so the first
