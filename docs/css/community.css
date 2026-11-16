@@ -3935,18 +3935,10 @@
     display: flex; flex-direction: column; gap: 0.4rem;
 }
 
-/* Suggest sits with Close at the foot of the column rather than among the
-   classes, because it is not a class — but unlike Close it is a place you
-   go, so it keeps the ordinary row styling and only the spacing marks it
-   out. */
-.classroom-row-idea {
-    flex: 0 0 auto;
-    margin-top: 0.75rem;
-    justify-content: center;
-}
-.classroom-row-idea .classroom-row-name {
-    font-weight: 600; font-size: 0.82rem;
-}
+/* .classroom-row-idea is gone: "Suggest anything else" was a static button
+   at the foot of the column and is now an ordinary school-wide row built by
+   renderClassroomList, so it takes the same styling as its neighbours and
+   needs no rule of its own. */
 
 /* Close is in the column so it is always reachable, but it is not one of the
    choices: it never lights up, and it sits apart from them. */

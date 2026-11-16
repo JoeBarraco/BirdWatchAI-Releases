@@ -11605,7 +11605,7 @@ function classroomPicked() {
 // logic is that distinction. Merging them into a flat list would save a
 // heading and lose the point.
 //
-// kind: 'class' | 'new' | 'challenge' | 'feedback' | 'suggest'
+// kind: 'class' | 'new' | 'challenge' | 'feedback' | 'suggest' | 'idea'
 let classroomLeftPick = { kind: 'class' };
 
 function classroomPickIs(kind, id) {
@@ -11644,6 +11644,7 @@ function pickClassroomAction(kind) {
     if (kind === 'challenge') showClassroomChallenge();
     if (kind === 'feedback')  showClassroomFeedback();
     if (kind === 'suggest')   openClassroomSuggest();
+    if (kind === 'idea')      openClassroomIdea();
 }
 
 // The form is a MODE, not furniture. It used to sit at the bottom of the
@@ -11677,6 +11678,7 @@ function renderClassroomList() {
     //   School challenge everyone can read the board; only owner and
     //                    moderator get the controls, inside the panel
     //   Suggest          teacher, moderator, owner  (classroom_suggest_question)
+    //   Suggest anything everyone — it writes no question, only a note
     //   Question feedback everyone, since teachers were given read access
     //
     // Two states can block a new class even where the role allows it: the
@@ -11699,6 +11701,14 @@ function renderClassroomList() {
                                      : 'How the classes compare this week' },
         { kind: 'suggest',   icon: '💡', label: 'Suggest a question',
           meta: 'An idea for the question bank' },
+        // Beside the question suggestion, not at the foot of the column.
+        // Both rows are a teacher sending an idea, and keeping them apart
+        // put the general one down with Close, where it read as furniture
+        // rather than a place to go. The title carries the distinction:
+        // "Suggest something" sat under "Suggest a question" as a near-copy
+        // of it, so "anything else" is what now separates the two.
+        { kind: 'idea',      icon: '💡', label: 'Suggest anything else',
+          meta: 'The site, the lessons, anything at all' },
         { kind: 'feedback',  icon: '💬', label: 'Question feedback',
           meta: classroomCanAssign() ? 'What teachers have flagged'
                                      : 'What has been flagged, and what was done' },
@@ -13251,7 +13261,11 @@ function openClassroomIdea() {
     box.style.display = '';
 
     const room = classroomList.find(r => r.id === classroomPicked());
-    box.innerHTML = `<h4 class="classroom-h">Suggest something</h4>`
+    // Same words as the row that opens it, so the pane does not rename
+    // itself under the teacher. The standalone modal off the navbar keeps
+    // "Suggest something": it opens with no "Suggest a question" beside it,
+    // so there is nothing there for it to be confused with.
+    box.innerHTML = `<h4 class="classroom-h">Suggest anything else</h4>`
                   + cmIdeaFormHtml(room, 'closeClassroomRight()');
 
     const t = document.getElementById('cc-idea-text');
