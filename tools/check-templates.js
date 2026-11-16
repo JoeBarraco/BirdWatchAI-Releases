@@ -165,6 +165,50 @@ function makeLongRows(seed, now){
 const cmMonthSummary=vm.runInContext('cmMonthSummary',ctx);
 WORLDS.forEach(w => { w.months = cmMonthSummary(makeLongRows(w.seed, MONTH_NOW), MONTH_NOW); });
 
+// ── A school year, for the year templates ──────────────────────────
+//
+// ⚠ PINNED TO APRIL, not to MONTH_NOW. The school year starts in August, so
+// in November only three months of it are finished — and year-month-mean
+// wants five before a mean describes anything, year-seasonal-species wants
+// four. Run from November all four would report "never built" for a reason
+// that is the calendar rather than the code, which is the exact way this
+// list teaches people to stop reading it.
+//
+// This fakes what classroom_year_months returns, in its shape (per feeder,
+// per month), so cmYearSummary is exercised for real: the folding of latin
+// onto common names, the max-not-sum rule for days, and the dropping of the
+// current month all run here rather than being taken on trust.
+const YEAR_NOW = new Date(2027, 3, 16, 10, 0, 0);
+function makeYearRoll(seed){
+  const months=[], species=[];
+  // Aug 2026 .. Apr 2027. August is the clear peak and February the trough,
+  // so busiest/quietest are unambiguous and the 15% margin is comfortable.
+  const shape=[420, 300, 240, 180, 150, 96, 130, 210, 90];
+  const SPY=['Northern Cardinal','Mourning Dove','Blue Jay','Carolina Wren'];
+  for(let i=0;i<9;i++){
+    const y = i<5 ? 2026 : 2027;
+    const mo = i<5 ? 8+i : i-4;                       // 8..12, then 1..4
+    const key=`${y}-${String(mo).padStart(2,'0')}`;
+    const visits=shape[i] + seed*7;
+    months.push({feeder_id:'f1', m:key, visits, days: Math.min(28, 18+seed)});
+    // Four regulars every month, so there are always enough "wrong but
+    // plainly wrong" options.
+    let left=visits;
+    SPY.forEach((sp,j)=>{ const n=Math.max(2, Math.round(visits/(5+j))); left-=n;
+                          species.push({feeder_id:'f1', m:key, sp, n}); });
+    // One visitor in exactly ONE finished month: the migrant the seasonal
+    // question is looking for. Not in April, which is the current month and
+    // therefore dropped.
+    if(i===3) species.push({feeder_id:'f1', m:key, sp:'Yellow-rumped Warbler', n:Math.max(5,left)});
+    // A latin name for a bird already counted under its common one, so the
+    // fold in cmYearSummary has something to do.
+    if(i===1) species.push({feeder_id:'f1', m:key, sp:'Cardinalis cardinalis', n:3});
+  }
+  return {months, species};
+}
+const cmYearSummary=vm.runInContext('cmYearSummary',ctx);
+WORLDS.forEach(w => { w.year = cmYearSummary(makeYearRoll(w.seed), YEAR_NOW); });
+
 const cmWindow=vm.runInContext('cmWindow',ctx);
 const cmRng=vm.runInContext('cmRng',ctx);
 const T=vm.runInContext('CLASSROOM_TEMPLATES',ctx);
@@ -182,13 +226,14 @@ for(const t of T){
   let anyBuilt=false;
   for(const band of t.bands){
     const pairs=[];
-    WORLDS.forEach(w=>{ pairs.push(['single:'+w.seed,w.s14,w.months],['pool:'+w.seed,w.pool,w.months]); });
-    for(const [label,src,months] of pairs){
+    WORLDS.forEach(w=>{ pairs.push(['single:'+w.seed,w.s14,w.months,w.year],
+                                   ['pool:'+w.seed,w.pool,w.months,w.year]); });
+    for(const [label,src,months,year] of pairs){
       const s=cmWindow(src,7);
       if(src.isPool){ s.isPool=true; s.feeders=src.feeders.map(f=>cmWindow(f,7)); }
       try{
         const q=t.build({s, s14:src, band, rng:cmRng(t.id+band+label),
-                         feeder:src.name, source:src, months,
+                         feeder:src.name, source:src, months, year,
                          room:{id:'r1', grade_band:band, name:'Room A'}});
         if(q && q.prompt){
           built++; anyBuilt=true;

@@ -82,6 +82,30 @@ const CLASSROOM_TEMPLATE_STANDARDS = {
     // benchmark in the catalogue, and the 6-8 slide claims nothing.
     'month-newcomer':      ['SC.3.L.17.1', 'SC.4.L.17.1'],
 
+    // ── This school year ───────────────────────────────────────────────
+    // Reading a twelve-bar graph and comparing the categories on it, which
+    // is MA.1.DP.1.2 and MA.2.DP.1.2 word for word; MA.3.DP.1.2 for the
+    // scaled bar graph the 3-5 version gets.
+    'year-busiest-month':  ['MA.1.DP.1.2', 'MA.2.DP.1.2', 'MA.3.DP.1.2'],
+    // Subtraction across two bars read off a scaled graph, with numbers in
+    // the hundreds - the "solving one- and two-step problems" of
+    // MA.3.DP.1.2, the multi-digit subtraction of MA.3.NSO.2.1, and
+    // MA.4.DP.1.3 for real-world numerical data.
+    'year-month-gap':      ['MA.3.DP.1.2', 'MA.3.NSO.2.1', 'MA.4.DP.1.3'],
+    // The mean of a real numerical data set, interpreted against the spread
+    // it came from - MA.6.DP.1.2 names mean and range together, and the
+    // explain is about why the mean is not a typical month. MA.7.DP.1.1 is
+    // NOT claimed: the class is given the mean to find, not asked to choose
+    // which measure suits, so it would be a tag for the topic rather than
+    // for the work.
+    'year-month-mean':     ['MA.6.DP.1.2'],
+    // A bird present in one month of twelve and absent from the rest is an
+    // animal responding to the seasons, on the only span long enough to
+    // show migration at all. Same 3-5 benchmarks as month-newcomer and for
+    // the same reason; the 6-8 slide claims nothing, there being no 6-8
+    // seasons benchmark in the catalogue.
+    'year-seasonal-species': ['SC.3.L.17.1', 'SC.4.L.17.1'],
+
     // ── Time ───────────────────────────────────────────────────────────
     'busiest-day':         ['MA.1.DP.1.2', 'MA.2.DP.1.2', 'MA.3.DP.1.2'],
     'morning-or-afternoon':['MA.1.DP.1.2', 'MA.2.M.2.1'],

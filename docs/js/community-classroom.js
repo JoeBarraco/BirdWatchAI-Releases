@@ -1599,6 +1599,12 @@ async function loadClassroomData(room) {
     const olderPending = cmWantsMonths(room)
         ? cmFetchMonthRows(ids, since) : Promise.resolve(null);
 
+    // Alongside the other two, for the same reason: a lesson with no year
+    // question in it waits on nothing extra, and one with a year question
+    // waits no longer than its slowest read rather than the sum of them.
+    const yearPending = cmWantsYear(room)
+        ? cmFetchYear(ids) : Promise.resolve(null);
+
     let rows = [];
     try {
         rows = await fetchAllRows(url, hasAuthSession()) || [];
@@ -1673,8 +1679,12 @@ async function loadClassroomData(room) {
                                          detected_at: r.detected_at })))
         : null;
 
+    // Same contract as longRows: null when the lesson cannot use it or the
+    // read failed, and every year template treats null as "sit this one out".
+    const yearRoll = await yearPending;
+
     return { home, partners, all: [home, ...partners].filter(Boolean), each, pooled, scope,
-             longRows };
+             longRows, yearRoll };
 }
 
 // ── This month against last ──────────────────────────────────
@@ -1827,6 +1837,183 @@ function cmMonthSummary(rows, now) {
         lastVisits: n => upTo(lastByDay, n),
         thisCover:  n => cover(thisByDay, n),
         lastCover:  n => cover(lastByDay, n),
+    };
+}
+
+// ── This school year ─────────────────────────────────────────────
+//
+// The rest of the suggestion the month questions answered half of: "we could
+// weave in 'This Year, This Month, Last Month, etc' for larger datasets to
+// make it more interesting." The month half shipped in f3f2840, which left
+// the year out and said why — ten months of raw detections per lesson is a
+// lot of rows to page through to draw three bars, and it wanted a count
+// computed on the server first. That server function now exists
+// (classroom_year_months, supabase/setup-classroom-year.sql) and returns
+// about 35 rows where the raw read returned 6,571.
+//
+// ⚠ THE SCHOOL YEAR, NOT THE CALENDAR YEAR. A calendar year collapses every
+// January: one month of data in January, two in February, so the questions
+// would be dead or thin through a whole term, which is the term a class is
+// actually in when it starts asking what the year looked like. August to
+// July never drops below about four months once school is underway. Prompts
+// say "this school year" and never a bare "2026", because the two stop
+// agreeing in August and a class should not be told the wrong one.
+const CM_SCHOOL_YEAR_START_MONTH = 7;   // 0-based: August
+
+// Fewer finished months than this and there is no shape to see yet — two
+// bars is not a year, it is last month and the one before, which the month
+// questions already do better.
+const CM_YEAR_MIN_MONTHS = 3;
+
+/**
+ * The school year `now` falls in, as [start, end).
+ *
+ * August 2026 through July 2027 for any date from 1 Aug 2026 onwards; a date
+ * in, say, March 2027 belongs to the year that began in August 2026.
+ */
+function cmSchoolYear(now) {
+    const d = now || new Date();
+    const y = d.getMonth() >= CM_SCHOOL_YEAR_START_MONTH
+        ? d.getFullYear() : d.getFullYear() - 1;
+    return {
+        start: new Date(y, CM_SCHOOL_YEAR_START_MONTH, 1),
+        end:   new Date(y + 1, CM_SCHOOL_YEAR_START_MONTH, 1),
+        label: `${y}–${String(y + 1).slice(2)}`,
+    };
+}
+
+/**
+ * Should this lesson fetch the year rollup at all?
+ *
+ * Unlike cmWantsMonths this does NOT exclude K-2. The month read was ~13,500
+ * raw rows and a K-2 class got nothing for them, so it was right to skip it;
+ * the year read is a server-side rollup of about 35 rows, which is cheaper
+ * than one photo on the slide. K-2 gets the simple "which month had the
+ * most birds" question off the same data.
+ */
+function cmWantsYear(room) {
+    const band = (room && room.grade_band) || 'k-2';
+    const picked = classroomPickSet(room, null);
+    return CLASSROOM_TEMPLATES.some(t => t.needsYear
+                                     && classroomTemplateAllowed(t, band, picked));
+}
+
+/**
+ * Month-by-month totals for this school year, from the server.
+ *
+ * Never throws and never blocks a lesson: a year question missing is fine,
+ * a lesson that will not start because of one is not. A database without
+ * setup-classroom-year.sql applied answers PGRST202 and gets the same null
+ * as a network failure, so the page can ship ahead of the SQL.
+ */
+async function cmFetchYear(ids, now) {
+    if (!ids || !ids.length) return null;
+    const yr = cmSchoolYear(now);
+    const { data, error } = await sbRpc('classroom_year_months', {
+        p_feeder_ids: ids,
+        p_from: yr.start.toISOString(),
+        p_to:   yr.end.toISOString(),
+        // The client's own exclusion list, so there is never a second copy
+        // of it in SQL to fall out of step with this one.
+        p_exclude: [...CM_NOT_BIRDS.keys()],
+    }, hasAuthSession());
+    if (error || !data || !Array.isArray(data.months)) return null;
+    return data;
+}
+
+/**
+ * Shape the rollup into what a template reads.
+ *
+ * ⚠ TODAY'S MONTH IS KEPT OUT of everything that compares months. The same
+ * rule 3247f45 applied to days and cmMonthSummary applied to this month: an
+ * unfinished stretch has not finished counting, and "which month was
+ * busiest?" answered on the 2nd of a month would be deciding a race one
+ * runner had barely started. It stays in the year TOTAL, because a visit
+ * that happened this month did happen.
+ *
+ * Species names are folded here and not in SQL: the server cannot know that
+ * "Cardinalis cardinalis" and "Northern Cardinal" are one bird to a class.
+ */
+function cmYearFor(data, source) {
+    if (!data || !data.yearRoll || !source) return null;
+    const keep = r => source.isPool || r.feeder_id === source.feederId;
+    // Narrowed to the lesson's own source, then re-added across feeders when
+    // the lesson is a pooled one — the same rule cmMonthsFor follows.
+    return cmYearSummary({
+        months:  (data.yearRoll.months  || []).filter(keep),
+        species: (data.yearRoll.species || []).filter(keep),
+    });
+}
+
+function cmYearSummary(roll, now) {
+    if (!roll || !Array.isArray(roll.months) || !roll.months.length) return null;
+
+    const today = now || new Date();
+    const yr = cmSchoolYear(today);
+    const thisMonthKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+
+    const label = k => {
+        const [y, m] = k.split('-').map(Number);
+        return new Date(y, m - 1, 1)
+            .toLocaleDateString('en-US', { month: 'long' });
+    };
+    const shortLabel = k => {
+        const [y, m] = k.split('-').map(Number);
+        return new Date(y, m - 1, 1)
+            .toLocaleDateString('en-US', { month: 'short' });
+    };
+
+    // ⚠ FOLDED BY MONTH, because the server groups by feeder as well and a
+    // pooled lesson therefore gets one row per feeder per month.
+    // Visits add up across feeders. DAYS DO NOT: two feeders that each saw
+    // birds on 20 days of the same month did not between them see birds on
+    // 40 days, and a month cannot have more days with birds than it has
+    // days. So days takes the largest feeder's count, which is a floor on
+    // the true union rather than a number that can exceed the month — the
+    // only use for it is the coverage guard below, where under-reporting
+    // makes a template sit out and over-reporting would let it run on data
+    // it should not trust.
+    const merged = new Map();
+    for (const r of roll.months) {
+        const cur = merged.get(r.m) || { key: r.m, visits: 0, days: 0 };
+        cur.visits += Number(r.visits) || 0;
+        cur.days    = Math.max(cur.days, Number(r.days) || 0);
+        merged.set(r.m, cur);
+    }
+    const all = [...merged.values()]
+        .map(m => ({ ...m, name: label(m.key), short: shortLabel(m.key) }))
+        .sort((a, b) => a.key.localeCompare(b.key));
+
+    const done = all.filter(m => m.key !== thisMonthKey);
+
+    // Species, folded onto common names, for the whole year and per month.
+    const yearSpecies = new Map();
+    const byMonthSpecies = new Map();
+    for (const r of (roll.species || [])) {
+        if (!cmIsBird(r.sp)) continue;          // belt and braces; server filtered too
+        const sp = cmSpeciesName(r.sp);
+        const n  = Number(r.n) || 0;
+        yearSpecies.set(sp, (yearSpecies.get(sp) || 0) + n);
+        if (!byMonthSpecies.has(r.m)) byMonthSpecies.set(r.m, new Map());
+        const mm = byMonthSpecies.get(r.m);
+        mm.set(sp, (mm.get(sp) || 0) + n);
+    }
+
+    if (done.length < CM_YEAR_MIN_MONTHS) return null;
+
+    const busiest  = done.reduce((a, b) => b.visits > a.visits ? b : a);
+    const quietest = done.reduce((a, b) => b.visits < a.visits ? b : a);
+
+    return {
+        yearLabel: yr.label,
+        months: all,
+        done,
+        busiest, quietest,
+        total: all.reduce((t, m) => t + m.visits, 0),
+        doneTotal: done.reduce((t, m) => t + m.visits, 0),
+        speciesCount: yearSpecies.size,
+        species: yearSpecies,
+        speciesIn: key => byMonthSpecies.get(key) || new Map(),
     };
 }
 
@@ -4765,6 +4952,192 @@ const CLASSROOM_TEMPLATES = [
                    + `${months.lastName}. The others came in both. A month is long `
                    + 'enough to see the seasons at work: birds move with the weather '
                    + 'and with what there is to eat, and some only arrive for part of the year.',
+            about_bird: answer,
+        };
+    },
+},
+
+// ── This school year (cmYearSummary) ─────────────────────────
+//
+// The other half of the suggestion the month questions answered: "more than
+// just last weeks data... This Year, This Month, Last Month, etc for larger
+// datasets to make it more interesting." Four questions, one per reason a
+// whole year shows something a fortnight cannot.
+//
+// ⚠ EVERY ONE OF THESE PASSES maxBars: 12. cmChart keeps the FIRST eight
+// bars by default and these charts are twelve months long, so without it
+// a busiest month falling in spring is cut out of its own chart and the
+// class hunts for a bar that was never drawn. That is the exact fault
+// 0da6d0e fixed on the streak chart; it is not being reintroduced here.
+//
+// All four read months that are OVER. year.done excludes the current one,
+// because a month two days old has not finished counting and would lose
+// every race it entered.
+
+{
+    id: 'year-busiest-month',
+    category: 'comparison',
+    title: 'Which month was busiest?',
+    bands: ['k-2', '3-5'],
+    needsYear: true,
+    build({ year, band, rng, feeder }) {
+        if (!year) return null;
+        // A clear winner, or the question has no answer. Two months tied at
+        // the top is a fine thing for a feeder and a broken multiple choice.
+        const sorted = year.done.slice().sort((a, b) => b.visits - a.visits);
+        if (sorted.length < CM_YEAR_MIN_MONTHS) return null;
+        if (sorted[0].visits === sorted[1].visits) return null;
+        // The winner has to be visibly the winner on the chart a child is
+        // reading from across the room.
+        if (sorted[0].visits < sorted[1].visits * 1.15) return null;
+
+        const pick = cmShuffle(sorted.slice(0, band === 'k-2' ? 3 : 4), rng);
+        return {
+            prompt: band === 'k-2'
+                ? `Look at the chart. Which month did the most birds come to ${feeder}?`
+                : `Which month had the most visits at ${feeder} this school year?`,
+            choices: pick.map(m => ({ label: m.name })),
+            correct_index: pick.findIndex(m => m.key === sorted[0].key),
+            chart: cmChart(`Visits each month, ${year.yearLabel}`,
+                           year.done.map(m => ({ label: m.short, value: m.visits, key: m.key })),
+                           { band, maxBars: 12 }),
+            explain: `${sorted[0].name} had ${sorted[0].visits} visits — more than any `
+                   + `other month this school year. The quietest was ${year.quietest.name}, `
+                   + `with ${year.quietest.visits}. A whole year shows something a single `
+                   + 'week cannot: birds come and go with the seasons.',
+        };
+    },
+},
+
+{
+    id: 'year-month-gap',
+    category: 'comparison',
+    title: 'Busiest against quietest',
+    bands: ['3-5'],
+    needsYear: true,
+    build({ year, band, rng, feeder }) {
+        if (!year) return null;
+        const hi = year.busiest, lo = year.quietest;
+        if (hi.key === lo.key) return null;
+        const diff = hi.visits - lo.visits;
+        // Worth subtracting, and not a difference that equals either bar —
+        // an option matching a plotted number makes the builder hide the
+        // bar values, and reading them off the chart is the work here.
+        if (diff < 20 || diff === hi.visits || diff === lo.visits) return null;
+        // A quiet month the feeder barely watched is not a quiet month.
+        if (lo.days < 10) return null;
+
+        return {
+            prompt: `At ${feeder}, ${hi.name} had ${hi.visits} visits and ${lo.name} had `
+                  + `${lo.visits}. How many more visits were there in ${hi.name}?`,
+            ...cmChartCountChoices(diff, rng, null, 4),
+            chart: cmChart(`Visits each month, ${year.yearLabel}`,
+                           year.done.map(m => ({ label: m.short, value: m.visits, key: m.key })),
+                           { band, maxBars: 12 }),
+            explain: `${hi.visits} − ${lo.visits} = ${diff}. Over a whole school year the `
+                   + 'gap between the busiest month and the quietest is much wider than '
+                   + 'anything a single week shows.',
+        };
+    },
+},
+
+{
+    id: 'year-month-mean',
+    category: 'comparison',
+    title: 'An average month',
+    bands: ['6-8'],
+    needsYear: true,
+    build({ year, band, rng, feeder }) {
+        if (!year) return null;
+        // A mean over three months is barely a mean. Five finished months is
+        // where it starts describing a year rather than a season.
+        if (year.done.length < 5) return null;
+
+        const mean = Math.round(year.doneTotal / year.done.length);
+        if (mean < 10) return null;
+        // The mean must not land on a month's own value, or two options are
+        // the same fact and one of them looks like the chart's answer.
+        if (year.done.some(m => m.visits === mean)) return null;
+
+        return {
+            // ⚠ "At ${feeder}, ..." and not "${feeder} had ...". The feeder
+            // name opens no sentence in this file, and this is why: a pooled
+            // lesson's name is "the Roland Park K-8 feeders", so starting
+            // with it puts a lowercase word at the front of a sentence on a
+            // projector. Caught by reading the built question, not by any
+            // count.
+            prompt: `At ${feeder}, there were ${year.doneTotal} visits across `
+                  + `${year.done.length} finished months this school year. Which is `
+                  + 'closest to the mean number of visits in a month?',
+            ...cmChartCountChoices(mean, rng, null, 4),
+            chart: cmChart(`Visits each month, ${year.yearLabel}`,
+                           year.done.map(m => ({ label: m.short, value: m.visits, key: m.key })),
+                           { band, maxBars: 12 }),
+            explain: `${year.doneTotal} ÷ ${year.done.length} ≈ ${mean} visits a month. `
+                   + `Notice how few months are actually near it: ${year.busiest.name} had `
+                   + `${year.busiest.visits} and ${year.quietest.name} had `
+                   + `${year.quietest.visits}. The mean is the balancing point of the `
+                   + 'year, not a typical month — which is what makes range worth '
+                   + 'knowing as well.',
+        };
+    },
+},
+
+{
+    id: 'year-seasonal-species',
+    category: 'science',
+    title: 'Here for part of the year',
+    bands: ['3-5', '6-8'],
+    needsYear: true,
+    build({ year, s14, rng, feeder }) {
+        if (!year) return null;
+        if (year.done.length < 4) return null;
+
+        // A bird that is a regular in ONE month of the year and absent from
+        // most of the others — the signature of a species that moves with
+        // the seasons rather than one the feeder simply missed.
+        // ⚠ TWO TALLIES, and the difference between them is the honesty of
+        // the question. `resident` counts months where a species was a
+        // regular (2+ visits), which is what makes a good wrong option.
+        // `anyMonth` counts months it appeared in AT ALL — and the answer is
+        // chosen on that one, because the prompt says "came in only ONE
+        // month" and the explain says "all in a single month". A bird with
+        // five visits in March and one in October satisfies the first tally
+        // and makes both of those sentences false.
+        const resident = new Map(), anyMonth = new Map();
+        for (const m of year.done) {
+            for (const [sp, n] of year.speciesIn(m.key)) {
+                if (n > 0) anyMonth.set(sp, (anyMonth.get(sp) || 0) + 1);
+                if (n >= 2) resident.set(sp, (resident.get(sp) || 0) + 1);
+            }
+        }
+        const seasonal = [...anyMonth.entries()]
+            .filter(([sp, months]) => months === 1 && (year.species.get(sp) || 0) >= 5)
+            .map(e => e[0]);
+        // Birds in most months, so every wrong option is plainly wrong.
+        const regulars = [...resident.entries()]
+            .filter(([, months]) => months >= Math.max(3, year.done.length - 1))
+            .map(e => e[0]);
+        if (!seasonal.length || regulars.length < 2) return null;
+
+        const answer = cmShuffle(seasonal, rng)[0];
+        const built = cmChoices(answer, cmShuffle(regulars, rng).slice(0, 3), rng);
+        if (!built || built.choices.length < 3) return null;
+
+        const total = year.species.get(answer);
+        return {
+            prompt: `One of these birds came to ${feeder} in only ONE month of this `
+                  + 'school year. The others came in nearly every month. Which one '
+                  + 'was only here for part of the year?',
+            ...built,
+            image: cmShotFor(s14, answer),
+            image_on_reveal: true,
+            explain: `The ${answer}: ${total} visits, all in a single month. The others `
+                   + 'turned up month after month. Birds that are only here for part of '
+                   + 'the year are usually migrating — they breed in one place and spend '
+                   + 'the winter in another, and a feeder watched all year is how you '
+                   + 'catch them passing through. A fortnight of data cannot show this '
+                   + 'at all.',
             about_bird: answer,
         };
     },
@@ -11579,6 +11952,8 @@ function buildClassroomQuestions(room, data, opts) {
     const s14  = source;
     // Null unless the loader fetched them; the month templates sit out then.
     const months = cmMonthsFor(data, source);
+    // Same contract for the school-year rollup.
+    const year   = cmYearFor(data, source);
     const band = room.grade_band || 'k-2';
     const seed = `${room.id}|${cmDayKey(new Date())}|${source.feederId}`;
 
@@ -11594,7 +11969,7 @@ function buildClassroomQuestions(room, data, opts) {
         let q = null;
         try {
             q = t.build({ s, s14, band, rng: cmRng(seed + '|' + t.id), feeder, source, room,
-                          months });
+                          months, year });
         } catch (e) {
             // A template that throws sits the week out rather than taking the
             // lesson down with it — but it says so. Swallowing this silently
@@ -14423,12 +14798,6 @@ async function showClassroomFeedback() {
                       bad_visual: 'photo or chart', improvement: 'would be better',
                       idea: 'new question idea', other: 'other' };
 
-    // Kept so the bulk action acts on exactly what is on screen — and only on
-    // what is still open, since "show closed" puts already-resolved items on
-    // screen too and re-resolving one would overwrite the note explaining
-    // what was done about it the first time.
-    classroomFeedbackShown = items.filter(f => !f.resolved_at).map(f => f.id);
-
     box.innerHTML = `
         <h4 class="classroom-h">Flags &amp; suggestions (${items.length}${
             classroomFeedbackShowClosed ? '' : ' open'})</h4>
@@ -14436,10 +14805,18 @@ async function showClassroomFeedback() {
             ${byTemplate.slice(0, 5).map(t => `<code>${esc(t.template_id)}</code> ×${t.n}`).join(' · ')}</p>
         ${canResolve ? '' : '<p class="classroom-muted">You can read these and add '
             + 'your own. Closing them is for whoever runs the community.</p>'}
+        <!-- ⚠ NO "Close all" BUTTON, deliberately, and do not restore one.
+             It closed every open item on screen behind a window.prompt that
+             asked for a note — which looks like a confirmation but is not
+             one: Enter means yes, so the fastest possible slip closed the
+             whole pile AND recorded no reason, which is the one thing a
+             closed item is kept for. Nothing can undo it either; there is
+             no unresolve anywhere in the client or the database.
+             Closing one card at a time is a press per item and that is the
+             point — the pile is read before it is cleared. If a bulk close
+             is ever wanted again it needs a real confirmation naming the
+             count, a note that cannot be empty, and a way back. -->
         <div class="classroom-form-actions">
-            ${canResolve && classroomFeedbackShown.length
-                ? `<button class="classroom-btn" onclick="resolveAllClassroomFeedback()">
-                ✓ Close all ${classroomFeedbackShown.length}</button>` : ''}
             ${closedToggle}
         </div>
         <div class="classroom-review-list">
@@ -14483,41 +14860,13 @@ async function showClassroomFeedback() {
         <button class="classroom-btn classroom-right-close" onclick="closeClassroomRight()">Close</button>`;
 }
 
-// The ids currently on screen, so "mark all" cannot quietly resolve
-// something that arrived after this list was drawn.
-let classroomFeedbackShown = [];
-
-/**
- * Clear the whole visible list in one call, with a note saying what was done.
- *
- * The note is the point. "Closed" with no record of HOW is barely better
- * than deleting the row: the next person to read that template has no idea a
- * teacher once complained about it, or what changed in response. It is also
- * what makes "show me what is new since last time" a question the database
- * can answer, which is the whole reason a daily classroom needs this.
- */
-async function resolveAllClassroomFeedback() {
-    const ids = classroomFeedbackShown.slice();
-    if (!ids.length) return;
-
-    const note = window.prompt(
-        `Close all ${ids.length}.\n\n`
-        + 'What was done about them? (recorded against every one)', '');
-    // Cancel means cancel. An empty string means they pressed OK with nothing
-    // typed, which is a deliberate "no note" rather than a mistake.
-    if (note === null) return;
-
-    const { data, error } = await sbRpc('classroom_feedback_resolve_bulk',
-        { p_ids: ids, p_note: note.trim() || null }, true);
-
-    if (error) {
-        showToast('Could not close them: ' + (error.message || 'unknown error'));
-        return;
-    }
-    showToast(`${data == null ? ids.length : data} closed.`);
-    await showClassroomFeedback();
-    await refreshClassroomFeedbackBadge();
-}
+// ⚠ resolveAllClassroomFeedback and the classroomFeedbackShown list it read
+// were deleted with the button, not left behind it. Dead code that still
+// works is an invitation: the function was callable from the console and the
+// next person to want a bulk close would have rewired it to a button rather
+// than reading why it went. classroom_feedback_resolve_bulk still exists in
+// the database, role-gated as it always was, if a future version wants to
+// build a safe one on top of it.
 
 async function resolveClassroomFeedback(id) {
     const { error } = await sbRpc('classroom_feedback_resolve', { p_id: id }, true);
