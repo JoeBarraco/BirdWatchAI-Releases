@@ -58,8 +58,18 @@ begin
 end;
 $function$;
 
--- Same shape as every other function in this folder: never anon, and the
--- role check above is what actually decides, not the grant.
+-- ⚠ FROM PUBLIC FIRST, and this is not belt-and-braces.
+-- `create function` grants EXECUTE to PUBLIC automatically, and anon is a
+-- member of PUBLIC — so revoking from anon alone leaves anon able to call it
+-- through the grant it inherits. Applied without this line the first time,
+-- and the function came out with `=X/postgres` in its ACL where every
+-- neighbour in this folder has none; caught by reading the ACL back rather
+-- than by trusting the revoke.
+-- The role check inside is still what actually decides — an anon call raises
+-- 'Sign-in required' either way — but a function nobody should reach should
+-- not be reachable, and matching the posture of the functions beside it is
+-- how that stays true the next time somebody copies one of them.
+revoke execute on function classroom_feedback_counts(uuid) from public;
 revoke execute on function classroom_feedback_counts(uuid) from anon;
 grant  execute on function classroom_feedback_counts(uuid) to authenticated;
 
@@ -77,4 +87,13 @@ commit;
 --
 --  and an unauthenticated call should raise 'Sign-in required' rather
 --  than returning zeroes — a zero would be a lie, not a refusal.
+--
+--  Check the grants came out right, which the revoke above exists for:
+--
+--    select array_to_string(proacl::text[], ' | '),
+--           has_function_privilege('anon', oid, 'execute')
+--      from pg_proc where proname = 'classroom_feedback_counts';
+--
+--  There must be no bare '=X/...' entry (that one is PUBLIC) and anon must
+--  come back false.
 -- ════════════════════════════════════════════════════════════════════
