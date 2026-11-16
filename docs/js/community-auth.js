@@ -1683,11 +1683,30 @@ function updateCommunityUI() {
     document.getElementById('navbar-community-profile').style.display = loggedIn ? '' : 'none';
     document.getElementById('navbar-life-list').style.display = loggedIn ? '' : 'none';
     const userSpan = document.getElementById('navbar-community-user');
-    if (loggedIn && currentProfile) {
-        userSpan.textContent = currentProfile.display_name || currentUser.email;
+    const name = (loggedIn && currentProfile)
+        ? (currentProfile.display_name || currentUser.email) : '';
+    if (name) {
+        userSpan.textContent = name;
         userSpan.style.display = '';
     } else {
         userSpan.style.display = 'none';
+    }
+
+    // The classroom panel fills the window and covers this navbar, so it
+    // carries its own Theme / name / Profile. They are filled here, from the
+    // same two values, so the two bars cannot disagree about who is signed
+    // in — including when a profile is renamed while the panel is open.
+    // Optional chaining, not a guard clause: this runs before the rest of the
+    // page on a cold load, and the navbar above must still be updated on a
+    // page that has no classroom panel in it at all.
+    const classHeadProfile = document.getElementById('classroom-head-profile');
+    if (classHeadProfile) classHeadProfile.style.display = loggedIn ? '' : 'none';
+    const classHeadUser = document.getElementById('classroom-head-user');
+    if (classHeadUser) {
+        classHeadUser.textContent = name;
+        // '' rather than 'inline': the width media query hides it on a phone,
+        // and an inline display here would outrank it.
+        classHeadUser.style.display = name ? '' : 'none';
     }
 }
 
