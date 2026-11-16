@@ -1638,14 +1638,34 @@ async function loadClassroomData(room, opts) {
     // hand, so only the older stretch was fetched; the two are joined here.
     // Null when the lesson cannot use them or the read failed, and every
     // month template treats null as "sit this one out".
+    //
+    // monthIds, since and recentSlim are kept so cmAddMonthRows can fetch
+    // the rows LATER for a caller that skipped them up front and then found
+    // it needed them - a teacher's own question with a month-long chart.
+    const recentSlim = rows.map(r => ({ feeder_id: r.feeder_id, species: r.species,
+                                        detected_at: r.detected_at }));
     const older = await olderPending;
-    const longRows = older
-        ? older.concat(rows.map(r => ({ feeder_id: r.feeder_id, species: r.species,
-                                         detected_at: r.detected_at })))
-        : null;
+    const longRows = older ? older.concat(recentSlim) : null;
 
     return { home, partners, all: [home, ...partners].filter(Boolean), each, pooled, scope,
-             longRows };
+             longRows, monthIds: ids, since, recentSlim };
+}
+
+/**
+ * Fetch the month rows onto data that was loaded without them.
+ *
+ * For the callers who only find out after loading: a lesson whose teacher
+ * wrote a question charting "last month", or the "Write a question" form
+ * the moment the teacher picks a month range. Fetching them for every
+ * lesson in case would put the cost back on classes that never use it.
+ * A no-op when they are already there; leaves longRows null on failure.
+ */
+async function cmAddMonthRows(data) {
+    if (!data || Array.isArray(data.longRows) || !Array.isArray(data.monthIds)
+        || !data.monthIds.length) return data;
+    const older = await cmFetchMonthRows(data.monthIds, data.since);
+    if (older) data.longRows = older.concat(data.recentSlim || []);
+    return data;
 }
 
 // ── This month against last ──────────────────────────────────
@@ -1728,11 +1748,17 @@ async function cmFetchMonthRows(ids, untilIso) {
  * beside "this week at the library" would be two feeders on one slide.
  */
 function cmMonthsFor(data, source) {
+    const rows = cmMonthRowsFor(data, source);
+    return rows && rows.length ? cmMonthSummary(rows) : null;
+}
+
+// The raw rows behind cmMonthsFor, for the teacher's own charts, which
+// summarize a span of their choosing rather than this-against-last.
+function cmMonthRowsFor(data, source) {
     if (!data || !Array.isArray(data.longRows) || !source) return null;
-    const rows = source.isPool
+    return source.isPool
         ? data.longRows
         : data.longRows.filter(r => r.feeder_id === source.feederId);
-    return rows.length ? cmMonthSummary(rows) : null;
 }
 
 /**
@@ -11247,22 +11273,28 @@ async function loadClassroomOwnQuestions(roomId) {
  * Null whenever the source has nothing to draw, which is an ordinary
  * outcome: the question still works, it simply has no chart beside it.
  */
-function cmOwnChart(spec, source, band) {
+function cmOwnChart(spec, source, band, longRows) {
     if (!spec || !spec.kind || !source) return null;
+    // A pair that cannot be drawn over this range is refused here as well as
+    // in the form, because a spec saved before a rule existed still reaches
+    // the lesson.
+    if (cmOwnChartWhyNot(spec.kind, spec.source, band, spec.range)) return null;
 
-    const s = cmWindow(source, 7);
+    const span = cmOwnRangeSummary(spec.range, source, longRows);
+    if (!span) return null;
+    const s = span.s;
     let series = null, caption = '';
     if (spec.source === 'days') {
         series = cmDaySeries(s);
-        caption = 'Visits each day this week';
+        caption = `Visits each day ${span.label}`;
     } else if (spec.source === 'species') {
         series = cmSpeciesSeries(s, 6);
-        caption = 'Visits by species this week';
+        caption = `Visits by species ${span.label}`;
     } else if (spec.source === 'hours') {
         series = s.byHour.map((n, h) => ({ label: fmtHourShort(h), value: n, key: String(h) }))
                          .filter(r => r.value > 0)
                          .slice(0, CHART_MAX_HOURS);
-        caption = 'When the birds came';
+        caption = `When the birds came ${span.label}`;
     }
     if (!series || series.length < 2) return null;
 
@@ -11297,8 +11329,18 @@ function cmOwnChart(spec, source, band) {
  * are duplicated deliberately: that table answers "may I?" in a boolean,
  * and a dropdown needs "why not, and what should I pick instead?".
  */
-function cmOwnChartWhyNot(kind, source, band) {
+function cmOwnChartWhyNot(kind, source, band, range) {
     if (!kind) return null;
+
+    // Checked first: it is the one rule that a change of RANGE, not of shape,
+    // brings into force, so it is the sentence a teacher who just moved the
+    // "When" list needs to see.
+    if (source === 'days' && range && range !== 'week') {
+        return 'A chart has room for about eight bars before the labels run into each '
+             + 'other, so "each day" only works for one week — over two weeks or a month '
+             + 'it would quietly drop the most recent days. For a longer stretch, chart '
+             + 'each species or each hour instead.';
+    }
 
     if (kind === 'line' && source === 'species') {
         return 'A line says the things along the bottom run in order and that the gaps '
@@ -11330,19 +11372,30 @@ function cmOwnChartWhyNot(kind, source, band) {
  * fails because there are too MANY, and the fix is a picture graph with
  * a key rather than waiting a week.
  */
-function cmOwnChartDataWhyNot(spec, source) {
-    const thin = 'Your feeders have not recorded enough this week to draw that one. '
+function cmOwnChartDataWhyNot(spec, source, longRows) {
+    const label = cmOwnRangeLabel(spec && spec.range);
+    const thin = `Your feeders have not recorded enough ${label} to draw that one. `
                + 'The question still works — it just goes up without a chart until '
                + 'there is more data.';
     if (!spec || !source) return thin;
 
+    // A month range with no month rows is a failed or skipped read, not a
+    // quiet feeder, and saying "not enough data" would send a teacher out to
+    // look at a feeder that is fine.
+    if (CM_OWN_MONTH_RANGES.has(spec.range) && !Array.isArray(longRows)) {
+        return 'Last month’s data could not be loaded just now. The question still '
+             + 'works; the chart will draw in the lesson if the data loads then.';
+    }
+
     if (spec.kind === 'dots') {
-        const s = cmWindow(source, 7);
+        const span = cmOwnRangeSummary(spec.range, source, longRows);
+        if (!span) return thin;
+        const s = span.s;
         const vals = spec.source === 'species' ? s.species.map(x => x.n)
                    : spec.source === 'hours'   ? s.byHour.filter(n => n > 0)
                    : s.days.map(d => d.n);
         if (vals.length && Math.max(...vals) > DOTS_MAX_VALUE) {
-            return 'There are too many visits this week to draw one mark each — the rows '
+            return `There are too many visits ${label} to draw one mark each — the rows `
                  + 'would run off the board. A picture graph with a key counts the same '
                  + 'data in a few symbols.';
         }
@@ -11356,9 +11409,77 @@ function cmOwnChartDataWhyNot(spec, source) {
  * Used to rebuild the second dropdown when the first changes, so a
  * teacher cannot pick a pair that will not draw.
  */
-function cmOwnChartSources(kind, band) {
+function cmOwnChartSources(kind, band, range) {
     return ['days', 'species', 'hours']
-        .filter(src => !cmOwnChartWhyNot(kind, src, band));
+        .filter(src => !cmOwnChartWhyNot(kind, src, band, range));
+}
+
+// ── The stretch of time a teacher's chart covers ─────────────
+//
+// Asked for: a date-range choice in "Write a question", after the month
+// questions (38f8281) showed lessons could look past the last week. The
+// spec gains a `range`; one saved before this has none and means 'week',
+// which is exactly what it always drew. The database checks only kind and
+// source, so the new key needs no migration.
+//
+// "This year" is not offered, for the reason the month templates gave:
+// ten months of raw rows per lesson wants a count made on the server.
+const CM_OWN_RANGES = ['week', 'twoweeks', 'month', 'lastmonth'];
+const CM_OWN_MONTH_RANGES = new Set(['month', 'lastmonth']);
+
+// The month names are read at the moment of drawing, not when the question
+// was saved: "last month" written in October means September in October and
+// October in November, the same way the numbers are never frozen.
+function cmOwnMonthNames() {
+    const now = new Date();
+    const name = d => d.toLocaleDateString('en-US', { month: 'long' });
+    return { thisName: name(new Date(now.getFullYear(), now.getMonth(), 1)),
+             lastName: name(new Date(now.getFullYear(), now.getMonth() - 1, 1)) };
+}
+
+// Phrase that finishes "Visits by species ..." and "not enough data ...".
+function cmOwnRangeLabel(range) {
+    const m = cmOwnMonthNames();
+    if (range === 'twoweeks')  return 'in the last two weeks';
+    if (range === 'month')     return `in ${m.thisName} so far`;
+    if (range === 'lastmonth') return `in ${m.lastName}`;
+    return 'this week';
+}
+
+/**
+ * The summary a teacher's chart reads, over the range they chose.
+ *
+ * The two short ranges come from the fortnight every lesson loads anyway.
+ * The month ranges need the month rows (cmMonthRowsFor) and return null
+ * without them, which the chart treats as "no chart", never as an error.
+ * "This month" includes today: a chart of which birds came, or when, is
+ * not changed in kind by a day that is still going.
+ */
+function cmOwnRangeSummary(range, source, longRows) {
+    const r = CM_OWN_RANGES.includes(range) ? range : 'week';
+    const label = cmOwnRangeLabel(r);
+    if (r === 'week')     return { s: cmWindow(source, 7),  label };
+    if (r === 'twoweeks') return { s: cmWindow(source, 14), label };
+
+    if (!Array.isArray(longRows)) return null;
+    const now = new Date();
+    const thisStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+    const lastStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).getTime();
+    const rows = longRows.filter(x => {
+        const t = new Date(x.detected_at).getTime();
+        return r === 'month' ? t >= thisStart : (t >= lastStart && t < thisStart);
+    });
+    // Three-field rows through the full summarizer: every field it reads
+    // beyond species and time is optional, and running the same cleaning
+    // means "species" here is counted exactly as it is in every other chart.
+    return { s: cmSummarize(source.feederId, source.name, rows, source.isHome), label };
+}
+
+// Does any switched-on question of this class's chart a month range? Then
+// a lesson that skipped the month rows has to go back for them.
+function cmOwnNeedsMonths(own) {
+    return (Array.isArray(own) ? own : []).some(x => x && x.active && x.chart_spec
+        && CM_OWN_MONTH_RANGES.has(x.chart_spec.range));
 }
 
 // Short hour label for a teacher's hour chart. cmChart's own clock path
@@ -11369,7 +11490,7 @@ function fmtHourShort(h) {
     return h < 12 ? h + 'a' : (h - 12) + 'p';
 }
 
-function cmOwnLessonQuestions(room, o, band, seed, source) {
+function cmOwnLessonQuestions(room, o, band, seed, source, longRows) {
     const none = { front: [], pool: [] };
     if (o.challenge) return none;
 
@@ -11408,7 +11529,7 @@ function cmOwnLessonQuestions(room, o, band, seed, source) {
             // A chart over the class's own data, built here rather than
             // stored: the spec says which shape over which series, and the
             // numbers are whatever this week actually holds.
-            chart: cmOwnChart(x.chart_spec, source, band),
+            chart: cmOwnChart(x.chart_spec, source, band, longRows),
             // The feeder burns the species name into the bottom of every
             // snapshot. A teacher asking "who is this?" over their own photo
             // would be handing out the answer, so the caption is cropped
@@ -11567,7 +11688,10 @@ function buildClassroomQuestions(room, data, opts) {
     // The teacher's own: the new ones go straight after the opening
     // identification question; the rest join the pool, where the recent-repeat
     // ordering below treats them exactly like any template.
-    const own = cmOwnLessonQuestions(room, o, band, seed, source);
+    // The month rows travel with the source, so a teacher's "last month"
+    // chart counts the same feeder as everything else on the board.
+    const own = cmOwnLessonQuestions(room, o, band, seed, source,
+                                     cmMonthRowsFor(data, source));
 
     const rng = cmRng(seed + '|order');
     const ident = out.filter(q => q.category === 'identification');
@@ -12431,8 +12555,10 @@ function openClassroomOwnForm(id) {
                 your own wording. Choose <em>No chart</em> to leave it off.
             </p>
             <p class="classroom-muted">
-                Drawn fresh each lesson from whatever the feeders have recorded that
-                week — the shape is saved, the numbers never are. A chart saved in
+                Drawn fresh each lesson from whatever the feeders have recorded over
+                the stretch you pick under <em>When</em> — the shape is saved, the
+                numbers never are, and "last month" always means the month before
+                the lesson. A chart saved in
                 October would otherwise still be showing October in March, which is
                 why the preview below changes as the weeks go by.
             </p>
@@ -12451,6 +12577,12 @@ function openClassroomOwnForm(id) {
                 <label class="classroom-field">
                     <span>Over what</span>
                     <select id="cc-own-chart-source" onchange="classroomOwnChartChanged()">
+                    </select>
+                </label>
+                <label class="classroom-field">
+                    <span>When</span>
+                    <select id="cc-own-chart-range" onchange="classroomOwnChartChanged()">
+                        ${cmOwnRangeOptions()}
                     </select>
                 </label>
             </div>
@@ -12495,6 +12627,12 @@ function openClassroomOwnForm(id) {
     const kindEl = document.getElementById('cc-own-chart-kind');
     const srcEl  = document.getElementById('cc-own-chart-source');
     if (kindEl && classroomOwn.chart) kindEl.value = classroomOwn.chart.kind || '';
+    // Before the sources: which sources are offered depends on the range.
+    const rangeEl = document.getElementById('cc-own-chart-range');
+    if (rangeEl) {
+        rangeEl.value = (classroomOwn.chart && classroomOwn.chart.range) || 'week';
+        rangeEl.disabled = !classroomOwn.chart;
+    }
     renderClassroomOwnChartSources();
     if (srcEl && classroomOwn.chart && classroomOwn.chart.source) {
         const opt = [...srcEl.options].some(o => o.value === classroomOwn.chart.source);
@@ -12550,6 +12688,8 @@ async function loadClassroomOwnPhotos() {
         // work — "I have no idea how to create a chart question" — so the
         // form shows the chart instead.
         classroomOwn.source = cmPickSource(data);
+        // Kept whole so a month range can fetch its rows onto it later.
+        classroomOwn.data = data;
     }
     renderClassroomOwnPhotos();
     // The preview could not draw before the data arrived.
@@ -12650,7 +12790,7 @@ function cmOwnChartKindOptions(band) {
 }
 
 const CC_CHART_SOURCE_LABELS = {
-    days:    'Each day this week',
+    days:    'Each day',
     species: 'Each species',
     hours:   'Each hour of the day',
 };
@@ -12675,8 +12815,11 @@ function renderClassroomOwnChartSources() {
     const room = classroomList.find(r => r.id === classroomOwn.roomId);
     const band = room ? room.grade_band : 'k-2';
     const kind = kindEl.value;
+    const rangeEl = document.getElementById('cc-own-chart-range');
+    const range = (rangeEl && rangeEl.value) || 'week';
 
-    const allowed = kind ? cmOwnChartSources(kind, band) : Object.keys(CC_CHART_SOURCE_LABELS);
+    const allowed = kind ? cmOwnChartSources(kind, band, range)
+                         : Object.keys(CC_CHART_SOURCE_LABELS);
     const wanted  = srcEl.value || (classroomOwn.chart && classroomOwn.chart.source) || 'days';
 
     srcEl.innerHTML = allowed.map(src =>
@@ -12691,7 +12834,46 @@ function classroomOwnChartChanged() {
     renderClassroomOwnChartSources();
     const kind = document.getElementById('cc-own-chart-kind').value;
     const src  = document.getElementById('cc-own-chart-source').value;
-    classroomOwn.chart = kind ? { kind, source: src || 'days' } : null;
+    const rangeEl = document.getElementById('cc-own-chart-range');
+    const range = (rangeEl && rangeEl.value) || 'week';
+    classroomOwn.chart = kind ? { kind, source: src || 'species', range } : null;
+    if (rangeEl) rangeEl.disabled = !kind;
+    renderClassroomOwnChartPreview();
+}
+
+// "When" options, with this month's and last month's real names, so a
+// teacher picking "Last month" in November can see it means October.
+function cmOwnRangeOptions() {
+    const m = cmOwnMonthNames();
+    const labels = {
+        week:      'This week',
+        twoweeks:  'The last two weeks',
+        month:     `This month (${m.thisName} so far)`,
+        lastmonth: `Last month (${m.lastName})`,
+    };
+    return CM_OWN_RANGES.map(r => `<option value="${esc(r)}">${esc(labels[r])}</option>`).join('');
+}
+
+/**
+ * Fetch the month rows for the form's preview, once, the first time a
+ * month range is shown.
+ *
+ * The form's data is loaded without them (the photo picker does not need
+ * them), so they arrive here on demand - which also means a teacher who
+ * never touches "When" never pays for them.
+ */
+async function cmOwnEnsureMonthRows() {
+    const data = classroomOwn.data;
+    if (!data || Array.isArray(data.longRows) || classroomOwn.monthLoading) return;
+    classroomOwn.monthLoading = true;
+    try {
+        await cmAddMonthRows(data);
+    } finally {
+        classroomOwn.monthLoading = false;
+        // Marked as tried even on failure, so the preview says it could not
+        // load rather than spinning, and a second pick does not re-fire.
+        classroomOwn.monthTried = true;
+    }
     renderClassroomOwnChartPreview();
 }
 
@@ -12724,20 +12906,32 @@ function renderClassroomOwnChartPreview() {
 
     const room  = classroomList.find(r => r.id === classroomOwn.roomId);
     const band  = room ? room.grade_band : 'k-2';
-    const chart = cmOwnChart(classroomOwn.chart, classroomOwn.source, band);
+    const spec  = classroomOwn.chart;
+
+    // A month range the form has no rows for yet: fetch, and say so, rather
+    // than flashing "not enough data" for the second it takes.
+    if (CM_OWN_MONTH_RANGES.has(spec.range) && classroomOwn.data
+        && !Array.isArray(classroomOwn.data.longRows) && !classroomOwn.monthTried) {
+        box.innerHTML = '<p class="classroom-muted">Loading the last two months…</p>';
+        cmOwnEnsureMonthRows();
+        return;
+    }
+
+    const longRows = cmMonthRowsFor(classroomOwn.data, classroomOwn.source);
+    const chart = cmOwnChart(spec, classroomOwn.source, band, longRows);
 
     // A refusal has two very different causes and a teacher needs to know
     // which: the pair cannot be drawn at all, or it can and there is not
-    // enough data this week.
-    const why = cmOwnChartWhyNot(classroomOwn.chart.kind, classroomOwn.chart.source, band);
+    // enough data over that stretch.
+    const why = cmOwnChartWhyNot(spec.kind, spec.source, band, spec.range);
 
     box.innerHTML = chart
-        ? `<p class="classroom-muted">This is what the class would see this week:</p>
+        ? `<p class="classroom-muted">This is what the class would see today:</p>
            ${classroomChartHtml(chart, false)}`
         : why
         ? `<p class="classroom-muted">${esc(why)}</p>`
-        : `<p class="classroom-muted">${esc(cmOwnChartDataWhyNot(classroomOwn.chart,
-                                                                 classroomOwn.source))}</p>`;
+        : `<p class="classroom-muted">${esc(cmOwnChartDataWhyNot(spec, classroomOwn.source,
+                                                                 longRows))}</p>`;
 }
 
 function renderClassroomOwnPhotos() {
@@ -13344,6 +13538,10 @@ async function reviewClassroomQuestions(roomId) {
         loadClassroomRatings(roomId),
         loadClassroomRatingCounts(classroomCommunityId),
     ]);
+    // Only known now that the teacher's questions are in: one of them may
+    // chart a month the lesson did not otherwise need. Same rule as the
+    // lesson below, so the review shows what the class will see.
+    if (!challenge && cmOwnNeedsMonths(own)) await cmAddMonthRows(data);
     const { questions, source, built, offered } =
         buildClassroomQuestions(room, data, { all: true, challenge, own, ratings });
     classroomReviewRoom = room;
@@ -16152,6 +16350,9 @@ async function startClassroomSession(id, mode) {
         loadClassroomOwnQuestions(room.id),
         loadClassroomRatings(room.id),
     ]);
+    // A teacher's own "last month" chart needs rows the lesson may have
+    // skipped. Not during a challenge, which leaves their questions out.
+    if (!challenge && cmOwnNeedsMonths(own)) await cmAddMonthRows(data);
     const { questions, source, no_data } =
         buildClassroomQuestions(room, data, { recent, challenge, own, ratings });
 
