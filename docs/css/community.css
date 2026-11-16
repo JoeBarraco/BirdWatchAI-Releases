@@ -4003,6 +4003,61 @@
 
 #classroom-panel-modal .mod-panel-head { --head-pad: 1.75rem; }
 
+/* ── The classroom header is the site navbar, for as long as the panel is up ──
+   The panel covers .top-navbar completely. Left in card grey it read as a
+   dialog floating over a site the teacher could no longer see; in the
+   navbar's own green it reads as the same site, one level in. The colours
+   are taken from .top-navbar deliberately — if that bar is ever restyled,
+   these want restyling with it.
+   Scoped to #classroom-panel-modal: .mod-panel-head is shared with the
+   communities panel, which is an ordinary dialog and should stay one. */
+#classroom-panel-modal .mod-panel-head {
+    background: var(--color-primary);
+    color: #fff;
+    border-bottom: 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+#classroom-panel-modal .mod-panel-head h3 { color: #fff; }
+/* The brand is built for the projector bar, where it is deliberately quiet
+   grey on a card. On the green it has to be white or it disappears. */
+#classroom-panel-modal #classroom-panel-brand .classroom-stage-mark {
+    color: rgba(255,255,255,0.78);
+}
+#classroom-panel-modal #classroom-panel-brand .classroom-stage-school { color: #fff; }
+#classroom-panel-modal #classroom-panel-brand .classroom-stage-brand {
+    border-right-color: rgba(255,255,255,0.35);
+}
+
+/* Theme, name, Profile, and the way out. .navbar-btn is reused as-is rather
+   than copied: it is already white-on-transparent and already sized for this
+   bar, so the two sets of controls cannot drift apart. */
+.classroom-panel-chrome {
+    display: flex; align-items: center; justify-content: flex-end;
+    flex-wrap: wrap; gap: 0.5rem; min-width: 0;
+}
+.classroom-head-user { font-size: 0.8rem; opacity: 0.9; white-space: nowrap; }
+
+/* Labelled, where the panel's close used to be a 40px ✕. It keeps that
+   corner — the complaint that put it there was about finding the way out,
+   not about where it sat — and it is filled rather than outlined so it still
+   reads as the one control you reach for in a hurry. */
+.classroom-head-back {
+    flex: 0 0 auto;
+    font-family: inherit; font-size: 0.8rem; font-weight: 600;
+    padding: 6px 14px; white-space: nowrap;
+    border: 1px solid rgba(255,255,255,0.55); border-radius: 4px;
+    background: rgba(255,255,255,0.14); color: #fff; cursor: pointer;
+    transition: background 0.15s;
+}
+.classroom-head-back:hover { background: rgba(255,255,255,0.28); }
+
+/* The navbar drops the name first when it runs out of room; this does the
+   same, and at the same width, so the two bars shed controls alike. */
+@media (max-width: 640px) {
+    .classroom-head-user { display: none; }
+    .classroom-head-back { padding: 5px 10px; font-size: 0.75rem; }
+}
+
 /* The mark and school beside "Classroom". Wraps rather than truncating: a
    school's full name is the point, and on a phone the brand can take its own
    line above the title. The lesson bar's sizes are for a projector bar the
