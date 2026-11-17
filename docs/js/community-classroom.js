@@ -2467,6 +2467,27 @@ function cmSpeciesPhoto(s, species) {
 }
 
 /**
+ * Put this feeder's photo on every answer of a species choice, or return
+ * null if any answer has none.
+ *
+ * For the K-2 questions that ask a class to LOOK at a bird (which one is
+ * red, which one has a crest). There the photo is the question, so a bare
+ * name is not a weaker version of it but an unanswerable one, and the
+ * template should give way to another rather than ask it. Contrast
+ * art-primary-color (3-5), which keeps its bare names when photos are
+ * missing because an older class can still answer from memory.
+ *
+ * All or none either way: three photos and one bare name would make the
+ * odd one out the one the eye goes to.
+ */
+function cmWithChoicePhotos(s, built) {
+    if (!built) return null;
+    const photos = built.choices.map(c => cmSpeciesPhoto(s, c.label));
+    if (!photos.every(Boolean)) return null;
+    return { ...built, choices: built.choices.map((c, i) => ({ ...c, photo: photos[i] })) };
+}
+
+/**
  * A snapshot in the shape a SLIDE wants, which is not the shape a chart
  * wants.
  *
@@ -6027,9 +6048,18 @@ const CLASSROOM_TEMPLATES = [
     title: 'Which bird is this color?',
     bands: ['k-2'],
     build({ s, band, rng }) {
+        // Only birds this feeder has a photo of. Flagged from a K-2 lesson:
+        // "You have to show the photos of the birds ... Impossible to answer
+        // without that!" Three bare names asked a class that mostly cannot
+        // read "Northern Cardinal" to recall what one looks like, when the
+        // skill on the page is matching a color to a bird. Narrowing the pool
+        // here, rather than giving up when one pick has no photo, keeps the
+        // question available on any feeder with three photographed birds.
+        //
         // Only a color exactly ONE of the birds on offer has, or the
         // question has two right answers and the class is right to argue.
         const known = s.species
+            .filter(x => cmSpeciesPhoto(s, x.species))
             .map(x => ({ species: x.species, look: speciesLook(x.species) }))
             .filter(x => x.look);
         if (known.length < 3) return null;
@@ -6046,12 +6076,15 @@ const CLASSROOM_TEMPLATES = [
         const others = known.filter(k => k.look.color !== color).map(k => k.species);
         if (others.length < 2) return null;
 
-        const built = cmChoices(answer, cmShuffle(others, rng).slice(0, 2), rng);
+        const built = cmWithChoicePhotos(s,
+            cmChoices(answer, cmShuffle(others, rng).slice(0, 2), rng));
         if (!built) return null;
         return {
             prompt: `Which of these birds is ${color}?`,
             ...built,
-            chart: cmChart('Birds that came this week', cmSpeciesSeries(s), { band }),
+            // No chart. It was this week's visit counts, which say nothing
+            // about color; beside the photos it only suggests the answer is
+            // in the bars somewhere.
             explain: `The ${answer} is ${color}. `
                    + `Look for ${speciesLook(answer).feature}.`,
             fact: speciesFact(answer, band),
@@ -6104,14 +6137,20 @@ const CLASSROOM_TEMPLATES = [
     build({ s, band, rng }) {
         // The "shape" half of color/shape matching. Features are written so
         // that only one bird on offer could have each.
-        const known = s.species.map(x => x.species).filter(sp => speciesLook(sp));
+        //
+        // Photographed birds only, for the reason which-bird-is-color gives:
+        // a crest or an eye stripe is something a K-2 class can find in a
+        // photo, and cannot find in the words "Tufted Titmouse".
+        const known = s.species.map(x => x.species)
+            .filter(sp => speciesLook(sp) && cmSpeciesPhoto(s, sp));
         if (known.length < 3) return null;
 
         const answer = cmShuffle(known, rng)[0];
         const look = speciesLook(answer);
         if (!look.feature) return null;
         const others = known.filter(sp => sp !== answer);
-        const built = cmChoices(answer, cmShuffle(others, rng).slice(0, 2), rng);
+        const built = cmWithChoicePhotos(s,
+            cmChoices(answer, cmShuffle(others, rng).slice(0, 2), rng));
         if (!built) return null;
         return {
             prompt: `Which bird has ${look.feature}?`,
