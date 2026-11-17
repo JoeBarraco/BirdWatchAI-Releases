@@ -18218,9 +18218,15 @@ function renderClassroomStage() {
 
     const joinMode = S.mode === 'join_code';
 
-    // Vote counts per choice. Shown live while the room votes (join-code
-    // mode) and kept on screen through the reveal, because "17 of you said
-    // cardinal" is the part worth talking about.
+    // Vote counts per choice, join-code mode only. HELD BACK while voting is
+    // open and shown all at once when it closes. They used to fill in live,
+    // and a projected bar creeping ahead is an instruction to the children
+    // still deciding: they follow the crowd instead of thinking. Once
+    // voting is closed nothing can be swayed, so they stay up through the
+    // reveal, because "17 of you said cardinal" is the part worth talking
+    // about. awaitingPick counts as closed: the teacher breaking a tie has
+    // to see the split, and nobody can vote any more.
+    const showCounts = joinMode && (S.revealed || S.awaitingPick);
     const counts = {};
     (S.tally?.votes || []).forEach(v => { counts[v.i] = v.n; });
     const mostVotes = Math.max(1, ...Object.values(counts));
@@ -18243,10 +18249,10 @@ function renderClassroomStage() {
         // part of the screen and its result on another; this way the
         // option fills up where it already is.
         const n = counts[i] || 0;
-        const bar = joinMode
+        const bar = showCounts
             ? `<span class="classroom-bar" style="width:${Math.round((n / mostVotes) * 100)}%"></span>`
             : '';
-        const tally = joinMode ? `<span class="classroom-votes">${n}</span>` : '';
+        const tally = showCounts ? `<span class="classroom-votes">${n}</span>` : '';
 
         // While the room is voting the teacher must not be able to answer
         // for them; once voting closes the same buttons become the tie
@@ -18330,6 +18336,7 @@ function renderClassroomStage() {
             ${cmBadgeOpenerHtml(S)}
             ${classroomSlideTopHtml(S, q)}
             ${classroomChoicesBlock(S, q, choices)}
+            ${joinMode && !showCounts ? classroomVoterRosterHtml(S) : ''}
             ${reveal}
           </div>
         </div>
@@ -18376,6 +18383,36 @@ function cmBadgeOpenerHtml(S) {
         ${b.fresh.length ? `<span class="cc-badge-new">New since last lesson: ${
             b.fresh.map(x => `${esc(x.icon || '')} ${esc(x.name)}`).join(', ')}</span>` : ''}
       </div>`;
+}
+
+/**
+ * Who has voted and who has not, while voting is open (join-code mode).
+ *
+ * This is what fills the space the live bars used to: the teacher still
+ * gets "is the room done?", and a child who has not tapped yet can see
+ * their own name waiting, without anyone seeing WHAT anyone chose. The
+ * server's roster carries a yes/no per nickname and never the choice, so
+ * this cannot leak a vote even by accident.
+ *
+ * Not-yet-voted first, because that is the list the teacher reads out
+ * ("Sam, Priya, still waiting on you"); the voted names follow, ticked.
+ *
+ * Empty until the database has the roster (setup-classroom-join.sql):
+ * an older classroom_tally sends counts only, and the "N of M voted"
+ * line in the stage bar still covers the room on its own.
+ */
+function classroomVoterRosterHtml(S) {
+    const roster = (S.tally && Array.isArray(S.tally.roster)) ? S.tally.roster : null;
+    if (!roster || !roster.length) return '';
+    const waiting = roster.filter(r => !r.voted);
+    const done    = roster.filter(r =>  r.voted);
+    const chip = (r, cls) => `<span class="classroom-nick ${cls}">${
+        cls === 'voted' ? '✓ ' : ''}${esc(r.nick)}</span>`;
+    return `
+        <div class="classroom-nicknames classroom-roster">
+            ${waiting.map(r => chip(r, 'waiting')).join('')}
+            ${done.map(r => chip(r, 'voted')).join('')}
+        </div>`;
 }
 
 function classroomFootControls(S, last, joinMode) {
@@ -19090,12 +19127,15 @@ function startClassroomTallyPoll() {
         if (!S || !S.answerId || S.revealed) return;
         const { data, error } = await sbRpc('classroom_tally', { p_answer_id: S.answerId }, true);
         if (error || !data) return;
-        // Redraw only when a vote has actually moved. Without this the bars
-        // repaint every 1.5s whether or not anything changed, which on a
-        // projector reads as a flicker rather than as liveness.
-        const before = JSON.stringify((S.tally && S.tally.votes) || []);
+        // Redraw only when a vote or the roster has actually moved. Without
+        // this the stage repaints every 1.5s whether or not anything
+        // changed, which on a projector reads as a flicker rather than as
+        // liveness. The roster is in the comparison because a child who
+        // joins mid-question changes it without casting a vote.
+        const key = t => JSON.stringify([(t && t.votes) || [], (t && t.roster) || []]);
+        const before = key(S.tally);
         S.tally = data;
-        if (JSON.stringify(data.votes || []) !== before) renderClassroomStage();
+        if (key(data) !== before) renderClassroomStage();
     };
     tick();
     classroomSession.pollTimer = setInterval(tick, CLASSROOM_POLL_MS);

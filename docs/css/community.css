@@ -5357,6 +5357,16 @@
     .classroom-nick { animation: none; }
 }
 
+/* Who has voted, under the choices while voting is open. The same chips as
+   the lobby, so the class recognises them. Waiting names stay solid, because
+   they are the ones the teacher reads out; a name that has voted fades back
+   and gets a tick. No pop animation: the roster redraws on every vote, and
+   thirty chips re-popping each time would be a light show. */
+.classroom-roster .classroom-nick { animation: none; }
+.classroom-roster .classroom-nick.voted {
+    opacity: 0.55; border-color: var(--color-primary);
+}
+
 /* ── Live vote bars ────────────────────────────────────────────────── */
 
 /* The bar fills the choice button itself rather than sitting in a chart

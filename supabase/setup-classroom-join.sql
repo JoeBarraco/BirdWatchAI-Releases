@@ -330,8 +330,16 @@ $$;
 
 /**
  * The live tally, for the teacher's bar chart. Polled while voting is
- * open, so it is deliberately one cheap aggregate over an indexed
- * column and returns nothing else.
+ * open, so it is deliberately cheap: aggregates over indexed columns.
+ *
+ * 'roster' is who has voted and who has not, by nickname, for the
+ * projector while voting is open (the per-choice bars are held back
+ * until the close, so a room cannot follow the crowd). It carries a
+ * yes/no per child and NEVER the choice: the roster is drawn on the
+ * projector in front of the whole class, and "Sam voted B" up there
+ * would be the crowd-following problem again, aimed at one child.
+ * The nicknames themselves are already on the projector in the lobby,
+ * so this shows the room nothing it has not seen.
  */
 create or replace function classroom_tally(p_answer_id uuid)
 returns json
@@ -361,7 +369,17 @@ begin
     'voted',     (select count(*) from classroom_votes where answer_id = p_answer_id),
     'joined',    (select count(*) from classroom_participants p
                   join classroom_session_answers a on a.id = p_answer_id
-                  where p.session_id = a.session_id)
+                  where p.session_id = a.session_id),
+    'roster',    coalesce((
+        select json_agg(json_build_object(
+                 'nick',  p.nickname,
+                 'voted', exists (select 1 from classroom_votes v
+                                  where v.answer_id = p_answer_id
+                                    and v.participant_id = p.id))
+               order by p.joined_at)
+        from classroom_participants p
+        join classroom_session_answers a on a.id = p_answer_id
+        where p.session_id = a.session_id), '[]'::json)
   ) into result;
 
   return result;
