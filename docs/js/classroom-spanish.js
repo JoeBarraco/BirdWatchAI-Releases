@@ -503,3 +503,21 @@ function esSpeech(S, q) {
     el.innerHTML = esRevealHtml(S, q);
     return el.textContent || '';
 }
+
+/**
+ * What the phones get in join-code mode: { choices, prompt_es? }. With
+ * Español off, exactly what they got before. With it on, each choice
+ * carries its Spanish as `es` and the question its Spanish as prompt_es.
+ * A copy: the board's own question is not touched.
+ */
+function esForDevices(S, q) {
+    const es = esActive(S, q);
+    if (!es || es.englishOnly || !es.prompt) return { choices: q.choices };
+    return {
+        prompt_es: es.prompt,
+        choices: (q.choices || []).map((c, i) => {
+            const t = es.choices && es.choices[i];
+            return t && t !== String(c.label) ? { ...c, es: t } : c;
+        }),
+    };
+}

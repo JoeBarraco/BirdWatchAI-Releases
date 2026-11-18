@@ -44,7 +44,7 @@ docker exec bwai-pgtest psql -U postgres -q -f /tmp/reminders-schema.sql
 docker exec bwai-pgtest psql -U postgres -q -f /tmp/school-reminders.test.sql
 ```
 
-There are twenty suites, each needing the migrations it builds on applied first:
+There are twenty-one suites, each needing the migrations it builds on applied first:
 
 | Suite | Needs | Checks |
 |---|---|---|
@@ -62,6 +62,7 @@ There are twenty suites, each needing the migrations it builds on applied first:
 | `journal.test.sql` | score-polls preamble + score polls + journal (see the file header) | 14 |
 | `penpals.test.sql` | stub + two detection columns + penpals (see the file header) | 26 |
 | `penpals-public.test.sql` | as above + penpals-public | 9 |
+| `device-spanish.test.sql` | stub + join + device spanish | 4 |
 | `home-classroom.test.sql` | subscription + purchase + classroom limits + home classroom | 19 |
 | `home-trial-grace.test.sql` | as above + reminders schema + home trial no grace | 8 |
 | `classroom-logos.test.sql` | stub + setup-classroom-logos.sql up to its classroom_list section (see the file header) | 13 |

@@ -19211,7 +19211,10 @@ async function openClassroomQuestion() {
             grade_band:       q.grade_band,
             scope:            q.scope,
             prompt:           q.prompt,
-            choices:          q.choices,
+            // Español on: the Spanish goes to the phones too, the question
+            // as prompt_es and each answer inside its choice
+            // (classroom-spanish.js, setup-classroom-device-spanish.sql).
+            ...(typeof esForDevices === 'function' ? esForDevices(S, q) : { choices: q.choices }),
             correct_index:    q.correct_index,
             source_feeder_id: q.source_feeder_id,
             detection_id:     q.detection_id || null,

@@ -105,7 +105,10 @@
         width: 34px; height: 34px; border-radius: 50%;
         background: var(--line); color: var(--muted); font-size: 0.9rem;
     }
-    .choice.picked { border-color: var(--accent); background: rgba(46,170,79,0.12); }
+.choice.picked { border-color: var(--accent); background: rgba(46,170,79,0.12); }
+    /* Español (classroom-spanish.js): under the English, smaller, italic. */
+    .es { font-style: italic; color: var(--accent); font-weight: 600; margin: -6px 0 14px; font-size: 1.05rem; }
+    .es-choice { display: block; font-style: italic; font-weight: 500; font-size: 0.88em; color: var(--muted); margin-top: 2px; }
     .choice.picked .key { background: var(--accent); color: #fff; }
 
     .note   { color: var(--muted); font-size: 0.85rem; text-align: center; }
@@ -155,6 +158,7 @@
 
         <div id="state-question" class="hide">
             <h1 id="prompt"></h1>
+            <p class="es hide" id="prompt-es" lang="es"></p>
             <div class="board hide" id="look-up">📷 The picture is on the board — have a look.</div>
             <div class="choices" id="choices"></div>
             <p class="note" id="vote-note" style="margin-top:14px;"></p>
@@ -277,13 +281,18 @@
         myVote   = (st.my_vote == null) ? null : st.my_vote;
 
         $('prompt').textContent = st.prompt || '';
+        // Español, when the teacher has it on for this class.
+        $('prompt-es').textContent = st.prompt_es || '';
+        show($('prompt-es'), !!st.prompt_es);
         show($('look-up'), !!st.has_image);
 
         var choices = Array.isArray(st.choices) ? st.choices : [];
         $('choices').innerHTML = choices.map(function (c, i) {
             return '<button class="choice' + (myVote === i ? ' picked' : '') + '" data-i="' + i + '">'
                  +   '<span class="key">' + String.fromCharCode(65 + i) + '</span>'
-                 +   '<span>' + esc(c.label) + '</span>'
+                 +   '<span>' + esc(c.label)
+                 +     (c.es ? '<span class="es-choice" lang="es">' + esc(c.es) + '</span>' : '')
+                 +   '</span>'
                  + '</button>';
         }).join('');
 
