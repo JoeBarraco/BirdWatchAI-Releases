@@ -24,7 +24,7 @@
 // until then the banner states the price and how to get a code.
 const CH_PRICE = '$39 a year';
 const CH_BUY_URL = 'https://birdbrainllc.gumroad.com/l/bwa-home-classroom';
-const CH_BUY_READY = false;
+const CH_BUY_READY = true;
 
 function chBuyHtml() {
     return CH_BUY_READY
