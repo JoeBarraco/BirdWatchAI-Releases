@@ -589,7 +589,7 @@ ul {
 
 .features-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
     gap: var(--space-md);
 }
 
@@ -819,7 +819,7 @@ ul {
 
 .pricing-cards {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
     gap: var(--space-lg);
     max-width: 800px;
     margin: 0 auto;
@@ -2242,7 +2242,7 @@ ul {
 
 .requirements-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
     gap: var(--space-lg);
 }
 
@@ -2459,7 +2459,7 @@ ul {
 
 .install-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
     gap: var(--space-md);
     margin-top: var(--space-lg);
     text-align: left;
@@ -2615,7 +2615,7 @@ ul {
 
 .faq-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
     gap: var(--space-lg);
     max-width: 1000px;
     margin: 0 auto;
@@ -2770,7 +2770,7 @@ section {
 
 .sightings-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr));
     gap: 12px;
     margin-top: 2rem;
 }
@@ -2858,7 +2858,7 @@ body.ticker-visible { padding-top: 32px; }
 
 .highlights-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
     gap: 1.25rem;
 }
 .highlight-card {
@@ -2890,7 +2890,7 @@ body.ticker-visible { padding-top: 32px; }
 .migration-content { display: flex; flex-direction: column; gap: 1rem; }
 .migration-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr));
     gap: 0.75rem;
 }
 .migration-card {
@@ -2948,7 +2948,7 @@ body.ticker-visible { padding-top: 32px; }
 
 .feeder-dir-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr));
     gap: 1rem;
 }
 .feeder-dir-card {
@@ -3175,7 +3175,7 @@ body.ticker-visible { padding-top: 32px; }
 .on-this-day-summary { text-align: center; margin-bottom: 1.25rem; font-size: 1rem; color: var(--color-gray-700); }
 .on-this-day-cards {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(160px, 100%), 1fr));
     gap: 0.75rem;
 }
 .on-this-day-card {
@@ -3305,3 +3305,11 @@ body.ticker-visible { padding-top: 32px; }
 @media (max-width: 900px) {
     .home-classroom-inner { grid-template-columns: 1fr; }
 }
+
+/* Phone width: the widget docs pushed the page 58px wider than the screen.
+   The preview iframe was a fixed 360px inside 342px of room, and the code
+   column, a grid item, grew to fit its longest unbroken URL. Let both
+   shrink, and let a long URL break anywhere rather than widen the page. */
+.widget-docs-content > * { min-width: 0; max-width: 100%; }
+.widget-preview-iframe { max-width: 100%; }
+.code-block pre { overflow-wrap: anywhere; }
