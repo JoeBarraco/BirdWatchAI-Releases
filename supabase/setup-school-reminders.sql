@@ -109,6 +109,7 @@ as $$
   from communities c where c.id = p_community_id;
 $$;
 
+revoke execute on function community_school_reminder_stage(uuid) from public, anon, authenticated;
 grant execute on function community_school_reminder_stage(uuid) to service_role;
 
 
@@ -164,6 +165,7 @@ begin
 end;
 $$;
 
+revoke execute on function school_terms_due_reminders() from public, anon, authenticated;
 grant execute on function school_terms_due_reminders() to service_role;
 
 
@@ -198,6 +200,7 @@ begin
 end;
 $$;
 
+revoke execute on function school_reminder_mark(uuid, text, timestamptz, text) from public, anon, authenticated;
 grant execute on function school_reminder_mark(uuid, text, timestamptz, text) to service_role;
 
 
