@@ -273,6 +273,22 @@ const CLASSROOM_TEMPLATE_STANDARDS = {
     'fit-line':            ['MA.8.DP.1.3'],
     'circle-graph':        ['MA.7.DP.1.4', 'MA.6.AR.3.4'],
     'compare-feeders':     ['MA.7.DP.1.2'],
+
+    // ── Pen-pal classes (classroom-penpals.js) ─────────────────────────
+    //
+    // Two classes at two schools comparing what the same kind of camera saw
+    // in the same week is SC.2.N.1.2 / SC.3.N.1.2 almost to the letter:
+    // "compare the observations made by different groups using the same
+    // tools" — and the 3-5 half, "seek reasons to explain the differences",
+    // is exactly what penpal-only-theirs asks for. Reading two bars is not
+    // claimed as a maths benchmark: nothing is solved. The temperature
+    // question claims nothing for the same reason.
+    'penpal-more-visits':  ['SC.2.N.1.2', 'SC.3.N.1.2'],
+    'penpal-both-saw':     ['SC.2.N.1.2', 'SC.3.N.1.2'],
+    'penpal-only-theirs':  ['SC.3.N.1.2'],
+    'penpal-north':        ['SS.5.G.1.2'],
+    'penpal-warmer':       [],
+    'penpal-steadier':     ['MA.7.DP.1.2'],
     'sample-space':        ['MA.7.DP.2.1'],
 
     // ── Nature of science ────────────────────────────────────────────

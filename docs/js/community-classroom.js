@@ -13170,6 +13170,9 @@ function renderClassroomActions() {
                 <button class="classroom-btn" onclick="writeClassroomQuestion('${escJs(r.id)}')"
                         title="Write your own questions for this class, and see the ones you have">
                     ✍️ Write a question</button>
+                <button class="classroom-btn" onclick="showClassroomPenpal('${escJs(r.id)}')"
+                        title="Pair with a class at another school and compare the two feeders">
+                    ✉️ Pen-pal class</button>
             </div>
         </div>
 
@@ -15077,7 +15080,11 @@ async function reviewClassroomQuestions(roomId) {
     // so review still shows every question; it just shows them in the
     // order the lesson will use.
     const [data, recent, challenge, own, ratings, counts] = await Promise.all([
-        loadClassroomData(room),
+        // The pen-pal week rides alongside the feeder read and lands on the
+        // room, where the pen-pal templates look for it (classroom-penpals.js).
+        Promise.all([loadClassroomData(room),
+                     typeof ccPenpalLoad === 'function' ? ccPenpalLoad(room) : null])
+            .then(([d, pp]) => { room.cc_penpal = pp; return d; }),
         loadClassroomRecentTemplates(roomId),
         classroomActiveChallenge(roomId),
         loadClassroomOwnQuestions(roomId),
@@ -18139,7 +18146,11 @@ async function startClassroomSession(id, mode) {
     // would make the common case no faster and the sorted case a round trip
     // slower, and the call already answers {} when its SQL is not applied.
     const [data, recent, challenge, own, ratings, counts] = await Promise.all([
-        loadClassroomData(room),
+        // The pen-pal week rides alongside the feeder read and lands on the
+        // room, where the pen-pal templates look for it (classroom-penpals.js).
+        Promise.all([loadClassroomData(room),
+                     typeof ccPenpalLoad === 'function' ? ccPenpalLoad(room) : null])
+            .then(([d, pp]) => { room.cc_penpal = pp; return d; }),
         loadClassroomRecentTemplates(room.id),
         classroomActiveChallenge(room.id),
         loadClassroomOwnQuestions(room.id),

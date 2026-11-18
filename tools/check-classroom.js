@@ -127,9 +127,29 @@ function buildAll() {
         const data = { home, partners: [], all: [home], each: [home], pooled: null, scope: 'home',
                        longRows: long.map(x => ({ feeder_id: x.feeder_id, species: x.species, detected_at: x.detected_at })),
                        yearRoll: yearRoll(feederId, long) };
+        // A pen-pal class whose feeder is the NEXT synthetic week's, so
+        // classroom-penpals.js's templates have a real pair to compare.
+        let penpal = null;
+        if (typeof ccPenpalSide === 'function') {
+            const other = WEEKS[(wi + 1) % WEEKS.length];
+            const theirRows = rows('pp', 7, other.perDay, other.kinds, 2000 + wi, other.temp);
+            const ourRows = recent.filter(x => new Date(x.detected_at) >= new Date(now.getTime() - 7 * DAY));
+            const agg = (rs, name, school, lat) => {
+                const days = new Map(), sp = new Map(); let t = 0;
+                rs.forEach(x => { const d = cmDayKey(new Date(x.detected_at)); days.set(d, (days.get(d) || 0) + 1);
+                                  sp.set(x.species, (sp.get(x.species) || 0) + 1); t += x.temperature; });
+                return { name, school, grade_band: '3-5', lat,
+                         avg_temp: rs.length ? t / rs.length : null,
+                         days: [...days].map(([d, n]) => ({ d, n })), species: [...sp].map(([sp, n]) => ({ sp, n })) };
+            };
+            const from = new Date(now.getTime() - 7 * DAY);
+            penpal = { ours: ccPenpalSide(agg(ourRows, 'Test Room', 'Test School', 39), from, now),
+                       theirs: ccPenpalSide(agg(theirRows, 'Room 12', 'Birch School', 28 + wi * 4), from, now) };
+        }
         for (const band of ['k-2', '3-5', '6-8']) {
             const room = { id: `room-${wi}-${band}`, name: 'Test Room', grade_band: band,
-                           home_feeder_id: feederId, home_feeder_name: 'Test Feeder', partners: [] };
+                           home_feeder_id: feederId, home_feeder_name: 'Test Feeder', partners: [],
+                           cc_penpal: penpal };
             let built;
             try { built = buildClassroomQuestions(room, data, { all: true }); }
             catch (e) { out.push({ week: w.name, band, error: String(e && e.stack || e) }); continue; }
@@ -170,6 +190,10 @@ function problems(q) {
     const page = await browser.newPage();
     const pageErrors = [];
     page.on('pageerror', e => pageErrors.push(e.message));
+    // The alignment file checks every template's standards as it loads and
+    // warns rather than throws; here a warning is a failure.
+    const alignment = [];
+    page.on('console', m => { if (/\[classroom alignment\]/.test(m.text())) alignment.push(m.text()); });
     // Nothing leaves the machine: the feed's own requests to Supabase and
     // the CDNs are refused, and the builder never makes one.
     await page.route(u => !u.toString().startsWith(`http://127.0.0.1:${port}/`), r => r.abort());
@@ -219,6 +243,7 @@ function problems(q) {
         console.log(`\n${by.size} problem(s):`);
         for (const [k, where] of [...by.entries()].sort()) console.log(`  ${k}  [${[...new Set(where)].join(', ')}]`);
     }
+    if (alignment.length) console.log(`\nStandards alignment:\n  ${alignment.join('\n  ')}`);
     if (pageErrors.length) console.log(`\nPage errors (the map library is blocked here on purpose):\n  ${[...new Set(pageErrors)].join('\n  ')}`);
-    process.exit(bad.length ? 1 : 0);
+    process.exit(bad.length || alignment.length ? 1 : 0);
 })();
