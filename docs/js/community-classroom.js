@@ -18738,8 +18738,14 @@ async function answerClassroomQuestion(i) {
 
     q.class_index = i;
     S.revealed = true;
-    S.asked++;
-    if (q.correct_index != null && i === q.correct_index) S.correct++;
+    // Only a question with a right answer counts as asked. A poll has none,
+    // and a prediction has none until its data comes in, so neither can
+    // put "0 / 1" on the board of a class that got everything right.
+    // classroom_session_record applies the same rule (setup-classroom-score-polls.sql).
+    if (q.correct_index != null) {
+        S.asked++;
+        if (i === q.correct_index) S.correct++;
+    }
     renderClassroomStage();
 
     const { error } = await sbRpc('classroom_session_record', {
@@ -18885,7 +18891,7 @@ async function endClassroomSession() {
     if (stage) {
         stage.innerHTML = `
             <div class="classroom-stage-loading">
-                <h1>${S.correct} out of ${S.asked}</h1>
+                <h1>${S.asked ? `${S.correct} out of ${S.asked}` : 'Lesson done'}</h1>
                 <p>${esc(S.room.name)} — nice work.</p>
                 ${pending ? `<p class="classroom-muted">${pending} prediction${pending === 1 ? '' : 's'}
                    waiting to be checked. Open the class again after the data comes in
@@ -19195,8 +19201,11 @@ async function finishClassroomQuestion(classIndex) {
     q.class_index = (data && data.class_index != null) ? data.class_index : classIndex;
     S.revealed = true;
     S.answerId = null;
-    S.asked++;
-    if (q.correct_index != null && q.class_index === q.correct_index) S.correct++;
+    // Same rule as answerClassroomQuestion, and as classroom_question_close.
+    if (q.correct_index != null) {
+        S.asked++;
+        if (q.class_index === q.correct_index) S.correct++;
+    }
     renderClassroomStage();
 }
 
