@@ -13097,7 +13097,8 @@ function renderClassroomActions() {
     // teacher cannot do anything about.
     const noStart = classroomTermBlocks()
         ? ' disabled title="This school’s subscription has ended"'
-        : (r.home_feeder_id ? '' : ' disabled title="Set a home feeder first"');
+        : (r.home_feeder_id || (r.partners || []).length || r.question_scope === 'community'
+           ? '' : ' disabled title="Pick a feeder to watch first (Edit)"');
 
     box.innerHTML = `
         <!-- ⚠ TWO BOXES: what this class IS, then what you can DO with it.
@@ -13143,8 +13144,10 @@ function renderClassroomActions() {
             ${r.home_feeder_id
                 ? `<span class="classroom-dot ${seen ? 'on' : 'off'}"></span>${esc(r.home_feeder_name || 'Feeder')}`
                 + (seen ? '' : ' <span class="classroom-muted">(quiet)</span>')
-                : '<span class="classroom-warn">No home feeder set</span>'}
-            ${partners.length ? ` · partners: ${esc(partners.join(', '))}` : ''}
+                : partners.length
+                ? `Learning from public feeders: ${esc(partners.join(', '))}`
+                : '<span class="classroom-warn">No feeder to watch yet</span>'}
+            ${r.home_feeder_id && partners.length ? ` · partners: ${esc(partners.join(', '))}` : ''}
             · ${r.questions_per_session || 8} question${(r.questions_per_session || 8) === 1 ? '' : 's'} a session
             ${r.is_mine ? '' : ` · taught by ${esc(r.teacher_label)}`}
         </div>
@@ -16189,17 +16192,23 @@ function renderClassroomForm() {
               `${esc(m.label)}${m.id === me ? ' (you)' : ''} — ${esc(m.role)}</option>`).join('')
         : null;
 
+    // A Home Classroom needs no feeder of its own: a child can learn from
+    // public feeders alone (they become the class's partners, and the lesson
+    // builder already falls back to the best partner when there is no home).
+    const homeMode = (typeof chIsHome === 'function' && chIsHome());
     box.innerHTML = `
-        <h4 class="classroom-h">${editing ? 'Edit classroom' : 'New classroom'}</h4>
-        ${classroomFeederOpts.length ? '' :
-            '<p class="classroom-warn">This community has no approved feeders yet, '
+        <h4 class="classroom-h">${editing ? (homeMode ? 'Edit child' : 'Edit classroom') : (homeMode ? 'Add a child' : 'New classroom')}</h4>
+        ${classroomFeederOpts.length ? '' : homeMode
+            ? '<p class="classroom-muted">No feeder of your own connected? That is fine: tick one or more '
+              + '<strong>public feeders</strong> below and the lessons are built from them.</p>'
+            : '<p class="classroom-warn">This community has no approved feeders yet, '
           + 'so there is nothing for a class to watch. Approve a feeder first.</p>'}
         <input type="text" id="classroom-name" maxlength="80" placeholder="${typeof chIsHome === 'function' && chIsHome() ? 'Child’s name or nickname (e.g. Sam)' : 'Class name (e.g. Mrs. Diaz — Grade 2)'}"
                value="${esc(editing?.name || '')}">
         <div class="classroom-form-row">
-            <label>Home feeder
+            <label>${homeMode ? 'Your own feeder (optional)' : 'Home feeder'}
                 <select id="classroom-home-feeder" onchange="renderClassroomPartnerChecks()">
-                    <option value="">— choose a feeder —</option>
+                    <option value="">${homeMode ? '— none: use public feeders —' : '— choose a feeder —'}</option>
                     ${feederOpts(editing?.home_feeder_id)}
                 </select>
             </label>
@@ -16237,13 +16246,15 @@ function renderClassroomForm() {
                 </select>
             </label>
         </div>
-        <details class="classroom-details">
-            <summary>Partner feeders (optional)</summary>
-            <p class="classroom-muted">
-                Used as a backup when your own feeder is quiet — questions drawn from a
+        <details class="classroom-details"${homeMode && !(editing?.home_feeder_id) && !classroomFeederOpts.length ? ' open' : ''}>
+            <summary>${homeMode ? 'Public feeders to learn from' : 'Partner feeders (optional)'}</summary>
+            <p class="classroom-muted">${homeMode
+                ? 'Pick any public feeders. With no feeder of your own, the lessons are built from '
+                  + 'whichever of these was busiest; with one, they step in when yours is quiet.'
+                : `Used as a backup when your own feeder is quiet — questions drawn from a
                 partner are labelled on screen so the class knows whose feeder they are
                 looking at. Your school's feeders and any public feeder can be a
-                partner. Comparing feeders head-to-head comes later.
+                partner. Comparing feeders head-to-head comes later.`}
             </p>
             <div id="classroom-partners" class="classroom-partners"></div>
         </details>
@@ -16853,14 +16864,18 @@ async function saveClassroom() {
     // class pooling the whole community may have no feeder of its own —
     // that is the case this option exists for, a school signing up in
     // January with nothing on the wall yet.
-    if (!home && scope !== 'community') {
-        say('Choose the feeder this class watches, or pool the community instead.', false);
-        return;
-    }
-
     const partners = [...document.querySelectorAll('#classroom-partners input:checked')]
         .map(el => el.value)
         .filter(id => id !== home);
+
+    // No home feeder is fine when there are partners to learn from: the
+    // lesson builder falls back to the busiest partner (cmPickSource).
+    if (!home && scope !== 'community' && !partners.length) {
+        say((typeof chIsHome === 'function' && chIsHome())
+            ? 'Pick your own feeder, or tick at least one public feeder to learn from.'
+            : 'Choose the feeder this class watches, tick a partner feeder, or pool the community instead.', false);
+        return;
+    }
 
     // Null when there is no picker (a teacher), which leaves the classroom
     // with whoever it already belongs to.
@@ -18365,6 +18380,8 @@ function renderClassroomStage() {
                     // A teacher's own question has no feeder behind it, and
                     // the class should know whose question it is.
                     ? '<span class="classroom-pill">Your teacher’s question</span>'
+                    : q.from_partner && !S.room.home_feeder_id
+                    ? `<span class="classroom-pill">${esc(q.source_feeder_name)}</span>`
                     : q.from_partner
                     ? `<span class="classroom-pill partner">Partner feeder: ${esc(q.source_feeder_name)}</span>`
                     // Data-free questions have no feeder either; an empty pill

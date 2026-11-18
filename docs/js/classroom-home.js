@@ -8,7 +8,7 @@
 // access, terms, privacy, the lessons themselves).
 //
 // What this file does on top of the school Classroom:
-//   * offers "Start a Home Classroom" (30-day trial) to anyone signed in
+//   * offers "Start a Home Classroom" (7-day trial) to anyone signed in
 //     who has no classroom yet;
 //   * walks the parent through connecting their feeder, which only the
 //     BirdWatchAI app can do (a feeder proves it is theirs with its device
@@ -18,13 +18,16 @@
 //     of school that mean nothing at home (the school challenge, staff).
 
 // Price, decided 2026-11-18: $39 a year for up to four children, after a
-// 30-day free trial. The Gumroad product is bwa-home-classroom (see the
+// 7-day free trial. The Gumroad product is bwa-home-classroom (see the
 // webhook's SCHOOL_PRODUCTS). CH_BUY_READY stays false until that product
 // exists on Gumroad, so nobody is sent to a page that is not there yet;
 // until then the banner states the price and how to get a code.
 const CH_PRICE = '$39 a year';
 const CH_BUY_URL = 'https://birdbrainllc.gumroad.com/l/bwa-home-classroom';
 const CH_BUY_READY = true;
+// Decided 2026-11-18: a 7-day trial, with no grace after it. The server's
+// home_classroom_trial_days() is the real one; this is only the words.
+const CH_TRIAL_DAYS = 7;
 
 function chBuyHtml() {
     return CH_BUY_READY
@@ -61,11 +64,11 @@ function chPitchHtml() {
             <li>A journal of your year, a certificate for the fridge, and a bird count you can send to eBird</li>
             <li>Nothing about your children is stored: no accounts for them, no names unless you type one</li>
         </ul>
-        <p><strong>Free for 30 days, then ${CH_PRICE}</strong> for up to four children. No card needed to start.
-           You need a BirdWatchAI feeder; you connect it in the next step.</p>
+        <p><strong>Free for ${CH_TRIAL_DAYS} days, then ${CH_PRICE}</strong> for up to four children. No card needed to start.
+           No feeder of your own? Learn from public BirdWatchAI feeders. Have one? Connect it whenever you like.</p>
         <label class="ch-name">What shall we call it?
             <input type="text" id="ch-name" maxlength="80" placeholder="e.g. The Lopez Kitchen Window"></label>
-        <button class="classroom-btn-primary big" id="ch-start-btn" onclick="chStart()">Start my free month</button>
+        <button class="classroom-btn-primary big" id="ch-start-btn" onclick="chStart()">Start my free week</button>
         ${CH_BUY_READY ? `<p class="ch-buy-now">Already sure? <a href="${CH_BUY_URL}" target="_blank" rel="noopener">Buy a year for ${CH_PRICE.replace(' a year', '')}</a>,
            then start your Home Classroom here and type the code from the email into the box at the top.</p>` : ''}
         <p class="classroom-muted ch-teacher-note">A teacher? Your school’s Classroom appears here once a moderator
@@ -80,7 +83,7 @@ async function chStart() {
     const { data, error } = await sbRpc('home_classroom_start', { p_name: name }, true);
     if (error || !data) {
         showToast((error && error.message) || 'Could not start a Home Classroom.');
-        if (btn) { btn.disabled = false; btn.textContent = 'Start my free month'; }
+        if (btn) { btn.disabled = false; btn.textContent = 'Start my free week'; }
         return;
     }
     if (typeof loadMyCommunities === 'function') await loadMyCommunities();
@@ -96,7 +99,7 @@ async function chStart() {
     if (typeof renderClassroomList === 'function') renderClassroomList();
     showToast(data.trial === false
         ? 'Your Home Classroom is ready. Enter a code to start lessons.'
-        : 'Your Home Classroom is ready. Next: connect your feeder.');
+        : 'Your Home Classroom is ready. Next: add a child.');
 }
 
 /**
@@ -169,9 +172,12 @@ async function chRenderBanner() {
     const { data: pending } = await sbRpc('community_pending_feeders', { p_community_id: classroomCommunityId }, true);
     const waiting = Array.isArray(pending) ? pending : [];
 
+    // Optional: a family can learn from public feeders alone. Open when a
+    // feeder is waiting to be approved, folded away otherwise.
     const connect = approved.length ? '' : `
-        <div class="ch-connect">
-            <div class="classroom-group-title">Connect your feeder</div>
+        <details class="ch-connect"${waiting.length ? ' open' : ''}>
+            <summary class="classroom-group-title">${waiting.length ? 'Your feeder is waiting to be approved'
+                : 'Have your own BirdWatchAI feeder? Connect it (optional)'}</summary>
             ${waiting.length ? `
                 <p>Your feeder has asked to join. Approve it and the lessons can start:</p>
                 ${waiting.map(f => `<div class="ch-pending"><strong>${esc(f.display_name || 'A feeder')}</strong>
@@ -188,7 +194,8 @@ async function chRenderBanner() {
                </ol>
                <p class="classroom-muted">Joining your Home Classroom does not make your feeder public or private: that is still
                   set in the app. Lessons only ever show your feeder’s data to you.</p>`}
-        </div>`;
+        </details>
+        ${waiting.length ? '' : '<p class="classroom-muted ch-nofeeder">No feeder? Add a child and pick public feeders to learn from.</p>'}`;
 
     const codeBox = s && !s.perpetual ? `
         <div class="ch-codebox">

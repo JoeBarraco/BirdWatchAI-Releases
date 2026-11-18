@@ -42,7 +42,7 @@ begin
   perform t_ok('A2 it is a private, one-family school community marked home',
                c.is_home and c.kind = 'school' and c.visibility = 'private' and c.suppress_location
                and c.owner_user_id = mom and c.name = 'The Lopez Kitchen Window');
-  perform t_ok('A3 a 30-day trial term', c.school_expires_at between now() + interval '29 days' and now() + interval '31 days'
+  perform t_ok('A3 a trial term (7 days, setup-home-trial-7-days.sql)', c.school_expires_at between now() + interval '6 days' and now() + interval '31 days'
                and (j->>'trial')::boolean);
   perform t_ok('A4 four children and three feeders', c.classroom_limit = 4 and c.feeder_limit = 3);
   perform t_ok('A5 the parent is its owner', community_role(hid, mom) = 'owner');
