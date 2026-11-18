@@ -17,6 +17,11 @@
 
 // ── Data ─────────────────────────────────────────────────
 
+/** A feeder to compare: the class's own, or the public ones it learns from. */
+function ccPenpalHasFeeder(room) {
+    return !!(room && (room.home_feeder_id || (room.partners || []).length));
+}
+
 const CC_PENPAL_DAYS = 7;
 
 function ccPenpalTz() {
@@ -30,7 +35,9 @@ function ccPenpalTz() {
  */
 async function ccPenpalLoad(room) {
     try {
-        if (!room || !room.home_feeder_id) return null;
+        // A class with no feeder of its own pairs on the public feeders it
+        // learns from (setup-classroom-penpals-public.sql).
+        if (!ccPenpalHasFeeder(room)) return null;
         const to = new Date();
         const from = new Date(to.getTime() - CC_PENPAL_DAYS * 864e5);
         const { data, error } = await sbRpc('classroom_penpal_week', {
@@ -297,14 +304,14 @@ async function showClassroomPenpal(roomId) {
                 <div class="classroom-box">
                     <div class="classroom-group-title">Start a pairing</div>
                     <p class="classroom-muted">Make a code and send it to the other teacher.</p>
-                    <button class="classroom-btn-primary" onclick="ccPenpalInvite('${id}')"${room.home_feeder_id ? '' : ' disabled title="Set a home feeder first"'}>Make an invite code</button>
+                    <button class="classroom-btn-primary" onclick="ccPenpalInvite('${id}')"${ccPenpalHasFeeder(room) ? '' : ' disabled title="Pick a feeder for this class first (Edit)"'}>Make an invite code</button>
                 </div>
                 <div class="classroom-box">
                     <div class="classroom-group-title">Got a code?</div>
                     <p class="classroom-muted">Type the code another teacher sent you.</p>
                     <input type="text" id="cc-pp-code" maxlength="12" placeholder="ABCD EFGH" autocomplete="off"
                            onkeydown="if (event.key === 'Enter') ccPenpalAccept('${id}')">
-                    <button class="classroom-btn-primary" onclick="ccPenpalAccept('${id}')"${room.home_feeder_id ? '' : ' disabled title="Set a home feeder first"'}>Pair up</button>
+                    <button class="classroom-btn-primary" onclick="ccPenpalAccept('${id}')"${ccPenpalHasFeeder(room) ? '' : ' disabled title="Pick a feeder for this class first (Edit)"'}>Pair up</button>
                 </div>
             </div>`;
     } else if (st.state === 'invited') {
