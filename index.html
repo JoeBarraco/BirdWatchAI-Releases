@@ -21,7 +21,7 @@
          GitHub Pages serves these with a 10-minute max-age, so without it a
          browser can pair new HTML with the previous JS, and a mismatch there
          silently breaks anything scripted (the pricing configurator especially). -->
-    <link rel="stylesheet" href="css/style.css?v=322eab36">
+    <link rel="stylesheet" href="css/style.css?v=a00f1e90">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="icon" type="image/png" href="images/favicon.png">
     <link rel="manifest" href="manifest.json">
@@ -50,6 +50,7 @@
                 <a href="#features" role="menuitem">Features</a>
                 <a href="#how-it-works" role="menuitem">How It Works</a>
                 <a href="#pricing" role="menuitem">Pricing</a>
+                <a href="#home-classroom" role="menuitem">Home Classroom</a>
                 <!-- The builder is the buying path, and it sits at the bottom of the
                      pricing section — too far down to find by scrolling. It gets its
                      own nav entry rather than hiding behind "Pricing". -->
@@ -278,8 +279,43 @@
                 <div class="feature-card" role="listitem">
                     <div class="feature-icon">🎓</div>
                     <h3>Classroom Lessons</h3>
-                    <p>Turn the feeder into a lesson. Questions are built from what your own birds actually did this week — put one on the projector, poll the room, and tap what the class decided. No student logins, no student accounts, and nothing about a child is stored.</p>
+                    <p>Turn the feeder into a lesson. Questions are built from what your own birds actually did this week — put one on the projector, poll the room, and tap what the class decided. No student logins, no student accounts, and nothing about a child is stored. <a href="#home-classroom">At home, too →</a></p>
                 </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Home Classroom (added 2026-11-18). Its own band rather than a line in
+         Pricing: it is a product for a different person (a parent, not a
+         school), and that person needs to see what it is before what it
+         costs. The screenshot is a real render of the lesson screen with
+         SAMPLE data and says so in its caption; see the note on the removed
+         testimonials below for why nothing here may read as invented proof. -->
+    <section id="home-classroom" class="home-classroom" aria-labelledby="home-classroom-heading">
+        <div class="container">
+            <div class="home-classroom-inner">
+                <div class="home-classroom-text">
+                    <p class="build-cta-eyebrow">🏡 New · Home Classroom</p>
+                    <h2 id="home-classroom-heading">Bird lessons at home, from real birds</h2>
+                    <p>The same lessons schools run, for your own children on the TV or a laptop. Every question is built from what a real feeder saw this week: which bird came most, how many on Tuesday, whose song is this. Counting and charts for the little ones, averages and predictions for the older ones.</p>
+                    <ul class="pricing-features">
+                        <li><span class="check">✓</span> One profile per child, each at their own level: K–2, 3–5 or 6–8</li>
+                        <li><span class="check">✓</span> <strong>No feeder needed</strong>: learn from public BirdWatchAI feeders, or connect your own</li>
+                        <li><span class="check">✓</span> Read aloud for early readers, and Spanish for K–2</li>
+                        <li><span class="check">✓</span> A journal of your family’s year, a certificate for the fridge, and a bird count you can send to eBird</li>
+                        <li><span class="check">✓</span> Nothing about your children is stored: no accounts for them, ever</li>
+                    </ul>
+                    <p class="home-classroom-price"><strong>Free for 7 days, then $39 a year</strong> for up to four children. No card needed to try it.</p>
+                    <div class="home-classroom-actions">
+                        <a href="docs/community.html?home=1" class="btn btn-primary btn-large">Start your free week →</a>
+                        <a href="https://birdbrainllc.gumroad.com/l/bwa-home-classroom" class="btn btn-secondary" target="_blank" rel="noopener">Buy a year, $39</a>
+                    </div>
+                </div>
+                <figure class="home-classroom-shot">
+                    <img src="images/home-classroom.jpg" width="1600" height="900" loading="lazy"
+                         alt="A Home Classroom lesson on screen: a bar chart of the week's bird visits, the question in English and Spanish, and the answer revealed.">
+                    <figcaption>An example lesson (sample data). The chart, the question and the answers are built from the feeder each time.</figcaption>
+                </figure>
             </div>
         </div>
     </section>
@@ -619,6 +655,14 @@
                             Already have a community? Add Classroom to it from its own settings instead of buying another.
                             <a href="docs/community.html">Buy from the dashboard →</a>
                         </p>
+                    </div>
+                </div>
+                <!-- Home Classroom, beside the school option it is a cut of. -->
+                <div class="opt-cards opt-cards-1">
+                    <div class="opt-card" id="opt-home-classroom">
+                        <h5>For a family: Home Classroom</h5>
+                        <p>Classroom for your own children at home. One profile per child at their own level, lessons from your feeder or from public BirdWatchAI feeders, read aloud and Spanish for the youngest. <strong>$39 a year</strong> for up to four children, after a <strong>free 7-day trial</strong>. Separate from the software licence, and you do not need a feeder of your own to use it.</p>
+                        <p class="opt-note"><a href="docs/community.html?home=1">Start your free week →</a> · <a href="https://birdbrainllc.gumroad.com/l/bwa-home-classroom" target="_blank" rel="noopener">Buy a year</a></p>
                     </div>
                 </div>
                 <p class="opt-back"><a href="#build">↓ Back to the builder</a></p>
@@ -1083,6 +1127,11 @@ docker compose up -d</code></pre>
                     <h3>Do I need an internet connection?</h3>
                     <p><strong>In practice yes &mdash; because of the camera, not the software.</strong> BirdWatchAI identifies birds entirely on your own machine and keeps detecting with the internet unplugged. It only reaches out for push notifications, email alerts, weather, update checks, and community sharing if you turn it on.</p>
                     <p>The camera is the catch. Most consumer Wi-Fi cameras &mdash; including the <strong>Tapo C113</strong> we recommend &mdash; hold a connection to the manufacturer's service and <strong>stop serving their RTSP stream when they lose internet</strong>. If your connection drops, video stops arriving and there is nothing for BirdWatchAI to look at. That is the camera's behavior, not ours. If a genuinely offline setup matters to you, a wired PoE camera that streams RTSP without a cloud account will keep running on a network with no internet at all.</p>
+                </div>
+
+                <div class="faq-item">
+                    <h3>Can I use Classroom at home with my own children?</h3>
+                    <p>Yes: that is <a href="#home-classroom">Home Classroom</a>. Each child gets their own profile at their own level, and the lessons come from your feeder or, if you do not have one, from public BirdWatchAI feeders. It is free for 7 days, then $39 a year for up to four children. Your children never sign in and nothing about them is stored; you choose what to call each profile.</p>
                 </div>
 
                 <!-- The first question every school asks, answered before they

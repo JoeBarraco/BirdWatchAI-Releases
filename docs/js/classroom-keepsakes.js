@@ -350,6 +350,7 @@ async function ckCardHtml(room, L) {
     <div id="ck-card" class="ck-card">
         <div class="ck-card-head">
             ${logo ? `<img class="ck-logo" src="${esc(logo)}" alt="" onerror="this.remove()">` : ''}
+            ${typeof clClassLogoHtml === 'function' ? clClassLogoHtml(room, 'ck-logo') : ''}
             <div>
                 <div class="ck-kicker">Today in ${esc(room.name)}${school ? ` · ${esc(school)}` : ''}</div>
                 <div class="ck-date">${esc(ckDate(L.when, { weekday: 'long', month: 'long', day: 'numeric' }))}</div>
@@ -463,7 +464,7 @@ async function showClassroomJournal(roomId) {
         <div id="ck-journal" class="ck-journal">
             <div class="ck-jhead">
                 <div class="ck-kicker">${esc(school)}</div>
-                <h3>📔 ${esc(room.name)}’s bird journal</h3>
+                <h3>${typeof clClassLogoHtml === 'function' && room.logo_url ? clClassLogoHtml(room, 'cl-inline') : '📔'} ${esc(room.name)}’s bird journal</h3>
                 <div class="classroom-muted">School year ${esc(yr.label)} · ${esc(room.home_feeder_name || 'our feeder')} · up to ${esc(ckDate(new Date()))}</div>
             </div>
             <div class="classroom-hsummary">
@@ -548,7 +549,11 @@ async function showClassroomCertificate(roomId, term) {
         <p class="classroom-muted ck-noprint">Prints on one landscape page. The name you type is used for this printout only and is not saved.</p>
         <div id="ck-cert" class="ck-cert">
             <div class="ck-cert-inner">
-                ${logo ? `<img class="ck-cert-logo" src="${esc(logo)}" alt="" onerror="this.remove()">` : '<div class="ck-cert-logo ck-cert-emoji">🐦</div>'}
+                <div class="ck-cert-logos">
+                ${logo ? `<img class="ck-cert-logo" src="${esc(logo)}" alt="" onerror="this.remove()">` : ''}
+                ${typeof clClassLogoHtml === 'function' ? clClassLogoHtml(room, 'ck-cert-logo') : ''}
+                ${!logo && !room.logo_url ? '<div class="ck-cert-logo ck-cert-emoji">🐦</div>' : ''}
+                </div>
                 <div class="ck-cert-kicker">Certificate of Bird Watching</div>
                 <div class="ck-cert-sub">is proudly awarded to</div>
                 <div class="ck-cert-to" id="ck-cert-to">${esc(ckCert.to || ' ')}</div>

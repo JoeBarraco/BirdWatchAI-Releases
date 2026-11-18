@@ -3266,3 +3266,42 @@ body.ticker-visible { padding-top: 32px; }
     .community-price-table th,
     .community-price-table td { padding: 0.45rem 0.4rem; }
 }
+
+/* ── Home Classroom band (index.html #home-classroom) ───────────────
+   Same family as .build-cta: a white card on cream with the primary
+   border, so it reads as one of the page's call-outs, with the lesson
+   screenshot alongside on wide screens and under the text on narrow ones. */
+.home-classroom {
+    padding: var(--space-xl) var(--space-md);
+    background: var(--color-cream);
+    border-top: 1px solid var(--color-gray-200);
+    border-bottom: 1px solid var(--color-gray-200);
+}
+.home-classroom-inner {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+    gap: var(--space-lg);
+    align-items: center;
+    max-width: 1150px;
+    margin: 0 auto;
+    padding: var(--space-lg);
+    background: var(--color-white);
+    border: 2px solid var(--color-primary);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+}
+.home-classroom-text h2 { font-size: 1.75rem; margin-bottom: var(--space-xs); }
+.home-classroom-text > p { font-size: 1rem; line-height: 1.6; color: var(--color-gray-700); }
+.home-classroom-text .pricing-features { margin: var(--space-sm) 0; }
+.home-classroom-price { margin: var(--space-sm) 0; }
+.home-classroom-actions { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
+.home-classroom-shot { margin: 0; }
+.home-classroom-shot img {
+    display: block; width: 100%; height: auto;
+    border-radius: var(--radius-md, 8px); border: 1px solid var(--color-gray-200);
+    box-shadow: var(--shadow-md);
+}
+.home-classroom-shot figcaption { font-size: 0.8125rem; color: var(--color-gray-500); margin-top: var(--space-xs); text-align: center; }
+@media (max-width: 900px) {
+    .home-classroom-inner { grid-template-columns: 1fr; }
+}

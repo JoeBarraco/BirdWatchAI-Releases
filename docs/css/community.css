@@ -4092,15 +4092,17 @@
    corner — the complaint that put it there was about finding the way out,
    not about where it sat — and it is filled rather than outlined so it still
    reads as the one control you reach for in a hurry. */
+/* Styled as the feed navbar's "← BirdWatchAI" link: white, semibold, no
+   box, underlined on hover, then a divider. A <button> for the keyboard. */
 .classroom-head-back {
     flex: 0 0 auto;
-    font-family: inherit; font-size: 0.8rem; font-weight: 600;
-    padding: 6px 14px; white-space: nowrap;
-    border: 1px solid rgba(255,255,255,0.55); border-radius: 4px;
-    background: rgba(255,255,255,0.14); color: #fff; cursor: pointer;
-    transition: background 0.15s;
+    font-family: inherit; font-size: 0.85rem; font-weight: 600;
+    padding: 0; margin-right: 0.75rem; white-space: nowrap;
+    border: none; background: none; color: #fff; cursor: pointer;
+    align-self: center;
 }
-.classroom-head-back:hover { background: rgba(255,255,255,0.28); }
+.classroom-head-back:hover, .classroom-head-back:focus-visible { text-decoration: underline; }
+.classroom-head-sep { color: rgba(255,255,255,0.7); margin-right: 0.75rem; align-self: center; font-weight: 600; }
 
 /* The navbar drops the name first when it runs out of room; this does the
    same, and at the same width, so the two bars shed controls alike. */
@@ -6728,3 +6730,18 @@
 .ch-pending { display: flex; gap: 0.6rem; align-items: center; margin: 0.3rem 0; }
 .ch-codebox { align-items: center; flex-wrap: wrap; }
 .ch-buy { text-decoration: none; }
+
+/* ── Class logos (classroom-logos.js) ───────────────────────────── */
+.cl-logo { object-fit: contain; border-radius: 6px; vertical-align: middle; flex: none; }
+.cl-row   { width: 1.4rem; height: 1.4rem; margin-right: 0.35rem; }
+.cl-head  { width: 2.4rem; height: 2.4rem; }
+.cl-stage { width: 1.8rem; height: 1.8rem; margin-right: 0.35rem; }
+.cl-inline { width: 1.6em; height: 1.6em; }
+.cl-controls { display: inline-flex; gap: 0.3rem; align-items: center; }
+.cl-pick input[type=file] { display: none; }
+.cl-pick { cursor: pointer; }
+.ch-logo .cl-logo { width: 2rem; height: 2rem; }
+.ch-logo-row { display: flex; }
+.ck-cert-logos { display: flex; gap: 0.6rem; justify-content: center; align-items: center; }
+/* When the header wraps on a phone the divider ends up alone on its line. */
+@media (max-width: 640px) { .classroom-head-sep { display: none; } }

@@ -204,9 +204,11 @@ async function chRenderBanner() {
             <button class="classroom-btn" onclick="chApplyCode()">Apply</button>
         </div>` : '';
 
-    box.style.display = (term || connect) ? '' : 'none';
+    box.style.display = '';
     box.className = 'classroom-term ch-banner' + (s && s.state === 'lapsed' ? ' lapsed' : '');
-    box.innerHTML = `${term ? `<div class="ch-term"><span>${term}</span>${codeBox}</div>` : ''}${connect}`;
+    const logoCtl = typeof chLogoHtml === 'function' ? chLogoHtml() : '';
+    box.innerHTML = `${term ? `<div class="ch-term"><span>${term}</span>${codeBox}</div>` : ''}
+        ${logoCtl ? `<div class="ch-logo-row">${logoCtl}</div>` : ''}${connect}`;
 }
 
 async function chApprove(feederId) {
@@ -243,3 +245,53 @@ function chSchoolRows(rows) {
             ? { ...r, label: 'Add a child', meta: r.disabled ? r.meta : 'A name or nickname, and their grade' }
             : r);
 }
+
+// ── ?home=1 — the homepage's "Start your free week" lands here ──────────
+//
+// Opens Classroom on the Home Classroom: the offer for someone with no
+// classroom, the Home Classroom row's offer for a teacher, or their Home
+// Classroom itself if they already have one. Signed out, it asks them to
+// sign in first and finishes the job when they have (updateClassroomNavUI
+// runs again on every sign-in, and calls this).
+let chHomeLinkDone = false;
+let chHomeLinkAsked = false;
+
+function chFollowHomeLink() {
+    if (chHomeLinkDone) return;
+    let wanted = false;
+    try { wanted = new URLSearchParams(location.search).get('home') === '1'; } catch { /* no */ }
+    if (!wanted) { chHomeLinkDone = true; return; }
+    const signedIn = typeof hasAuthSession === 'function' && hasAuthSession();
+    if (!signedIn) {
+        if (!chHomeLinkAsked && typeof openUserLogin === 'function') {
+            chHomeLinkAsked = true;
+            openUserLogin();
+            showToast('Sign in or create a free account to start your Home Classroom.');
+        }
+        return;
+    }
+    chHomeLinkDone = true;
+    if (typeof openClassroomPanel !== 'function') return;
+    const mine = chHomeCommunity();
+    openClassroomPanel();
+    if (mine) {
+        const sel = document.getElementById('classroom-community-select');
+        if (sel) sel.value = mine.id;
+        classroomCommunityId = mine.id;
+        if (typeof refreshClassroomPanel === 'function') refreshClassroomPanel();
+    } else if (typeof classroomCommunities === 'function' && classroomCommunities().length) {
+        // A teacher: their school opens first; put the offer beside it.
+        setTimeout(() => { if (typeof pickClassroomAction === 'function') pickClassroomAction('home'); }, 600);
+    }
+}
+
+// Signed out, nothing calls updateClassroomNavUI on load, so check once the
+// page has settled. Four seconds, not sooner: a returning visitor's saved
+// sign-in is restored asynchronously, and asking someone who IS signed in to
+// sign in would be worse than waiting. Signed in, the membership refresh
+// gets there first and this does nothing.
+window.addEventListener('load', () => {
+    setTimeout(() => {
+        if (!chHomeLinkDone && !(typeof hasAuthSession === 'function' && hasAuthSession())) chFollowHomeLink();
+    }, 4000);
+});

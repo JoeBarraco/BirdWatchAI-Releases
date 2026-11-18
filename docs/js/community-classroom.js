@@ -131,6 +131,8 @@ function updateClassroomNavUI() {
     // ?classroom= link can actually be resolved — before it, there is nothing
     // to look the id up in.
     if (show) followClassroomDeepLink();
+    // ?home=1 from the homepage's Home Classroom section (classroom-home.js).
+    if (typeof chFollowHomeLink === 'function') chFollowHomeLink();
 }
 
 // One shot per page load: a teacher who closes the panel should not have it
@@ -13028,17 +13030,20 @@ function renderClassroomList() {
         // A pooled class is not missing a feeder, so it must not be scolded
         // for having none — "No feeder" in amber is a prompt to go and fix
         // something, and here there is nothing to fix.
-        const feeder = r.question_scope === 'community'
-            ? 'All community feeders'
+        const homeHere = typeof chIsHome === 'function' && chIsHome();
+        const feeder = r.question_scope === 'community' && !(homeHere && (r.partners || []).length)
+            ? (homeHere ? 'All your feeders' : 'All community feeders')
             : r.home_feeder_id
             ? `<span class="classroom-dot ${seen ? 'on' : 'off'}"></span>${esc(r.home_feeder_name || 'Feeder')}`
+            : (r.partners || []).length
+            ? `Public: ${esc(r.partners[0].display_name || 'feeder')}${r.partners.length > 1 ? ` +${r.partners.length - 1}` : ''}`
             : '<span class="classroom-warn">No feeder</span>';
 
         return `
         <button type="button" class="classroom-row${
                 classroomPickIs('class', r.id) && r.id === picked ? ' on' : ''}"
                 data-room="${esc(r.id)}" onclick="selectClassroom('${escJs(r.id)}')">
-            <span class="classroom-row-name">${esc(r.name)}</span>
+            <span class="classroom-row-name">${typeof clClassLogoHtml === 'function' ? clClassLogoHtml(r, 'cl-row') : ''}${esc(r.name)}</span>
             <span class="classroom-row-meta">
                 ${esc(GRADE_BAND_LABELS[r.grade_band] || r.grade_band)} · ${feeder}
             </span>
@@ -13114,7 +13119,7 @@ function renderClassroomActions() {
              they are not themselves something to press. -->
         <div class="classroom-box classroom-box-what">
         <div class="classroom-actions-head">
-            <h4 class="classroom-h">${esc(r.name)}</h4>
+            ${typeof clClassLogoHtml === 'function' ? clClassLogoHtml(r, 'cl-head') : ''}<h4 class="classroom-h">${esc(r.name)}</h4>
             <span class="classroom-pill">${esc(GRADE_BAND_LABELS[r.grade_band] || r.grade_band)}</span>
             <!-- ⚠ ON THE TITLE LINE, NOT IN A GROUP OF THEIR OWN.
                  These three act on the class as a THING — rename it, link to
@@ -13134,6 +13139,7 @@ function renderClassroomActions() {
                  was also already rebuilt once to get per-class buttons OUT
                  of that list — see the note on .classroom-panes. -->
             <span class="classroom-head-actions">
+                ${typeof clClassLogoControls === 'function' ? clClassLogoControls(r) : ''}
                 <button class="classroom-btn" onclick="editClassroom('${escJs(r.id)}')">✏️ Edit</button>
                 <button class="classroom-btn" onclick="copyClassroomLink('${escJs(r.id)}')"
                         title="A link that opens straight into this class">🔗 Link</button>
@@ -18372,7 +18378,7 @@ function renderClassroomStage() {
         <div class="classroom-stage-bar">
             <div>
                 ${cmStageBrandHtml()}
-                <strong>${esc(S.room.name)}</strong>
+                ${typeof clClassLogoHtml === 'function' ? clClassLogoHtml(S.room, 'cl-stage') : ''}<strong>${esc(S.room.name)}</strong>
                 <span class="classroom-pill">${esc(band)}</span>
                 ${S.noData ? '<span class="classroom-pill warn">Feeder quiet — '
                            + 'general bird questions today</span>' : ''}
@@ -19079,7 +19085,7 @@ function renderClassroomLobby() {
         <div class="classroom-stage-bar">
             <div>
                 ${cmStageBrandHtml()}
-                <strong>${esc(S.room.name)}</strong>
+                ${typeof clClassLogoHtml === 'function' ? clClassLogoHtml(S.room, 'cl-stage') : ''}<strong>${esc(S.room.name)}</strong>
                 <span class="classroom-pill">${esc(GRADE_BAND_LABELS[S.room.grade_band] || S.room.grade_band)}</span>
             </div>
             <div class="classroom-stage-bar-right">
