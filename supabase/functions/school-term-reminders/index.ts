@@ -208,6 +208,119 @@ ${howToRenew}
   }
 }
 
+// ── Home Classrooms (setup-home-reminders.sql) ─────────────────────────────
+//
+// A family's Home Classroom gets its own mail: school renewal mail talks
+// about a school's term and classes, and leaves homes out. Two trial stages
+// (the free week ends with no grace) and the four school stages for a
+// family that has paid, which gets the school grace. Postgres decides the
+// stage, exactly as for schools.
+
+type HomeStage = 'trial_t2' | 'trial_ended' | Stage;
+
+interface DueHome {
+  community_id: string;
+  slug: string;
+  name: string;
+  expires_at: string;
+  grace_ends_at: string;
+  stage: HomeStage;
+  days_left: number;
+  owner_email: string | null;
+  owner_name: string;
+  child_count: number;
+}
+
+const HOME_BUY_URL = Deno.env.get('HOME_BUY_URL') ?? 'https://birdbrainllc.gumroad.com/l/bwa-home-classroom';
+
+function composeHome(t: DueHome): { subject: string; text: string } {
+  const greeting = t.owner_name ? `${t.owner_name},\n\n` : 'Hello,\n\n';
+  const kids = t.child_count
+    ? `You have ${plural(t.child_count, 'child', 'children')} set up in ${t.name}.`
+    : `You have not added a child to ${t.name} yet.`;
+  const howToBuy =
+`A year of Home Classroom is $39, for up to four children:
+
+    ${HOME_BUY_URL}
+
+The purchase email has a code. Open ${COMMUNITY_URL}, sign in,
+open Classroom, and paste the code into the "Have a code?" box at the top.
+If you buy before the date above, the year is added on top of what is left,
+not started over.`;
+  const keep =
+`Nothing is deleted: every lesson, journal and certificate is still there,
+and it all carries on the moment a code is applied.`;
+
+  switch (t.stage) {
+    case 'trial_t2':
+      return {
+        subject: `Your Home Classroom free week ends ${t.days_left <= 0 ? 'today' : t.days_left === 1 ? 'tomorrow' : `in ${t.days_left} days`}`,
+        text: `${greeting}Your free week of BirdWatchAI Home Classroom ends on ${onDate(t.expires_at)}.
+
+${kids} After that date you can still look at everything, but new lessons will
+need a code.
+
+${howToBuy}
+
+-- Bird Brain Solutions LLC
+`,
+      };
+    case 'trial_ended':
+      return {
+        subject: 'Your Home Classroom free week has ended',
+        text: `${greeting}Your free week of BirdWatchAI Home Classroom ended on ${onDate(t.expires_at)}, so new
+lessons are paused.
+
+${keep}
+
+${howToBuy}
+
+-- Bird Brain Solutions LLC
+`,
+      };
+    case 't30':
+    case 't7':
+      return {
+        subject: `Home Classroom renews in ${plural(t.days_left, 'day', 'days')} — ${t.name}`,
+        text: `${greeting}Your year of BirdWatchAI Home Classroom ends on ${onDate(t.expires_at)}, in ${plural(t.days_left, 'day', 'days')}.
+
+${kids} Nothing changes before then. After it, lessons keep working for a
+further 30 days, until ${onDate(t.grace_ends_at)}.
+
+${howToBuy}
+
+-- Bird Brain Solutions LLC
+`,
+      };
+    case 'expired':
+      return {
+        subject: `Home Classroom has ended — lessons still run until ${onDate(t.grace_ends_at)}`,
+        text: `${greeting}Your year of BirdWatchAI Home Classroom ended on ${onDate(t.expires_at)}.
+
+Lessons still work until ${onDate(t.grace_ends_at)}. After that, new lessons pause.
+${keep}
+
+${howToBuy}
+
+-- Bird Brain Solutions LLC
+`,
+      };
+    case 'stopped':
+      return {
+        subject: `Home Classroom lessons are paused — ${t.name}`,
+        text: `${greeting}Your year of BirdWatchAI Home Classroom ended on ${onDate(t.expires_at)}, and new lessons
+are now paused.
+
+${keep}
+
+${howToBuy}
+
+-- Bird Brain Solutions LLC
+`,
+      };
+  }
+}
+
 async function sendMail(to: string, subject: string, text: string): Promise<boolean> {
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -240,7 +353,14 @@ Deno.serve(async (req) => {
   }
 
   const due = (data ?? []) as DueTerm[];
-  if (!due.length) {
+
+  // Families. A failure here is logged and reported but does not stop the
+  // schools' mail, which is the older and more important of the two.
+  const { data: homeData, error: homeErr } = await supabase.rpc('home_terms_due_reminders');
+  if (homeErr) console.error('home due-reminders query failed:', homeErr.message);
+  const homes = (homeData ?? []) as DueHome[];
+
+  if (!due.length && !homes.length) {
     return new Response(JSON.stringify({ ok: true, due: 0 }), { status: 200 });
   }
 
@@ -275,20 +395,44 @@ Deno.serve(async (req) => {
     sent.push(`${t.slug} (${t.stage})`);
   }
 
+  for (const t of homes) {
+    if (!t.owner_email) {
+      console.error(`${t.slug}: no owner email; cannot send ${t.stage} home reminder`);
+      skipped.push(`${t.slug} (no owner email)`);
+      continue;
+    }
+    const { subject, text } = composeHome(t);
+    const ok = await sendMail(t.owner_email, subject, text);
+    if (!ok) { skipped.push(`${t.slug} (send failed)`); continue; }
+    const { data: won, error: markErr } = await supabase.rpc('school_reminder_mark', {
+      p_community_id:    t.community_id,
+      p_stage:           t.stage,
+      p_term_expires_at: t.expires_at,
+      p_sent_to:         t.owner_email,
+    });
+    if (markErr) console.error(`${t.slug}: mark failed: ${markErr.message}`);
+    if (won === false) console.warn(`${t.slug}: another run had already marked ${t.stage}`);
+    sent.push(`${t.slug} (home ${t.stage})`);
+  }
+
   // The roll-up is what turns "their term ends in 30 days" into an invoice
   // going out. Only when something actually happened.
   if (ADMIN_EMAIL && (sent.length || skipped.length)) {
     const lines = due.map(t =>
       `  ${t.name} [${t.slug}] — ${t.stage}, ends ${onDate(t.expires_at)}`
       + `, ${plural(t.classroom_count, 'class', 'classes')}`
-      + `, owner ${t.owner_email ?? 'UNKNOWN'}`);
+      + `, owner ${t.owner_email ?? 'UNKNOWN'}`)
+      .concat(homes.map(t =>
+      `  HOME ${t.name} [${t.slug}] — ${t.stage}, ends ${onDate(t.expires_at)}`
+      + `, ${plural(t.child_count, 'child', 'children')}`
+      + `, owner ${t.owner_email ?? 'UNKNOWN'}`));
     await sendMail(ADMIN_EMAIL,
-      `School renewals: ${sent.length} reminder(s) sent`,
+      `School & Home Classroom renewals: ${sent.length} reminder(s) sent`,
       `Reminders sent today:\n\n${lines.join('\n')}\n`
       + (skipped.length ? `\nNot sent:\n  ${skipped.join('\n  ')}\n` : ''));
   }
 
   return new Response(
-    JSON.stringify({ ok: true, due: due.length, sent: sent.length, skipped }),
+    JSON.stringify({ ok: true, due: due.length, homes: homes.length, sent: sent.length, skipped }),
     { status: 200 });
 });
