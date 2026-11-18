@@ -17,6 +17,21 @@
 //   * says "child" where a school says "class", and leaves out the parts
 //     of school that mean nothing at home (the school challenge, staff).
 
+// Price, decided 2026-11-18: $39 a year for up to four children, after a
+// 30-day free trial. The Gumroad product is bwa-home-classroom (see the
+// webhook's SCHOOL_PRODUCTS). CH_BUY_READY stays false until that product
+// exists on Gumroad, so nobody is sent to a page that is not there yet;
+// until then the banner states the price and how to get a code.
+const CH_PRICE = '$39 a year';
+const CH_BUY_URL = 'https://birdbrainllc.gumroad.com/l/bwa-home-classroom';
+const CH_BUY_READY = false;
+
+function chBuyHtml() {
+    return CH_BUY_READY
+        ? `<a class="classroom-btn-primary ch-buy" href="${CH_BUY_URL}" target="_blank" rel="noopener">Get a year, ${CH_PRICE.replace(' a year', '')}</a>`
+        : `<span class="classroom-muted">${CH_PRICE}. Write to support@birdwatchai.com for a code.</span>`;
+}
+
 function chIsHome(communityId) {
     const id = communityId || (typeof classroomCommunityId !== 'undefined' ? classroomCommunityId : '');
     const c = (typeof myCommunities !== 'undefined' && Array.isArray(myCommunities))
@@ -46,7 +61,8 @@ function chPitchHtml() {
             <li>A journal of your year, a certificate for the fridge, and a bird count you can send to eBird</li>
             <li>Nothing about your children is stored: no accounts for them, no names unless you type one</li>
         </ul>
-        <p><strong>Free for 30 days.</strong> You need a BirdWatchAI feeder; you connect it in the next step.</p>
+        <p><strong>Free for 30 days, then ${CH_PRICE}</strong> for up to four children. No card needed to start.
+           You need a BirdWatchAI feeder; you connect it in the next step.</p>
         <label class="ch-name">What shall we call it?
             <input type="text" id="ch-name" maxlength="80" placeholder="e.g. The Lopez Kitchen Window"></label>
         <button class="classroom-btn-primary big" id="ch-start-btn" onclick="chStart()">Start my Home Classroom</button>
@@ -146,6 +162,7 @@ async function chRenderBanner() {
 
     const codeBox = s && !s.perpetual ? `
         <div class="ch-codebox">
+            ${chBuyHtml()}
             <input type="text" id="ch-code" maxlength="20" placeholder="Have a code? BWH-…" autocomplete="off">
             <button class="classroom-btn" onclick="chApplyCode()">Apply</button>
         </div>` : '';

@@ -6726,3 +6726,5 @@
 .ch-connect ol { margin: 0.3rem 0 0.4rem; padding-left: 1.2rem; line-height: 1.8; }
 .ch-code { font-size: 1.05rem; font-weight: 700; padding: 0.1rem 0.4rem; border-radius: 4px; background: var(--bg-page); }
 .ch-pending { display: flex; gap: 0.6rem; align-items: center; margin: 0.3rem 0; }
+.ch-codebox { align-items: center; flex-wrap: wrap; }
+.ch-buy { text-decoration: none; }

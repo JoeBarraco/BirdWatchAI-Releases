@@ -194,6 +194,10 @@ function matchCommunityTier(
 // school product carries the same medium (25) feeder tier.
 type SchoolProduct =
   | { kind: 'renewal'; months: number; classes: number | null }
+  // Home Classroom (supabase/setup-home-classroom.sql): a renewal code for
+  // a family's Home Classroom, marked for_home so it cannot renew a school
+  // at the family price. classes = how many children.
+  | { kind: 'home'; months: number; classes: number }
   | { kind: 'community'; tier: 'small' | 'medium' | 'large'; months: number;
       classes: number | null };
 
@@ -212,6 +216,8 @@ const SCHOOL_PRODUCTS: Record<string, SchoolProduct> = {
   'bwa-classroom-5':         { kind: 'renewal',   months: 12, classes: 5 },
   'bwa-classroom-25':        { kind: 'renewal',   months: 12, classes: 25 },
   'bwa-classroom-unlimited': { kind: 'renewal',   months: 12, classes: null },
+  //   Home Classroom   $39 a year, up to 4 children (decided 2026-11-18)
+  'bwa-home-classroom':      { kind: 'home',      months: 12, classes: 4 },
 };
 
 // Until then, and for the opaque product_ids Gumroad assigns to products made
@@ -242,6 +248,14 @@ const SCHOOL_PRODUCTS_EXTRA: Record<string, SchoolProduct> = Object.fromEntries(
         if (!Number.isInteger(months) || months < 1 || months > 60) return ['', null];
         if (classes === undefined) return ['', null];
         return [normalizeProductRef(k), { kind: 'renewal', months, classes }];
+      }
+      if (bits[0] === 'home') {
+        // home:<months>[:<children>], children defaulting to 4.
+        const months = Number(bits[1]);
+        const kids = bits[2] === undefined ? 4 : Number(bits[2]);
+        if (!Number.isInteger(months) || months < 1 || months > 60) return ['', null];
+        if (!Number.isInteger(kids) || kids < 1 || kids > 10) return ['', null];
+        return [normalizeProductRef(k), { kind: 'home', months, classes: kids }];
       }
       if (bits[0] === 'community' && bits.length >= 3) {
         const tier = bits[1];
@@ -297,7 +311,8 @@ const TIER_FEEDERS: Record<string, number> = { small: 5, medium: 25, large: 100 
 // BWC creates a community, BWS renews a school. The prefix is for humans: a
 // support mail that quotes a code says which product it is without a lookup,
 // and a customer holding both can tell them apart.
-function newUnlockCode(prefix: 'BWC' | 'BWS' = 'BWC'): string {
+// BWH is a Home Classroom code, which renews a family's Home Classroom only.
+function newUnlockCode(prefix: 'BWC' | 'BWS' | 'BWH' = 'BWC'): string {
   const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no I, O, 0, 1
   const bytes = new Uint8Array(12);
   crypto.getRandomValues(bytes);
@@ -542,7 +557,7 @@ support@birdwatchai.com from this address and we will send it again.
 type CodeGrant =
   | { product: 'community'; tier: 'small' | 'medium' | 'large';
       schoolMonths?: number; classrooms?: number | null }
-  | { product: 'school'; months: number; classrooms?: number | null };
+  | { product: 'school'; months: number; classrooms?: number | null; home?: boolean };
 
 /**
  * Mint (or revoke) an unlock code for one Gumroad sale.
@@ -560,7 +575,7 @@ async function handleCodeSale(s: {
 }): Promise<Response> {
   const g = s.grant;
   const label = g.product === 'school'
-    ? `school-renewal ${g.months}mo`
+    ? `${g.home ? 'home' : 'school'}-renewal ${g.months}mo`
     : `community ${g.tier}${g.schoolMonths ? ` +school ${g.schoolMonths}mo` : ''}`;
   const log = (m: string) => console.log(`[${label} ${s.saleId}] ${m}`);
 
@@ -630,6 +645,9 @@ async function handleCodeSale(s: {
           product: 'school',
           school_months: g.months,
           ...(g.classrooms !== undefined ? { classroom_limit: g.classrooms } : {}),
+          // A home code only fits a Home Classroom; community_apply_school_code
+          // refuses it on a school.
+          ...(g.home ? { for_home: true } : {}),
         }
       : {
           product: 'community',
@@ -640,7 +658,7 @@ async function handleCodeSale(s: {
         };
     // Retry on the astronomically-unlikely code collision rather than 500.
     for (let attempt = 0; attempt < 5 && !code; attempt++) {
-      const candidate = newUnlockCode(g.product === 'school' ? 'BWS' : 'BWC');
+      const candidate = newUnlockCode(g.product === 'school' ? (g.home ? 'BWH' : 'BWS') : 'BWC');
       const { error } = await supabase.from('community_unlock_codes').insert({
         code: candidate,
         ...payload,
@@ -671,7 +689,9 @@ async function handleCodeSale(s: {
     log('minted');
   }
 
-  if (g.product === 'school') {
+  if (g.product === 'school' && g.home) {
+    await sendHomeCodeEmail(s.email, s.name, code, g.months, g.classrooms ?? 4);
+  } else if (g.product === 'school') {
     await sendSchoolRenewalEmail(s.email, s.name, code, g.months, g.classrooms);
   } else {
     await sendCommunityCodeEmail(s.email, s.name, code, g.tier, g.schoolMonths,
@@ -837,6 +857,57 @@ If anything goes wrong, write to support@birdwatchai.com from this address.
   }
 }
 
+async function sendHomeCodeEmail(
+  email: string, name: string, code: string, months: number, children: number,
+): Promise<void> {
+  if (!RESEND_API_KEY) {
+    console.warn(`RESEND_API_KEY unset — home code ${code} stored but NOT emailed to ${email}`);
+    return;
+  }
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: COMMUNITY_FROM_EMAIL,
+      to: [email],
+      subject: 'Your BirdWatchAI Home Classroom code',
+      text: `${name ? name + ',\n\n' : ''}Thanks for getting BirdWatchAI Home Classroom.
+
+Your code is:
+
+    ${code}
+
+It adds ${months} months of Home Classroom, for up to ${children} child${children === 1 ? '' : 'ren'}.
+
+To use it:
+
+  1. Sign in at https://www.birdwatchai.com/docs/community.html
+     with the same account you started your Home Classroom with
+  2. Open Classroom
+  3. Paste the code into the "Have a code?" box at the top, and press Apply
+
+No Home Classroom yet? Open Classroom and press "Start my Home Classroom"
+first, then apply the code.
+
+Applying it early does not cost you anything: the ${months} months are added to
+whatever is left of your current term or trial, not started over. The code
+can only be used once, and it is for a Home Classroom: it will not renew a
+school's Classroom.
+
+If anything goes wrong, write to support@birdwatchai.com from this address.
+
+-- Bird Brain Solutions LLC
+`,
+    }),
+  });
+  if (!res.ok) {
+    console.error('Resend delivery failed (home code):', res.status, await res.text());
+  }
+}
+
 // ── Handler ─────────────────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
@@ -895,7 +966,10 @@ Deno.serve(async (req) => {
   // cannot start a lesson.
   const schoolProduct = matchSchoolProduct(p, productId, permalink);
   if (schoolProduct) {
-    const grant: CodeGrant = schoolProduct.kind === 'renewal'
+    const grant: CodeGrant = schoolProduct.kind === 'home'
+      ? { product: 'school', months: schoolProduct.months,
+          classrooms: schoolProduct.classes, home: true }
+      : schoolProduct.kind === 'renewal'
       ? { product: 'school', months: schoolProduct.months,
           classrooms: schoolProduct.classes }
       : { product: 'community', tier: schoolProduct.tier,
