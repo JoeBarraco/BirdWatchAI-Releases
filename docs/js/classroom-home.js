@@ -61,7 +61,7 @@ function chPitchHtml() {
         <ul>
             <li>One “class” per child, each at their own level (K–2, 3–5 or 6–8)</li>
             <li>Play on the TV or a laptop; siblings can answer on their own phones or tablets</li>
-            <li>A journal of your year, a certificate for the fridge, and a bird count you can send to eBird</li>
+            <li>A journal of your year, and a certificate for the fridge</li>
             <li>Nothing about your children is stored: no accounts for them, no names unless you type one</li>
         </ul>
         <p><strong>Free for ${CH_TRIAL_DAYS} days, then ${CH_PRICE}</strong> for up to four children. No card needed to start.

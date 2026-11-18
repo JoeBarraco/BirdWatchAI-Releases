@@ -13167,9 +13167,6 @@ function renderClassroomActions() {
                         onclick="startClassroomSession('${escJs(r.id)}','teacher_led')"${noStart}>▶ On the board</button>
                 <button class="classroom-btn-primary"
                         onclick="startClassroomSession('${escJs(r.id)}','join_code')"${noStart}>📱 With devices</button>
-                <!-- classroom-birdcount.js: the class counts in person, for eBird. -->
-                <button class="classroom-btn" onclick="showClassroomBirdCount('${escJs(r.id)}')"
-                        title="Watch the feeder through the window, count the birds, and send the count to eBird">🔭 Bird count</button>
             </div>
         </div>
 

@@ -6686,33 +6686,6 @@
 .cc-es-choice { display: block; font-size: 0.78em; font-weight: 500; margin-top: 0.1em; }
 .cc-es-reveal { font-size: clamp(1.05rem, 2.8vmin, 2rem); font-weight: 600; margin-top: 0.4vmin; }
 
-/* ── Class bird count (classroom-birdcount.js), on the stage ────── */
-.cb-wrap { margin: auto; padding: 1.2rem; width: min(100%, 1100px); max-height: 100%; overflow: auto; box-sizing: border-box; }
-.cb-wrap h2 { margin: 0 0 0.4rem; font-size: clamp(1.4rem, 4vmin, 2.6rem); }
-.cb-lead { font-size: clamp(1rem, 2.6vmin, 1.6rem); line-height: 1.4; margin: 0 0 0.8rem; }
-.cb-rule { background: rgba(201,122,0,0.12); border: 2px solid #c97a00; border-radius: 10px; padding: 0.6rem 0.8rem;
-           font-weight: 700; font-size: clamp(1rem, 2.4vmin, 1.5rem); margin-bottom: 0.9rem; }
-.cb-rule span { display: block; font-weight: 400; font-size: 0.75em; margin-top: 0.2rem; }
-.cb-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 0.6rem 1rem; margin-bottom: 0.5rem; }
-.cb-form label { display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem; color: var(--color-gray-700); }
-.cb-form input, .cb-form select { font-size: 1rem; padding: 0.35rem 0.45rem; }
-.cb-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; margin-top: 1rem; }
-.cb-top { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
-.cb-clock { font-size: clamp(2rem, 7vmin, 4.5rem); font-weight: 800; font-variant-numeric: tabular-nums; color: var(--color-primary); }
-.cb-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); gap: 0.6rem; }
-.cb-tile { border: 2px solid var(--border); border-radius: 10px; background: var(--bg-card); padding: 0.5rem;
-           display: flex; flex-direction: column; gap: 0.35rem; }
-.cb-tile.on { border-color: var(--color-primary); }
-.cb-photo { width: 100%; height: 5.5rem; border-radius: 6px; }
-.cb-name { font-weight: 700; font-size: clamp(0.95rem, 2.2vmin, 1.25rem); }
-.cb-ctl { display: flex; align-items: center; justify-content: space-between; gap: 0.4rem; }
-.cb-ctl button { font-size: 1.4rem; min-width: 2.6rem; min-height: 2.6rem; }
-.cb-n { font-size: clamp(1.5rem, 4.5vmin, 2.6rem); font-weight: 800; font-variant-numeric: tabular-nums; }
-.cb-add input { font-size: 1rem; padding: 0.3rem 0.4rem; }
-.cb-table { max-width: 28rem; margin: 0.5rem 0; }
-.cb-all { display: flex; gap: 0.5rem; align-items: center; margin-top: 0.6rem; }
-.cb-how { margin-top: 1rem; }
-
 /* ── Home Classroom (classroom-home.js) ─────────────────────────── */
 .ch-pitch { max-width: 44rem; color: var(--color-gray-900); font-size: 0.95rem; line-height: 1.5; }
 .ch-pitch h3 { font-size: 1.4rem; margin: 0 0 0.4rem; }
