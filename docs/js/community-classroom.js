@@ -13039,7 +13039,11 @@ function renderClassroomList() {
             ? `Public: ${esc(r.partners[0].display_name || 'feeder')}${r.partners.length > 1 ? ` +${r.partners.length - 1}` : ''}`
             : '<span class="classroom-warn">No feeder</span>';
 
-        return `
+        // Wrapped with a drag handle when there is more than one class to
+        // order (classroom-order.js). The handle sits beside the button, not
+        // inside it: a control inside a button is not a control.
+        const movable = classroomList.length > 1 && typeof clOrderHandleHtml === 'function';
+        return `${movable ? `<div class="cl-sort-item" data-room="${esc(r.id)}">${clOrderHandleHtml(r)}` : ''}
         <button type="button" class="classroom-row${
                 classroomPickIs('class', r.id) && r.id === picked ? ' on' : ''}"
                 data-room="${esc(r.id)}" onclick="selectClassroom('${escJs(r.id)}')">
@@ -13047,9 +13051,10 @@ function renderClassroomList() {
             <span class="classroom-row-meta">
                 ${esc(GRADE_BAND_LABELS[r.grade_band] || r.grade_band)} · ${feeder}
             </span>
-        </button>`;
-    }).join('') + schoolGroup;
+        </button>${movable ? '</div>' : ''}`;
+    }).join('').replace(/^/, '<div class="cl-sortable" id="cl-sortable">') + '</div>' + schoolGroup;
 
+    if (typeof clOrderInit === 'function') clOrderInit();
     renderClassroomActions();
 }
 

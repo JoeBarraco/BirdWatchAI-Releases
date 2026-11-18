@@ -6718,3 +6718,16 @@
 .ck-cert-logos { display: flex; gap: 0.6rem; justify-content: center; align-items: center; }
 /* When the header wraps on a phone the divider ends up alone on its line. */
 @media (max-width: 640px) { .classroom-head-sep { display: none; } }
+
+/* ── Ordering the class list (classroom-order.js) ───────────────── */
+.cl-sort-item { display: flex; align-items: stretch; gap: 0.25rem; }
+.cl-sort-item > .classroom-row { flex: 1 1 auto; min-width: 0; }
+.cl-handle {
+    flex: none; display: flex; align-items: center; justify-content: center;
+    width: 1.4rem; cursor: grab; color: var(--color-gray-500); font-size: 1.1rem;
+    border-radius: 6px; user-select: none; touch-action: none;
+}
+.cl-handle:hover, .cl-handle:focus-visible { color: var(--color-primary); background: var(--bg-page); outline: none; }
+.cl-dragging { opacity: 0.85; }
+.cl-dragging .classroom-row { box-shadow: 0 4px 14px rgba(0,0,0,0.18); }
+.cl-dragging .cl-handle { cursor: grabbing; }
