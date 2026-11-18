@@ -18226,6 +18226,10 @@ function renderClassroomStage() {
 
     const joinMode = S.mode === 'join_code';
 
+    // Once the answer is up, the chart points at its own evidence
+    // (classroom-stage-extras.js). Before the slide is drawn, not after.
+    if (S.revealed && typeof ccRevealPrepare === 'function') ccRevealPrepare(q);
+
     // Vote counts per choice, join-code mode only. HELD BACK while voting is
     // open and shown all at once when it closes. They used to fill in live,
     // and a projected bar creeping ahead is an instruction to the children
@@ -18303,6 +18307,7 @@ function renderClassroomStage() {
                 : (q.class_index === q.correct_index
                     ? '<div class="classroom-reveal-head ok">✅ The class got it</div>'
                     : '<div class="classroom-reveal-head miss">❌ Not quite</div>')}
+            ${typeof ccHowHtml === 'function' ? ccHowHtml(q) : ''}
             <div class="classroom-reveal-body">${esc(q.explain || '')}</div>
             ${q.fact ? `<div class="classroom-fact">💡 ${esc(q.fact)}</div>` : ''}
             ${learn}
@@ -18352,6 +18357,7 @@ function renderClassroomStage() {
         <div class="classroom-stage-foot">
             ${classroomFootControls(S, last, joinMode)}
             <button class="classroom-btn" onclick="skipClassroomQuestion()">Skip</button>
+            ${typeof ccVoiceControlsHtml === 'function' ? ccVoiceControlsHtml(S) : ''}
             <span class="classroom-rate" id="classroom-stage-rate">${
                 classroomRateButtonsHtml('live', S.index, (S.ratings || {})[q.template_id] || 0)}</span>
         </div>`;
@@ -18359,6 +18365,7 @@ function renderClassroomStage() {
     // After layout, not during: scrollHeight is meaningless until the browser
     // has laid the new markup out.
     classroomFitSoon();
+    if (typeof ccVoiceAfterRender === 'function') ccVoiceAfterRender(S);
 }
 
 /**
@@ -18861,6 +18868,8 @@ function classroomStageKeys(e) {
     const S = classroomSession;
     if (!S) return;
     if (e.key === 'Escape') { endClassroomSession(); return; }
+    if ((e.key === 'r' || e.key === 'R') && !e.ctrlKey && !e.metaKey && !e.altKey
+        && typeof ccVoiceToggle === 'function') { ccVoiceToggle(); return; }
     if (!S.revealed && /^[1-9]$/.test(e.key)) {
         const i = parseInt(e.key, 10) - 1;
         if (i >= S.questions[S.index].choices.length) return;
@@ -18890,6 +18899,7 @@ async function endClassroomSession() {
     const S = classroomSession;
     if (!S) return;
     stopClassroomTallyPoll();
+    if (typeof ccVoiceStop === 'function') ccVoiceStop();
     const joinMode = S.mode === 'join_code';
     const { data: ended } = await sbRpc('classroom_session_end', { p_session_id: S.id }, true);
 
@@ -18927,6 +18937,7 @@ function closeClassroomStage() {
     const stage = document.getElementById('classroom-stage');
     if (stage) { stage.style.display = 'none'; stage.innerHTML = ''; }
     stopClassroomTallyPoll();
+    if (typeof ccVoiceStop === 'function') ccVoiceStop();
     classroomSession = null;
     document.removeEventListener('keydown', classroomStageKeys);
     openClassroomPanel();
@@ -19237,6 +19248,7 @@ function clearClassroomState() {
     const stage = document.getElementById('classroom-stage');
     if (stage) { stage.style.display = 'none'; stage.innerHTML = ''; }
     stopClassroomTallyPoll();
+    if (typeof ccVoiceStop === 'function') ccVoiceStop();
     document.removeEventListener('keydown', classroomStageKeys);
     classroomSession     = null;
     classroomList        = [];

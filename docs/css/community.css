@@ -6640,3 +6640,13 @@
     body.cc-printing #cc-print-root .ck-cert-sign  { font-size: 11pt; gap: 1.2in; margin-top: 0.25in; }
     body.cc-printing #cc-print-root .ck-cert-sign div { min-width: 2.6in; }
 }
+
+/* ── The stage, read aloud and explained (classroom-stage-extras.js) ── */
+.cc-voice { display: inline-flex; align-items: center; gap: 0.4rem; }
+.cc-voice-auto { font-size: 0.8rem; color: var(--color-gray-500); display: inline-flex; gap: 0.25rem; align-items: center; cursor: pointer; }
+/* Where to look, under the verdict. Smaller than the explanation it
+   introduces: it is a pointer, and the explanation is the lesson. */
+.cc-how {
+    font-size: clamp(1.05rem, 2.8vmin, 2rem); font-weight: 600;
+    color: var(--color-primary); margin-top: 0.6vmin;
+}
