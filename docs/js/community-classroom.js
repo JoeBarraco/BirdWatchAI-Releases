@@ -13177,6 +13177,14 @@ function renderClassroomActions() {
             <div class="classroom-group-title">After a lesson</div>
             <div class="classroom-group-row">
                 <button class="classroom-btn" onclick="showClassroomHistory('${escJs(r.id)}')">📊 Previous lessons</button>
+                <!-- classroom-keepsakes.js: pages a class keeps, all built
+                     from lessons already taught, all printable. -->
+                <button class="classroom-btn" onclick="showClassroomTakeHome('${escJs(r.id)}')"
+                        title="A card from the last lesson for each child to take home">🏠 Take-home card</button>
+                <button class="classroom-btn" onclick="showClassroomJournal('${escJs(r.id)}')"
+                        title="The school year so far: every bird, every month, every prediction">📔 Class journal</button>
+                <button class="classroom-btn" onclick="showClassroomCertificate('${escJs(r.id)}')"
+                        title="A certificate for the term, to print and put on the wall">🏅 Certificate</button>
             </div>
         </div>
         </div>
@@ -18900,9 +18908,17 @@ async function endClassroomSession() {
                    ${purged === 1 ? 'the one nickname and its device token have'
                                   : `${purged ? 'all ' + purged : 'every'} nickname${purged === 1 ? '' : 's'} and their device tokens have`}
                    been deleted. The questions and how the room voted are kept.</p>` : ''}
-                <button class="classroom-btn-primary" onclick="closeClassroomStage()">Done</button>
+                <div class="ck-end-actions">
+                    ${S.asked || S.questions.some(q => q.class_index != null)
+                        ? `<button class="classroom-btn" onclick="showClassroomTakeHomeOnStage()">🏠 Take-home card</button>`
+                        : ''}
+                    <button class="classroom-btn-primary" onclick="closeClassroomStage()">Done</button>
+                </div>
             </div>`;
     }
+    // For the take-home card, which is made from exactly this lesson and
+    // would otherwise have nothing to read once the session is cleared.
+    if (typeof ckRememberLesson === 'function') ckRememberLesson(S);
     classroomSession = null;
     document.removeEventListener('keydown', classroomStageKeys);
 }

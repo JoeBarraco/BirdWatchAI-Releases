@@ -29,10 +29,11 @@ begin;
 -- common ones (cmSpeciesName) and takes the earliest of each fold, so there
 -- is one list of names and it lives in one place.
 --
--- photo: the clearest photo of that species in the window, not the first
--- one. The first visit is often the worst picture of the year, a blur at
--- the edge of the frame, and the journal shows the bird rather than the
--- moment.
+-- photo: a favourite photo of that species if anyone starred one, else the
+-- most confident one; not the first. The first visit is often the worst
+-- picture of the year, and confidence alone is not enough either: on the
+-- day this was written the most confident "Northern Cardinal" at the test
+-- feeder was a squirrel. A starred photo is one a person looked at.
 create or replace function classroom_year_firsts(
     p_feeder_ids uuid[],
     p_from       timestamptz,
@@ -46,7 +47,7 @@ stable
 set search_path to 'public'
 as $function$
     with clean as (
-        select species, detected_at, image_url, confidence
+        select species, detected_at, image_url, confidence, is_favorite
           from community_detections
          where feeder_id = any(p_feeder_ids)
            and detected_at >= p_from
@@ -62,7 +63,7 @@ as $function$
         select distinct on (species) species, image_url
           from clean
          where coalesce(image_url, '') <> ''
-         order by species, confidence desc nulls last, detected_at
+         order by species, coalesce(is_favorite, false) desc, confidence desc nulls last, detected_at
     )
     select coalesce(json_agg(json_build_object(
                'sp',       f.species,

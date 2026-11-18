@@ -3,7 +3,8 @@
 -- Order:
 --   psql -f stub-schema.sql
 --   psql -v part=pre  -f score-polls.test.sql     (join-code columns)
---   psql -c "alter table community_detections add column if not exists confidence double precision"
+--   psql -c "alter table community_detections add column if not exists confidence double precision,
+--                                             add column if not exists is_favorite boolean"
 --   psql -f ../setup-classroom-score-polls.sql
 --   psql -f ../setup-classroom-journal.sql
 --   psql -f journal.test.sql
@@ -79,11 +80,15 @@ begin
     (feeder, 'Northern Cardinal', null,      0.9, '2026-08-15 08:00'),
     (feeder, 'Northern Cardinal', 'c.jpg',   0.8, '2026-09-01 08:00'),
     (feeder, 'Squirrel', 's.jpg',            0.9, '2026-09-01 08:00'),
-    (feeder, 'Blue Jay', 'j.jpg',            0.9, '2026-07-01 08:00');
+    (feeder, 'Blue Jay', 'j.jpg',            0.9, '2026-07-01 08:00'),
+    (feeder, 'Tufted Titmouse', 'conf.jpg',  0.99, '2026-10-01 08:00'),
+    (feeder, 'Tufted Titmouse', 'star.jpg',  0.50, '2026-10-02 08:00');
+  update community_detections set is_favorite = true where image_url = 'star.jpg';
   f := classroom_year_firsts(array[feeder], y0, y1, array['squirrel']);
-  perform t_ok('C1 two species, the squirrel and last year''s jay left out', json_array_length(f) = 2);
+  perform t_ok('C1 three species, the squirrel and last year''s jay left out', json_array_length(f) = 3);
   perform t_ok('C2 in order of first sighting', f->0->>'sp' = 'Northern Cardinal');
-  perform t_ok('C3 the first junco is the first one', (f->1->>'first_at')::timestamptz = '2026-11-03 08:00');
-  perform t_ok('C4 but its photo is the clearest', f->1->>'photo' = 'sharp.jpg' and (f->1->>'n')::int = 2);
+  perform t_ok('C3 the first junco is the first one', (f->2->>'first_at')::timestamptz = '2026-11-03 08:00');
+  perform t_ok('C4 but its photo is the clearest', f->2->>'photo' = 'sharp.jpg' and (f->2->>'n')::int = 2);
+  perform t_ok('C6 a starred photo beats a more confident one', f->1->>'photo' = 'star.jpg');
   perform t_ok('C5 a photo is found even when the first visit had none', f->0->>'photo' = 'c.jpg');
 end $$;
