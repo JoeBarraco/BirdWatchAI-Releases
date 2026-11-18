@@ -4701,6 +4701,9 @@
         background: #fff; color: #000; font-size: 11pt;
     }
     body.cc-printing { background: #fff !important; overflow: visible !important; }
+    /* The 56px the navbar needs on screen is a blank band on paper, and on
+       the one-page certificate it was what pushed the page onto a second. */
+    body.cc-printing { padding: 0 !important; }
     body.cc-printing #cc-print-root .classroom-hlesson { border-color: #999; }
     body.cc-printing #cc-print-root .classroom-hstat   { border-color: #999; }
     /* A question, not a whole lesson, is the unit kept on one sheet: a long
@@ -6514,4 +6517,126 @@
 .classroom-pill.warn {
     background: color-mix(in srgb, #f0a500 22%, transparent);
     color: #f0c674;
+}
+
+/* ── Keepsakes: take-home card, class journal, certificate ─────────
+   classroom-keepsakes.js. Each is a sheet of paper first: drawn white
+   with dark ink in both themes, because what the teacher sees on screen
+   is what comes out of the printer, and a dark-mode preview of a page
+   that prints white would be a preview of something else. */
+.ck-card, .ck-journal, .ck-cert {
+    background: #fff; color: #1f2a24;
+    border: 1px solid #d5dbd7; border-radius: 10px;
+    margin: 0.4rem 0 0.7rem;
+}
+.ck-card, .ck-journal { padding: 1rem 1.1rem; }
+.ck-kicker { font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; color: #2d5a3d; font-weight: 700; }
+.ck-label  { font-size: 0.72rem; letter-spacing: 0.05em; text-transform: uppercase; color: #5b6b62; font-weight: 700; margin-bottom: 0.25rem; }
+.ck-new  { font-size: 0.65rem; background: #2d5a3d; color: #fff; border-radius: 99px; padding: 0 0.4rem; vertical-align: middle; }
+.ck-yes  { color: #23703f; font-weight: 600; }
+.ck-no   { color: #8a4b12; }
+.ck-wait { color: #5b6b62; }
+.ck-actions, .ck-end-actions { display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; margin-top: 0.8rem; }
+
+/* Take-home card: half a letter page, so it reads like a note home. */
+.ck-card { max-width: 30rem; }
+.ck-card-head { display: flex; gap: 0.7rem; align-items: center; border-bottom: 2px solid #2d5a3d; padding-bottom: 0.5rem; margin-bottom: 0.7rem; }
+.ck-logo { width: 3rem; height: 3rem; object-fit: contain; }
+.ck-date { font-size: 1.1rem; font-weight: 700; }
+.ck-bird { display: flex; gap: 0.8rem; align-items: flex-start; margin-bottom: 0.7rem; }
+.ck-bird .ck-photo { width: 9rem; height: 7rem; border-radius: 8px; flex: none; }
+/* Feeder photos carry their caption burned into the bottom strip. A frame
+   that hides the bottom fifth crops it, as classroomFitShot does on the
+   slides, without measuring each photo first. */
+.ck-photo { overflow: hidden; background: #eef5f0; }
+.ck-photo img { display: block; width: 100%; height: 124%; object-fit: cover; object-position: top; }
+.ck-bird-name { font-size: 1.35rem; font-weight: 800; line-height: 1.15; }
+.ck-fact { font-size: 0.85rem; margin: 0.3rem 0 0; line-height: 1.4; }
+.ck-section { margin-bottom: 0.7rem; }
+.ck-qs { margin: 0; padding-left: 1.2rem; font-size: 0.86rem; }
+.ck-qs li { margin-bottom: 0.4rem; }
+.ck-q { font-weight: 600; }
+.ck-a { color: #3c4a42; }
+.ck-home { background: #eef5f0; border-radius: 8px; padding: 0.55rem 0.7rem; }
+.ck-home p { margin: 0; font-size: 1rem; font-weight: 600; }
+.ck-card-foot { display: flex; gap: 0.7rem; align-items: center; font-size: 0.72rem; color: #5b6b62; border-top: 1px solid #d5dbd7; padding-top: 0.5rem; }
+.ck-qr { display: flex; flex-direction: column; align-items: center; flex: none; }
+.ck-qr svg { width: 4.6rem; height: 4.6rem; }
+.ck-stage-wrap { margin: auto; padding: 1rem; overflow: auto; max-height: 100%; }
+.ck-stage-wrap .ck-card { font-size: 1.1rem; }
+
+/* Journal */
+.ck-jhead h3 { margin: 0.15rem 0; font-size: 1.25rem; }
+.ck-jhead { margin-bottom: 0.6rem; }
+.ck-journal .classroom-hstat { background: #f6f8f7; border-color: #d5dbd7; }
+.ck-journal .classroom-hstat strong { color: #1f2a24; }
+.ck-journal .classroom-hstat span, .ck-journal .classroom-muted { color: #5b6b62; }
+.ck-jh { margin: 0.9rem 0 0.4rem; font-size: 0.95rem; }
+.ck-jbirds { display: grid; grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr)); gap: 0.55rem; }
+.ck-jbird { border: 1px solid #d5dbd7; border-radius: 8px; overflow: hidden; font-size: 0.75rem; break-inside: avoid; }
+.ck-jbird .ck-photo, .ck-jbird-none { width: 100%; height: 5.2rem; display: block; background: #eef5f0; }
+.ck-jbird-none { display: flex; align-items: center; justify-content: center; font-size: 1.8rem; }
+.ck-jbird-name { font-weight: 700; padding: 0.3rem 0.4rem 0; }
+.ck-jbird-meta { color: #5b6b62; padding: 0 0.4rem 0.35rem; }
+.ck-jtable { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+.ck-jtable th, .ck-jtable td { text-align: left; padding: 0.3rem 0.4rem; border-bottom: 1px solid #e3e8e5; vertical-align: top; }
+.ck-jtable thead th { color: #5b6b62; font-weight: 600; }
+
+/* Certificate: landscape, a double rule, centred. */
+.ck-certopts { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; font-size: 0.82rem; margin-bottom: 0.3rem; }
+.ck-certopts input { min-width: 12rem; }
+.ck-cert { padding: 0.6rem; aspect-ratio: 11 / 8.5; max-width: 46rem; }
+.ck-cert-inner {
+    height: 100%; box-sizing: border-box;
+    border: 3px double #2d5a3d; border-radius: 6px; padding: 1.2rem 1.4rem;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 0.25rem;
+}
+.ck-cert-logo { width: 3.6rem; height: 3.6rem; object-fit: contain; }
+.ck-cert-emoji { font-size: 2.6rem; line-height: 1; }
+.ck-cert-kicker { font-size: 1.6rem; font-weight: 800; color: #2d5a3d; letter-spacing: 0.02em; font-family: Georgia, 'Times New Roman', serif; }
+.ck-cert-sub { font-size: 0.85rem; color: #5b6b62; }
+.ck-cert-to { font-size: 2rem; font-weight: 700; font-family: Georgia, 'Times New Roman', serif; border-bottom: 1px solid #9aa79f; padding: 0 1.5rem 0.1rem; min-width: 60%; }
+.ck-cert-for { font-size: 0.9rem; margin: 0.4rem 0; max-width: 32rem; }
+.ck-cert-stats { display: flex; gap: 1.4rem; justify-content: center; flex-wrap: wrap; margin: 0.3rem 0; }
+.ck-cert-stats div { display: flex; flex-direction: column; min-width: 5rem; }
+.ck-cert-stats strong { font-size: 1.5rem; color: #2d5a3d; }
+.ck-cert-stats span { font-size: 0.72rem; color: #5b6b62; }
+.ck-cert-top { font-size: 0.85rem; margin: 0.2rem 0; }
+.ck-cert-sign { display: flex; gap: 3rem; margin-top: 0.8rem; font-size: 0.78rem; color: #5b6b62; }
+.ck-cert-sign div { display: flex; flex-direction: column; align-items: center; min-width: 10rem; }
+.ck-line { display: block; width: 100%; border-bottom: 1px solid #5b6b62; height: 1.4rem; margin-bottom: 0.2rem; }
+
+@media (max-width: 520px) {
+    .ck-bird { flex-direction: column; }
+    .ck-bird .ck-photo { width: 100%; height: 10rem; }
+    .ck-cert { aspect-ratio: auto; }
+    .ck-cert-sign { gap: 1rem; }
+}
+
+@media print {
+    body.cc-printing #cc-print-root .ck-card,
+    body.cc-printing #cc-print-root .ck-journal,
+    body.cc-printing #cc-print-root .ck-cert { border: none; margin: 0; }
+    body.cc-printing #cc-print-root .ck-card { max-width: none; font-size: 12pt; }
+    body.cc-printing #cc-print-root .ck-jbird,
+    body.cc-printing #cc-print-root .ck-qs li,
+    body.cc-printing #cc-print-root .ck-jtable tr { break-inside: avoid; }
+    body.cc-printing #cc-print-root * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    /* The certificate: one landscape sheet. A named page, so only this
+       printout turns sideways. */
+    @page ck-landscape { size: letter landscape; margin: 0.4in; }
+    body.cc-print-landscape #cc-print-root { page: ck-landscape; }
+    body.cc-printing #cc-print-root .ck-cert { aspect-ratio: auto; height: 7.1in; padding: 0; box-sizing: border-box; overflow: hidden; break-inside: avoid; }
+    body.cc-printing #cc-print-root .ck-cert-inner { border-width: 5px; gap: 0.12in; }
+    body.cc-printing #cc-print-root .ck-cert-logo  { width: 0.9in; height: 0.9in; }
+    body.cc-printing #cc-print-root .ck-cert-kicker { font-size: 30pt; }
+    body.cc-printing #cc-print-root .ck-cert-sub,
+    body.cc-printing #cc-print-root .ck-cert-top,
+    body.cc-printing #cc-print-root .ck-cert-for   { font-size: 13pt; max-width: 7in; }
+    body.cc-printing #cc-print-root .ck-cert-to    { font-size: 36pt; }
+    body.cc-printing #cc-print-root .ck-cert-stats { gap: 0.5in; }
+    body.cc-printing #cc-print-root .ck-cert-stats strong { font-size: 26pt; }
+    body.cc-printing #cc-print-root .ck-cert-stats span   { font-size: 10pt; }
+    body.cc-printing #cc-print-root .ck-cert-sign  { font-size: 11pt; gap: 1.2in; margin-top: 0.25in; }
+    body.cc-printing #cc-print-root .ck-cert-sign div { min-width: 2.6in; }
 }
