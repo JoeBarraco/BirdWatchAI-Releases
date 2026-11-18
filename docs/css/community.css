@@ -6710,3 +6710,19 @@
 .cb-table { max-width: 28rem; margin: 0.5rem 0; }
 .cb-all { display: flex; gap: 0.5rem; align-items: center; margin-top: 0.6rem; }
 .cb-how { margin-top: 1rem; }
+
+/* ── Home Classroom (classroom-home.js) ─────────────────────────── */
+.ch-pitch { max-width: 44rem; color: var(--color-gray-900); font-size: 0.95rem; line-height: 1.5; }
+.ch-pitch h3 { font-size: 1.4rem; margin: 0 0 0.4rem; }
+.ch-pitch ul { padding-left: 1.2rem; margin: 0.4rem 0 0.8rem; }
+.ch-name { display: flex; flex-direction: column; gap: 0.25rem; margin: 0.6rem 0; font-weight: 600; max-width: 26rem; }
+.ch-name input { font-size: 1rem; padding: 0.45rem 0.55rem; }
+.ch-teacher-note { margin-top: 0.9rem; font-size: 0.8rem; }
+.ch-banner { display: flex; flex-direction: column; gap: 0.7rem; }
+.ch-term { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; justify-content: space-between; }
+.ch-codebox { display: flex; gap: 0.4rem; }
+.ch-codebox input { font-size: 0.9rem; padding: 0.3rem 0.45rem; text-transform: uppercase; min-width: 12rem; }
+.ch-connect { border-top: 1px solid var(--border); padding-top: 0.6rem; }
+.ch-connect ol { margin: 0.3rem 0 0.4rem; padding-left: 1.2rem; line-height: 1.8; }
+.ch-code { font-size: 1.05rem; font-weight: 700; padding: 0.1rem 0.4rem; border-radius: 4px; background: var(--bg-page); }
+.ch-pending { display: flex; gap: 0.6rem; align-items: center; margin: 0.3rem 0; }

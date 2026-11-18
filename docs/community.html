@@ -13,7 +13,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="BirdWatchAI">
-    <link rel="stylesheet" href="css/community.css?v=37dfccab">
+    <link rel="stylesheet" href="css/community.css?v=7cd0af6d">
 </head>
 <body>
 <!-- Top navbar with auth controls -->
@@ -962,7 +962,7 @@
                  no school anywhere. Filled by classroomPanelBrand(). -->
             <div class="classroom-panel-title">
                 <span id="classroom-panel-brand"></span>
-                <h3>Community Classroom</h3>
+                <h3 id="classroom-panel-h">Community Classroom</h3>
             </div>
             <div class="classroom-panel-chrome">
                 <button type="button" class="navbar-btn" onclick="toggleTheme()"
@@ -988,7 +988,7 @@
         </p>
 
         <div id="classroom-panel-body">
-            <p class="classroom-muted" style="margin-bottom:0.75rem;">
+            <p class="classroom-muted" id="classroom-panel-intro" style="margin-bottom:0.75rem;">
                 Put a question about your feeder on the projector, poll the room, and tap
                 what the class decided. No student logins and no student devices — nothing
                 about a child is stored.
@@ -1285,7 +1285,7 @@
      longer exists. Swapping the two would make that half of the check silently
      do nothing. -->
 <script src="js/classroom-standards.js?v=f2e3de89"></script>
-<script src="js/community-classroom.js?v=db8084dc"></script>
+<script src="js/community-classroom.js?v=829d9639"></script>
 <!-- English + Español on the board (K-2). -->
 <script src="js/classroom-spanish.js?v=8ed52018"></script>
 <!-- The stage read aloud, and the reveal pointing at its evidence. After the classroom file. -->
@@ -1294,6 +1294,8 @@
 <script src="js/classroom-keepsakes.js?v=8600db43"></script>
 <!-- Class bird count, for eBird. After the keepsakes file, whose helpers it uses. -->
 <script src="js/classroom-birdcount.js?v=fd544661"></script>
+<!-- Home Classroom: Classroom for a family (setup-home-classroom.sql). -->
+<script src="js/classroom-home.js?v=5dc25b2d"></script>
 <!-- Pen-pal classes. BEFORE the alignment file: its templates join CLASSROOM_TEMPLATES, which the alignment self-check reads. -->
 <script src="js/classroom-penpals.js?v=dac2f5f8"></script>
 <script src="js/classroom-alignment.js?v=031c353e"></script>

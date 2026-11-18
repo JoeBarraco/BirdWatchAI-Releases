@@ -110,9 +110,12 @@ function classroomMyUserId() {
 function updateClassroomNavUI() {
     const btn = document.getElementById('navbar-classroom-btn');
     if (!btn) return;
-    const show = typeof hasAuthSession === 'function' && hasAuthSession()
-              && classroomCommunities().length > 0;
-    btn.style.display = show ? '' : 'none';
+    // Anyone signed in sees Classroom: a teacher gets their school's, and
+    // everyone else is offered a Home Classroom (classroom-home.js). The
+    // Suggest button and the deep link stay with real classroom access.
+    const signedIn = typeof hasAuthSession === 'function' && hasAuthSession();
+    const show = signedIn && classroomCommunities().length > 0;
+    btn.style.display = signedIn && typeof chPitchHtml === 'function' ? '' : (show ? '' : 'none');
 
     // Suggest rides on the same membership. The request was that the
     // suggestion area "cover both the classroom area as well as the entire
@@ -12440,7 +12443,13 @@ function openClassroomPanel() {
     (pick || sel).style.display = mine.length > 1 ? '' : 'none';
 
     const empty = document.getElementById('classroom-panel-empty');
-    if (empty) empty.style.display = mine.length ? 'none' : '';
+    if (empty) {
+        empty.style.display = mine.length ? 'none' : '';
+        // Nobody's teacher: offer a Home Classroom instead (classroom-home.js).
+        if (!mine.length && typeof chPitchHtml === 'function') empty.innerHTML = chPitchHtml();
+    }
+    const panelH = document.getElementById('classroom-panel-h');
+    if (panelH && !mine.length && typeof chPitchHtml === 'function') panelH.textContent = 'Home Classroom';
     const body = document.getElementById('classroom-panel-body');
     if (body) body.style.display = mine.length ? '' : 'none';
 
@@ -12578,6 +12587,8 @@ async function refreshClassroomPanel() {
     renderClassroomList();
     renderClassroomForm();
     classroomList.forEach(r => cmResolvePendingPredictions(r));
+    // A Home Classroom's own banner and words (classroom-home.js).
+    if (typeof chAfterRefresh === 'function') await chAfterRefresh();
 }
 
 /**
@@ -12942,7 +12953,7 @@ function renderClassroomList() {
           + ` · ${fb.closed} closed`
         : '';
 
-    const schoolRows = [
+    const schoolRows = (typeof chSchoolRows === 'function' ? chSchoolRows : (x => x))([
         { kind: 'new',       icon: '✚',  label: 'New class',
           meta: newWhy || 'Name it, pick its feeder and grade',
           disabled: !!newWhy },
@@ -12980,7 +12991,7 @@ function renderClassroomList() {
                                      ? 'What teachers have flagged'
                                      : 'What has been flagged, and what was done'),
           metaHtml: fbMetaHtml },
-    ].map(a => `
+    ]).map(a => `
         <button type="button" class="classroom-row classroom-row-act${
                 classroomPickIs(a.kind) ? ' on' : ''}"${a.disabled ? ' disabled' : ''}
                 ${a.disabled ? `title="${esc(a.meta)}"` : ''}
@@ -12990,13 +13001,17 @@ function renderClassroomList() {
         </button>`).join('');
 
     const schoolGroup = `
-        <div class="classroom-pane-subtitle">Across the whole school</div>
+        <div class="classroom-pane-subtitle">${typeof chIsHome === 'function' && chIsHome() ? 'For the family' : 'Across the whole school'}</div>
         ${schoolRows}`;
 
     if (!classroomList.length) {
-        list.innerHTML = '<div class="classroom-muted">No classes yet — start with '
+        list.innerHTML = (typeof chIsHome === 'function' && chIsHome()
+                           ? '<div class="classroom-muted">No children yet. Start with '
+                             + '<strong>Add a child</strong> below: a name or nickname, and '
+                             + 'their grade, so the questions are at their level.</div>'
+                           : '<div class="classroom-muted">No classes yet — start with '
                        + '<strong>New class</strong> below. It takes a name, the feeder '
-                       + 'your class watches, and a grade band.</div>'
+                       + 'your class watches, and a grade band.</div>')
                        + schoolGroup;
         renderClassroomActions();
         return;
@@ -13056,9 +13071,13 @@ function renderClassroomActions() {
     if (!r) {
         box.innerHTML = classroomList.length
             ? '<div class="classroom-muted">Pick a class on the left.</div>'
-            : '<div class="classroom-muted">Once there is a class, everything you can '
+            : (typeof chIsHome === 'function' && chIsHome()
+               ? '<div class="classroom-muted">Once you have added a child, everything '
+                 + 'you can do appears here: start a lesson, look over the questions '
+                 + 'first, their journal and their certificate.</div>'
+               : '<div class="classroom-muted">Once there is a class, everything you can '
             + 'do with it appears here — start a lesson, look over the questions '
-            + 'first, and read how it went afterwards.</div>';
+            + 'first, and read how it went afterwards.</div>');
         return;
     }
 
@@ -16173,7 +16192,7 @@ function renderClassroomForm() {
         ${classroomFeederOpts.length ? '' :
             '<p class="classroom-warn">This community has no approved feeders yet, '
           + 'so there is nothing for a class to watch. Approve a feeder first.</p>'}
-        <input type="text" id="classroom-name" maxlength="80" placeholder="Class name (e.g. Mrs. Diaz — Grade 2)"
+        <input type="text" id="classroom-name" maxlength="80" placeholder="${typeof chIsHome === 'function' && chIsHome() ? 'Child’s name or nickname (e.g. Sam)' : 'Class name (e.g. Mrs. Diaz — Grade 2)'}"
                value="${esc(editing?.name || '')}">
         <div class="classroom-form-row">
             <label>Home feeder
@@ -18473,7 +18492,9 @@ function classroomFootControls(S, last, joinMode) {
             return '<span class="classroom-muted">Ask the class where the point goes, '
                  + 'then tap it on the grid.</span>';
         }
-        return '<span class="classroom-muted">Poll the room, then tap the class’s answer.</span>';
+        return typeof chIsHome === 'function' && chIsHome()
+            ? '<span class="classroom-muted">Ask, then tap their answer.</span>'
+            : '<span class="classroom-muted">Poll the room, then tap the class’s answer.</span>';
     }
     if (S.awaitingPick) {
         return '<span class="classroom-muted">'
