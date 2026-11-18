@@ -18356,9 +18356,10 @@ function renderClassroomStage() {
         </div>
 
         <div class="classroom-stage-body">
-          <div class="classroom-fit">
+          <div class="classroom-fit${S.talk ? ' cc-talking-wrap' : ''}">
             ${cmBadgeOpenerHtml(S)}
             ${classroomSlideTopHtml(S, q)}
+            ${typeof ccTalkHtml === 'function' ? ccTalkHtml(S) : ''}
             ${classroomChoicesBlock(S, q, choices)}
             ${joinMode && !showCounts ? classroomVoterRosterHtml(S) : ''}
             ${reveal}
@@ -18369,6 +18370,7 @@ function renderClassroomStage() {
             ${classroomFootControls(S, last, joinMode)}
             <button class="classroom-btn" onclick="skipClassroomQuestion()">Skip</button>
             ${typeof ccVoiceControlsHtml === 'function' ? ccVoiceControlsHtml(S) : ''}
+            ${typeof ccTalkControlsHtml === 'function' ? ccTalkControlsHtml(S) : ''}
             <span class="classroom-rate" id="classroom-stage-rate">${
                 classroomRateButtonsHtml('live', S.index, (S.ratings || {})[q.template_id] || 0)}</span>
         </div>`;
@@ -18377,6 +18379,7 @@ function renderClassroomStage() {
     // has laid the new markup out.
     classroomFitSoon();
     if (typeof ccVoiceAfterRender === 'function') ccVoiceAfterRender(S);
+    if (typeof ccTalkAfterRender === 'function') ccTalkAfterRender(S);
 }
 
 /**
@@ -18442,6 +18445,9 @@ function classroomVoterRosterHtml(S) {
 }
 
 function classroomFootControls(S, last, joinMode) {
+    // The room is talking it over (classroom-stage-extras.js): the only
+    // control is the one that ends the countdown early.
+    if (S.talk && !S.revealed && typeof ccTalkFootHtml === 'function') return ccTalkFootHtml(S);
     if (S.revealed) {
         return last
             ? '<button class="classroom-btn-primary big" onclick="endClassroomSession()">See the results</button>'
@@ -18759,7 +18765,7 @@ window.addEventListener('resize', () => {
  */
 async function answerClassroomQuestion(i) {
     const S = classroomSession;
-    if (!S || S.revealed) return;
+    if (!S || S.revealed || S.talk) return;
     const q = S.questions[S.index];
 
     q.class_index = i;
@@ -18911,6 +18917,7 @@ async function endClassroomSession() {
     if (!S) return;
     stopClassroomTallyPoll();
     if (typeof ccVoiceStop === 'function') ccVoiceStop();
+    if (typeof ccTalkStop === 'function') ccTalkStop(classroomSession);
     const joinMode = S.mode === 'join_code';
     const { data: ended } = await sbRpc('classroom_session_end', { p_session_id: S.id }, true);
 
@@ -18949,6 +18956,7 @@ function closeClassroomStage() {
     if (stage) { stage.style.display = 'none'; stage.innerHTML = ''; }
     stopClassroomTallyPoll();
     if (typeof ccVoiceStop === 'function') ccVoiceStop();
+    if (typeof ccTalkStop === 'function') ccTalkStop(classroomSession);
     classroomSession = null;
     document.removeEventListener('keydown', classroomStageKeys);
     openClassroomPanel();
@@ -19134,6 +19142,9 @@ function beginClassroomQuestions() {
 async function openClassroomQuestion() {
     const S = classroomSession;
     if (!S) return;
+    // Turn and talk: the vote opens when the countdown ends, which calls
+    // this again (classroom-stage-extras.js).
+    if (typeof ccTalkStart === 'function' && ccTalkStart(S, openClassroomQuestion)) return;
     const q = S.questions[S.index];
 
     S.answerId = null;
@@ -19260,6 +19271,7 @@ function clearClassroomState() {
     if (stage) { stage.style.display = 'none'; stage.innerHTML = ''; }
     stopClassroomTallyPoll();
     if (typeof ccVoiceStop === 'function') ccVoiceStop();
+    if (typeof ccTalkStop === 'function') ccTalkStop(classroomSession);
     document.removeEventListener('keydown', classroomStageKeys);
     classroomSession     = null;
     classroomList        = [];

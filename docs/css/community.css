@@ -6660,3 +6660,16 @@
               color: var(--color-primary); margin: 0.3rem 0; }
 .cc-pp-table { margin-bottom: 0.6rem; }
 .cc-pp-table th, .cc-pp-table td { color: var(--color-gray-900); }
+
+/* Turn and talk (classroom-stage-extras.js). Big enough to read from the
+   back of a room; the answer buttons wait underneath it. */
+.cc-talk {
+    display: flex; align-items: center; justify-content: center; gap: 1rem; flex-wrap: wrap;
+    margin: 1vmin auto; padding: 1vmin 2vmin; border-radius: 12px;
+    background: rgba(201,122,0,0.12); border: 2px solid #c97a00;
+    font-size: clamp(1.1rem, 3vmin, 2.2rem); font-weight: 700; color: var(--color-gray-900);
+}
+.cc-talk-icon { font-size: 1.3em; }
+.cc-talk-left { font-variant-numeric: tabular-nums; font-size: 1.5em; color: #c97a00; min-width: 3.2ch; }
+.classroom-stage.cc-talking .classroom-choice,
+#classroom-stage .cc-talking-wrap .classroom-choice { pointer-events: none; opacity: 0.55; }

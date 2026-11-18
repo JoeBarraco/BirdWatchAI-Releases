@@ -267,3 +267,128 @@ function ccRevealPrepare(q) {
 function ccHowHtml(q) {
     return q && q.cc_how ? `<div class="cc-how">🔎 ${esc(q.cc_how)}</div>` : '';
 }
+
+// ── 💬 Turn and talk ─────────────────────────────────────
+//
+// A countdown before the class answers, for talking it over with a partner
+// first. Without one, the room's answer is the fastest children's answer.
+//
+// With devices, voting simply does not OPEN until the countdown ends:
+// classroom_question_open is called when it reaches zero rather than when
+// the slide goes up, so phones show "look at the board" while the room
+// talks and nothing changes on the server. On the board, the answer
+// buttons wait instead. Either way "Start now" ends it early.
+//
+// Off by default (a lesson behaves exactly as before); 30, 60 or 90 seconds
+// per class, remembered on this machine like the read-aloud setting.
+
+const CC_TALK_CHOICES = [0, 30, 60, 90];
+
+function ccTalkSecs(room) {
+    if (!room) return 0;
+    try {
+        const v = Number(localStorage.getItem('cc-talk-' + room.id));
+        return CC_TALK_CHOICES.includes(v) ? v : 0;
+    } catch { return 0; }
+}
+
+function ccTalkSet(secs) {
+    const S = classroomSession;
+    if (!S) return;
+    try { localStorage.setItem('cc-talk-' + S.room.id, String(Number(secs) || 0)); } catch { /* fine */ }
+    // Takes effect from the next question: changing it mid-question would
+    // either cut the room off or make it wait for no reason.
+    showToast(Number(secs) ? `Turn and talk: ${secs} seconds, from the next question.` : 'Turn and talk is off.');
+}
+
+/** Clear any running countdown. Safe to call at any time. */
+function ccTalkStop(S) {
+    if (S && S.talk) { clearInterval(S.talk.timer); S.talk = null; }
+}
+
+/** A question the class answers by pressing something, so a pause makes sense. */
+function ccTalkApplies(q) {
+    return q && !q.build && !q.grid && Array.isArray(q.choices) && q.choices.length >= 2;
+}
+
+/**
+ * Start the countdown for the slide on screen, if this class wants one and
+ * it has not run for this question yet. `then` runs when it ends (with
+ * devices: open the vote). Returns true if a countdown started, in which
+ * case the caller should wait for `then`.
+ */
+function ccTalkStart(S, then) {
+    if (!S) return false;
+    const secs = ccTalkSecs(S.room);
+    const q = S.questions[S.index];
+    if (!secs || S.revealed || !ccTalkApplies(q) || S.talkDoneIndex === S.index) return false;
+    ccTalkStop(S);
+    const index = S.index;
+    const end = Date.now() + secs * 1000;
+    S.talk = { index, end, then, timer: setInterval(() => {
+        if (classroomSession !== S || S.index !== index) { ccTalkStop(S); return; }
+        if (!S.talk) return;
+        const left = Math.max(0, Math.ceil((S.talk.end - Date.now()) / 1000));
+        const el = document.getElementById('cc-talk-left');
+        if (el) el.textContent = ccTalkClock(left);
+        if (left <= 0) ccTalkFinish();
+    }, 250) };
+    renderClassroomStage();
+    return true;
+}
+
+function ccTalkFinish() {
+    const S = classroomSession;
+    if (!S || !S.talk) return;
+    const then = S.talk.then;
+    S.talkDoneIndex = S.talk.index;
+    ccTalkStop(S);
+    renderClassroomStage();
+    if (typeof then === 'function') then();
+}
+
+function ccTalkClock(s) {
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+/** The banner on the slide while the room talks. */
+function ccTalkHtml(S) {
+    if (!S || !S.talk || S.talk.index !== S.index) return '';
+    const left = Math.max(0, Math.ceil((S.talk.end - Date.now()) / 1000));
+    const k2 = S.room.grade_band === 'k-2';
+    return `<div class="cc-talk" role="status">
+        <span class="cc-talk-icon">💬</span>
+        <span>${k2 ? 'Talk to a partner first!' : 'Turn and talk: agree an answer with a partner before you vote.'}</span>
+        <span class="cc-talk-left" id="cc-talk-left">${ccTalkClock(left)}</span>
+    </div>`;
+}
+
+/** Replaces the foot controls while the room talks. */
+function ccTalkFootHtml(S) {
+    return `<button class="classroom-btn-primary big" onclick="ccTalkFinish()">${
+        S.mode === 'join_code' ? 'Start voting now' : 'Done talking'}</button>
+        <span class="classroom-muted">${S.mode === 'join_code'
+            ? 'Devices get the buttons when the timer ends.' : 'Then poll the room and tap the class’s answer.'}</span>`;
+}
+
+/** The setting, in the stage foot beside Read aloud. */
+function ccTalkControlsHtml(S) {
+    if (!S) return '';
+    const cur = ccTalkSecs(S.room);
+    return `<label class="cc-voice-auto" title="A countdown before the class answers, to talk it over first">💬
+        <select onchange="ccTalkSet(this.value)">${CC_TALK_CHOICES.map(s =>
+            `<option value="${s}"${s === cur ? ' selected' : ''}>${s ? s + 's talk' : 'no talk timer'}</option>`).join('')}</select></label>`;
+}
+
+/**
+ * Board mode: start the countdown when a new question appears. With
+ * devices the countdown is started by openClassroomQuestion instead, so
+ * the vote opens when it ends.
+ */
+function ccTalkAfterRender(S) {
+    if (!S || S.mode === 'join_code' || S.talk) return;
+    const key = `${S.id}:${S.index}`;
+    if (S.talkKey === key) return;
+    S.talkKey = key;
+    ccTalkStart(S, null);
+}
