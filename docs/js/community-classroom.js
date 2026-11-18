@@ -12886,6 +12886,7 @@ function pickClassroomAction(kind) {
     if (kind === 'feedback')  showClassroomFeedback();
     if (kind === 'suggest')   openClassroomSuggest();
     if (kind === 'idea')      openClassroomIdea();
+    if (kind === 'home' && typeof chShowPitchInPane === 'function') chShowPitchInPane();
 }
 
 // The form is a MODE, not furniture. It used to sit at the bottom of the
@@ -13002,7 +13003,8 @@ function renderClassroomList() {
 
     const schoolGroup = `
         <div class="classroom-pane-subtitle">${typeof chIsHome === 'function' && chIsHome() ? 'For the family' : 'Across the whole school'}</div>
-        ${schoolRows}`;
+        ${schoolRows}
+        ${typeof chHomeRowHtml === 'function' ? chHomeRowHtml() : ''}`;
 
     if (!classroomList.length) {
         list.innerHTML = (typeof chIsHome === 'function' && chIsHome()

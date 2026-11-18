@@ -65,7 +65,9 @@ function chPitchHtml() {
            You need a BirdWatchAI feeder; you connect it in the next step.</p>
         <label class="ch-name">What shall we call it?
             <input type="text" id="ch-name" maxlength="80" placeholder="e.g. The Lopez Kitchen Window"></label>
-        <button class="classroom-btn-primary big" id="ch-start-btn" onclick="chStart()">Start my Home Classroom</button>
+        <button class="classroom-btn-primary big" id="ch-start-btn" onclick="chStart()">Start my free month</button>
+        ${CH_BUY_READY ? `<p class="ch-buy-now">Already sure? <a href="${CH_BUY_URL}" target="_blank" rel="noopener">Buy a year for ${CH_PRICE.replace(' a year', '')}</a>,
+           then start your Home Classroom here and type the code from the email into the box at the top.</p>` : ''}
         <p class="classroom-muted ch-teacher-note">A teacher? Your school’s Classroom appears here once a moderator
            of your school’s community makes you a teacher.</p>
       </div>`;
@@ -78,7 +80,7 @@ async function chStart() {
     const { data, error } = await sbRpc('home_classroom_start', { p_name: name }, true);
     if (error || !data) {
         showToast((error && error.message) || 'Could not start a Home Classroom.');
-        if (btn) { btn.disabled = false; btn.textContent = 'Start my Home Classroom'; }
+        if (btn) { btn.disabled = false; btn.textContent = 'Start my free month'; }
         return;
     }
     if (typeof loadMyCommunities === 'function') await loadMyCommunities();
@@ -87,9 +89,37 @@ async function chStart() {
     const sel = document.getElementById('classroom-community-select');
     if (sel) { sel.value = data.community_id; classroomCommunityId = data.community_id; }
     if (typeof refreshClassroomPanel === 'function') await refreshClassroomPanel();
+    // The offer may have been open in the right-hand pane (a teacher starting
+    // one for their own family); it has done its job.
+    if (typeof classroomLeftPick !== 'undefined' && classroomLeftPick.kind === 'home') classroomLeftPick = { kind: 'class' };
+    if (typeof hideClassroomHistory === 'function') hideClassroomHistory();
+    if (typeof renderClassroomList === 'function') renderClassroomList();
     showToast(data.trial === false
         ? 'Your Home Classroom is ready. Enter a code to start lessons.'
         : 'Your Home Classroom is ready. Next: connect your feeder.');
+}
+
+/**
+ * A teacher or school owner can have a Home Classroom too, for their own
+ * children. They never see the pitch (the panel opens on their school), so
+ * the class list carries one row for it until they have one; once they do,
+ * the community picker at the top switches between school and home.
+ */
+function chHomeRowHtml() {
+    if (chHomeCommunity()) return '';
+    const on = typeof classroomPickIs === 'function' && classroomPickIs('home');
+    return `<button type="button" class="classroom-row classroom-row-act ch-home-row${on ? ' on' : ''}"
+                onclick="pickClassroomAction('home')">
+            <span class="classroom-row-name">🏡 Home Classroom</span>
+            <span class="classroom-row-meta">Lessons from your own feeder, for your own children</span>
+        </button>`;
+}
+
+function chShowPitchInPane() {
+    const box = document.getElementById('classroom-history');
+    if (!box) return;
+    box.style.display = '';
+    box.innerHTML = chPitchHtml().replace(/<p class="classroom-muted ch-teacher-note">[\s\S]*?<\/p>/, '');
 }
 
 // ── Inside a Home Classroom ──────────────────────────────
