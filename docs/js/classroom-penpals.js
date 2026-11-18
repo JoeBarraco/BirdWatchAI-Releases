@@ -282,7 +282,10 @@ async function showClassroomPenpal(roomId) {
         return;
     }
 
-    const intro = `<p class="classroom-muted">Pair this class with a class at another school. Each lesson can
+    const home = typeof chIsHome === 'function' && chIsHome();
+    const intro = `<p class="classroom-muted">${home
+        ? 'Pair up with another family or a class anywhere (grandparents with a feeder are perfect).'
+        : 'Pair this class with a class at another school.'} Each lesson can
         then compare the two feeders: whose was busier, which birds came to both, which came to theirs and not
         ours, and why. Only totals cross between the schools: never a photo, a feeder’s location or a child’s name.</p>`;
     const id = escJs(roomId);
