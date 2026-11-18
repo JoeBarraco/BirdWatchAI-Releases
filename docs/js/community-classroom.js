@@ -2586,7 +2586,8 @@ function cmSpeciesSeries(s, limit) {
  */
 function classroomSlideTopHtml(S, q) {
     const ask = `${classroomIntroHtml(q)}
-            <h1 class="classroom-prompt">${esc(q.prompt)}</h1>`;
+            <h1 class="classroom-prompt">${esc(q.prompt)}</h1>
+            ${typeof esPromptHtml === 'function' ? esPromptHtml(S, q) : ''}`;
 
     const media = classroomEvidenceHtml(q, S.revealed);
     if (!media) return `<div class="classroom-slide-top">${ask}</div>`;
@@ -18293,7 +18294,8 @@ function renderClassroomStage() {
                     ${c.swatch ? `<span class="classroom-swatch" style="background:${esc(c.swatch)}"></span>` : ''}
                     ${c.photo ? `<img class="classroom-choice-photo" src="${esc(c.photo)}" alt=""
                                       onerror="this.remove()">` : ''}
-                    <span class="classroom-choice-label">${esc(c.label)}</span>
+                    <span class="classroom-choice-label">${esc(c.label)}${
+                        typeof esChoiceHtml === 'function' ? esChoiceHtml(S, q, i) : ''}</span>
                     ${tally}
                 </button>`;
     }).join('');
@@ -18318,6 +18320,7 @@ function renderClassroomStage() {
                 : (q.class_index === q.correct_index
                     ? '<div class="classroom-reveal-head ok">✅ The class got it</div>'
                     : '<div class="classroom-reveal-head miss">❌ Not quite</div>')}
+            ${typeof esRevealHtml === 'function' ? esRevealHtml(S, q) : ''}
             ${typeof ccHowHtml === 'function' ? ccHowHtml(q) : ''}
             <div class="classroom-reveal-body">${esc(q.explain || '')}</div>
             ${q.fact ? `<div class="classroom-fact">💡 ${esc(q.fact)}</div>` : ''}
@@ -18371,6 +18374,7 @@ function renderClassroomStage() {
             <button class="classroom-btn" onclick="skipClassroomQuestion()">Skip</button>
             ${typeof ccVoiceControlsHtml === 'function' ? ccVoiceControlsHtml(S) : ''}
             ${typeof ccTalkControlsHtml === 'function' ? ccTalkControlsHtml(S) : ''}
+            ${typeof esControlsHtml === 'function' ? esControlsHtml(S) : ''}
             <span class="classroom-rate" id="classroom-stage-rate">${
                 classroomRateButtonsHtml('live', S.index, (S.ratings || {})[q.template_id] || 0)}</span>
         </div>`;

@@ -161,6 +161,8 @@ function buildAll() {
                     prompt: q.prompt, choices: (q.choices || []).map(c => String(c.label)),
                     correct_index: q.correct_index, poll: !!q.poll, pending: !!q.pending_check,
                     explain: q.explain || '', how: q.cc_how || '',
+                    // classroom-spanish.js: the Spanish line, if any.
+                    es: typeof esForQuestion === 'function' ? esForQuestion(q) : null,
                     chart: q.chart ? q.chart.kind : null,
                 });
             }
@@ -211,6 +213,22 @@ function problems(q) {
     const templates = new Set(qs.map(q => q.template_id).filter(Boolean));
     console.log(`Built ${qs.length} questions from ${templates.size} templates `
               + `(4 synthetic fortnights × 3 bands).`);
+
+    // Spanish coverage (classroom-spanish.js). Reported, not failed: a
+    // question with no Spanish line is shown in English only, which is safe.
+    const k2 = qs.filter(q => q.band === 'k-2' && q.template_id);
+    if (k2.length && k2.some(q => q.es !== undefined)) {
+        const has = k2.filter(q => q.es && (q.es.prompt || q.es.englishOnly));
+        const gapsP = [...new Set(k2.filter(q => !q.es).map(q => q.template_id))];
+        const gapsC = new Map();
+        k2.filter(q => q.es && q.es.prompt).forEach(q => q.es.choices.forEach((c, i) => {
+            if (c == null) gapsC.set(q.choices[i], q.template_id);
+        }));
+        console.log(`Spanish: ${has.length} of ${k2.length} K-2 questions `
+                  + `(${k2.filter(q => q.es && q.es.englishOnly).length} of them marked as English-word questions).`);
+        if (gapsP.length) console.log(`  no Spanish prompt: ${gapsP.join(', ')}`);
+        if (gapsC.size) console.log(`  untranslated answers: ${[...gapsC].map(([c, t]) => `${t}: "${c}"`).join('; ')}`);
+    }
 
     if (dumpTo) { fs.writeFileSync(dumpTo, JSON.stringify(qs, null, 1)); console.log(`Wrote ${dumpTo}`); }
 

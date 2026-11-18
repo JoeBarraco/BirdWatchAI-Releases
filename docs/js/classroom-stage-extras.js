@@ -107,28 +107,39 @@ function ccVoiceScript(S, q) {
     return ccSpeakable(parts.join(' '));
 }
 
-function ccVoicePick() {
+function ccVoicePick(lang) {
     const voices = window.speechSynthesis.getVoices() || [];
+    if (lang === 'es') {
+        // US or Mexican Spanish first: the bird names are the ones used there.
+        const es = voices.filter(v => /^es(-|_)(US|MX)/i.test(v.lang));
+        return es.find(v => v.localService) || es[0]
+            || voices.find(v => /^es/i.test(v.lang)) || null;
+    }
     const en = voices.filter(v => /^en(-|_)US/i.test(v.lang));
     return en.find(v => v.localService) || en[0]
         || voices.find(v => /^en/i.test(v.lang)) || null;
 }
 
-function ccVoiceSpeak(text, band) {
+function ccVoiceSpeak(text, band, spanish) {
     if (!ccVoiceSupported() || !text) return;
     const synth = window.speechSynthesis;
     synth.cancel();
     // One utterance per sentence. Chrome stops a long utterance dead after
     // about fifteen seconds, mid-word, and an intro plus a question plus
     // four choices is longer than that.
-    const chunks = text.match(/[^.!?]+[.!?]*\s*/g) || [text];
-    const voice = ccVoicePick();
+    const split = t => (t.match(/[^.!?]+[.!?]*\s*/g) || [t]).map(c => c.trim()).filter(Boolean);
+    // English first, then the Spanish (classroom-spanish.js) in a Spanish
+    // voice, when the class has Español on.
+    const chunks = split(text).map(t => ({ t, lang: 'en' }))
+        .concat(spanish ? split(spanish).map(t => ({ t, lang: 'es' })) : []);
+    const voices = { en: ccVoicePick('en'), es: ccVoicePick('es') };
     ccVoice.speaking = true;
     ccVoiceButtonState();
-    chunks.forEach((c, i) => {
-        const u = new SpeechSynthesisUtterance(c.trim());
+    chunks.forEach(({ t: c, lang }, i) => {
+        const u = new SpeechSynthesisUtterance(c);
+        const voice = voices[lang];
         if (voice) u.voice = voice;
-        u.lang = (voice && voice.lang) || 'en-US';
+        u.lang = (voice && voice.lang) || (lang === 'es' ? 'es-US' : 'en-US');
         // Slower for the youngest. 0.85 is still a natural voice; below
         // about 0.8 most engines start to sound broken.
         u.rate = band === 'k-2' ? 0.85 : 0.95;
@@ -148,7 +159,9 @@ function ccVoiceStop() {
 function ccVoiceRead() {
     const S = classroomSession;
     if (!S) return;
-    ccVoiceSpeak(ccVoiceScript(S, S.questions[S.index]), S.room.grade_band);
+    const q = S.questions[S.index];
+    ccVoiceSpeak(ccVoiceScript(S, q), S.room.grade_band,
+                 typeof esSpeech === 'function' ? esSpeech(S, q) : '');
 }
 
 /** The button and R both toggle: read if quiet, stop if reading. */

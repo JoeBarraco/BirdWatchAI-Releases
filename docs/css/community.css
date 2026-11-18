@@ -6673,3 +6673,13 @@
 .cc-talk-left { font-variant-numeric: tabular-nums; font-size: 1.5em; color: #c97a00; min-width: 3.2ch; }
 .classroom-stage.cc-talking .classroom-choice,
 #classroom-stage .cc-talking-wrap .classroom-choice { pointer-events: none; opacity: 0.55; }
+
+/* English + Español (classroom-spanish.js). The Spanish sits directly under
+   the English it translates, a step smaller and in the accent colour, so a
+   reader can follow either line without the two competing. */
+.cc-es { color: var(--color-primary); font-style: italic; }
+.cc-es-prompt { font-size: clamp(1.1rem, 3.4vmin, 2.5rem); font-weight: 600; margin: 0.4vmin 0 0; line-height: 1.25; }
+.cc-es-intro { font-size: clamp(0.95rem, 2.4vmin, 1.6rem); margin: 0.2vmin 0; }
+.cc-es-note { font-size: clamp(0.9rem, 2.2vmin, 1.4rem); margin: 0.3vmin 0 0; }
+.cc-es-choice { display: block; font-size: 0.78em; font-weight: 500; margin-top: 0.1em; }
+.cc-es-reveal { font-size: clamp(1.05rem, 2.8vmin, 2rem); font-weight: 600; margin-top: 0.4vmin; }
