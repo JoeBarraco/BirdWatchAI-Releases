@@ -1014,11 +1014,11 @@
                     <div class="install-card">
                         <span class="install-card-icon" aria-hidden="true">🪟</span>
                         <h3>On Windows, as a normal app</h3>
-                        <p>One installer, no Docker and no command line. It adds BirdWatchAI to your Start menu and keeps watching from the notification area while you get on with something else. The simplest option if you have a Windows PC that stays on. It watches on that PC only until you say otherwise — one tick in Settings opens the dashboard to your phone and the rest of the house.</p>
+                        <p>One installer, no Docker and no command line. It adds BirdWatchAI to your Start menu and keeps watching from the notification area while you get on with something else. The simplest option if you have a Windows PC that stays on. It watches on that PC only until you say otherwise — one tick in Settings opens the dashboard to your phone and the rest of the house. Coming from the old Windows app? The installer finds it and offers to <a href="#switching">bring your sightings with you</a>.</p>
                         <div class="install-card-links">
-                            <a href="https://github.com/JoeBarraco/birdwatchai-server-releases/releases/download/v0.5.453/BirdWatchAI_Setup_0.5.453.exe" class="btn btn-primary" id="windows-download-btn">Download for Windows →</a>
+                            <a href="https://github.com/JoeBarraco/birdwatchai-server-releases/releases/download/v0.5.454/BirdWatchAI_Setup_0.5.454.exe" class="btn btn-primary" id="windows-download-btn">Download for Windows →</a>
                         </div>
-                        <p class="install-card-note">Windows 10 or 11, 64-bit · about 140&nbsp;MB · version 0.5.453. Windows shows a warning before it runs — <a href="#windows-warning">here's why, and what to click</a>.</p>
+                        <p class="install-card-note">Windows 10 or 11, 64-bit · about 140&nbsp;MB · version 0.5.454. Windows shows a warning before it runs — <a href="#windows-warning">here's why, and what to click</a>.</p>
                     </div>
 
                     <div class="install-card">
@@ -1068,15 +1068,16 @@ docker compose up -d</code></pre>
 
                     <p><strong>Your licence key still works.</strong> Both editions check keys against the same signing key, so the key you already have activates this one. Nothing to buy again and nothing to request.</p>
 
-                    <p><strong>Bring your settings across.</strong> In the new app go to <em>Settings &rarr; Import a configuration</em> and point it at the old app's <code>config.json</code>, which lives in <code>%LOCALAPPDATA%\BirdWatch AI\Data\</code>. The old settings have a different shape, so they are mapped across field by field and shown to you as a preview &mdash; nothing changes until you review it and click <strong>Apply selected</strong>, and a backup is taken first either way.</p>
+                    <p><strong>The installer brings your data across for you.</strong> When Setup finds BirdWatch AI on your PC, it shows you what it found &mdash; your sightings database, your photos, your video clips and your settings, with the real file counts and sizes &mdash; and copies whatever you tick into place. Then open the new app, go to <em>Settings &rarr; Config</em>, and the import page is already filled in: look over what it found and click <strong>Import</strong>. Nothing joins your history until you do, and your old install is only ever read from, never changed.</p>
 
-                    <p><strong>Bring your sightings, photos and clips across.</strong> Copy these three things from <code>%LOCALAPPDATA%\BirdWatch AI\Data\</code>:</p>
+                    <p><strong>Or do it by hand</strong> &mdash; useful if you installed the new app before the old one was on this PC, or you are moving between machines. Everything lives in <code>%LOCALAPPDATA%\BirdWatch AI\Data\</code>:</p>
                     <ul>
+                        <li><code>config.json</code> &mdash; your camera, email and notification setup. Point <em>Settings &rarr; Import a configuration</em> at it. The old settings have a different shape, so they are mapped across field by field and shown to you as a preview; nothing changes until you review it and click <strong>Apply selected</strong>, and a backup is taken first either way.</li>
                         <li><code>detections.db</code> &mdash; every sighting you have recorded</li>
                         <li>the <code>Snapshots</code> folder</li>
                         <li>the <code>Videos</code> folder</li>
                     </ul>
-                    <p>into a folder called <code>migration</code> inside the new app's data folder, so that you end up with <code>%LOCALAPPDATA%\BirdWatchAI\migration\</code>. Then open <em>Settings &rarr; Import detection history</em>, which finds them on its own and shows you what it found before importing anything. Sightings already present are skipped by matching on time and species, so running it twice does no harm if you add more later.</p>
+                    <p>Copy the last three into a folder called <code>migration</code> inside the new app's data folder, so that you end up with <code>%LOCALAPPDATA%\BirdWatchAI\migration\</code>. Then open <em>Settings &rarr; Import detection history</em>, which finds them on its own and shows you what it found before importing anything. Sightings already present are skipped by matching on time and species, so running it twice does no harm if you add more later.</p>
 
                     <p class="download-info"><strong>One thing to watch:</strong> do not leave both apps running at once. They would both try to open the same camera, and the camera will not have it &mdash; the stream drops in and out for both. Close the old one before starting the new one. When you are ready to let go, uninstall <em>BirdWatch AI</em> from Windows' Apps &amp; features; it removes only itself and leaves the new app's data alone.</p>
                 </div>
