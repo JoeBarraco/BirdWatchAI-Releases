@@ -21,7 +21,7 @@
          GitHub Pages serves these with a 10-minute max-age, so without it a
          browser can pair new HTML with the previous JS, and a mismatch there
          silently breaks anything scripted (the pricing configurator especially). -->
-    <link rel="stylesheet" href="css/style.css?v=db2dd116">
+    <link rel="stylesheet" href="css/style.css?v=93575590">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="icon" type="image/png" href="images/favicon.png">
     <link rel="manifest" href="manifest.json">
@@ -990,19 +990,37 @@
     </section>
 
     <!-- Get the software.
-         This section used to be a single "Download for Windows" button wired to
-         the WinForms desktop app. That app is being retired, and the server
-         edition — the one every screenshot on this page comes from — is installed
-         with Docker rather than downloaded as an .exe, so there is no single file
-         to hand over. Two install paths, each pointing at the walkthrough that
-         covers it, and the old desktop app demoted to a footnote at the bottom. -->
+         This section once held a single "Download for Windows" button wired to the old
+         WinForms desktop app, and lost it when that app was retired: the server edition is
+         installed with Docker, so there was no single file to hand over.
+
+         There is again. BirdWatch.Desktop packages the SAME server application - identical
+         engine, identical dashboard - inside a Windows shell, shipped as one installer. So
+         Windows is back as a first-class path and is listed FIRST, because for the audience
+         this product sells to it is now the easiest of the three by a distance: no Docker
+         Desktop, no command line, no compose file.
+
+         The installer is NOT code-signed, so every single person who downloads it meets
+         SmartScreen. That is handled head-on below rather than left as a surprise - an
+         unexplained "Windows protected your PC" panel reads as "this is malware" and loses
+         the sale at the last step. -->
     <section id="download" class="download">
         <div class="container">
             <div class="download-content download-content-wide">
                 <h2>Ready to Meet Your Feathered Visitors?</h2>
-                <p>BirdWatchAI Server is <strong>free for 30 days</strong>, no card needed. It runs on a small computer in your house and you watch it from a browser on any device — phone, laptop, tablet. Two ways to install it:</p>
+                <p>BirdWatchAI Server is <strong>free for 30 days</strong>, no card needed. It runs on a computer in your house and you watch it from a browser on any device — phone, laptop, tablet. Three ways to install it:</p>
 
                 <div class="install-grid">
+                    <div class="install-card">
+                        <span class="install-card-icon" aria-hidden="true">🪟</span>
+                        <h3>On Windows, as a normal app</h3>
+                        <p>One installer, no Docker and no command line. It adds BirdWatchAI to your Start menu and keeps watching from the notification area while you get on with something else. The simplest option if you have a Windows PC that stays on.</p>
+                        <div class="install-card-links">
+                            <a href="https://github.com/JoeBarraco/birdwatchai-server-releases/releases/download/v0.5.451/BirdWatchAI_Setup_0.5.451.exe" class="btn btn-primary" id="windows-download-btn">Download for Windows →</a>
+                        </div>
+                        <p class="install-card-note">Windows 10 or 11, 64-bit · about 140&nbsp;MB · version 0.5.451. Windows shows a warning before it runs — <a href="#windows-warning">here's why, and what to click</a>.</p>
+                    </div>
+
                     <div class="install-card">
                         <span class="install-card-icon" aria-hidden="true">🍓</span>
                         <h3>On a Raspberry Pi</h3>
@@ -1033,6 +1051,13 @@ cd ~/birdwatch
 docker compose up -d</code></pre>
                     </div>
                     <p class="download-info">Then open <code>http://&lt;your-host-ip&gt;:8080</code> and follow the setup wizard. Your photos, database and settings stay in <code>~/birdwatch/data/</code> on your own machine.</p>
+                </div>
+
+                <div class="download-help" id="windows-warning">
+                    <h3>About the warning Windows shows</h3>
+                    <p>Run the Windows installer and you may see a blue <strong>&ldquo;Windows protected your PC&rdquo;</strong> panel. Click <strong>More info</strong>, then <strong>Run anyway</strong>.</p>
+                    <p>That panel is SmartScreen, and it appears because the installer is not yet code-signed. It is not a virus warning and it is not a judgement about what the file contains — it means Windows has not seen this particular file often enough to have formed an opinion. Every new unsigned program gets the same treatment, and the warning fades as more people install it.</p>
+                    <p>If you would rather check before you run it: every installer is published on the <a href="https://github.com/JoeBarraco/birdwatchai-server-releases/releases" target="_blank" rel="noopener">GitHub release page</a> with its SHA-256 checksum, so you can confirm the file you downloaded is the file we published, and upload it to <a href="https://www.virustotal.com/" target="_blank" rel="noopener">VirusTotal</a> for an independent scan first.</p>
                 </div>
 
                 <div class="download-help">
