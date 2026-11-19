@@ -2406,25 +2406,46 @@ ul {
     color: var(--color-secondary);
 }
 
-/* The Windows SmartScreen explainer.
+/* Two instructional blocks in the download section: the Windows SmartScreen explainer and
+   the "switching from the old app" walkthrough.
 
-   Shares .download-help's bordered-block styling, but it is three paragraphs of instruction
-   rather than the one-line footnote that class was built for, and centred prose that long is
-   genuinely hard to follow. This block exists to stop someone abandoning the install at the
-   warning, so it gets left-aligned text and a real heading. Scoped to the id so nothing else
-   in the section changes. */
-#windows-warning {
+   Both share .download-help's bordered-block styling, but that class was built for a one-line
+   footnote and the section centres its text. These run to several paragraphs and, in the
+   switching block, a list of files to copy — centred prose that long is genuinely hard to
+   follow, and a centred bullet list is worse. Both exist to stop someone giving up partway
+   through, so they get left-aligned text, a real heading and ordinary list indentation.
+   Scoped to the two ids so nothing else in the section changes. */
+#windows-warning,
+#switching {
     text-align: left;
 }
 
-#windows-warning h3 {
+#windows-warning h3,
+#switching h3 {
     color: var(--color-white);
     font-size: 1.125rem;
     margin-bottom: var(--space-sm);
 }
 
-#windows-warning p + p {
+#windows-warning p + p,
+#switching p + p {
     margin-top: var(--space-sm);
+}
+
+#switching ul {
+    margin: var(--space-sm) 0;
+    padding-left: 1.35rem;
+    list-style: disc;
+}
+
+#switching li {
+    font-size: 0.9375rem;
+    color: var(--color-secondary);
+    margin-bottom: 0.25rem;
+}
+
+#switching code {
+    white-space: nowrap;
 }
 
 .download-help a {
