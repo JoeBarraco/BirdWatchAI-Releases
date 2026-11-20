@@ -153,6 +153,8 @@ set TUNNEL_DIR=%USERPROFILE%\\Documents\\GitHub\\birdwatchai-server\\tools\\Bird
 set RF=%TEMP%\\bw_ready_%PORT%
 del "%RF%" 2>nul
 set BW_TUNNEL_READY_FILE=%RF%
+rem dotnet may be missing from PATH in a double-clicked window (e.g. SDK installed since sign-in).
+if exist "%ProgramFiles%\\dotnet\\dotnet.exe" set "PATH=%ProgramFiles%\\dotnet;%PATH%"
 
 echo Starting tunnel to ${safeName} ...
 start "birdwatch tunnel - ${safeName}" cmd /k dotnet run --project "%TUNNEL_DIR%" -- attach --channel %CH% --port %PORT%
