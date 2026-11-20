@@ -143,6 +143,8 @@ rem BirdWatchAI remote support — ${safeName}
 rem Double-click to open this feeder's dashboard. Needs: the birdwatchai-server repo, the .NET SDK,
 rem and ssh (built into Windows 10/11). Set up an SSH key on the Pi for a prompt-free login.
 rem The channel below is a session secret with a short lifetime — don't share this file.
+rem The tunnel window uses cmd /k so it stays open: on some PCs cmd /c made it close at once, and
+rem if the tunnel ever fails its error stays visible. Close that window to stop the tunnel.
 setlocal
 set CH=${channel}
 set PORT=${ssh}
@@ -153,7 +155,7 @@ del "%RF%" 2>nul
 set BW_TUNNEL_READY_FILE=%RF%
 
 echo Starting tunnel to ${safeName} ...
-start "birdwatch tunnel - ${safeName}" cmd /c dotnet run --project "%TUNNEL_DIR%" -- attach --channel %CH% --port %PORT%
+start "birdwatch tunnel - ${safeName}" cmd /k dotnet run --project "%TUNNEL_DIR%" -- attach --channel %CH% --port %PORT%
 
 echo Waiting for ${safeName} to come online (the feeder checks in every ~20 seconds) ...
 set /a TRIES=0
