@@ -2711,7 +2711,7 @@
         #life-list-modal.open { display: flex; }
         .life-list-box {
             background: var(--bg-card); border-radius: 12px;
-            padding: 2rem; width: 500px; max-width: 90vw;
+            padding: 0 2rem 2rem; width: 760px; max-width: 92vw;
             max-height: 80vh; overflow-y: auto;
             box-shadow: 0 8px 32px rgba(0,0,0,0.2);
         }
@@ -2734,14 +2734,39 @@
         }
         .life-list-share:hover { background: var(--color-primary); color: white; }
         .life-list-grid {
-            display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-            gap: 8px;
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 10px;
         }
+        /* Photo cards (Nov 2026): the sighting's photo on top, then the
+           species, where it was seen and when. Clickable when the sighting
+           can be opened. */
         .life-list-item {
-            padding: 8px 10px; border-radius: 8px;
+            padding: 0; border-radius: 10px; overflow: hidden;
             border: 1px solid var(--border); background: var(--bg-input);
             font-size: 0.85rem; position: relative;
+            display: flex; flex-direction: column;
         }
+        .life-list-item.clickable { cursor: pointer; transition: transform 0.12s, box-shadow 0.12s; }
+        .life-list-item.clickable:hover,
+        .life-list-item.clickable:focus-visible {
+            transform: translateY(-2px); box-shadow: 0 4px 14px rgba(0,0,0,0.12); outline: none;
+        }
+        .ll-photo {
+            aspect-ratio: 4 / 3; background: var(--bg-page);
+            display: flex; align-items: center; justify-content: center; overflow: hidden;
+        }
+        .ll-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .ll-noimg { font-size: 1.8rem; opacity: 0.35; }
+        .ll-body { padding: 7px 10px 9px; display: flex; flex-direction: column; gap: 2px; }
+        .ll-where { font-size: 0.72rem; color: var(--color-gray-500); }
+        .ll-where.mine { color: var(--color-primary); font-weight: 600; }
+        .ll-filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+        .ll-chip {
+            font-family: inherit; font-size: 0.78rem; padding: 4px 11px;
+            border-radius: 999px; border: 1px solid var(--border);
+            background: var(--bg-card); color: var(--color-gray-700); cursor: pointer;
+        }
+        .ll-chip.on { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
         .life-list-item .species-name {
             font-weight: 600; color: var(--color-gray-900); display: block;
         }
@@ -2749,11 +2774,12 @@
             font-size: 0.75rem; color: var(--color-gray-500);
         }
         .life-list-remove {
-            position: absolute; top: 4px; right: 6px;
-            background: none; border: none; cursor: pointer;
-            font-size: 0.7rem; color: var(--color-gray-500); padding: 2px;
+            position: absolute; top: 6px; right: 6px;
+            width: 22px; height: 22px; border-radius: 50%;
+            background: rgba(0,0,0,0.45); border: none; cursor: pointer;
+            font-size: 0.7rem; color: #fff; padding: 0; line-height: 22px;
         }
-        .life-list-remove:hover { color: #e74c3c; }
+        .life-list-remove:hover { background: #e74c3c; color: #fff; }
         .life-list-empty {
             text-align: center; padding: 2rem; color: var(--color-gray-500);
             font-size: 0.9rem;
@@ -6930,3 +6956,22 @@ body.ch-home #classroom-panel-brand .classroom-stage-school { display: none; }
     cursor: pointer; white-space: nowrap;
 }
 .mod-head-close-text:hover { border-color: var(--color-gray-500); color: var(--color-gray-900); }
+
+/* Life list header stays put while the photo grid scrolls, with Close in it. */
+.life-list-box > .life-list-header {
+    position: sticky; top: 0; z-index: 2;
+    background: var(--bg-card);
+    margin: 0 -2rem 0.75rem; padding: 1.25rem 2rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+}
+.life-list-header-actions { display: flex; gap: 6px; align-items: center; }
+
+/* My feeders dialog (community-my-feeders.js) */
+#my-feeders-modal {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5); z-index: 9480;
+    justify-content: center; align-items: center;
+}
+#my-feeders-modal.open { display: flex; }
+.mf-row .mf-name { display: inline-flex; align-items: center; gap: 6px; }

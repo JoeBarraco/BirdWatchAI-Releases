@@ -13,7 +13,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="BirdWatchAI">
-    <link rel="stylesheet" href="css/community.css?v=6eaa210a">
+    <link rel="stylesheet" href="css/community.css?v=669ea1e7">
 </head>
 <body>
 <!-- Top navbar with auth controls -->
@@ -63,6 +63,8 @@
                     <span id="navbar-user" class="navbar-user navbar-user-mod" style="display:none;"></span>
                 </div>
                 <button id="navbar-community-profile" class="navbar-menu-item" role="menuitem" onclick="openUserProfile()" title="Edit profile" aria-label="Edit profile" style="display:none;">👤 Profile</button>
+                <!-- Hidden until the desktop app can show a link code (MY_FEEDERS_READY in community-my-feeders.js). -->
+                <button id="navbar-my-feeders" class="navbar-menu-item" role="menuitem" onclick="openMyFeeders()" title="Link the feeders you own to this account" style="display:none;">🏠 My feeders</button>
                 <button id="navbar-communities-btn" class="navbar-menu-item" role="menuitem" onclick="openCommunityPanel()" title="Manage your communities" style="display:none;">🏫 My Communities</button>
                 <button id="navbar-idea-btn" class="navbar-menu-item" role="menuitem" onclick="openClassroomIdeaStandalone()" title="Suggest something about the classroom or the community" style="display:none;">💡 Send a suggestion</button>
                 <button id="theme-toggle" class="navbar-menu-item" role="menuitem" onclick="toggleTheme()" title="Toggle dark mode" aria-label="Toggle dark mode">🌙 Theme</button>
@@ -453,6 +455,32 @@
     </div>
 </div>
 
+<!-- ── My feeders (community-my-feeders.js, supabase/setup-feeder-owners.sql) ── -->
+<div id="my-feeders-modal" role="dialog" aria-modal="true">
+    <div class="mod-admin-box mod-sticky-box">
+        <div class="mod-panel-head">
+            <h3>My feeders</h3>
+            <button type="button" class="mod-head-close-text" onclick="closeMyFeeders()">✕ Close</button>
+        </div>
+        <p style="font-size:0.85rem;color:var(--color-gray-500);margin-bottom:0.75rem;">
+            Link the feeders you own, and birds they see are marked “🏠 At my feeder” on your life list.
+        </p>
+        <ul id="my-feeders-list" class="mod-user-list"></ul>
+        <h4 style="font-size:0.9rem;margin:1rem 0 0.4rem;color:var(--color-gray-900);">Link a feeder</h4>
+        <ol style="font-size:0.82rem;color:var(--color-gray-700);margin:0 0 0.6rem 1.1rem;line-height:1.6;">
+            <li>On the computer your bird camera is connected to, open the <strong>BirdWatchAI</strong> app.</li>
+            <li>Go to <strong>Settings → Community</strong> and click <strong>Link to my account</strong>.</li>
+            <li>Type the code it shows here (it works for 15 minutes).</li>
+        </ol>
+        <div style="display:flex;gap:8px;">
+            <input type="text" id="my-feeders-code" maxlength="12" placeholder="ABCD-EFGH" autocomplete="off"
+                   style="flex:1;font-family:inherit;font-size:1rem;letter-spacing:0.1em;text-transform:uppercase;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg-input);color:var(--color-gray-900);">
+            <button type="button" class="classroom-btn-primary" style="padding:8px 16px;font-size:0.85rem;" onclick="claimMyFeeder()">Link</button>
+        </div>
+        <div id="my-feeders-status" style="font-size:0.82rem;color:#c0392b;margin-top:0.5rem;min-height:1.2em;"></div>
+    </div>
+</div>
+
 <!-- ── Community user login modal ──────────────────────────── -->
 <div id="user-login-modal" role="dialog" aria-modal="true">
     <div class="user-login-box">
@@ -497,7 +525,10 @@
                 <h3 id="life-list-title">My Life List</h3>
                 <span class="life-list-count" id="life-list-count"></span>
             </div>
-            <button class="life-list-share" id="life-list-share-btn" onclick="shareLifeList()">🔗 Share</button>
+            <span class="life-list-header-actions">
+                <button class="life-list-share" id="life-list-share-btn" onclick="shareLifeList()">🔗 Share</button>
+                <button type="button" class="mod-head-close-text" onclick="closeLifeList()">✕ Close</button>
+            </span>
         </div>
         <div id="life-list-content">
             <div class="life-list-empty">Loading...</div>
@@ -1328,8 +1359,9 @@
 <!-- Canvas re-burn of the photo's caption strip, used by the moderator edit
      modal. Must load before community-auth.js, which calls into window.bwOverlay. -->
 <script src="js/community-overlay.js?v=81687514"></script>
-<script src="js/community-auth.js?v=83991ccd"></script>
+<script src="js/community-auth.js?v=219ef590"></script>
 <script src="js/community-navbar.js?v=c6f0216c"></script>
+<script src="js/community-my-feeders.js?v=7d115c54"></script>
 <script src="js/community-remote.js?v=748a95c8"></script>
 <!-- ?v=5: the panel gained the tier picker, the redeem form and the bulk
      roster paste. Markup,

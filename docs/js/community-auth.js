@@ -174,6 +174,9 @@ document.addEventListener('keydown', e => {
     if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
 
     if (e.key === 'Escape') {
+        // A sighting opened from the life list sits on top of it; Escape
+        // should close just the sighting, then the list on a second press.
+        const detailWasOpen = detailModal.classList.contains('open');
         closeLightbox();
         closeCarousel();
         closeSlideshow();
@@ -183,6 +186,7 @@ document.addEventListener('keydown', e => {
         closeAdminPanel();
         closeFlagQueue();
         closeCommentsHistory();
+        if (!detailWasOpen) closeLifeList();
         kbdHintVisible = false;
         document.getElementById('kbd-hint').classList.remove('visible');
         return;
@@ -2156,26 +2160,129 @@ document.getElementById('life-list-modal').addEventListener('click', e => {
     if (e.target.id === 'life-list-modal') closeLifeList();
 });
 
+// Life list (Nov 2026 rework: "it's kind of boring").
+//
+// Each entry remembers the detection it was added from (detection_id), so
+// the card shows that bird's photo and the date it was SEEN, and clicking
+// opens the same detail view as the feed.
+//
+// The photos are fetched through the normal feed query, so row-level
+// security decides what this viewer may see. Life lists are public; a
+// species added from a private community's feeder must not show that
+// community's photo to a stranger viewing the list. Those cards simply
+// show no photo.
+//
+// `at_my_feeder` comes from get_life_list (supabase/setup-feeder-owners.sql):
+// true when the species has been detected at a feeder the list's owner has
+// claimed. The labels and the filter only appear once at least one species
+// is marked, so someone with no claimed feeder doesn't see "Spotted in the
+// feed" stamped on every card.
+let lifeListDetections = {};
+let lifeListItems = [];
+let lifeListFilter = 'all';
+let lifeListIsOwn = false;
+
 async function loadAndRenderLifeList(userId, isOwn) {
     const content = document.getElementById('life-list-content');
     content.innerHTML = '<div class="life-list-empty">Loading...</div>';
+    lifeListFilter = 'all';
+    lifeListIsOwn = isOwn;
 
     const { data } = await sbRpc('get_life_list', { p_user_id: userId }, false);
     const list = data || [];
-    document.getElementById('life-list-count').textContent = `${list.length} species`;
+    lifeListItems = list;
 
     if (!list.length) {
-        content.innerHTML = `<div class="life-list-empty">${isOwn ? 'Your life list is empty. Add species from detection cards!' : 'This birder hasn\'t added any species yet.'}</div>`;
+        document.getElementById('life-list-count').textContent = '0 species';
+        content.innerHTML = `<div class="life-list-empty">${isOwn ? 'Your life list is empty. Add species with "+ Life List" on any detection card!' : 'This birder hasn\'t added any species yet.'}</div>`;
         return;
     }
 
-    content.innerHTML = `<div class="life-list-grid">${list.map(item => `
-        <div class="life-list-item">
-            <span class="species-name">${esc(item.species)}</span>
-            <span class="first-seen">${new Date(item.first_seen).toLocaleDateString()}</span>
-            ${isOwn ? `<button class="life-list-remove" onclick="removeFromLifeListModal('${escJs(item.species)}', this)" title="Remove">✕</button>` : ''}
-        </div>
-    `).join('')}</div>`;
+    const ids = [...new Set(list.map(i => i.detection_id).filter(Boolean))];
+    lifeListDetections = {};
+    if (ids.length) {
+        try {
+            const res = await fetch(
+                `${SUPABASE_URL}/rest/v1/community_detections?id=in.(${ids.join(',')})&${detectionSelect(false)}`,
+                { headers: sbHeaders(true) });
+            if (res.ok) (await res.json()).forEach(d => { lifeListDetections[d.id] = d; });
+        } catch (_) { /* no photos is fine; the list still renders */ }
+    }
+    renderLifeList();
+}
+
+function setLifeListFilter(f) {
+    lifeListFilter = f;
+    renderLifeList();
+}
+
+function renderLifeList() {
+    const content = document.getElementById('life-list-content');
+    const list = lifeListItems;
+    const whose = lifeListIsOwn ? 'my' : 'their';
+    const mineCount = list.filter(i => i.at_my_feeder).length;
+    const showWhere = mineCount > 0;
+
+    document.getElementById('life-list-count').textContent =
+        `${list.length} species` + (showWhere ? ` · ${mineCount} at ${whose} feeder` : '');
+
+    const shown = list.filter(i => lifeListFilter === 'all'
+        || (lifeListFilter === 'mine' ? i.at_my_feeder : !i.at_my_feeder));
+
+    const chip = (key, label) =>
+        `<button type="button" class="ll-chip${lifeListFilter === key ? ' on' : ''}" onclick="setLifeListFilter('${key}')">${label}</button>`;
+    const filters = showWhere ? `<div class="ll-filters">
+            ${chip('all', `All ${list.length}`)}
+            ${chip('mine', `🏠 At ${whose} feeder ${mineCount}`)}
+            ${chip('feed', `🔭 Spotted in the feed ${list.length - mineCount}`)}
+        </div>` : '';
+
+    const fmt = iso => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+    const cards = shown.map(item => {
+        const d = item.detection_id ? lifeListDetections[item.detection_id] : null;
+        const photo = d && d.image_url
+            ? `<img src="${esc(d.image_url)}" alt="${esc(item.species)}" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'ll-noimg',textContent:'🐦'}))">`
+            : '<span class="ll-noimg">🐦</span>';
+        const when = d && d.detected_at
+            ? `Seen ${fmt(d.detected_at)}`
+            : `Added ${fmt(item.first_seen)}`;
+        const where = showWhere
+            ? `<span class="ll-where ${item.at_my_feeder ? 'mine' : ''}">${item.at_my_feeder ? `🏠 At ${whose} feeder` : '🔭 Spotted in the feed'}</span>`
+            : '';
+        const open = d ? ` onclick="openLifeListDetection('${escJs(String(d.id))}')" role="button" tabindex="0" title="See this sighting"` : '';
+        return `
+        <div class="life-list-item${d ? ' clickable' : ''}"${open}>
+            <div class="ll-photo">${photo}</div>
+            <div class="ll-body">
+                <span class="species-name">${esc(item.species)}</span>
+                ${where}
+                <span class="first-seen">${when}</span>
+            </div>
+            ${lifeListIsOwn ? `<button class="life-list-remove" onclick="event.stopPropagation();removeFromLifeListModal('${escJs(item.species)}', this)" title="Remove from life list">✕</button>` : ''}
+        </div>`;
+    }).join('');
+
+    content.innerHTML = filters + (shown.length
+        ? `<div class="life-list-grid">${cards}</div>`
+        : '<div class="life-list-empty">Nothing here yet.</div>');
+}
+
+// Open the sighting a life-list species was added from in the feed's own
+// detail view. The detection may not be in the loaded feed (older, or
+// filtered out), so add the row fetched above before opening it.
+function openLifeListDetection(id) {
+    const d = lifeListDetections[id];
+    if (!d) return;
+    const added = !allDetections.some(x => String(x.id) === String(id));
+    if (added) allDetections.push(d);
+    openDetailModal(id);
+    // Take it back out once the modal has its content, so an old sighting
+    // doesn't turn up in the feed the next time it renders.
+    if (added) {
+        const i = allDetections.findIndex(x => x === d);
+        if (i >= 0) allDetections.splice(i, 1);
+    }
 }
 
 async function removeFromLifeListModal(species, btn) {
@@ -2186,9 +2293,8 @@ async function removeFromLifeListModal(species, btn) {
         await sbRpc('remove_from_life_list', { p_species: species }, true);
     }
     userLifeList = userLifeList.filter(s => s !== species);
-    btn.closest('.life-list-item').remove();
-    const count = document.querySelectorAll('.life-list-item').length;
-    document.getElementById('life-list-count').textContent = `${count} species`;
+    lifeListItems = lifeListItems.filter(i => i.species !== species);
+    renderLifeList();
     showToast(`${species} removed`);
 }
 
