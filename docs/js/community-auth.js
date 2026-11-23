@@ -21,6 +21,16 @@ async function handleSharedId() {
     const id = new URLSearchParams(location.search).get('id');
     if (!id) return;
 
+    // A shared link jumps to its detection once. Drop ?id= from the address
+    // bar now, so a later refresh loads the feed at the top instead of
+    // jumping (and resetting the filters) to the same card again. Any other
+    // params, such as ?feeder=, stay.
+    try {
+        const url = new URL(location.href);
+        url.searchParams.delete('id');
+        history.replaceState(history.state, '', url.toString());
+    } catch (_) { /* leave the URL as it is */ }
+
     function scrollToCard(card) {
         card.classList.add('shared-highlight');
         card.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -2133,7 +2143,7 @@ async function toggleLifeListSpecies(species, detectionId, btn) {
             await sbRpc('remove_from_life_list', { p_species: species }, true);
         }
         userLifeList = userLifeList.filter(s => s !== species);
-        if (btn) { btn.classList.remove('on-list'); btn.textContent = '+ Life List'; btn.title = 'Add to life list'; }
+        if (btn) { btn.classList.remove('on-list'); btn.textContent = '+ Life list'; btn.title = 'Add to life list'; }
         showToast(`${species} removed from life list`);
     } else {
         if (isModAsCommunityUser) {
@@ -2143,7 +2153,7 @@ async function toggleLifeListSpecies(species, detectionId, btn) {
             await sbRpc('add_to_life_list', { p_species: species, p_detection_id: detectionId || null, p_notes: '' }, true);
         }
         userLifeList.push(species);
-        if (btn) { btn.classList.add('on-list'); btn.textContent = '✓ Listed'; btn.title = 'Remove from life list'; }
+        if (btn) { btn.classList.add('on-list'); btn.textContent = '✓ On life list'; btn.title = 'Remove from life list'; }
         showToast(`${species} added to life list!`);
     }
 }
@@ -2200,7 +2210,7 @@ async function loadAndRenderLifeList(userId, isOwn) {
 
     if (!list.length) {
         document.getElementById('life-list-count').textContent = '0 species';
-        content.innerHTML = `<div class="life-list-empty">${isOwn ? 'Your life list is empty. Add species with "+ Life List" on any detection card!' : 'This birder hasn\'t added any species yet.'}</div>`;
+        content.innerHTML = `<div class="life-list-empty">${isOwn ? 'Your life list is empty. Add species with "+ Life list" on any detection card!' : 'This birder hasn\'t added any species yet.'}</div>`;
         return;
     }
 
@@ -2343,7 +2353,7 @@ async function toggleFollowFeeder(feederId, btn) {
         showToast('Now following this feeder!');
     } else {
         userFollowedFeeders = userFollowedFeeders.filter(id => id !== feederId);
-        if (btn) { btn.classList.remove('following'); btn.textContent = '☆ Follow'; }
+        if (btn) { btn.classList.remove('following'); btn.textContent = '☆ Follow feeder'; }
         showToast('Unfollowed feeder');
     }
 }

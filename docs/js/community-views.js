@@ -190,10 +190,10 @@ function renderFeed() {
         // text: they sat there for historical reasons, and buttons on both
         // sides made the card read as neither one thing nor the other.
         const lifeListBtn = currentUser
-            ? `<button class="life-list-add-btn${onLifeList ? ' on-list' : ''}" onclick="toggleLifeListSpecies('${escJs(d.species)}', '${d.id}', this)" title="${onLifeList ? 'Remove from life list' : 'Add to life list'}">${onLifeList ? '✓ Listed' : '+ Life List'}</button>`
+            ? `<button class="life-list-add-btn${onLifeList ? ' on-list' : ''}" onclick="toggleLifeListSpecies('${escJs(d.species)}', '${d.id}', this)" title="${onLifeList ? 'Remove from life list' : 'Add to life list'}">${onLifeList ? '✓ On life list' : '+ Life list'}</button>`
             : '';
         const followBtn = currentUser && feederId
-            ? `<button class="follow-feeder-btn${isFollowing ? ' following' : ''}" onclick="toggleFollowFeeder('${feederId}', this)">${isFollowing ? '★ Following' : '☆ Follow'}</button>`
+            ? `<button class="follow-feeder-btn${isFollowing ? ' following' : ''}" onclick="toggleFollowFeeder('${feederId}', this)" title="${isFollowing ? 'Stop following' : 'Follow'} ${esc(d.feeders?.display_name || 'this feeder')}">${isFollowing ? '★ Following' : '☆ Follow feeder'}</button>`
             : '';
         const likeCount = reactions['❤️'] || 0;
         const reacted   = isReacted(d.id, '❤️');
@@ -207,9 +207,11 @@ function renderFeed() {
                         ? ` <span class="${rarityClass}">· ${esc(d.rarity)}</span>` : ''}${isFirst
                         ? ' <span class="badge-first-season">🌱 First of Season</span>' : ''}
                 </div>
-                ${d.feeders?.display_name ? `<div class="card-feeder">${feederMark(d.feeders)} ${esc(d.feeders.display_name)}</div>` : ''}
                 <div class="card-meta">
-                    <span class="card-meta-item">🕐 ${fmtDetectedAt(d.detected_at)}</span>${formatLocationChip(d)}${d.temperature != null
+                    ${d.feeders?.display_name ? `<span class="card-feeder">${feederMark(d.feeders)} ${esc(d.feeders.display_name)}</span>` : ''}${formatLocationChip(d)}
+                </div>
+                <div class="card-meta">
+                    <span class="card-meta-item">🕐 ${fmtDetectedAt(d.detected_at)}</span>${d.temperature != null
                         ? `<span class="card-meta-item">🌡️ ${d.temperature}°F</span>` : ''}
                 </div>
             </div>

@@ -261,8 +261,10 @@
             .navbar-menu-list.navbar-menu-right { left: 8px; right: 8px; }
         }
 
+        /* Wide enough that a big monitor gets four or five feed columns rather
+           than three with empty margins either side. */
         .container {
-            max-width: 1600px;
+            max-width: 2400px;
             margin: 0 auto;
         }
 
@@ -608,14 +610,29 @@
             margin-top: 2px;
         }
 
-        /* Listed and Follow are a matched pair at the top of the rail: same
-           shape, size and weight, rather than a small tag over a pill. */
+        /* Every rail action is the same plain icon + text row. The toggles
+           (life list, follow, like) say their state in words and colour
+           rather than with a box of their own. */
         .card-side .life-list-add-btn,
-        .card-side .follow-feeder-btn {
-            display: flex; align-items: center; gap: 4px;
-            font-size: 0.8rem; font-weight: 600;
-            padding: 5px 10px; border-radius: 6px;
+        .card-side .follow-feeder-btn,
+        .card-side .reaction-btn {
+            display: block;
+            font-size: 12px; font-weight: 400;
+            padding: 0; border: none; border-radius: 0;
+            background: none; color: var(--color-gray-500);
+            font-family: inherit; cursor: pointer;
         }
+        .card-side .life-list-add-btn:hover,
+        .card-side .follow-feeder-btn:hover,
+        .card-side .reaction-btn:hover { background: none; color: var(--color-primary); }
+        .card-side .life-list-add-btn.on-list        { color: #2eaa4f; font-weight: 600; }
+        .card-side .follow-feeder-btn.following      { color: var(--color-primary); font-weight: 600; }
+        .card-side .reaction-btn.reacted             { color: #e74c3c; font-weight: 600; background: none; }
+        .card-side .life-list-add-btn.on-list:hover,
+        .card-side .follow-feeder-btn.following:hover { color: #e74c3c; background: none; }
+        .card-side .card-reactions { gap: 6px; align-items: center; }
+        .card-side .likers-btn { padding: 0; }
+        .card-side .card-video { margin: 0; font-size: 12px; }
 
         .card-side .mod-actions button {
             flex: 1 1 auto;
@@ -715,12 +732,11 @@
         .card-meta-item,
         .card-meta .card-loc-link { white-space: nowrap; }
 
-        /* Sits right under the species name, as "where it was seen". */
+        /* First meta line, beside the location: "where it was seen". */
         .card-feeder {
             font-size: 0.875rem;
             color: var(--color-gray-500);
-            margin: 2px 0 2px;
-            display: flex;
+            display: inline-flex;
             align-items: center;
             gap: 6px;
         }
