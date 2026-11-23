@@ -6857,3 +6857,40 @@
     background: transparent;
 }
 .classroom-btn.cl-remove:hover { background: rgba(176, 58, 46, 0.08); }
+
+/* ── Classroom rework (Nov 2026) ───────────────────────────────────────── */
+/* Menus inside the classroom panel: the classroom header's account menu and
+   each class's ⚙ Settings menu reuse the navbar menu styles. */
+#classroom-panel-modal .navbar-menu-list { z-index: 20; }
+.cl-settings-menu { display: inline-block; position: relative; }
+.cl-settings-menu .navbar-menu-list { font-size: 0.85rem; text-align: left; }
+.navbar-menu-list label.navbar-menu-item { display: block; }
+.navbar-menu-list .navbar-menu-sep { display: block; }
+/* Name on the classroom header's account button, "Menu" until there is one. */
+.classroom-head-user:not([style*="none"]) + .classroom-head-user-fallback { display: none; }
+@media (max-width: 640px) { .classroom-head-user-fallback { display: none; } }
+
+/* Home Classroom: one name. The brand would otherwise add the community's own
+   name ("Home Class") beside the "Home Classroom" heading. */
+body.ch-home #classroom-panel-brand .classroom-stage-school { display: none; }
+
+/* The two ways to start: larger, with a line saying how each works. */
+.classroom-start-row { gap: 0.75rem; }
+.classroom-btn-start {
+    display: inline-flex; flex-direction: column; align-items: flex-start;
+    gap: 2px; padding: 0.7rem 1.1rem; min-width: 220px; text-align: left;
+}
+.classroom-btn-start .cbs-label { font-size: 1rem; font-weight: 700; }
+.classroom-btn-start .cbs-sub { font-size: 0.75rem; font-weight: 400; opacity: 0.85; }
+@media (max-width: 640px) { .classroom-btn-start { min-width: 0; flex: 1 1 100%; } }
+
+/* Home Classroom term strip at the foot of the panel, when nothing is urgent. */
+.ch-term-foot {
+    margin-top: 1.25rem; padding: 0.6rem 0.9rem; font-size: 0.82rem;
+    border-style: dashed; opacity: 0.9;
+}
+.ch-term-foot strong { font-weight: 600; }
+/* Logo controls under the large logo in the left column. */
+.ch-logo-slot { margin: 0.4rem 0 0.9rem; display: flex; justify-content: center; }
+.ch-logo-slot .cl-controls { display: flex; flex-wrap: wrap; gap: 0.4rem; justify-content: center; }
+.ch-logo-slot .classroom-btn.cl-remove { margin-left: 0; }

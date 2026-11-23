@@ -140,11 +140,17 @@ async function chAfterRefresh() {
     if (intro && !intro.dataset.school) intro.dataset.school = intro.textContent.trim();
     if (intro) {
         intro.textContent = chIsHome()
-            ? 'Put a question about your feeder on the TV, ask your child, and tap their answer. '
-              + 'Each child is a “class” with their own level. Nothing about your children is stored.'
+            ? 'Pick a child, then start a lesson: a question about your feeder goes on the TV, '
+              + 'you ask, and tap their answer. Nothing about your children is stored.'
             : intro.dataset.school;
     }
-    if (!chIsHome()) return;
+    if (!chIsHome()) {
+        const foot = document.getElementById('ch-term-foot');
+        if (foot) foot.style.display = 'none';
+        const slot = document.getElementById('ch-logo-slot');
+        if (slot) slot.innerHTML = '';
+        return;
+    }
     const title = document.getElementById('classroom-pane-title');
     if (title) title.textContent = title.textContent.replace(/^Classes/, 'Children');
     await chRenderBanner();
@@ -204,11 +210,46 @@ async function chRenderBanner() {
             <button class="classroom-btn" onclick="chApplyCode()">Apply</button>
         </div>` : '';
 
-    box.style.display = '';
-    box.className = 'classroom-term ch-banner' + (s && s.state === 'lapsed' ? ' lapsed' : '');
-    const logoCtl = typeof chLogoHtml === 'function' ? chLogoHtml() : '';
-    box.innerHTML = `${term ? `<div class="ch-term"><span>${term}</span>${codeBox}</div>` : ''}
-        ${logoCtl ? `<div class="ch-logo-row">${logoCtl}</div>` : ''}${connect}`;
+    // Nov 2026 rework ("too confusing to navigate"): the top of the panel is
+    // for what a parent came to do. The term and code box sit in a slim strip
+    // at the foot of the panel while the plan is comfortably active, and only
+    // come up top when they need attention: ending within 14 days, ended, or
+    // waiting for a code. The logo controls move under the logo itself, in
+    // the left column, which is what they change.
+    const urgent = !!(s && !s.perpetual && (s.state !== 'active'
+                     || (s.days_left != null && s.days_left <= 14)));
+    const termHtml = term ? `<div class="ch-term"><span>${term}</span>${codeBox}</div>` : '';
+    let foot = document.getElementById('ch-term-foot');
+    if (!foot) {
+        const panes = document.querySelector('#classroom-panel-body .classroom-panes');
+        if (panes) {
+            foot = document.createElement('div');
+            foot.id = 'ch-term-foot';
+            foot.className = 'classroom-term ch-banner ch-term-foot';
+            panes.insertAdjacentElement('afterend', foot);
+        }
+    }
+    if (foot) {
+        foot.innerHTML = urgent ? '' : termHtml;
+        foot.style.display = (!urgent && termHtml) ? '' : 'none';
+    }
+    const top = (urgent ? termHtml : '') + connect;
+    box.className = 'classroom-term ch-banner' + (s && s.state === 'lapsed' ? ' lapsed' : '')
+                  + (urgent ? ' ch-urgent' : '');
+    box.innerHTML = top;
+    box.style.display = top.trim() ? '' : 'none';
+
+    let logoSlot = document.getElementById('ch-logo-slot');
+    if (!logoSlot) {
+        const crest = document.getElementById('classroom-community-crest');
+        if (crest) {
+            logoSlot = document.createElement('div');
+            logoSlot.id = 'ch-logo-slot';
+            logoSlot.className = 'ch-logo-slot';
+            crest.insertAdjacentElement('afterend', logoSlot);
+        }
+    }
+    if (logoSlot) logoSlot.innerHTML = typeof chLogoHtml === 'function' ? chLogoHtml() : '';
 }
 
 async function chApprove(feederId) {
@@ -240,7 +281,10 @@ async function chCopy(t) {
 function chSchoolRows(rows) {
     if (!chIsHome()) return rows;
     return rows
-        .filter(r => r.kind !== 'challenge' && r.kind !== 'feedback')
+        // 'idea' ("Suggest anything else") moved to the header's account
+        // menu for families: two near-identical Suggest rows was one of the
+        // things reported as confusing.
+        .filter(r => r.kind !== 'challenge' && r.kind !== 'feedback' && r.kind !== 'idea')
         .map(r => r.kind === 'new'
             ? { ...r, label: 'Add a child', meta: r.disabled ? r.meta : 'A name or nickname, and their grade' }
             : r);

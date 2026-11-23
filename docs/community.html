@@ -13,7 +13,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="BirdWatchAI">
-    <link rel="stylesheet" href="css/community.css?v=4852a22e">
+    <link rel="stylesheet" href="css/community.css?v=62f1a955">
 </head>
 <body>
 <!-- Top navbar with auth controls -->
@@ -1018,12 +1018,23 @@
                 <h3 id="classroom-panel-h">Community Classroom</h3>
             </div>
             <div class="classroom-panel-chrome">
-                <button type="button" class="navbar-btn" onclick="toggleTheme()"
-                        title="Toggle dark mode" aria-label="Toggle dark mode">🌙 Theme</button>
-                <span id="classroom-head-user" class="classroom-head-user" style="display:none;"></span>
-                <button type="button" id="classroom-head-profile" class="navbar-btn"
-                        onclick="openUserProfile()" title="Edit profile"
-                        style="display:none;">Profile</button>
+                <!-- Same account menu as the feed's navbar (Nov 2026), instead of
+                     three loose buttons. community-navbar.js opens it;
+                     community-auth.js still fills #classroom-head-user and
+                     shows/hides #classroom-head-profile. -->
+                <div class="navbar-menu" id="classroom-account-menu">
+                    <button type="button" class="navbar-btn navbar-menu-trigger" aria-haspopup="true" aria-expanded="false" title="Account and settings">
+                        👤 <span id="classroom-head-user" class="classroom-head-user" style="display:none;"></span><span class="classroom-head-user-fallback">Menu</span> <span class="navbar-caret">▾</span>
+                    </button>
+                    <div class="navbar-menu-list navbar-menu-right" role="menu">
+                        <button type="button" id="classroom-head-profile" class="navbar-menu-item" role="menuitem"
+                                onclick="openUserProfile()" title="Edit profile" style="display:none;">👤 Profile</button>
+                        <button type="button" class="navbar-menu-item" role="menuitem"
+                                onclick="pickClassroomAction('idea')" title="The site, the lessons, anything at all">💡 Send a suggestion</button>
+                        <button type="button" class="navbar-menu-item" role="menuitem" onclick="toggleTheme()"
+                                title="Toggle dark mode" aria-label="Toggle dark mode">🌙 Theme</button>
+                    </div>
+                </div>
                 <!-- Was a bare ✕. The panel fills the window, so "close" means
                      "go back to the feed", and a glyph never said where it went
                      — the same confusion behind "I frequently have trouble
@@ -1305,7 +1316,7 @@
      modal. Must load before community-auth.js, which calls into window.bwOverlay. -->
 <script src="js/community-overlay.js?v=81687514"></script>
 <script src="js/community-auth.js?v=1f07e045"></script>
-<script src="js/community-navbar.js?v=dfd6b462"></script>
+<script src="js/community-navbar.js?v=c6f0216c"></script>
 <script src="js/community-remote.js?v=748a95c8"></script>
 <!-- ?v=5: the panel gained the tier picker, the redeem form and the bulk
      roster paste. Markup,
@@ -1337,7 +1348,7 @@
      longer exists. Swapping the two would make that half of the check silently
      do nothing. -->
 <script src="js/classroom-standards.js?v=f2e3de89"></script>
-<script src="js/community-classroom.js?v=e8a09db5"></script>
+<script src="js/community-classroom.js?v=e44a0368"></script>
 <!-- English + Español on the board (K-2). -->
 <script src="js/classroom-spanish.js?v=1a4afa9b"></script>
 <!-- The stage read aloud, and the reveal pointing at its evidence. After the classroom file. -->
@@ -1345,9 +1356,9 @@
 <!-- Take-home card, class journal, certificate. After the classroom file, whose helpers it uses. -->
 <script src="js/classroom-keepsakes.js?v=457c3bdb"></script>
 <!-- Home Classroom: Classroom for a family (setup-home-classroom.sql). -->
-<script src="js/classroom-home.js?v=b0ddeb87"></script>
+<script src="js/classroom-home.js?v=55c41a1d"></script>
 <!-- Class logos, and a Home Classroom's own (setup-classroom-logos.sql). -->
-<script src="js/classroom-logos.js?v=4914401b"></script>
+<script src="js/classroom-logos.js?v=8289354d"></script>
 <!-- Drag the classes into your own order (setup-classroom-order.sql). -->
 <script src="js/classroom-order.js?v=c423ff9f"></script>
 <!-- Pen-pal classes. BEFORE the alignment file: its templates join CLASSROOM_TEMPLATES, which the alignment self-check reads. -->

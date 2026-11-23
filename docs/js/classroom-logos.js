@@ -28,12 +28,11 @@ function clClassLogoHtml(room, cls) {
 function clClassLogoControls(room) {
     if (!room) return '';
     const id = escJs(room.id);
-    return `<span class="cl-controls">
-        <label class="classroom-btn cl-pick" title="A picture for this class: a mascot, or your child’s own drawing">
+    // Rendered as entries in the class's ⚙ Settings menu (renderClassroomActions).
+    return `<label class="navbar-menu-item cl-pick" role="menuitem" title="A picture for this class: a mascot, or your child’s own drawing">
             <input type="file" accept="image/png,image/jpeg,image/webp" onchange="clUploadClassLogo('${id}', this)">
             🖼 ${room.logo_url ? 'Change picture' : 'Add a picture'}</label>
-        ${room.logo_url ? `<button class="classroom-btn cl-remove" onclick="clClearClassLogo('${id}')" title="Remove this class’s picture">🗑 Remove picture</button>` : ''}
-    </span>`;
+        ${room.logo_url ? `<button class="navbar-menu-item" role="menuitem" onclick="clClearClassLogo('${id}')" title="Remove this class’s picture">🚫 Remove picture</button>` : ''}`;
 }
 
 async function clUploadClassLogo(roomId, input) {
@@ -96,8 +95,9 @@ function clRedraw() {
 function chLogoHtml() {
     const c = (myCommunities || []).find(x => x.id === classroomCommunityId);
     if (!c || c.role !== 'owner') return '';
+    // No thumbnail: these controls now sit right under the large logo in the
+    // left column (#ch-logo-slot), so a second small copy would be noise.
     return `<span class="cl-controls ch-logo">
-        ${clLogoOk(c.logo_url) ? `<img class="cl-logo" src="${esc(c.logo_url)}" alt="" onerror="this.remove()">` : ''}
         <label class="classroom-btn cl-pick" title="A picture for your Home Classroom, shown at the top of every lesson">
             <input type="file" accept="image/png,image/jpeg,image/webp" onchange="chUploadLogo(this)">
             🖼 ${c.logo_url ? 'Change logo' : 'Add a logo'}</label>

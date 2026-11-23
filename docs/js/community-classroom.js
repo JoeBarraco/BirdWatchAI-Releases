@@ -13082,7 +13082,7 @@ function renderClassroomActions() {
     const r  = id ? classroomList.find(x => x.id === id) : null;
     if (!r) {
         box.innerHTML = classroomList.length
-            ? '<div class="classroom-muted">Pick a class on the left.</div>'
+            ? `<div class="classroom-muted">Pick a ${typeof chIsHome === 'function' && chIsHome() ? 'child' : 'class'} on the left.</div>`
             : (typeof chIsHome === 'function' && chIsHome()
                ? '<div class="classroom-muted">Once you have added a child, everything '
                  + 'you can do appears here: start a lesson, look over the questions '
@@ -13094,6 +13094,7 @@ function renderClassroomActions() {
     }
 
     const partners = (r.partners || []).map(p => p.display_name).filter(Boolean);
+    const homeMode = typeof chIsHome === 'function' && chIsHome();
     const seen = r.home_feeder_seen_at
         ? new Date(r.home_feeder_seen_at).getTime() > Date.now() - 10 * 60 * 1000
         : false;
@@ -13143,12 +13144,25 @@ function renderClassroomActions() {
                  choose something is a misclick waiting to happen. The panel
                  was also already rebuilt once to get per-class buttons OUT
                  of that list — see the note on .classroom-panes. -->
+            <!-- Nov 2026: still on the title line (see above), but folded
+                 into one "Settings" menu. Five buttons in a row — picture,
+                 remove picture, Edit, Link, Delete — carried as much weight
+                 as starting a lesson and put Delete one button from Link.
+                 Reported as "too confusing to navigate". Delete is last and
+                 red, after a divider. Opened by community-navbar.js. -->
             <span class="classroom-head-actions">
-                ${typeof clClassLogoControls === 'function' ? clClassLogoControls(r) : ''}
-                <button class="classroom-btn" onclick="editClassroom('${escJs(r.id)}')">✏️ Edit</button>
-                <button class="classroom-btn" onclick="copyClassroomLink('${escJs(r.id)}')"
-                        title="A link that opens straight into this class">🔗 Link</button>
-                <button class="classroom-btn-danger" onclick="deleteClassroom('${escJs(r.id)}')">🗑 Delete</button>
+                <span class="navbar-menu cl-settings-menu">
+                    <button type="button" class="classroom-btn navbar-menu-trigger" aria-haspopup="true" aria-expanded="false">
+                        ⚙ Settings <span class="navbar-caret">▾</span></button>
+                    <span class="navbar-menu-list navbar-menu-right" role="menu">
+                        <button class="navbar-menu-item" role="menuitem" onclick="editClassroom('${escJs(r.id)}')">✏️ ${homeMode ? 'Edit name, grade, feeders' : 'Edit class'}</button>
+                        ${typeof clClassLogoControls === 'function' ? clClassLogoControls(r) : ''}
+                        <button class="navbar-menu-item" role="menuitem" onclick="copyClassroomLink('${escJs(r.id)}')"
+                                title="A link that opens straight into this ${homeMode ? 'child' : 'class'}">🔗 Copy a link</button>
+                        <span class="navbar-menu-sep"></span>
+                        <button class="navbar-menu-item navbar-menu-danger" role="menuitem" onclick="deleteClassroom('${escJs(r.id)}')">🗑 Delete ${homeMode ? 'this child' : 'class'}</button>
+                    </span>
+                </span>
             </span>
         </div>
         <div class="classroom-card-meta">
@@ -13166,12 +13180,19 @@ function renderClassroomActions() {
 
         <div class="classroom-box classroom-box-do">
         <div class="classroom-group">
-            <div class="classroom-group-title">Start a lesson</div>
-            <div class="classroom-group-row">
-                <button class="classroom-btn-primary"
-                        onclick="startClassroomSession('${escJs(r.id)}','teacher_led')"${noStart}>▶ On the board</button>
-                <button class="classroom-btn-primary"
-                        onclick="startClassroomSession('${escJs(r.id)}','join_code')"${noStart}>📱 With devices</button>
+            <div class="classroom-group-title">Start a lesson${homeMode ? ` with ${esc(r.name)}` : ''}</div>
+            <!-- Bigger, and each says how it works: "On the board" did not
+                 read as "on the TV" to a parent, and the two modes looked
+                 like any other pair of buttons on the page. -->
+            <div class="classroom-group-row classroom-start-row">
+                <button class="classroom-btn-primary classroom-btn-start"
+                        onclick="startClassroomSession('${escJs(r.id)}','teacher_led')"${noStart}>
+                    <span class="cbs-label">${homeMode ? '📺 On the TV' : '▶ On the board'}</span>
+                    <span class="cbs-sub">${homeMode ? 'You read it out and tap their answer' : 'Project it and poll the room'}</span></button>
+                <button class="classroom-btn-primary classroom-btn-start"
+                        onclick="startClassroomSession('${escJs(r.id)}','join_code')"${noStart}>
+                    <span class="cbs-label">📱 On ${homeMode ? 'a device' : 'devices'}</span>
+                    <span class="cbs-sub">${homeMode ? 'They answer on a phone or tablet' : 'Everyone answers on their own device'}</span></button>
             </div>
         </div>
 
@@ -13208,7 +13229,7 @@ function renderClassroomActions() {
                     ✍️ Write a question</button>
                 <button class="classroom-btn" onclick="showClassroomPenpal('${escJs(r.id)}')"
                         title="Pair with a class at another school and compare the two feeders">
-                    ✉️ Pen-pal class</button>
+                    ✉️ ${homeMode ? 'Pen pals' : 'Pen-pal class'}</button>
             </div>
         </div>
 
@@ -13221,7 +13242,7 @@ function renderClassroomActions() {
                 <button class="classroom-btn" onclick="showClassroomTakeHome('${escJs(r.id)}')"
                         title="A card from the last lesson for each child to take home">🏠 Take-home card</button>
                 <button class="classroom-btn" onclick="showClassroomJournal('${escJs(r.id)}')"
-                        title="The school year so far: every bird, every month, every prediction">📔 Class journal</button>
+                        title="The school year so far: every bird, every month, every prediction">📔 ${homeMode ? 'Journal' : 'Class journal'}</button>
                 <button class="classroom-btn" onclick="showClassroomCertificate('${escJs(r.id)}')"
                         title="A certificate for the term, to print and put on the wall">🏅 Certificate</button>
             </div>

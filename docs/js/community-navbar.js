@@ -34,7 +34,7 @@
 
     // ── open / close ──────────────────────────────────────────
     function closeAll(except) {
-        nav.querySelectorAll('.navbar-menu.open').forEach((m) => {
+        document.querySelectorAll('.navbar-menu.open').forEach((m) => {
             if (m === except) return;
             m.classList.remove('open');
             const t = m.querySelector('.navbar-menu-trigger');
@@ -42,7 +42,12 @@
         });
     }
 
-    nav.querySelectorAll('.navbar-menu').forEach((menu) => {
+    // Every menu on the page: the navbar's, the classroom panel header's, and
+    // the per-class "Settings" menu, which is re-rendered and so is bound by
+    // delegation below rather than here.
+    document.querySelectorAll('.navbar-menu').forEach((menu) => {
+        if (menu.dataset.bound) return;
+        menu.dataset.bound = '1';
         const trigger = menu.querySelector('.navbar-menu-trigger');
         if (!trigger) return;
         trigger.addEventListener('click', (e) => {
@@ -59,6 +64,24 @@
     });
 
     document.addEventListener('click', (e) => {
+        // Menus rendered after load (the class "Settings" menu) have no
+        // listener of their own; open/close them here.
+        const trig = e.target.closest('.navbar-menu-trigger');
+        const menu = trig && trig.closest('.navbar-menu');
+        if (menu && !menu.dataset.bound) {
+            const willOpen = !menu.classList.contains('open');
+            closeAll(menu);
+            menu.classList.toggle('open', willOpen);
+            trig.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+            return;
+        }
+        // Choosing an item in such a menu closes it. Not the file-picker
+        // label: hiding it mid-click can stop the picker opening, and the
+        // upload redraws the pane (and so the menu) anyway.
+        if (e.target.closest('.navbar-menu:not([data-bound]) .navbar-menu-list button')) {
+            closeAll();
+            return;
+        }
         if (!e.target.closest('.navbar-menu')) closeAll();
     });
     document.addEventListener('keydown', (e) => {
