@@ -126,11 +126,25 @@ function plain(html) {
 // same two-phrase call three times over, the first 1.9 s in, each phrase
 // four hoots, the last sliding down into the "all".
 //
+// Mourning Dove: the first hit was XC128006, and "What kind of sound is
+// it?" (music-timbre) was flagged mid-lesson because there are several
+// birds in it. That flag was right. On a spectrogram the dove is a set of
+// faint dashes below 1 kHz, and louder calls from at least one other bird
+// fill 2.5-5 kHz the whole way through. A question about THIS bird's
+// timbre cannot be answered when this bird is the quietest thing in the
+// clip. Commons has only one other real recording of the species, the
+// PLoS ONE sample below: 4 s, three coo notes near 500 Hz and nothing else
+// on the spectrogram. It is .oga, which Safari may refuse. There is no
+// clean mp3 on Commons, and a recording an iPad cannot play is better
+// than one a class cannot answer, because cmPlayableSound drops it there
+// rather than playing it wrong.
+//
 // A pinned file is fetched even when a different recording is already on
 // disk for that bird, so changing a pin here and rerunning is the whole
 // of replacing a recording.
 const PINNED = {
-    'Barred Owl': 'Strix varia - Northern Barred Owl XC375201.mp3',
+    'Barred Owl':    'Strix varia - Northern Barred Owl XC375201.mp3',
+    'Mourning Dove': 'Zenaida macroura vocalizations - pone.0027052.s009.oga',
 };
 
 const pinnedSource = name =>

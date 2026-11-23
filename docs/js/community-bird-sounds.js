@@ -11,7 +11,7 @@
 //  notes — the slide renders what is recorded here, and if it is wrong
 //  here it is wrong on the projector.
 //
-//  Fetched: 2026-11-16
+//  Fetched: 2026-11-23
 // ════════════════════════════════════════════════════════════════════
 
 const BIRD_SOUND_FILES = {
@@ -51,11 +51,11 @@ const BIRD_SOUND_FILES = {
         source:  "https://commons.wikimedia.org/wiki/File:Charadrius_vociferus_-_Killdeer_XC62728.mp3",
     },
     "Mourning Dove": {
-        file:    "audio/birds/mourning-dove.ogg",
-        artist:  "Jonathon Jongsma",
-        licence: "CC BY-SA 3.0",
-        licenceUrl: "https://creativecommons.org/licenses/by-sa/3.0",
-        source:  "https://commons.wikimedia.org/wiki/File:Zenaida_macroura_-_Mourning_Dove_XC128006.ogg",
+        file:    "audio/birds/mourning-dove.oga",
+        artist:  "Francis C, Ortega C, Cruz A",
+        licence: "CC BY 2.5",
+        licenceUrl: "https://creativecommons.org/licenses/by/2.5",
+        source:  "https://commons.wikimedia.org/wiki/File:Zenaida_macroura_vocalizations_-_pone.0027052.s009.oga",
     },
     "Northern Cardinal": {
         file:    "audio/birds/northern-cardinal.mp3",

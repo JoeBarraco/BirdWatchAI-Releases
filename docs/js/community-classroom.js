@@ -10338,15 +10338,23 @@ ${jumbled.split('').join(' ')}`,
 },
 
 {
-    // MU.3.H.1.3 — identify timbre. Two birds of very different size make
-    // timbre separable from pitch, which is the hard part of the idea.
+    // MU.3.H.1.3 — identify timbre. A dove's coo is the clearest case: low
+    // and soft, with the air audible in it, and nothing like the struck or
+    // scraped instruments it is set against.
     id: 'music-timbre',
     category: 'music',
     title: 'What kind of sound is it?',
     bands: ['3-5'],
     needsData: false,
     build({ rng }) {
-        const rec = cmPlayableSound(['Mourning Dove', 'Barred Owl']);
+        // The dove only, with no fallback. The answer key and the explanation
+        // are both about a dove's coo, and this used to fall back to the
+        // Barred Owl wherever the dove's .ogg would not play (Safari), so an
+        // iPad class heard an owl and was then told "a dove's coo is soft
+        // and hollow". A question that does not build there is better than
+        // one that explains a sound nobody heard. The recording itself was
+        // replaced at the same time; see PINNED in tools/fetch-bird-sounds.js.
+        const rec = cmPlayableSound('Mourning Dove');
         if (!rec) return null;
 
         const built = cmChoices('Soft and breathy, like blowing over a bottle',
