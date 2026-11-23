@@ -292,24 +292,25 @@ function openDetailModal(id) {
         a.setAttribute('data-video-play', d.video_url);
         a.textContent = '🎬 Watch video'; actions.appendChild(a);
     }
-    const shareBtn = document.createElement('button');
-    shareBtn.textContent = '🔗 Share';
-    shareBtn.onclick = () => { closeDetailModal(); shareDetection(d.id, null); };
-    actions.appendChild(shareBtn);
     const audioBtn = document.createElement('button');
     audioBtn.textContent = '🔊 Play call';
     audioBtn.onclick = () => playBirdCall(d.species, audioBtn);
     actions.appendChild(audioBtn);
+    const shareBtn = document.createElement('button');
+    shareBtn.textContent = '🔗 Share';
+    shareBtn.onclick = () => { closeDetailModal(); shareDetection(d.id, null); };
+    actions.appendChild(shareBtn);
     const webBtn = document.createElement('button');
     webBtn.textContent = '🌐 Web';
     webBtn.onclick = () => { closeDetailModal(); openAIResearch(d.species); };
     actions.appendChild(webBtn);
 
-    // Reactions in detail modal (single ❤️ like)
-    actions.parentElement.querySelectorAll('.card-reactions').forEach(n => n.remove());
+    // Footer: ❤️ like on the left, moderator tools on the right.
+    actions.parentElement.querySelectorAll('.detail-footer').forEach(n => n.remove());
+    const footer = document.createElement('div');
+    footer.className = 'detail-footer';
     const rxDiv = document.createElement('div');
     rxDiv.className = 'card-reactions';
-    rxDiv.style.marginTop = '0.75rem';
     const reactions = getReactions(d.id);
     const likeCount = reactions['❤️'] || 0;
     const likeReacted = isReacted(d.id, '❤️');
@@ -327,23 +328,27 @@ function openDetailModal(id) {
         likersBtn.onclick = () => showLikers(d.id, rxDiv);
         rxDiv.appendChild(likersBtn);
     }
-    actions.parentElement.appendChild(rxDiv);
+    footer.appendChild(rxDiv);
 
     if (isModLoggedIn()) {
+        const modDiv = document.createElement('div');
+        modDiv.className = 'detail-mod';
+
         const editBtn = document.createElement('button');
+        editBtn.className = 'detail-mod-edit';
         editBtn.textContent = '✏️ Edit';
-        editBtn.style.borderColor = '#e67e22';
-        editBtn.style.color = '#e67e22';
         editBtn.onclick = () => { closeDetailModal(); openModEdit(d.id); };
-        actions.appendChild(editBtn);
+        modDiv.appendChild(editBtn);
 
         const delBtn = document.createElement('button');
+        delBtn.className = 'detail-mod-delete';
         delBtn.textContent = '🗑️ Delete';
-        delBtn.style.borderColor = '#e74c3c';
-        delBtn.style.color = '#e74c3c';
         delBtn.onclick = () => { closeDetailModal(); confirmModDelete(d.id); };
-        actions.appendChild(delBtn);
+        modDiv.appendChild(delBtn);
+
+        footer.appendChild(modDiv);
     }
+    actions.parentElement.appendChild(footer);
 
     lockScroll();
     detailModal.classList.add('open');

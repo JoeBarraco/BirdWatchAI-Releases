@@ -1492,15 +1492,42 @@
         [data-theme="dark"] .detail-title { color: var(--color-cream); }
         .detail-meta { font-size: 0.875rem; color: var(--color-gray-500); display: flex; flex-direction: column; gap: 4px; margin-bottom: 1rem; }
         .detail-meta span { display: flex; align-items: center; gap: 6px; }
-        .detail-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-        .detail-actions a, .detail-actions button {
-            font-family: inherit; font-size: 0.875rem; padding: 6px 16px;
-            border-radius: 6px; cursor: pointer; text-decoration: none;
+        /* Primary actions: equal-width tiles in one row (2×2 on phones). */
+        .detail-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+            gap: 8px;
+        }
+        .detail-actions a, .detail-actions button,
+        .detail-mod button {
+            font-family: inherit; font-size: 0.875rem; padding: 8px 12px;
+            border-radius: 8px; cursor: pointer; text-decoration: none;
             border: 1px solid var(--border-input);
             background: var(--bg-input); color: var(--color-gray-700);
             transition: all 0.15s;
+            display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+            white-space: nowrap;
         }
         .detail-actions a:hover, .detail-actions button:hover { border-color: var(--color-primary); color: var(--color-primary); }
+        @media (max-width: 480px) {
+            .detail-actions { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        /* Footer: like on the left, moderator tools on the right. */
+        .detail-footer {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 8px; flex-wrap: wrap;
+            margin-top: 1rem; padding-top: 0.875rem;
+            border-top: 1px solid var(--border);
+        }
+        .detail-footer .card-reactions { margin-top: 0; align-items: center; }
+        .detail-footer .reaction-btn { font-size: 14px; padding: 4px 12px; }
+        .detail-mod { display: flex; gap: 6px; margin-left: auto; }
+        .detail-mod button { font-size: 0.8rem; padding: 5px 10px; background: transparent; }
+        .detail-mod .detail-mod-edit   { border-color: #e67e22; color: #e67e22; }
+        .detail-mod .detail-mod-delete { border-color: #e74c3c; color: #e74c3c; }
+        .detail-mod .detail-mod-edit:hover   { background: rgba(230,126,34,0.1); }
+        .detail-mod .detail-mod-delete:hover { background: rgba(231,76,60,0.1); }
         .detail-close {
             position: absolute; top: 10px; right: 10px;
             background: rgba(0,0,0,0.45); color: white; border: none;
