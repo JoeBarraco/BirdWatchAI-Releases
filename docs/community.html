@@ -13,7 +13,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="BirdWatchAI">
-    <link rel="stylesheet" href="css/community.css?v=c1fd03bd">
+    <link rel="stylesheet" href="css/community.css?v=4852a22e">
 </head>
 <body>
 <!-- Top navbar with auth controls -->
@@ -68,7 +68,7 @@
                 <button id="theme-toggle" class="navbar-menu-item" role="menuitem" onclick="toggleTheme()" title="Toggle dark mode" aria-label="Toggle dark mode">🌙 Theme</button>
                 <div class="navbar-menu-sep"></div>
                 <div class="navbar-menu-label">Moderator</div>
-                <button id="navbar-login-btn" class="navbar-menu-item" role="menuitem" onclick="toggleModLogin()" title="Moderator login">🔒 Moderator login</button>
+                <button id="navbar-login-btn" class="navbar-menu-item" role="menuitem" onclick="toggleModLogin()" title="Turn on moderator tools" style="display:none;">🛡 Enter moderator mode</button>
                 <button id="navbar-changepw-btn" class="navbar-menu-item" role="menuitem" onclick="showChangePassword()" title="Change moderator password" style="display:none;">🔑 Moderator password</button>
                 <button id="navbar-logout-btn" class="navbar-menu-item" role="menuitem" onclick="toggleModLogin()" title="Leave moderator mode" style="display:none;">↩ Exit moderator mode</button>
                 <div class="navbar-menu-sep" data-signed-in-only></div>
@@ -418,7 +418,11 @@
 <!-- Moderator login modal -->
 <div id="mod-login-modal" role="dialog" aria-modal="true">
     <div class="mod-login-box">
-        <h3>Moderator Login</h3>
+        <h3>Moderator password login</h3>
+        <p style="font-size:0.8rem;color:var(--color-gray-500);margin:-0.25rem 0 0.75rem;">
+            You normally don't need this: sign in with your email like everyone else and
+            moderator tools turn on by themselves. Use this only if the sign-in email isn't arriving.
+        </p>
         <div id="mod-login-error" class="mod-login-error">Invalid credentials.</div>
         <form onsubmit="return false;">
             <input type="email" id="mod-username" name="mod-username" placeholder="Email address" autocomplete="username">
@@ -459,6 +463,12 @@
         <div class="btn-row">
             <button class="btn-cancel" onclick="closeUserLogin()">Cancel</button>
             <button class="btn-primary" onclick="doUserLogin()">Send Magic Link</button>
+        </div>
+        <!-- Moderators sign in here too; this is only the fallback if the
+             magic-link email doesn't arrive. See setup-moderator-auth-link.sql. -->
+        <div style="text-align:center;margin-top:0.75rem;">
+            <a href="#" onclick="closeUserLogin();openModPasswordLogin();return false;"
+               style="font-size:0.75rem;color:var(--color-gray-500);">Moderator? Use password instead</a>
         </div>
     </div>
 </div>
@@ -611,7 +621,7 @@
             <li style="color:var(--color-gray-500)">Loading...</li>
         </ul>
         <h4 style="font-size:0.9rem;margin-bottom:0.5rem;color:var(--color-gray-900);">Add New User</h4>
-        <p style="font-size:0.8rem;color:var(--color-gray-500);margin-bottom:0.5rem;">A temporary password will be emailed to them.</p>
+        <p style="font-size:0.8rem;color:var(--color-gray-500);margin-bottom:0.5rem;">They just sign in with this email like any other user and get moderator tools automatically. (A backup password is also emailed to them.)</p>
         <div class="mod-add-form">
             <input type="email" id="mod-add-email" placeholder="Email address">
             <select id="mod-add-role">
@@ -1294,7 +1304,7 @@
 <!-- Canvas re-burn of the photo's caption strip, used by the moderator edit
      modal. Must load before community-auth.js, which calls into window.bwOverlay. -->
 <script src="js/community-overlay.js?v=81687514"></script>
-<script src="js/community-auth.js?v=da4daeb5"></script>
+<script src="js/community-auth.js?v=1f07e045"></script>
 <script src="js/community-navbar.js?v=dfd6b462"></script>
 <script src="js/community-remote.js?v=748a95c8"></script>
 <!-- ?v=5: the panel gained the tier picker, the redeem form and the bulk
@@ -1337,7 +1347,7 @@
 <!-- Home Classroom: Classroom for a family (setup-home-classroom.sql). -->
 <script src="js/classroom-home.js?v=b0ddeb87"></script>
 <!-- Class logos, and a Home Classroom's own (setup-classroom-logos.sql). -->
-<script src="js/classroom-logos.js?v=a0544efd"></script>
+<script src="js/classroom-logos.js?v=4914401b"></script>
 <!-- Drag the classes into your own order (setup-classroom-order.sql). -->
 <script src="js/classroom-order.js?v=c423ff9f"></script>
 <!-- Pen-pal classes. BEFORE the alignment file: its templates join CLASSROOM_TEMPLATES, which the alignment self-check reads. -->

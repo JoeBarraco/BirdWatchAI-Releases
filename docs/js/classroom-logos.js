@@ -32,7 +32,7 @@ function clClassLogoControls(room) {
         <label class="classroom-btn cl-pick" title="A picture for this class: a mascot, or your child’s own drawing">
             <input type="file" accept="image/png,image/jpeg,image/webp" onchange="clUploadClassLogo('${id}', this)">
             🖼 ${room.logo_url ? 'Change picture' : 'Add a picture'}</label>
-        ${room.logo_url ? `<button class="classroom-btn" onclick="clClearClassLogo('${id}')" title="Remove this class’s picture">✕</button>` : ''}
+        ${room.logo_url ? `<button class="classroom-btn cl-remove" onclick="clClearClassLogo('${id}')" title="Remove this class’s picture">🗑 Remove picture</button>` : ''}
     </span>`;
 }
 
@@ -86,6 +86,10 @@ function clRedraw() {
     if (typeof renderClassroomActions === 'function') renderClassroomActions();
 }
 
+// The remove buttons are spelled out ("🗑 Remove logo"), not a bare ✕: sitting
+// at the right-hand end of a banner, an ✕ reads as "close this banner" and was
+// nearly clicked that way. The confirm() in the handlers stays as a second guard.
+
 // ── The Home Classroom's own logo ────────────────────────
 
 /** For the Home Classroom banner: the community logo, settable in place. */
@@ -97,7 +101,7 @@ function chLogoHtml() {
         <label class="classroom-btn cl-pick" title="A picture for your Home Classroom, shown at the top of every lesson">
             <input type="file" accept="image/png,image/jpeg,image/webp" onchange="chUploadLogo(this)">
             🖼 ${c.logo_url ? 'Change logo' : 'Add a logo'}</label>
-        ${c.logo_url ? '<button class="classroom-btn" onclick="chClearLogo()" title="Remove the logo">✕</button>' : ''}
+        ${c.logo_url ? '<button class="classroom-btn cl-remove" onclick="chClearLogo()" title="Remove the logo">🗑 Remove logo</button>' : ''}
     </span>`;
 }
 

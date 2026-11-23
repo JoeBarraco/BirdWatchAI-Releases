@@ -2672,9 +2672,12 @@
         .user-login-status.success { color: #2eaa4f; }
 
         /* User profile modal */
+        /* Above the classroom panel (9550) and its Suggest dialog (9600):
+           the panel has its own Profile button, and at 9460 the dialog
+           opened underneath the panel where nobody could see it. */
         #user-profile-modal {
             display: none; position: fixed; inset: 0;
-            background: rgba(0,0,0,0.5); z-index: 9460;
+            background: rgba(0,0,0,0.5); z-index: 9700;
             justify-content: center; align-items: center;
         }
         #user-profile-modal.open { display: flex; }
@@ -6844,3 +6847,13 @@
 .cl-dragging { opacity: 0.85; }
 .cl-dragging .classroom-row { box-shadow: 0 4px 14px rgba(0,0,0,0.18); }
 .cl-dragging .cl-handle { cursor: grabbing; }
+
+/* Logo "Remove" buttons (classroom-logos.js): set apart from "Change logo" and
+   muted, so they don't read as the banner's close button. */
+.classroom-btn.cl-remove {
+    margin-left: 0.75rem;
+    color: #b03a2e;
+    border-color: rgba(176, 58, 46, 0.35);
+    background: transparent;
+}
+.classroom-btn.cl-remove:hover { background: rgba(176, 58, 46, 0.08); }

@@ -367,6 +367,7 @@ function clearModSession() {
     sessionStorage.removeItem('bwai-mod-user');
     sessionStorage.removeItem('bwai-mod-role');
     sessionStorage.removeItem('bwai-mod-display-name');
+    sessionStorage.removeItem('bwai-mod-via');
     // Older builds parked the plaintext password under this key. Clear it on
     // sight so a browser upgrading into this version stops carrying one.
     sessionStorage.removeItem('bwai-mod-pass');
@@ -387,11 +388,102 @@ function clearModSession() {
 function handleModSessionError(err) {
     const msg = String((err && (err.message || err.error || err.msg)) || err || '');
     if (!/expired moderator session/i.test(msg)) return false;
+    const viaAuth = sessionStorage.getItem('bwai-mod-via') === 'auth';
     clearModSession();
     updateModUI();
+    if (viaAuth && authAccessToken) {
+        // Signed in normally: mint a fresh moderator session from that sign-in
+        // instead of sending the moderator to a login box.
+        enterModFromAuth({ quiet: true }).then(ok => showToast(ok
+            ? 'Moderator session renewed — please try that again'
+            : 'Your moderator session has expired'));
+        return true;
+    }
     showToast('Your moderator session has expired — please sign in again');
     if (typeof renderFeed === 'function') renderFeed();
     return true;
+}
+
+// ── One sign-in for moderators ────────────────────────────
+// Moderators sign in with the same magic link as everyone else. Once a
+// Supabase Auth session exists, moderator_login_from_auth() (see
+// supabase/setup-moderator-auth-link.sql) checks the account's confirmed email
+// against the moderators table and, if it matches, returns the same kind of
+// moderator session token the old password login did, so every moderator RPC
+// and edge function works unchanged.
+//
+// localStorage keys:
+//   bwai-mod-known    email last confirmed to be a moderator (shows "Enter
+//                     moderator mode" even after they switched it off)
+//   bwai-mod-checked  email last asked about, so a non-moderator's browser
+//                     asks the server once, not on every page load
+//   bwai-mod-mode     'off' when the moderator chose "Exit moderator mode";
+//                     stops it switching itself back on at the next load
+function authEmail() {
+    return (currentUser && !isModAsCommunityUser && currentUser.email || '').toLowerCase();
+}
+
+function canEnterModFromAuth() {
+    const em = authEmail();
+    return !!(authAccessToken && em && localStorage.getItem('bwai-mod-known') === em);
+}
+
+async function enterModFromAuth(opts = {}) {
+    if (!authAccessToken || !authEmail()) return false;
+    const call = () => fetch(`${SUPABASE_URL}/rest/v1/rpc/moderator_login_from_auth`, {
+        method: 'POST',
+        headers: {
+            apikey: ANON_KEY,
+            Authorization: `Bearer ${authAccessToken}`,
+            'Content-Type': 'application/json',
+        },
+        body: '{}',
+    });
+    try {
+        let res = await call();
+        if (res.status === 401 && await refreshAuthToken()) res = await call();
+        if (!res.ok) return false;
+        const data = await res.json();
+        localStorage.setItem('bwai-mod-checked', authEmail());
+        if (!data || !data.token) {
+            localStorage.removeItem('bwai-mod-known');
+            updateModUI();
+            return false;
+        }
+        sessionStorage.setItem('bwai-mod-token', data.token);
+        sessionStorage.setItem('bwai-mod-user', data.email);
+        sessionStorage.setItem('bwai-mod-role', data.role);
+        sessionStorage.setItem('bwai-mod-display-name', data.display_name || '');
+        sessionStorage.setItem('bwai-mod-via', 'auth');
+        localStorage.setItem('bwai-mod-known', authEmail());
+        localStorage.removeItem('bwai-mod-mode');
+        updateModUI();
+        if (!opts.quiet) showToast(data.role === 'admin' ? 'Moderator mode on (admin)' : 'Moderator mode on');
+        if (opts.render !== false && typeof renderFeed === 'function') renderFeed();
+        return true;
+    } catch (_) {
+        return false;
+    }
+}
+
+// Called once after sign-in is restored on page load (and after a magic-link
+// sign-in). Turns moderator mode on for moderators unless they switched it
+// off; asks the server at most once per email for everyone else.
+async function maybeAutoEnterMod() {
+    const em = authEmail();
+    if (!em || !authAccessToken || isModLoggedIn()) { updateModUI(); return; }
+    if (localStorage.getItem('bwai-mod-mode') === 'off') { updateModUI(); return; }
+    const known = localStorage.getItem('bwai-mod-known') === em;
+    const checked = localStorage.getItem('bwai-mod-checked') === em;
+    if (known || !checked) await enterModFromAuth({ quiet: known, render: false });
+    updateModUI();
+}
+
+// The old password login, kept as a fallback for when the magic-link email
+// isn't arriving. Reached from a small link in the Sign In dialog.
+function openModPasswordLogin() {
+    document.getElementById('mod-login-modal').classList.add('open');
+    document.getElementById('mod-username').focus();
 }
 
 // Bridge moderator/admin session into a community user so they
@@ -410,9 +502,13 @@ function updateModUI() {
     const loggedIn = isModLoggedIn();
     const admin = isAdmin();
     // Navbar auth buttons
-    document.getElementById('navbar-login-btn').style.display = loggedIn ? 'none' : '';
+    const viaAuth = sessionStorage.getItem('bwai-mod-via') === 'auth';
+    // "Enter moderator mode" only for a signed-in account known to be a
+    // moderator; everyone else never sees moderator controls at all.
+    document.getElementById('navbar-login-btn').style.display = (!loggedIn && canEnterModFromAuth()) ? '' : 'none';
     document.getElementById('navbar-logout-btn').style.display = loggedIn ? '' : 'none';
-    document.getElementById('navbar-changepw-btn').style.display = loggedIn ? '' : 'none';
+    // No password involved when moderator mode came from the normal sign-in.
+    document.getElementById('navbar-changepw-btn').style.display = (loggedIn && !viaAuth) ? '' : 'none';
     document.getElementById('navbar-admin-btn').style.display = (loggedIn && admin) ? '' : 'none';
     document.getElementById('navbar-flags-btn').style.display = loggedIn ? '' : 'none';
     document.getElementById('navbar-comments-history-btn').style.display = loggedIn ? '' : 'none';
@@ -446,14 +542,17 @@ function toggleModLogin() {
                 body: JSON.stringify({ p_token: token }),
             }).catch(() => {});
         }
+        if (sessionStorage.getItem('bwai-mod-via') === 'auth') {
+            localStorage.setItem('bwai-mod-mode', 'off');
+        }
         clearModSession();
         updateModUI();
-        showToast('Moderator logged out');
+        showToast('Moderator mode off');
         renderFeed();
         return;
     }
-    document.getElementById('mod-login-modal').classList.add('open');
-    document.getElementById('mod-username').focus();
+    if (canEnterModFromAuth()) { enterModFromAuth(); return; }
+    openModPasswordLogin();
 }
 
 function closeModLogin() {
@@ -1887,6 +1986,18 @@ async function doUserLogin() {
 }
 
 async function doUserLogout() {
+    // One sign-in, one sign-out: end any moderator session with it. This is
+    // not "switching moderator mode off", so bwai-mod-mode is left alone.
+    if (isModLoggedIn()) {
+        const token = getModToken();
+        fetch(`${SUPABASE_URL}/rest/v1/rpc/moderator_logout`, {
+            method: 'POST',
+            headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ p_token: token }),
+        }).catch(() => {});
+        clearModSession();
+        updateModUI();
+    }
     if (authAccessToken) {
         try {
             await fetch(`${SUPABASE_URL}/auth/v1/logout`, {
@@ -1905,6 +2016,7 @@ async function doUserLogout() {
     userFollowedFeeders = [];
     isModAsCommunityUser = false;
     updateCommunityUI();
+    updateModUI();   // hides "Enter moderator mode" now there is no sign-in
     // Drop cached community state and REFETCH rather than re-render: the rows
     // already in allDetections include any private community this user could
     // see, and renderFeed() alone would happily redraw them for whoever is at
@@ -2495,8 +2607,10 @@ async function deleteCommentFromHistory(commentId) {
 
 // Restore moderator UI state on page load
 updateModUI();
-// If a mod session exists, bridge them as a community user too
-if (isModLoggedIn()) {
+// If a password-based mod session exists, bridge them as a community user too.
+// A session that came from the normal sign-in needs no bridge: that real
+// account is restored by initCommunityAuth below.
+if (isModLoggedIn() && sessionStorage.getItem('bwai-mod-via') !== 'auth') {
     const email = sessionStorage.getItem('bwai-mod-user');
     const role = sessionStorage.getItem('bwai-mod-role');
     const name = sessionStorage.getItem('bwai-mod-display-name');
@@ -2525,6 +2639,8 @@ initCommunityAuth()
         if (currentUser && !isModAsCommunityUser) updateCommunityUI();
         handleLifeListLink();
     })
+    // Before the feed loads, so moderator controls render on the first paint.
+    .then(() => maybeAutoEnterMod().catch(() => {}))
     .then(() => loadFeed())
     .then(handleSharedId)
     .catch(() => {});
