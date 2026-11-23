@@ -6894,3 +6894,23 @@ body.ch-home #classroom-panel-brand .classroom-stage-school { display: none; }
 .ch-logo-slot { margin: 0.4rem 0 0.9rem; display: flex; justify-content: center; }
 .ch-logo-slot .cl-controls { display: flex; flex-wrap: wrap; gap: 0.4rem; justify-content: center; }
 .ch-logo-slot .classroom-btn.cl-remove { margin-left: 0; }
+
+/* Moderator dialogs with a sticky header (Manage Moderators, Flagged
+   Detections). The header bleeds to the box edges, matching its 2rem padding,
+   and stays at the top while the box scrolls. */
+.mod-sticky-box { padding-top: 0; }
+.mod-sticky-box > .mod-panel-head {
+    --head-pad: 2rem;
+    margin-top: 0;
+    border-radius: 12px 12px 0 0;
+}
+.mod-sticky-box > .mod-panel-head h3 { margin-bottom: 0; }
+.mod-head-close-text {
+    flex: 0 0 auto;
+    font-family: inherit; font-size: 0.85rem; font-weight: 600;
+    padding: 6px 12px;
+    border: 1px solid var(--border); border-radius: 6px;
+    background: var(--bg-card); color: var(--color-gray-700);
+    cursor: pointer; white-space: nowrap;
+}
+.mod-head-close-text:hover { border-color: var(--color-gray-500); color: var(--color-gray-900); }

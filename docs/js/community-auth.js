@@ -179,6 +179,10 @@ document.addEventListener('keydown', e => {
         closeSlideshow();
         if (typeof closeClipTheater === 'function') closeClipTheater();
         closeDetailModal();
+        // The moderator dialogs (Moderate menu) close on Escape too.
+        closeAdminPanel();
+        closeFlagQueue();
+        closeCommentsHistory();
         kbdHintVisible = false;
         document.getElementById('kbd-hint').classList.remove('visible');
         return;

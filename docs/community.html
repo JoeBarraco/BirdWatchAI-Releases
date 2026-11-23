@@ -13,7 +13,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="BirdWatchAI">
-    <link rel="stylesheet" href="css/community.css?v=62f1a955">
+    <link rel="stylesheet" href="css/community.css?v=060bed20">
 </head>
 <body>
 <!-- Top navbar with auth controls -->
@@ -569,8 +569,13 @@
 
 <!-- ── Mod flag queue modal ──────────────────────────────────── -->
 <div id="flag-queue-modal" role="dialog" aria-modal="true">
-    <div class="flag-queue-box">
-        <h3>Flagged Detections</h3>
+    <div class="flag-queue-box mod-sticky-box">
+        <!-- Same sticky header as Manage Moderators: a long queue pushed
+             Close off the bottom of the window. -->
+        <div class="mod-panel-head">
+            <h3>Flagged Detections</h3>
+            <button type="button" class="mod-head-close-text" onclick="closeFlagQueue()">✕ Close</button>
+        </div>
         <div id="flag-queue-list">
             <div style="text-align:center;color:var(--color-gray-500);padding:1rem;">Loading...</div>
         </div>
@@ -615,8 +620,16 @@
 
 <!-- Admin: manage moderators modal -->
 <div id="mod-admin-modal" role="dialog" aria-modal="true">
-    <div class="mod-admin-box">
-        <h3>Manage Moderators</h3>
+    <div class="mod-admin-box mod-sticky-box">
+        <!-- Sticky header with Close, as on the Communities dialog: the
+             moderator list plus the community roster and remote-support
+             sections run well past the window, and Close was only at the
+             very bottom ("the only way to close the dialog box is scroll all
+             the way down"). Escape and clicking outside also close it. -->
+        <div class="mod-panel-head">
+            <h3>Manage Moderators</h3>
+            <button type="button" class="mod-head-close-text" onclick="closeAdminPanel()">✕ Close</button>
+        </div>
         <ul id="mod-user-list" class="mod-user-list">
             <li style="color:var(--color-gray-500)">Loading...</li>
         </ul>
@@ -1315,7 +1328,7 @@
 <!-- Canvas re-burn of the photo's caption strip, used by the moderator edit
      modal. Must load before community-auth.js, which calls into window.bwOverlay. -->
 <script src="js/community-overlay.js?v=81687514"></script>
-<script src="js/community-auth.js?v=1f07e045"></script>
+<script src="js/community-auth.js?v=83991ccd"></script>
 <script src="js/community-navbar.js?v=c6f0216c"></script>
 <script src="js/community-remote.js?v=748a95c8"></script>
 <!-- ?v=5: the panel gained the tier picker, the redeem form and the bulk
