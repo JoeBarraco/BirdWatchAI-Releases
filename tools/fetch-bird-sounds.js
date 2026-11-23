@@ -134,10 +134,10 @@ function plain(html) {
 // timbre cannot be answered when this bird is the quietest thing in the
 // clip. Commons has only one other real recording of the species, the
 // PLoS ONE sample below: 4 s, three coo notes near 500 Hz and nothing else
-// on the spectrogram. It is .oga, which Safari may refuse. There is no
-// clean mp3 on Commons, and a recording an iPad cannot play is better
-// than one a class cannot answer, because cmPlayableSound drops it there
-// rather than playing it wrong.
+// on the spectrogram. It is .oga, and there is no clean mp3 on Commons.
+// The .oga turned out to be unplayable on iPhone even though iOS answers
+// "maybe" to canPlayType('audio/ogg') (flagged: "It wouldn't play the
+// sound on my iPhone"), so it ships as a WAV instead; see CONVERTED below.
 //
 // A pinned file is fetched even when a different recording is already on
 // disk for that bird, so changing a pin here and rerunning is the whole
@@ -145,6 +145,25 @@ function plain(html) {
 const PINNED = {
     'Barred Owl':    'Strix varia - Northern Barred Owl XC375201.mp3',
     'Mourning Dove': 'Zenaida macroura vocalizations - pone.0027052.s009.oga',
+};
+
+// ── Recordings that ship in another format ───────────────────────────
+//
+// iOS Safari will not play Ogg Vorbis, whatever canPlayType says, and some
+// birds have nothing on Commons BUT ogg. For those a converted copy is
+// committed next to where the download would land, and this tool prefers
+// it whenever it is on disk, so a rerun (even a full refetch) never swaps
+// a working WAV back for an ogg an iPhone cannot play.
+//
+// THE CONVERSION IS BY HAND, because this repo has no audio encoder and
+// adding one for a single 4-second clip is not worth it. Mourning Dove:
+// decoded in a browser (Web Audio decodeAudioData), resampled to 22.05 kHz
+// mono, and normalised to a -1 dB peak. The original peaks at -31 dB, which
+// on a classroom speaker is close to silence. CC BY 2.5 permits the
+// adaptation, and the attribution recorded for the original still applies.
+// If a pin changes, delete the converted file or it goes on winning.
+const CONVERTED = {
+    'Mourning Dove': 'mourning-dove.wav',
 };
 
 const pinnedSource = name =>
@@ -252,9 +271,12 @@ const slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, 
         const have = prev[common];
         const stale = have && PINNED[common]
                    && decodeURIComponent(have.source) !== pinnedSource(PINNED[common]);
-        if (have && !stale && fs.existsSync(path.join(audioDir, have.file))) {
-            kept.push({ ...have, bytes: fs.statSync(path.join(audioDir, have.file)).size });
-            console.log(`  · ${common.padEnd(24)} ${have.file} (already have it)`);
+        const conv = CONVERTED[common] && fs.existsSync(path.join(audioDir, CONVERTED[common]))
+                   ? CONVERTED[common] : null;
+        if (have && !stale && (conv || fs.existsSync(path.join(audioDir, have.file)))) {
+            const file = conv || have.file;
+            kept.push({ ...have, file, bytes: fs.statSync(path.join(audioDir, file)).size });
+            console.log(`  · ${common.padEnd(24)} ${file} (already have it${conv ? ', converted' : ''})`);
             continue;
         }
 
@@ -266,9 +288,16 @@ const slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, 
                 const why  = acceptable(info);
                 if (why) { skipped.push([common, `${name}: ${why}`]); continue; }
 
+                // A converted copy on disk wins: the download is only for the
+                // attribution, which comes from the original either way.
                 const ext  = path.extname(name).toLowerCase() || '.mp3';
-                const file = slug(common) + ext;
-                const bytes = await withRetry(() => download(info.url, path.join(audioDir, file)));
+                const file = conv || slug(common) + ext;
+                const bytes = conv ? fs.statSync(path.join(audioDir, conv)).size
+                    : await withRetry(() => download(info.url, path.join(audioDir, file)));
+                if (CONVERTED[common] && !conv) {
+                    console.warn(`  ⚠ ${common}: ${CONVERTED[common]} is missing, so the original `
+                               + `${file} was saved. Convert it again (see CONVERTED).`);
+                }
 
                 kept.push({
                     species: common, file, bytes,

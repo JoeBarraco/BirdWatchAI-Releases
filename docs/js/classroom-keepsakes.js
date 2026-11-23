@@ -243,7 +243,7 @@ function ckCardQuestions(questions) {
  */
 function ckRememberLesson(S) {
     if (!S || !S.room) return;
-    const top = S.source && Array.isArray(S.source.species) ? S.source.species.find(x => cmIsBird(x.species)) : null;
+    const pick = ckBirdOfTheDay(S.source, new Date());
     classroomLastLesson = {
         roomId: S.room.id,
         when: new Date(),
@@ -252,9 +252,43 @@ function ckRememberLesson(S) {
             correct_index: q.correct_index, class_index: q.class_index,
             is_correct: q.correct_index != null && q.class_index === q.correct_index,
         })),
-        bird: top ? { name: top.species, photo: cmSpeciesPhoto(S.source, top.species) } : null,
+        bird: pick ? { name: pick.species, photo: pick.photo } : null,
+        birdToday: !!(pick && pick.today),
+        // Not "our feeder" when the lesson came from a pool or a partner's.
+        pooled: !!(S.source && (S.source.isPool || S.source.feederId !== S.room.home_feeder_id)),
         feederId: S.source && !S.source.isPool ? S.source.feederId : S.room.home_feeder_id,
     };
+}
+
+/**
+ * The bird for the card: the one seen most TODAY, or, when nothing has
+ * come yet today, the one seen most over the lesson's fortnight, flagged
+ * as such so the card can say so.
+ *
+ * This used to be the fortnight's leader every time, labelled "Our bird
+ * of the day" under "Today in ...". At most feeders the fortnight's leader
+ * is the same bird week after week, so every card named the same bird,
+ * and it was flagged as "always the same one, which wasn't even at the
+ * feeder today". The lesson summary already counts species per day
+ * (daySpec), so today's own leader costs nothing to find.
+ */
+function ckBirdOfTheDay(src, when) {
+    if (!src) return null;
+    const dm = src.daySpec && src.daySpec.get(cmDayKey(when));
+    if (dm && dm.size) {
+        const [species] = [...dm.entries()]
+            .filter(([sp]) => cmIsBird(sp))
+            .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0] || [];
+        if (species) {
+            // Today's own photo where there is one, since the card says today.
+            const day = cmDayKey(when);
+            const shot = (src.snapshots || []).find(r => r.species === species
+                                                    && cmDayKey(r.detected_at) === day);
+            return { species, today: true, photo: shot ? shot.image_url : cmSpeciesPhoto(src, species) };
+        }
+    }
+    const top = Array.isArray(src.species) ? src.species.find(x => cmIsBird(x.species)) : null;
+    return top ? { species: top.species, today: false, photo: cmSpeciesPhoto(src, top.species) } : null;
 }
 
 /** The end screen's button: the card goes up on the stage, ready to print. */
@@ -294,16 +328,25 @@ async function showClassroomTakeHome(roomId) {
                 <button class="classroom-btn" onclick="hideClassroomHistory()">Close</button>`;
             return;
         }
-        // The bird of the day, after the fact: the bird seen most at the
-        // feeder in the fortnight before the lesson, which is the window the
-        // lesson itself was built from.
+        // The bird of the day, after the fact, chosen the same way as at the
+        // end of a live lesson (ckBirdOfTheDay): the bird seen most on the
+        // lesson's own day, and only if that day had none, the one seen most
+        // in the fortnight the lesson was built from, labelled as that.
         const when = new Date(last.started_at);
-        const from = new Date(when.getTime() - CLASSROOM_WINDOW_DAYS * 864e5);
-        const firsts = await ckFirsts(ckFeederIds(room), from, new Date(when.getTime() + 864e5));
-        const top = (firsts || []).slice().sort((a, b) => b.n - a.n)[0];
+        const dayStart = new Date(when); dayStart.setHours(0, 0, 0, 0);
+        const dayEnd = new Date(dayStart.getTime() + 864e5);
+        const leader = list => (list || []).slice().sort((a, b) => b.n - a.n)[0];
+        let top = leader(await ckFirsts(ckFeederIds(room), dayStart, dayEnd));
+        const today = !!top;
+        if (!top) {
+            const from = new Date(when.getTime() - CLASSROOM_WINDOW_DAYS * 864e5);
+            top = leader(await ckFirsts(ckFeederIds(room), from, dayEnd));
+        }
         L = {
             roomId, when, questions: last.questions,
             bird: top ? { name: top.sp, photo: top.photo } : null,
+            birdToday: today,
+            pooled: !room.home_feeder_id,
             feederId: room.home_feeder_id,
         };
     }
@@ -323,6 +366,20 @@ async function showClassroomTakeHome(roomId) {
 function ckCardTitle(room, when) {
     const d = new Date(when);
     return ckFileName([room.name, `take-home ${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`]);
+}
+
+/**
+ * What the card calls its bird. It only says "of the day" when the bird
+ * came that day, and only says "our feeder" when the lesson was built from
+ * the class's own feeder rather than a pool of other people's.
+ * A card kept from before birdToday existed has it undefined, and gets the
+ * fortnight wording: the cautious claim is the one that is never wrong.
+ */
+function ckBirdLabel(L, k2) {
+    const where = L.pooled ? 'the feeders we watch' : 'our feeder';
+    if (L.birdToday) return k2 ? 'Our bird of the day' : `Bird of the day at ${where}`;
+    return k2 ? 'The bird we saw most these two weeks'
+              : `Seen most at ${where} these two weeks`;
 }
 
 async function ckCardHtml(room, L) {
@@ -360,7 +417,7 @@ async function ckCardHtml(room, L) {
         <div class="ck-bird">
             ${ckPhotoOk(L.bird.photo) ? ckPhotoHtml(L.bird.photo, L.bird.name) : ''}
             <div>
-                <div class="ck-label">${k2 ? 'Our bird of the day' : 'Bird of the day at our feeder'}</div>
+                <div class="ck-label">${ckBirdLabel(L, k2)}</div>
                 <div class="ck-bird-name">${esc(L.bird.name)}</div>
                 ${fact ? `<p class="ck-fact">${esc(fact)}</p>` : ''}
             </div>

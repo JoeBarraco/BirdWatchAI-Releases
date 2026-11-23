@@ -3125,6 +3125,19 @@ function classroomEvidenceHtml(q, revealed) {
  * example first and an acceptable fallback after it; a template that gets
  * null should not build at all rather than ask about a silence.
  */
+/**
+ * True on Safari, and on every browser on an iPhone or iPad (all of them
+ * are WebKit underneath, whatever they are called). iPadOS reports itself
+ * as a Mac, so a touch-capable "Mac" counts too.
+ */
+function cmAppleWebKit() {
+    const nav = typeof navigator !== 'undefined' ? navigator : null;
+    const ua = (nav && nav.userAgent) || '';
+    if (/iPhone|iPad|iPod/.test(ua)) return true;
+    if (/Macintosh/.test(ua) && nav && nav.maxTouchPoints > 1) return true;
+    return /Safari/.test(ua) && !/Chrome|Chromium|CriOS|Edg|OPR|Firefox|FxiOS/.test(ua);
+}
+
 function cmPlayableSound(species) {
     if (typeof birdSound !== 'function') return null;
     const list = Array.isArray(species) ? species : [species];
@@ -3137,8 +3150,18 @@ function cmPlayableSound(species) {
         if (!rec || !rec.file) continue;
         if (!probe || !probe.canPlayType) return rec;   // cannot tell: try it
 
+        const isOgg = /\.og[ga]$/i.test(rec.file);
+        // ⚠ OGG ON APPLE IS A LIE. iOS answers "maybe" to canPlayType('audio/ogg')
+        // and then refuses to play the file, so a question was offered with
+        // a button that only ever said it would not play. Flagged from an
+        // iPhone: "It wouldn't play the sound on my iPhone." So ogg is asked
+        // about WITH its codec, which is the question that has an honest
+        // answer, and is refused outright on any Apple WebKit browser, where
+        // every iPhone browser is Safari underneath whatever its name. A
+        // question that sits the week out beats a dead play button.
+        if (isOgg && cmAppleWebKit()) continue;
         const type = /\.mp3$/i.test(rec.file) ? 'audio/mpeg'
-                   : /\.og[ga]$/i.test(rec.file) ? 'audio/ogg'
+                   : isOgg ? 'audio/ogg; codecs="vorbis"'
                    : /\.wav$/i.test(rec.file) ? 'audio/wav' : '';
         // canPlayType returns '', 'maybe' or 'probably'. Anything but '' is
         // worth offering; '' is a definite no.
@@ -9439,8 +9462,12 @@ ${jumbled.split('').join(' ')}`,
             prompt: band === 'k-2'
                 ? 'Two groups watched this same clip. One counted 3 birds and one '
                   + 'counted 4. What should they do?'
-                : 'Two groups watched this same clip with the same tools and got '
-                  + 'different counts — 3 and 4. What is the scientific thing to do?',
+                // Says WHAT was counted. "Got different counts — 3 and 4" was
+                // flagged as "doesn't explain what the counts are of"; the
+                // K-2 wording always said birds, and this one never did.
+                : 'Two groups watched this same clip with the same tools and counted '
+                  + 'the bird visits. One group counted 3 and the other counted 4. '
+                  + 'What is the scientific thing to do?',
             ...built,
             // ⚠ `video`, NOT `clip`. classroomEvidenceHtml draws q.video and
             // nothing else; under `clip` the slide was blank, and a K-2 class
@@ -16246,7 +16273,14 @@ function renderClassroomForm() {
             <label>${homeMode ? 'Your own feeder (optional)' : 'Home feeder'}
                 <select id="classroom-home-feeder" onchange="renderClassroomPartnerChecks()">
                     <option value="">${homeMode ? '— none: use public feeders —' : '— choose a feeder —'}</option>
-                    ${feederOpts(editing?.home_feeder_id)}
+                    ${feederOpts(editing ? editing.home_feeder_id
+                        // A new child in a home with exactly one feeder gets that
+                        // feeder, not "none". It is the family's own, and leaving
+                        // it unpicked meant a child quietly learned from public
+                        // feeders instead (flagged: "not obvious how to set a
+                        // feeder to a home classroom"). Still a choice they can
+                        // change in the same box.
+                        : (homeMode && classroomFeederOpts.length === 1 ? classroomFeederOpts[0].id : null))}
                 </select>
             </label>
             ${teacherOpts ? `<label>Taught by

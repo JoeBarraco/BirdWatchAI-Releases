@@ -203,6 +203,33 @@ async function chRenderBanner() {
         </details>
         ${waiting.length ? '' : '<p class="classroom-muted ch-nofeeder">No feeder? Add a child and pick public feeders to learn from.</p>'}`;
 
+    // Once a feeder IS connected the steps above vanish, and nothing used to
+    // take their place. The feeder belongs to the home, but each child picks
+    // it separately under Edit, so a family could connect a feeder and still
+    // have a child learning from public feeders without knowing it. Flagged
+    // as "not obvious how to set a feeder to a home classroom. It looks like
+    // it can be done by individual students, but not for the home." This
+    // says which feeder the home has, who is not using it, and offers to fix
+    // that in one press. It sets nothing on its own: a parent may have
+    // pointed one child at public feeders on purpose.
+    // classroomList is already this community's classrooms: here, the children.
+    const kids = (typeof classroomList !== 'undefined' ? classroomList : []).filter(Boolean);
+    const without = kids.filter(r => !r.home_feeder_id);
+    const only = approved.length === 1 ? approved[0] : null;
+    const feederLine = !approved.length ? '' : `
+        <div class="ch-feeder">
+            <strong>🐦 ${approved.length === 1
+                ? `Your feeder: ${esc(only.display_name || 'Feeder')}`
+                : `Your feeders: ${approved.map(f => esc(f.display_name || 'Feeder')).join(', ')}`}</strong>
+            ${!kids.length ? '<span class="classroom-muted">Add a child and it is picked for them.</span>'
+              : !without.length ? `<span class="classroom-muted">Every child’s lessons use it.</span>`
+              : `<span>${esc(without.map(r => r.name).join(', '))} ${without.length === 1 ? 'is' : 'are'}
+                    not using ${approved.length === 1 ? 'it' : 'one'} yet.</span>
+                 ${only ? `<button class="classroom-btn-primary" onclick="chUseFeederForAll('${escJs(only.id)}')">Use it for every child</button>`
+                        : '<span class="classroom-muted">Pick one for each child under Edit.</span>'}`}
+            <span class="classroom-muted">One child can still use a different feeder: press Edit on that child.</span>
+        </div>`;
+
     const codeBox = s && !s.perpetual ? `
         <div class="ch-codebox">
             ${chBuyHtml()}
@@ -233,7 +260,7 @@ async function chRenderBanner() {
         foot.innerHTML = urgent ? '' : termHtml;
         foot.style.display = (!urgent && termHtml) ? '' : 'none';
     }
-    const top = (urgent ? termHtml : '') + connect;
+    const top = (urgent ? termHtml : '') + connect + feederLine;
     box.className = 'classroom-term ch-banner' + (s && s.state === 'lapsed' ? ' lapsed' : '')
                   + (urgent ? ' ch-urgent' : '');
     box.innerHTML = top;
@@ -257,6 +284,27 @@ async function chApprove(feederId) {
         { p_community_id: classroomCommunityId, p_feeder_id: feederId, p_decision: 'approved' }, true);
     if (error) { showToast(error.message || 'Could not approve it.'); return; }
     showToast('Feeder connected. Now add a child and start a lesson.');
+    await refreshClassroomPanel();
+}
+
+/**
+ * The banner's "Use it for every child": point each child that has no
+ * feeder of their own at the home's feeder. Only those children. One that
+ * already has a feeder chose it, and this is not the place to undo that.
+ * Each child's other settings, data source included, are left alone:
+ * classroom_update only changes what it is given.
+ */
+async function chUseFeederForAll(feederId) {
+    const kids = (typeof classroomList !== 'undefined' ? classroomList : [])
+        .filter(r => r && !r.home_feeder_id);
+    let failed = 0;
+    for (const r of kids) {
+        const { error } = await sbRpc('classroom_update',
+            { p_classroom_id: r.id, p_home_feeder_id: feederId }, true);
+        if (error) failed++;
+    }
+    showToast(failed ? `Could not update ${failed} of ${kids.length}. Try Edit on that child.`
+                     : 'Done. Every child’s lessons now use your feeder.');
     await refreshClassroomPanel();
 }
 

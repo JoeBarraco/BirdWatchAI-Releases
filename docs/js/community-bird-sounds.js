@@ -51,7 +51,7 @@ const BIRD_SOUND_FILES = {
         source:  "https://commons.wikimedia.org/wiki/File:Charadrius_vociferus_-_Killdeer_XC62728.mp3",
     },
     "Mourning Dove": {
-        file:    "audio/birds/mourning-dove.oga",
+        file:    "audio/birds/mourning-dove.wav",
         artist:  "Francis C, Ortega C, Cruz A",
         licence: "CC BY 2.5",
         licenceUrl: "https://creativecommons.org/licenses/by/2.5",
