@@ -9,7 +9,7 @@
 // the desktop app can show a code. Flip it to true when an app release with
 // "Link to my account" is out. The dialog itself works either way, and
 // ?myfeeders=1 opens it for testing.
-const MY_FEEDERS_READY = false;
+const MY_FEEDERS_READY = true;
 
 function updateMyFeedersNavUI() {
     const btn = document.getElementById('navbar-my-feeders');
