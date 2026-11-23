@@ -3979,13 +3979,21 @@
 /* The suggestion box lives in the review panel rather than the form, and
    a textarea defaults to roughly 20 characters wide — which makes a box
    asking for a paragraph look like it wants three words. */
+/* #classroom-idea-body is the same form opened on its own from the menu
+   ("Send a suggestion"); it was left out here, so it showed the browser's
+   default ~20-character monospace box. */
 #classroom-review textarea,
+#classroom-idea-body textarea,
 .classroom-flag-form textarea {
     width: 100%; margin-bottom: 0.5rem; box-sizing: border-box;
     font-family: inherit; font-size: 0.85rem; line-height: 1.5;
     padding: 0.5rem;
+    resize: vertical;
 }
-#classroom-review .classroom-form-row { margin-bottom: 0.5rem; }
+#cc-idea-text { min-height: 8.5em; }
+#classroom-review .classroom-form-row,
+#classroom-idea-body .classroom-form-row { margin-bottom: 0.5rem; }
+#classroom-idea-body select { width: 100%; }
 
 .classroom-form-row { display: grid; gap: 0.5rem; margin-bottom: 0.5rem; }
 /* Two fields for a teacher, three for a moderator (who also gets the
