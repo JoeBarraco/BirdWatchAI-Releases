@@ -3958,6 +3958,14 @@
     bottom: calc(var(--box-pad-y, 0px) * -1);
     padding: 9px 11px calc(9px + var(--box-pad-y, 0px));
 }
+/* …except as the Cancel beside a form's Send button (Suggest a question and
+   friends), where the full-width sticky bar became a giant Cancel filling
+   the rest of the row. In a button row it is just a button. */
+.classroom-form-actions .classroom-right-close {
+    position: static; display: inline-block; width: auto;
+    margin-top: 0; padding: 4px 11px;
+}
+.classroom-form-actions > button { flex: 0 0 auto; }
 
 
 .classroom-pending:not(:empty) { margin-top: 0.5rem; }
