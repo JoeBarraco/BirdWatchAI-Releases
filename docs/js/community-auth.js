@@ -318,7 +318,8 @@ function openDetailModal(id) {
     likeBtn.className = 'reaction-btn' + (likeReacted ? ' reacted' : '');
     likeBtn.dataset.reactionId = d.id;
     likeBtn.dataset.emoji = '❤️';
-    likeBtn.textContent = '❤️' + (likeCount ? ' ' + likeCount : '');
+    likeBtn.dataset.label = 'like';
+    likeBtn.textContent = likeBtnText(likeCount, likeReacted);
     likeBtn.onclick = () => toggleReaction(d.id, '❤️', likeBtn);
     rxDiv.appendChild(likeBtn);
     if (likeCount) {
@@ -2479,7 +2480,7 @@ async function submitComment(detectionId) {
         loadAndRenderComments(detectionId);
         // Update card button
         document.querySelectorAll(`.card[data-id="${detectionId}"] .card-comment-btn`).forEach(btn => {
-            btn.textContent = `💬 ${commentCounts[detectionId]}`;
+            btn.textContent = commentBtnLabel(commentCounts[detectionId]);
         });
     }
 }

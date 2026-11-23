@@ -43,13 +43,18 @@ function detectionMapPoint(d, feederGps) {
     return null;
 }
 
+// Text for a card's comment button: "💬 Comment", "💬 1 comment", "💬 3 comments".
+function commentBtnLabel(n) {
+    return n ? `💬 ${n} comment${n === 1 ? '' : 's'}` : '💬 Comment';
+}
+
 function formatLocationChip(o) {
     if (hasGps(o)) {
         const lat = +o.latitude, lng = +o.longitude;
         const url = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}&zoom=12#map=12/${lat}/${lng}`;
-        return ` · <a class="card-loc-link" href="${url}" target="_blank" rel="noopener" title="Open on OpenStreetMap">📍 ${fmtLatLng(lat, lng, 3)}</a>`;
+        return `<a class="card-loc-link" href="${url}" target="_blank" rel="noopener" title="Open on OpenStreetMap">📍 ${fmtLatLng(lat, lng, 3)}</a>`;
     }
-    if (o && o.zip_code) return ` · 📍 ${esc(o.zip_code)}`;
+    if (o && o.zip_code) return `<span class="card-meta-item">📍 ${esc(o.zip_code)}</span>`;
     return '';
 }
 
@@ -202,23 +207,23 @@ function renderFeed() {
                         ? ` <span class="${rarityClass}">· ${esc(d.rarity)}</span>` : ''}${isFirst
                         ? ' <span class="badge-first-season">🌱 First of Season</span>' : ''}
                 </div>
-                <div class="card-meta">
-                    🕐 ${fmtDetectedAt(d.detected_at)}${formatLocationChip(d)}${d.temperature != null
-                        ? ` · 🌡️ ${d.temperature}°F` : ''}
-                </div>
                 ${d.feeders?.display_name ? `<div class="card-feeder">${feederMark(d.feeders)} ${esc(d.feeders.display_name)}</div>` : ''}
+                <div class="card-meta">
+                    <span class="card-meta-item">🕐 ${fmtDetectedAt(d.detected_at)}</span>${formatLocationChip(d)}${d.temperature != null
+                        ? `<span class="card-meta-item">🌡️ ${d.temperature}°F</span>` : ''}
+                </div>
             </div>
             <div class="card-side">
                 ${lifeListBtn}
                 ${followBtn}
                 <div class="card-reactions">
-                    <button class="reaction-btn${reacted ? ' reacted' : ''}" data-reaction-id="${d.id}" data-emoji="❤️">❤️${likeCount ? ' ' + likeCount : ''}</button>${likeCount ? `<button class="likers-btn" onclick="showLikers('${d.id}', this.parentElement)" title="See who liked">Liked by…</button>` : ''}
+                    <button class="reaction-btn${reacted ? ' reacted' : ''}" data-reaction-id="${d.id}" data-emoji="❤️" data-label="like">${likeBtnText(likeCount, reacted)}</button>${likeCount ? `<button class="likers-btn" onclick="showLikers('${d.id}', this.parentElement)" title="See who liked">Liked by…</button>` : ''}
                 </div>
                 ${d.video_url ? `<a class="card-video" href="${d.video_url}" data-video-play="${d.video_url}" target="_blank" rel="noopener">🎬 Watch video</a>` : ''}
                 <button class="card-ai" data-ai-species="${esc(d.species)}" title="Species info and links">🌐 Web</button>
                 <button class="card-share" data-share-id="${d.id}" title="Copy link to this detection">🔗 Share</button>
-                <button class="card-comment-btn" onclick="openComments('${d.id}')" title="Comments">💬${cCount ? ' ' + cCount : ''}</button>
-                <button class="card-flag-btn" onclick="openFlag('${d.id}')" title="Report this detection">🚩</button>
+                <button class="card-comment-btn" onclick="openComments('${d.id}')" title="Comments">${commentBtnLabel(cCount)}</button>
+                <button class="card-flag-btn" onclick="openFlag('${d.id}')" title="Report this detection">🚩 Report</button>
                 ${isModLoggedIn() ? `<div class="mod-actions">
                     <button onclick="openModEdit('${d.id}')">✏️ Edit</button>
                     <button class="mod-delete-btn" onclick="confirmModDelete('${d.id}')">🗑️ Delete</button>

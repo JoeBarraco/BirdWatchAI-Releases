@@ -608,6 +608,15 @@
             margin-top: 2px;
         }
 
+        /* Listed and Follow are a matched pair at the top of the rail: same
+           shape, size and weight, rather than a small tag over a pill. */
+        .card-side .life-list-add-btn,
+        .card-side .follow-feeder-btn {
+            display: flex; align-items: center; gap: 4px;
+            font-size: 0.8rem; font-weight: 600;
+            padding: 5px 10px; border-radius: 6px;
+        }
+
         .card-side .mod-actions button {
             flex: 1 1 auto;
             text-align: center;
@@ -689,16 +698,28 @@
             margin-bottom: 4px;
         }
 
+        /* Time, location and temperature as separate chips that wrap as units,
+           spaced by gap rather than "·" so no separator dangles at a line end. */
         .card-meta {
             font-size: 0.875rem;
             color: var(--color-gray-500);
             margin-top: 4px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 2px 14px;
         }
 
+        /* Keep each fact (time, location, temperature) whole, so a wrap falls
+           between them rather than splitting an icon from its value. */
+        .card-meta-item,
+        .card-meta .card-loc-link { white-space: nowrap; }
+
+        /* Sits right under the species name, as "where it was seen". */
         .card-feeder {
-            font-size: 0.8rem;
-            color: #aaa;
-            margin-top: 2px;
+            font-size: 0.875rem;
+            color: var(--color-gray-500);
+            margin: 2px 0 2px;
             display: flex;
             align-items: center;
             gap: 6px;

@@ -377,7 +377,7 @@ async function toggleReaction(detectionId, emoji, btn) {
     reactionTotals[detectionId] = wasReacted ? Math.max(0, oldTotal - 1) : oldTotal + 1;
 
     btn.classList.toggle('reacted', !wasReacted);
-    btn.textContent = emoji + (newCount ? ' ' + newCount : '');
+    btn.textContent = reactionBtnText(btn, emoji, newCount, !wasReacted);
 
     // Server call
     try {
@@ -413,8 +413,22 @@ function updateCardReactions(detectionId) {
         const count = info?.count || 0;
         const reacted = info?.reacted || false;
         btn.classList.toggle('reacted', reacted);
-        btn.textContent = emoji + (count ? ' ' + count : '');
+        btn.textContent = reactionBtnText(btn, emoji, count, reacted);
     });
+}
+
+// Button text for a reaction. Buttons marked data-label="like" (the feed card
+// and the detail modal) read "❤️ Like" / "❤️ Liked · 3"; the compact count
+// cells elsewhere stay as just the emoji and number.
+function reactionBtnText(btn, emoji, count, reacted) {
+    if (btn && btn.dataset && btn.dataset.label === 'like') {
+        return likeBtnText(count, reacted);
+    }
+    return emoji + (count ? ' ' + count : '');
+}
+
+function likeBtnText(count, reacted) {
+    return `❤️ ${reacted ? 'Liked' : 'Like'}${count ? ' · ' + count : ''}`;
 }
 
 // ── "Liked by" popover ──────────────────────────────────────
