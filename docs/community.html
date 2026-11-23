@@ -13,7 +13,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="BirdWatchAI">
-    <link rel="stylesheet" href="css/community.css?v=1f7f5d1b">
+    <link rel="stylesheet" href="css/community.css?v=c1fd03bd">
 </head>
 <body>
 <!-- Top navbar with auth controls -->
@@ -23,28 +23,64 @@
         <span>|</span>
         <span>Community Feed</span>
     </div>
+    <!-- Three zones (Nov 2026 rework):
+           1. places everyone goes   — Life List, Classroom (plain buttons)
+           2. moderator tools        — "Moderate ▾" menu, only when mod mode is on
+           3. the person themselves  — account menu: profile, settings, sign in/out
+         Every button keeps its old id and onclick, so the show/hide code in
+         community-auth.js, community-communities.js and community-classroom.js
+         is untouched. js/community-navbar.js opens/closes the menus, hides a
+         menu whose items are all hidden, and puts the user's name on the
+         account button. -->
     <div class="navbar-right">
-        <button id="theme-toggle" class="navbar-btn" onclick="toggleTheme()" title="Toggle dark mode" aria-label="Toggle dark mode">🌙 Theme</button>
-        <!-- Community user auth -->
-        <span id="navbar-community-user" class="navbar-user" style="display:none;"></span>
-        <button id="navbar-community-login" class="navbar-btn" onclick="openUserLogin()" title="Sign in to comment, follow feeders, and build your life list" aria-label="Sign in">Sign In</button>
-        <button id="navbar-life-list" class="navbar-btn" onclick="openLifeList()" title="My Life List" aria-label="View my life list" style="display:none;">My Life List</button>
-        <button id="navbar-community-profile" class="navbar-btn" onclick="openUserProfile()" title="Edit profile" aria-label="Edit profile" style="display:none;">Profile</button>
-        <button id="navbar-community-logout" class="navbar-btn navbar-btn-danger" onclick="doUserLogout()" title="Sign out" aria-label="Sign out" style="display:none;">Sign Out</button>
-        <span style="opacity:0.3">|</span>
-        <!-- Moderator auth -->
-        <span id="navbar-user" class="navbar-user" style="display:none;"></span>
-        <button id="navbar-login-btn" class="navbar-btn" onclick="toggleModLogin()" title="Moderator login">🔒 Mod</button>
-        <button id="navbar-logout-btn" class="navbar-btn navbar-btn-danger" onclick="toggleModLogin()" title="Log out" style="display:none;">Mod Out</button>
-        <button id="navbar-changepw-btn" class="navbar-btn" onclick="showChangePassword()" title="Change password" style="display:none;">🔑 Password</button>
-        <button id="navbar-admin-btn" class="navbar-btn" onclick="openAdminPanel()" title="Manage moderators" style="display:none;">👥 Moderators</button>
-        <button id="navbar-communities-btn" class="navbar-btn" onclick="openCommunityPanel()" title="Manage your communities" style="display:none;">🏫 Communities</button>
-        <button id="navbar-classroom-btn" class="navbar-btn" onclick="openClassroomPanel()" title="Run a class on the feeder" style="display:none;">🎓 Classroom</button>
-        <button id="navbar-idea-btn" class="navbar-btn" onclick="openClassroomIdeaStandalone()" title="Suggest something about the classroom or the community" style="display:none;">💡 Suggest</button>
-        <button id="navbar-flags-btn" class="navbar-btn" onclick="openFlagQueue()" title="Review flagged detections" style="display:none;">🚩 Flags</button>
-        <button id="navbar-comments-history-btn" class="navbar-btn" onclick="openCommentsHistory()" title="Review comments across all detections" style="display:none;">💬 Comments</button>
+        <!-- Zone 1: primary navigation -->
+        <button id="navbar-life-list" class="navbar-btn" onclick="openLifeList()" title="My Life List" aria-label="View my life list" style="display:none;">📋 <span class="navbar-label">My Life List</span></button>
+        <button id="navbar-classroom-btn" class="navbar-btn" onclick="openClassroomPanel()" title="Run a class on the feeder" style="display:none;">🎓 <span class="navbar-label">Classroom</span></button>
+        <button id="navbar-community-login" class="navbar-btn navbar-btn-primary" onclick="openUserLogin()" title="Sign in to comment, follow feeders, and build your life list" aria-label="Sign in">Sign In</button>
+
+        <!-- Zone 2: moderator tools -->
+        <div class="navbar-menu" id="navbar-mod-menu" data-auto-hide style="display:none;">
+            <button type="button" class="navbar-btn navbar-menu-trigger navbar-mod-trigger" aria-haspopup="true" aria-expanded="false">🛡 Moderate <span class="navbar-caret">▾</span></button>
+            <div class="navbar-menu-list" role="menu">
+                <div class="navbar-menu-label">Review</div>
+                <button id="navbar-flags-btn" class="navbar-menu-item" role="menuitem" onclick="openFlagQueue()" title="Review flagged detections" style="display:none;">🚩 Flagged detections</button>
+                <button id="navbar-comments-history-btn" class="navbar-menu-item" role="menuitem" onclick="openCommentsHistory()" title="Review comments across all detections" style="display:none;">💬 All comments</button>
+                <div class="navbar-menu-sep" data-admin-only></div>
+                <div class="navbar-menu-label" data-admin-only>Admin</div>
+                <button id="navbar-admin-btn" class="navbar-menu-item" role="menuitem" onclick="openAdminPanel()" title="Manage moderators" style="display:none;">👥 Moderators</button>
+            </div>
+        </div>
+
+        <!-- Zone 3: account -->
+        <div class="navbar-menu" id="navbar-account-menu">
+            <button type="button" class="navbar-btn navbar-menu-trigger navbar-account-trigger" aria-haspopup="true" aria-expanded="false" title="Account and settings">
+                <span id="navbar-account-name">☰ Menu</span> <span class="navbar-caret">▾</span>
+            </button>
+            <div class="navbar-menu-list navbar-menu-right" role="menu">
+                <!-- Who is signed in. Both spans are filled by community-auth.js. -->
+                <div class="navbar-menu-who">
+                    <span id="navbar-community-user" class="navbar-user" style="display:none;"></span>
+                    <span id="navbar-user" class="navbar-user navbar-user-mod" style="display:none;"></span>
+                </div>
+                <button id="navbar-community-profile" class="navbar-menu-item" role="menuitem" onclick="openUserProfile()" title="Edit profile" aria-label="Edit profile" style="display:none;">👤 Profile</button>
+                <button id="navbar-communities-btn" class="navbar-menu-item" role="menuitem" onclick="openCommunityPanel()" title="Manage your communities" style="display:none;">🏫 My Communities</button>
+                <button id="navbar-idea-btn" class="navbar-menu-item" role="menuitem" onclick="openClassroomIdeaStandalone()" title="Suggest something about the classroom or the community" style="display:none;">💡 Send a suggestion</button>
+                <button id="theme-toggle" class="navbar-menu-item" role="menuitem" onclick="toggleTheme()" title="Toggle dark mode" aria-label="Toggle dark mode">🌙 Theme</button>
+                <div class="navbar-menu-sep"></div>
+                <div class="navbar-menu-label">Moderator</div>
+                <button id="navbar-login-btn" class="navbar-menu-item" role="menuitem" onclick="toggleModLogin()" title="Moderator login">🔒 Moderator login</button>
+                <button id="navbar-changepw-btn" class="navbar-menu-item" role="menuitem" onclick="showChangePassword()" title="Change moderator password" style="display:none;">🔑 Moderator password</button>
+                <button id="navbar-logout-btn" class="navbar-menu-item" role="menuitem" onclick="toggleModLogin()" title="Leave moderator mode" style="display:none;">↩ Exit moderator mode</button>
+                <div class="navbar-menu-sep" data-signed-in-only></div>
+                <button id="navbar-community-logout" class="navbar-menu-item navbar-menu-danger" role="menuitem" onclick="doUserLogout()" title="Sign out" aria-label="Sign out" style="display:none;">Sign Out</button>
+            </div>
+        </div>
     </div>
 </nav>
+<!-- Shown while moderator mode is on, so it is never ambiguous which mode you are in. -->
+<div id="mod-mode-banner" class="mod-mode-banner" style="display:none;">
+    🛡 Moderator mode is on <button type="button" onclick="toggleModLogin()">Exit</button>
+</div>
 
 <div class="container">
 
@@ -1259,6 +1295,7 @@
      modal. Must load before community-auth.js, which calls into window.bwOverlay. -->
 <script src="js/community-overlay.js?v=81687514"></script>
 <script src="js/community-auth.js?v=da4daeb5"></script>
+<script src="js/community-navbar.js?v=dfd6b462"></script>
 <script src="js/community-remote.js?v=748a95c8"></script>
 <!-- ?v=5: the panel gained the tier picker, the redeem form and the bulk
      roster paste. Markup,

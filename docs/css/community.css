@@ -129,23 +129,136 @@
 
         body { padding-top: 56px; }
 
+        /* ── Navbar menus (Moderate ▾ and the account menu) ──
+           Driven by js/community-navbar.js. Items reuse the old button ids;
+           only their look changes here. */
+        .navbar-btn.navbar-btn-primary {
+            background: #fff;
+            color: var(--color-primary);
+            border-color: #fff;
+            font-weight: 600;
+        }
+        .navbar-btn.navbar-btn-primary:hover { background: rgba(255,255,255,0.88); }
+        .navbar-menu { position: relative; }
+        .navbar-caret { font-size: 0.7em; opacity: 0.8; margin-left: 2px; }
+        .navbar-mod-trigger {
+            background: rgba(255, 196, 0, 0.18);
+            border-color: rgba(255, 210, 80, 0.75);
+        }
+        .navbar-menu-list {
+            display: none;
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            min-width: 220px;
+            padding: 6px;
+            background: var(--bg-card, #fff);
+            color: var(--color-gray-700, #333);
+            border: 1px solid var(--border, rgba(0,0,0,0.12));
+            border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+            z-index: 9100;
+        }
+        .navbar-menu-list.navbar-menu-right { left: auto; right: 0; }
+        .navbar-menu.open .navbar-menu-list { display: block; }
+        .navbar-menu-item {
+            display: block;
+            width: 100%;
+            text-align: left;
+            font-family: inherit;
+            font-size: 0.85rem;
+            padding: 7px 10px;
+            border: 0;
+            border-radius: 5px;
+            background: transparent;
+            color: inherit;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .navbar-menu-item:hover,
+        .navbar-menu-item:focus-visible { background: var(--bg-page, #f2f2f2); outline: none; }
+        .navbar-menu-item.navbar-menu-danger { color: #c0392b; font-weight: 600; }
+        .navbar-menu-label {
+            font-size: 0.68rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--color-gray-500, #888);
+            padding: 6px 10px 2px;
+        }
+        .navbar-menu-sep {
+            height: 1px;
+            margin: 6px 4px;
+            background: var(--border, rgba(0,0,0,0.12));
+        }
+        .navbar-menu-who:empty,
+        .navbar-menu-who:not(:has(.navbar-user:not([style*="none"]))) { display: none; }
+        .navbar-menu-who {
+            padding: 6px 10px 8px;
+            margin-bottom: 4px;
+            border-bottom: 1px solid var(--border, rgba(0,0,0,0.12));
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .top-navbar .navbar-menu-who .navbar-user {
+            color: var(--color-gray-900, #111);
+            font-weight: 600;
+            opacity: 1;
+            margin: 0;
+            font-size: 0.85rem;
+        }
+        .top-navbar .navbar-menu-who .navbar-user-mod {
+            font-weight: 500;
+            font-size: 0.75rem;
+            color: var(--color-gray-500, #888);
+        }
+
+        /* Moderator-mode banner, just under the navbar. */
+        .mod-mode-banner {
+            position: fixed;
+            top: 48px;
+            left: 0;
+            right: 0;
+            height: 26px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            background: #f5c542;
+            color: #3d2e00;
+            font-size: 0.78rem;
+            font-weight: 600;
+            z-index: 8990;
+        }
+        .mod-mode-banner button {
+            font-family: inherit;
+            font-size: 0.72rem;
+            font-weight: 600;
+            padding: 1px 10px;
+            border: 1px solid #3d2e00;
+            border-radius: 4px;
+            background: transparent;
+            color: inherit;
+            cursor: pointer;
+        }
+        .mod-mode-banner button:hover { background: rgba(0,0,0,0.08); }
+        body.mod-mode { padding-top: 82px; }
+
         @media (max-width: 640px) {
             .top-navbar { padding: 0 0.75rem; font-size: 0.78rem; }
-            .navbar-btn { font-size: 0.72rem; padding: 3px 8px; flex-shrink: 0; }
-            .top-navbar .navbar-user { display: none; }
-            .top-navbar .navbar-left { flex-shrink: 0; }
-            .top-navbar .navbar-right {
-                flex: 1;
-                overflow-x: auto;
-                flex-wrap: nowrap;
-                justify-content: flex-end;
-                -webkit-overflow-scrolling: touch;
-                scrollbar-width: none;
-                mask-image: linear-gradient(to right, transparent 0, #000 16px);
-                -webkit-mask-image: linear-gradient(to right, transparent 0, #000 16px);
-                padding-right: 4px;
-            }
-            .top-navbar .navbar-right::-webkit-scrollbar { display: none; }
+            .navbar-btn { font-size: 0.72rem; padding: 3px 8px; flex-shrink: 0; white-space: nowrap; }
+            .top-navbar .navbar-left { flex-shrink: 1; min-width: 0; overflow: hidden; white-space: nowrap; }
+            /* "| Community Feed" is the first thing to go on a phone. */
+            .top-navbar .navbar-left span { display: none; }
+            .top-navbar .navbar-right { gap: 0.35rem; }
+            /* With the menus there are at most four buttons, so no sideways
+               scrolling (which would also clip the dropdowns). Long labels
+               shrink to their icon instead. */
+            .top-navbar .navbar-label { display: none; }
+            .navbar-account-trigger #navbar-account-name { display: inline-block; max-width: 7em; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
+            .navbar-menu-list { position: fixed; top: 52px; left: 8px; right: 8px; min-width: 0; }
+            .navbar-menu-list.navbar-menu-right { left: 8px; right: 8px; }
         }
 
         .container {
