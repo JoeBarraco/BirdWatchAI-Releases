@@ -2558,7 +2558,9 @@
             background: rgba(0,0,0,0.5); z-index: 9550;
             justify-content: center; align-items: center;
         }
-        #classroom-idea-modal {
+        /* Both open from inside the classroom panel, so they sit above it. */
+        #classroom-idea-modal,
+        #classroom-quick-modal {
             display: none; position: fixed; inset: 0;
             background: rgba(0,0,0,0.5); z-index: 9600;
             justify-content: center; align-items: center;
@@ -2566,6 +2568,7 @@
         #mod-admin-modal.open,
         #community-panel-modal.open,
         #classroom-idea-modal.open,
+        #classroom-quick-modal.open,
         #classroom-panel-modal.open { display: flex; }
         .mod-admin-box {
             background: var(--bg-card); border-radius: 12px;

@@ -496,15 +496,20 @@ const SPECIES_LOOKS = {
     'House Finch':            { color: 'red',             female: 'streaky brown', feature: 'a red head and chest' },
     'American Goldfinch':     { color: 'yellow',          feature: 'black wings with white bars' },
     'Blue Jay':               { color: 'blue',            feature: 'a blue crest and a black necklace' },
-    'Mourning Dove':          { color: 'gray',            feature: 'a long pointed tail' },
+    // inPhoto: false marks a feature a single feeder snapshot cannot be
+    // trusted to show — see spot-the-feature, which asks the class to find
+    // it in exactly that snapshot. The dove's tail is the usual casualty:
+    // the camera frames the bird at the seed and crops the tail, and a K-2
+    // class was asked to find a tail that was not in the picture.
+    'Mourning Dove':          { color: 'gray',            feature: 'a long pointed tail', inPhoto: false },
     'Downy Woodpecker':       { color: 'black and white', female: 'the same, but with no red patch', feature: 'a chisel beak for tapping wood' },
     'Red-bellied Woodpecker': { color: 'black and white', feature: 'a red cap and zebra stripes on its back' },
-    'White-breasted Nuthatch':{ color: 'gray',            feature: 'walking DOWN the tree head first' },
+    'White-breasted Nuthatch':{ color: 'gray',            feature: 'walking DOWN the tree head first', inPhoto: false },
     'House Sparrow':          { color: 'brown',           feature: 'a gray cap and a black bib' },
     'European Starling':      { color: 'black',           feature: 'shiny feathers with little white spots' },
     'American Robin':         { color: 'orange',          feature: 'an orange tummy' },
     'Dark-eyed Junco':        { color: 'gray',            feature: 'gray on top and white underneath' },
-    'Northern Mockingbird':   { color: 'gray',            feature: 'white flashes in its wings when it flies' },
+    'Northern Mockingbird':   { color: 'gray',            feature: 'white flashes in its wings when it flies', inPhoto: false },
 };
 
 function speciesLook(species) {
@@ -6174,9 +6179,21 @@ const CLASSROOM_TEMPLATES = [
             .filter(sp => speciesLook(sp) && cmSpeciesPhoto(s, sp));
         if (known.length < 3) return null;
 
-        const answer = cmShuffle(known, rng)[0];
+        // ⚠ THE ANSWER'S FEATURE HAS TO BE IN THE PHOTO. The class answers
+        // by looking at this feeder's snapshot of each bird, so a feature the
+        // snapshot cannot show — a cropped tail, a way of moving, a wing
+        // seen only in flight — is unanswerable however true it is. A
+        // teacher skipped "Which bird has a long pointed tail?" with "Can't
+        // see the tail". Such birds can still be wrong options; they just
+        // never carry the question. Filtered before the pick rather than
+        // returning null after it, so a feeder full of doves still builds.
+        const askable = known.filter(sp => {
+            const l = speciesLook(sp);
+            return l.feature && l.inPhoto !== false;
+        });
+        if (!askable.length) return null;
+        const answer = cmShuffle(askable, rng)[0];
         const look = speciesLook(answer);
-        if (!look.feature) return null;
         const others = known.filter(sp => sp !== answer);
         const built = cmWithChoicePhotos(s,
             cmChoices(answer, cmShuffle(others, rng).slice(0, 2), rng));
@@ -13253,6 +13270,15 @@ function renderClassroomActions() {
                     <span class="cbs-label">📱 On ${homeMode ? 'a device' : 'devices'}</span>
                     <span class="cbs-sub">${homeMode ? 'They answer on a phone or tablet' : 'Everyone answers on their own device'}</span></button>
             </div>
+            <!-- A one-off lesson by benchmark that leaves the class's own
+                 settings alone; see openClassroomQuickQuiz. Under the two
+                 start buttons and smaller, because it is a variation on
+                 starting a lesson rather than a third way to run one. -->
+            <div class="classroom-group-row">
+                <button class="classroom-btn" onclick="openClassroomQuickQuiz('${escJs(r.id)}')"${noStart}
+                        title="Choose Florida standards and a number of questions for one lesson, without changing the class">
+                    🎯 Quick quiz by standard…</button>
+            </div>
         </div>
 
         <!-- ⚠ TWO GROUPS, not the one "Between lessons" that was here.
@@ -16600,28 +16626,8 @@ function cmStandardPickerHtml() {
     if (typeof CLASSROOM_STANDARDS === 'undefined'
      || typeof CLASSROOM_TEMPLATE_STANDARDS === 'undefined') return '';
 
-    const band = classroomFormBand();
-    // Only benchmarks this band can actually be asked about. Offering a
-    // 6-8 code to a K-2 class produces a selection of nothing, which reads
-    // as a broken control rather than as an empty result.
-    const codes = Object.keys(CLASSROOM_STANDARDS).filter(c => {
-        const s = CLASSROOM_STANDARDS[c];
-        if (!s.bands.includes(band)) return false;
-        return classroomTemplatesForStandards([c])
-            .some(id => {
-                const t = CLASSROOM_TEMPLATES.find(x => x.id === id);
-                return t && t.bands.includes(band);
-            });
-    });
+    const codes = cmStandardCodesForBand(classroomFormBand());
     if (!codes.length) return '';
-
-    const bySubject = new Map();
-    codes.forEach(c => {
-        const subj = CLASSROOM_STANDARDS[c].subject;
-        if (!bySubject.has(subj)) bySubject.set(subj, []);
-        bySubject.get(subj).push(c);
-    });
-
     const picked = classroomStdPicked.filter(c => codes.includes(c));
 
     // Chips for what is chosen, then a dropdown of what is left — the same
@@ -16629,25 +16635,9 @@ function cmStandardPickerHtml() {
     // has used one already knows the other.
     return `
         <div class="cc-std-pick">
-            <label>
-                <span>Or pick by Florida standard</span>
-                <select id="classroom-std-pick" onchange="classroomPickByStandard(this.value)">
-                    <option value="">${picked.length ? '＋ Add another benchmark…' : '— choose a benchmark —'}</option>
-                    ${[...bySubject.entries()].map(([subj, cs]) => {
-                        const left = cs.filter(c => !picked.includes(c));
-                        return left.length ? `
-                        <optgroup label="${esc(subj)}">
-                            ${left.map(c => `<option value="${esc(c)}">${esc(c)} — ${
-                                esc(CLASSROOM_STANDARDS[c].text.slice(0, 72))}${
-                                CLASSROOM_STANDARDS[c].text.length > 72 ? '…' : ''}</option>`).join('')}
-                        </optgroup>` : '';
-                    }).join('')}
-                </select>
-            </label>
-            ${picked.length ? `<div class="cc-stds">${picked.map(c => `
-                <button type="button" class="cc-std cc-std-drop"
-                        onclick="classroomDropPickStandard('${escJs(c)}')"
-                        title="${esc((CLASSROOM_STANDARDS[c] || {}).text || c)}">${esc(c)} ✕</button>`).join('')}</div>` : ''}
+            ${cmStandardChooserHtml(codes, picked, {
+                label: 'Or pick by Florida standard', selectId: 'classroom-std-pick',
+                add: 'classroomPickByStandard', drop: 'classroomDropPickStandard' })}
             <p class="classroom-muted" id="classroom-std-pick-note">
                 Ticks every question that exercises the benchmarks you choose, and unticks the rest.
                 Choose as many as you like, then adjust the boxes afterwards.
@@ -16706,6 +16696,164 @@ function classroomApplyPickStandards() {
         note.textContent = `${ids.length} question${ids.length === 1 ? '' : 's'} `
                          + `selected for ${codes.join(', ')}${s ? ' — ' + s.text : ''}`;
     }
+}
+
+/**
+ * The benchmarks worth offering a class in this grade band.
+ *
+ * Only ones this band can actually be asked about. Offering a 6-8 code to
+ * a K-2 class produces a selection of nothing, which reads as a broken
+ * control rather than as an empty result. Shared by the lesson form's
+ * picker and the quick quiz, so the two can never disagree about what a
+ * class can be quizzed on.
+ */
+function cmStandardCodesForBand(band) {
+    if (typeof CLASSROOM_STANDARDS === 'undefined'
+     || typeof CLASSROOM_TEMPLATE_STANDARDS === 'undefined') return [];
+    return Object.keys(CLASSROOM_STANDARDS).filter(c => {
+        if (!CLASSROOM_STANDARDS[c].bands.includes(band)) return false;
+        return classroomTemplatesForStandards([c]).some(id => {
+            const t = CLASSROOM_TEMPLATES.find(x => x.id === id);
+            return t && t.bands.includes(band);
+        });
+    });
+}
+
+// The questions in this band that cover any of these benchmarks.
+function cmTemplatesForStandardsInBand(codes, band) {
+    return classroomTemplatesForStandards(codes).filter(id => {
+        const t = CLASSROOM_TEMPLATES.find(x => x.id === id);
+        return t && t.bands.includes(band);
+    });
+}
+
+/**
+ * A dropdown of benchmarks grouped by subject, with the chosen ones as
+ * removable chips under it. `o.add` and `o.drop` name global functions
+ * taking the code, since this is markup and not a component.
+ */
+function cmStandardChooserHtml(codes, picked, o) {
+    const bySubject = new Map();
+    codes.forEach(c => {
+        const subj = CLASSROOM_STANDARDS[c].subject;
+        if (!bySubject.has(subj)) bySubject.set(subj, []);
+        bySubject.get(subj).push(c);
+    });
+    return `
+        <label>
+            <span>${esc(o.label)}</span>
+            <select id="${esc(o.selectId)}" onchange="${o.add}(this.value)">
+                <option value="">${picked.length ? '＋ Add another benchmark…' : '— choose a benchmark —'}</option>
+                ${[...bySubject.entries()].map(([subj, cs]) => {
+                    const left = cs.filter(c => !picked.includes(c));
+                    return left.length ? `
+                    <optgroup label="${esc(subj)}">
+                        ${left.map(c => `<option value="${esc(c)}">${esc(c)} — ${
+                            esc(CLASSROOM_STANDARDS[c].text.slice(0, 72))}${
+                            CLASSROOM_STANDARDS[c].text.length > 72 ? '…' : ''}</option>`).join('')}
+                    </optgroup>` : '';
+                }).join('')}
+            </select>
+        </label>
+        ${picked.length ? `<div class="cc-stds">${picked.map(c => `
+            <button type="button" class="cc-std cc-std-drop"
+                    onclick="${o.drop}('${escJs(c)}')"
+                    title="${esc((CLASSROOM_STANDARDS[c] || {}).text || c)}">${esc(c)} ✕</button>`).join('')}</div>` : ''}`;
+}
+
+// ── Quick quiz: a one-off lesson by benchmark ──────────────────────
+//
+// Asked for in so many words: "I want to be able to create a quiz on
+// demand: choose standards and number of questions outside of where I set
+// up the class." The class form could already do both, but only by
+// CHANGING THE CLASS — the next ordinary lesson would inherit Tuesday's
+// fractions review, and putting it back meant remembering what the ticks
+// were before.
+//
+// So this is a lesson that saves nothing. startClassroomSession builds it
+// from a copy of the room with these picks and this size on it; the room
+// itself, and what is stored for it, are untouched. Everything else about
+// a lesson is the same — the feeder, the grade band, the session record,
+// the results — because a quick quiz is still this class's lesson.
+let classroomQuick = null;   // { roomId, band, codes: [], size }
+
+function openClassroomQuickQuiz(roomId) {
+    const room = classroomList.find(r => r.id === roomId);
+    const modal = document.getElementById('classroom-quick-modal');
+    if (!room || !modal) return;
+    classroomQuick = { roomId, band: room.grade_band || 'k-2', codes: [],
+                       size: room.questions_per_session || 8 };
+    renderClassroomQuickQuiz();
+    modal.classList.add('open');
+}
+
+function closeClassroomQuickQuiz() {
+    const modal = document.getElementById('classroom-quick-modal');
+    if (modal) modal.classList.remove('open');
+    classroomQuick = null;
+}
+
+function renderClassroomQuickQuiz() {
+    const body = document.getElementById('classroom-quick-body');
+    const Q = classroomQuick;
+    if (!body || !Q) return;
+    const room = classroomList.find(r => r.id === Q.roomId);
+    const codes = cmStandardCodesForBand(Q.band);
+    const ids = Q.codes.length ? cmTemplatesForStandardsInBand(Q.codes, Q.band) : [];
+    const band = GRADE_BAND_LABELS[Q.band] || Q.band;
+
+    body.innerHTML = `
+        <p class="classroom-muted">
+            A one-off lesson for ${esc(room ? room.name : 'this class')} (${esc(band)}),
+            built from today's feeder data. Nothing about the class changes —
+            its next ordinary lesson is exactly what it would have been.
+        </p>
+        ${codes.length ? `<div class="cc-std-pick">
+            ${cmStandardChooserHtml(codes, Q.codes, {
+                label: 'Florida standards', selectId: 'cc-quick-std',
+                add: 'classroomQuickAddStandard', drop: 'classroomQuickDropStandard' })}
+        </div>` : '<p class="classroom-warn">No standards are mapped for this grade band yet.</p>'}
+        <label class="classroom-field" style="display:block;margin-bottom:0.75rem;">
+            <span>How many questions</span>
+            <select id="cc-quick-size" onchange="classroomQuick.size = parseInt(this.value, 10)">
+                ${[1, 2, 3, 5, 6, 8, 10, 12, 15, 20].map(n => `
+                    <option value="${n}"${Q.size === n ? ' selected' : ''}>${n} question${n === 1 ? '' : 's'}</option>`).join('')}
+            </select>
+        </label>
+        <p class="classroom-muted">${Q.codes.length
+            ? `${ids.length} question type${ids.length === 1 ? '' : 's'} cover ${esc(Q.codes.join(', '))}.
+               Some may sit this one out if the feeder's data cannot carry them today.`
+            : 'Choose at least one benchmark.'}</p>
+        <div class="classroom-form-actions">
+            <button class="classroom-btn-primary" onclick="startClassroomQuickQuiz('teacher_led')"
+                    ${ids.length ? '' : 'disabled'}>▶ On the board</button>
+            <button class="classroom-btn-primary" onclick="startClassroomQuickQuiz('join_code')"
+                    ${ids.length ? '' : 'disabled'}>📱 On devices</button>
+            <button class="classroom-btn" onclick="closeClassroomQuickQuiz()">Cancel</button>
+        </div>`;
+}
+
+function classroomQuickAddStandard(code) {
+    if (!code || !classroomQuick) return;
+    if (!classroomQuick.codes.includes(code)) classroomQuick.codes.push(code);
+    renderClassroomQuickQuiz();
+}
+
+function classroomQuickDropStandard(code) {
+    if (!classroomQuick) return;
+    classroomQuick.codes = classroomQuick.codes.filter(c => c !== code);
+    renderClassroomQuickQuiz();
+}
+
+function startClassroomQuickQuiz(mode) {
+    const Q = classroomQuick;
+    if (!Q || !Q.codes.length) return;
+    const ids = cmTemplatesForStandardsInBand(Q.codes, Q.band);
+    if (!ids.length) return;
+    const quick = { picks: ids, size: Q.size, codes: Q.codes.slice() };
+    const roomId = Q.roomId;
+    closeClassroomQuickQuiz();
+    startClassroomSession(roomId, mode, quick);
 }
 
 function classroomPickAll(on) {
@@ -18319,7 +18467,11 @@ async function cmClassroomBadges(room, source) {
     }
 }
 
-async function startClassroomSession(id, mode) {
+/**
+ * `quick`, when given, is a quick quiz: { picks, size, codes } from
+ * startClassroomQuickQuiz. See the note above openClassroomQuickQuiz.
+ */
+async function startClassroomSession(id, mode, quick) {
     const room = classroomList.find(r => r.id === id);
     if (!room) return;
     mode = mode === 'join_code' ? 'join_code' : 'teacher_led';
@@ -18347,8 +18499,36 @@ async function startClassroomSession(id, mode) {
         loadClassroomRatings(room.id),
         loadClassroomRatingCounts(classroomCommunityId),
     ]);
-    const { questions, source, no_data } =
-        buildClassroomQuestions(room, data, { recent, challenge, own, ratings, counts });
+    // ⚠ A QUICK QUIZ BUILDS FROM A COPY, AND IGNORES ANY CHALLENGE. The
+    // copy carries the teacher's picks and size so classroomPickSet and
+    // classroomQuizSize read them without either learning about quick
+    // quizzes; the stored room is never touched. The challenge is dropped
+    // because it would OVERRIDE the picks (see classroomPickSet) and the
+    // teacher would get the challenge's questions instead of the ones they
+    // just chose. Their own written questions come along only when tagged
+    // with one of the chosen benchmarks, which is the same promise the
+    // picker makes about the built-in ones.
+    const buildRoom = quick
+        ? { ...room, template_picks: quick.picks, questions_per_session: quick.size }
+        : room;
+    const buildOwn = quick
+        ? (own || []).filter(x => Array.isArray(x.standards)
+                                && x.standards.some(c => quick.codes.includes(c)))
+        : own;
+    const { questions, source, no_data } = buildClassroomQuestions(buildRoom, data,
+        { recent, challenge: quick ? null : challenge, own: buildOwn, ratings, counts });
+
+    if (!questions.length && quick) {
+        stage.innerHTML = `<div class="classroom-stage-loading">
+            <h2>Nothing to ask for those standards today</h2>
+            <p>None of the questions for ${esc(quick.codes.join(', '))} can be built from
+               ${esc(room.home_feeder_name || 'this class’s feeder')} right now.</p>
+            <p class="classroom-muted">Try adding another benchmark, or come back once
+               the feeder has logged a few more days.</p>
+            <button class="classroom-btn-primary" onclick="closeClassroomStage()">Close</button>
+          </div>`;
+        return;
+    }
 
     if (!questions.length) {
         // A challenge narrows the question pool, so when the pool is empty the
