@@ -11333,7 +11333,7 @@ ${jumbled.split('').join(' ')}`,
     category: 'science',
     title: 'Who is new?',
     bands: ['3-5', '6-8'],
-    build({ s14, rng }) {
+    build({ s14, band, rng }) {
         const first = new Map();
         s14.rows.forEach(r => {
             const t = new Date(r.detected_at).getTime();
@@ -11341,9 +11341,17 @@ ${jumbled.split('').join(' ')}`,
         });
         if (first.size < 4) return null;
 
-        const cutoff = Date.now() - 5 * 86400000;
-        const fresh = [...first.entries()].filter(e => e[1] >= cutoff).map(e => e[0]);
-        const old   = [...first.entries()].filter(e => e[1] <  cutoff).map(e => e[0]);
+        const DAY = 86400000;
+        const now = Date.now();
+        const fresh = [...first.entries()].filter(e => e[1] >= now - 5 * DAY).map(e => e[0]);
+        // ⚠ "OLD" MEANS HERE FROM THE START, not merely "not new". The
+        // prompt tells the class the other three "have been coming for the
+        // whole two weeks", and the first version only checked they were
+        // older than five days — so a bird first seen a week ago counted,
+        // and the slide said something untrue about it. Eleven days back is
+        // the first three days of the fortnight, which leaves a clear gap
+        // between the shortest old bar and the longest new one.
+        const old   = [...first.entries()].filter(e => e[1] <= now - 11 * DAY).map(e => e[0]);
 
         // ⚠ ONE NEWCOMER ON THE SLIDE, not one newcomer in the fortnight.
         // The first version demanded exactly one recent arrival across the
@@ -11356,10 +11364,26 @@ ${jumbled.split('').join(' ')}`,
         const built = cmChoices(answer, cmShuffle(old, rng).slice(0, 3), rng);
         if (!built) return null;
 
+        // ⚠ THE SLIDE HAS TO CARRY THE EVIDENCE. The first version had no
+        // chart at all and only showed the newcomer's photo after the
+        // reveal, so the class could guess or remember but never work it
+        // out — a teacher skipped it mid-lesson for exactly that reason.
+        // Days since each option was first seen makes it a chart-reading
+        // question: the newcomer is the short bar. Bars follow the order of
+        // the answer buttons so the class can match one to the other.
+        const chart = cmChart('Days since each bird was first seen at our feeder',
+            built.choices.map(c => ({
+                label: c.label,
+                value: Math.max(0, Math.floor((now - first.get(c.label)) / DAY)),
+            })),
+            { band, kind: 'hbars', plain: true });
+        if (!chart) return null;
+
         return {
             prompt: 'Three of these birds have been coming for the whole two weeks. One only '
                   + 'turned up in the last few days. Which is the newcomer?',
             ...built,
+            chart,
             image: cmShotFor(s14, answer),
             image_on_reveal: true,
             explain: 'The ' + answer + '. Birds move with the seasons and with what '
@@ -16549,7 +16573,25 @@ function classroomPickCategory(cat, on) {
  * Called after the form is written, and again whenever the band changes,
  * exactly as renderClassroomPickChecks is.
  */
+// The benchmarks chosen so far, in the order they were added.
+//
+// ⚠ SEVERAL, NOT ONE. The picker began as a single dropdown, and choosing
+// a second benchmark replaced the first — but a week rarely sits on one
+// code, and a teacher asked for "multi-select for state standards". The
+// ticks are the UNION of every chosen benchmark's questions, so adding a
+// code only ever widens the lesson.
+//
+// Reset whenever the picker is re-rendered (form opened, band changed):
+// a code chosen for 3-5 is not even in the 6-8 list, and keeping it would
+// leave a chip for a benchmark the dropdown can no longer show.
+let classroomStdPicked = [];
+
 function renderClassroomStandardPicker() {
+    classroomStdPicked = [];
+    renderClassroomStandardPickerHost();
+}
+
+function renderClassroomStandardPickerHost() {
     const host = document.getElementById('classroom-std-pick-host');
     if (host) host.innerHTML = cmStandardPickerHtml();
 }
@@ -16580,33 +16622,70 @@ function cmStandardPickerHtml() {
         bySubject.get(subj).push(c);
     });
 
+    const picked = classroomStdPicked.filter(c => codes.includes(c));
+
+    // Chips for what is chosen, then a dropdown of what is left — the same
+    // shape as tagging your own question with benchmarks, so a teacher who
+    // has used one already knows the other.
     return `
         <div class="cc-std-pick">
             <label>
                 <span>Or pick by Florida standard</span>
                 <select id="classroom-std-pick" onchange="classroomPickByStandard(this.value)">
-                    <option value="">— choose a benchmark —</option>
-                    ${[...bySubject.entries()].map(([subj, cs]) => `
+                    <option value="">${picked.length ? '＋ Add another benchmark…' : '— choose a benchmark —'}</option>
+                    ${[...bySubject.entries()].map(([subj, cs]) => {
+                        const left = cs.filter(c => !picked.includes(c));
+                        return left.length ? `
                         <optgroup label="${esc(subj)}">
-                            ${cs.map(c => `<option value="${esc(c)}">${esc(c)} — ${
+                            ${left.map(c => `<option value="${esc(c)}">${esc(c)} — ${
                                 esc(CLASSROOM_STANDARDS[c].text.slice(0, 72))}${
                                 CLASSROOM_STANDARDS[c].text.length > 72 ? '…' : ''}</option>`).join('')}
-                        </optgroup>`).join('')}
+                        </optgroup>` : '';
+                    }).join('')}
                 </select>
             </label>
+            ${picked.length ? `<div class="cc-stds">${picked.map(c => `
+                <button type="button" class="cc-std cc-std-drop"
+                        onclick="classroomDropPickStandard('${escJs(c)}')"
+                        title="${esc((CLASSROOM_STANDARDS[c] || {}).text || c)}">${esc(c)} ✕</button>`).join('')}</div>` : ''}
             <p class="classroom-muted" id="classroom-std-pick-note">
-                Ticks every question that exercises that benchmark, and unticks the rest.
-                Adjust the boxes afterwards as you like.
+                Ticks every question that exercises the benchmarks you choose, and unticks the rest.
+                Choose as many as you like, then adjust the boxes afterwards.
             </p>
         </div>`;
 }
 
 function classroomPickByStandard(code) {
-    const note = document.getElementById('classroom-std-pick-note');
     if (!code) return;
+    if (!classroomStdPicked.includes(code)) classroomStdPicked.push(code);
+    classroomApplyPickStandards();
+}
 
+function classroomDropPickStandard(code) {
+    classroomStdPicked = classroomStdPicked.filter(c => c !== code);
+    classroomApplyPickStandards();
+}
+
+/**
+ * Tick exactly the questions covering the chosen benchmarks.
+ *
+ * Recomputed from the whole list each time rather than adding one code's
+ * questions on top, because REMOVING a chip has to untick that code's
+ * questions — except the ones another chosen code still covers, which only
+ * a fresh union gets right.
+ *
+ * Removing the last chip leaves the boxes as they are instead of unticking
+ * everything: a lesson with nothing in it is never what that click meant.
+ */
+function classroomApplyPickStandards() {
     const band = classroomFormBand();
-    const ids = classroomTemplatesForStandards([code]).filter(id => {
+    const codes = classroomStdPicked.slice();
+
+    renderClassroomStandardPickerHost();
+    const note = document.getElementById('classroom-std-pick-note');
+    if (!codes.length) return;
+
+    const ids = classroomTemplatesForStandards(codes).filter(id => {
         const t = CLASSROOM_TEMPLATES.find(x => x.id === id);
         return t && t.bands.includes(band);
     });
@@ -16615,7 +16694,7 @@ function classroomPickByStandard(code) {
     // question in this band — but a selection that silently empties the
     // picker would be the worst possible outcome of clicking it.
     if (!ids.length) {
-        if (note) note.textContent = 'Nothing in this grade band covers that benchmark.';
+        if (note) note.textContent = 'Nothing in this grade band covers those benchmarks.';
         return;
     }
 
@@ -16623,9 +16702,9 @@ function classroomPickByStandard(code) {
     syncClassroomPickBoxes();
 
     if (note) {
-        const s = CLASSROOM_STANDARDS[code];
+        const s = codes.length === 1 ? CLASSROOM_STANDARDS[codes[0]] : null;
         note.textContent = `${ids.length} question${ids.length === 1 ? '' : 's'} `
-                         + `selected for ${code}${s ? ' — ' + s.text : ''}`;
+                         + `selected for ${codes.join(', ')}${s ? ' — ' + s.text : ''}`;
     }
 }
 
