@@ -680,7 +680,14 @@
             position: fixed;
             inset: 0;
             background: rgba(0,0,0,0.9);
-            z-index: 9999;
+            /* Above the detection card (#detail-modal, 10001) and the species
+               carousel (10000): "Watch video" is opened FROM the card, so the
+               video is always the newest layer and must sit on top. At 9999 it
+               opened underneath the card — on a phone, where the card fills
+               the screen, the video was completely hidden until the card was
+               closed. The card stays open beneath so closing the video returns
+               the viewer to where they were. */
+            z-index: 10002;
             align-items: center;
             justify-content: center;
         }
