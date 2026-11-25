@@ -115,6 +115,11 @@ let loadedFilterSig = null;
 
 async function refilter() {
     feedRenderLimit = FEED_RENDER_STEP;
+    // Keeps the pinned header's filter summary right when a filter is set from
+    // code rather than the filter bar (the Stats "View" link, a community
+    // switch, a feeder deep link). Defined in community-social.js, which loads
+    // after this file, hence the guard.
+    if (typeof updateFilterSummary === 'function') updateFilterSummary();
     // Species, rarity, feeder and period are evaluated by PostgREST now, so a
     // change to any of them is a different query — not something an in-memory
     // re-filter can produce. This is the path that used to pull all 9,376 rows

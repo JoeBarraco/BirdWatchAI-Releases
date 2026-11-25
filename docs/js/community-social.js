@@ -47,6 +47,86 @@ function clearFilters() {
     loadFeed();
 }
 
+// ── Pinned header: filter summary ────────────────────────
+// The tabs and status row stay pinned under the top bar (.feed-header in
+// community.css); the filter bar does not, because it is too tall to pin. Once
+// it has scrolled away, a one-line summary in the pinned header says what the
+// feed is filtered to, so someone deep in the feed can still tell why they are
+// seeing what they are seeing, and can click to go back up and change it.
+
+// Visible text of a <select>'s chosen option, or '' when it is on its
+// "everything" default (an empty value).
+function selectedOptionText(id) {
+    const el = document.getElementById(id);
+    if (!el || !el.value) return '';
+    return el.options[el.selectedIndex]?.textContent.trim() || '';
+}
+
+function updateFilterSummary() {
+    const out = document.getElementById('filter-summary-text');
+    if (!out) return;
+    const f = getFilters();
+    const parts = [];
+    // Community first, matching the filter bar: it is the scope the rest
+    // narrows within. Only counted while its picker is shown at all.
+    const communityGroup = document.getElementById('community-filter-group');
+    if (communityGroup && communityGroup.style.display !== 'none') {
+        const c = selectedOptionText('community-filter');
+        if (c) parts.push(c);
+    }
+    if (f.search) parts.push('“' + document.getElementById('search-input').value.trim() + '”');
+    if (f.period) parts.push(document.querySelector('.period-btn.active')?.textContent.trim() || f.period);
+    if (f.species) parts.push(f.species);
+    if (f.rarity) parts.push(f.rarity);
+    const feeder = selectedOptionText('feeder-filter');
+    if (feeder) parts.push(feeder);
+    const loc = document.getElementById('zip-filter').value.trim();
+    if (loc) parts.push('Near ' + loc);
+    if (f.favoritesOnly) parts.push('My likes');
+    const sort = document.getElementById('sort-filter');
+    if (sort && sort.value !== 'recent') parts.push(selectedOptionText('sort-filter'));
+    out.textContent = parts.length ? 'Showing: ' + parts.join(' · ') : 'Showing all detections';
+}
+
+function scrollToFilters() {
+    document.querySelector('.filter-bar')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Pinned is decided from where the filter bar's bottom edge sits against the
+// header's own sticky offset, read live, so it stays right when the moderator
+// banner pushes the header down from 48px to 74px. A scroll listener rather
+// than an IntersectionObserver for that reason: an observer's rootMargin is
+// fixed when it is created. Throttled to one check per frame.
+(function initPinnedFeedHeader() {
+    const header = document.getElementById('feed-header');
+    const bar    = document.querySelector('.filter-bar');
+    const summary = document.getElementById('filter-summary');
+    if (!header || !bar || !summary) return;
+    let queued = false;
+    let pinned = null;
+    function check() {
+        queued = false;
+        const stickTop = parseFloat(getComputedStyle(header).top) || 48;
+        const now = bar.getBoundingClientRect().bottom <= stickTop;
+        if (now === pinned) return;
+        pinned = now;
+        header.classList.toggle('is-pinned', now);
+        // The summary is invisible when not pinned, so keep it out of the
+        // accessibility tree and the Tab order then too.
+        summary.setAttribute('aria-hidden', now ? 'false' : 'true');
+        summary.tabIndex = now ? 0 : -1;
+        if (now) updateFilterSummary();
+    }
+    function queue() { if (!queued) { queued = true; requestAnimationFrame(check); } }
+    window.addEventListener('scroll', queue, { passive: true });
+    window.addEventListener('resize', queue);
+    // Filter changes made through the bar itself. Delegated, and these run
+    // after each control's own handler (target first, then bubbling), so
+    // clearFilters() and the period buttons have already updated the values.
+    ['change', 'input', 'click'].forEach(ev => bar.addEventListener(ev, () => updateFilterSummary()));
+    check();
+})();
+
 // ── Auto-refresh ─────────────────────────────────────────
 function fmtCountdown(secs) {
     if (secs >= 60) {

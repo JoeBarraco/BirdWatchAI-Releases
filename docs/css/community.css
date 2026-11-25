@@ -485,6 +485,99 @@
             flex-wrap: wrap;
         }
 
+        /* ── Pinned feed header (tabs + status row) ────────
+           Sticks just under the fixed 48px top bar (74px when the moderator
+           banner is showing below it). The page background is painted behind
+           it so detections scrolling up disappear under it instead of showing
+           through the gaps between tabs. z-index 900 keeps it above everything
+           in the page flow (cards top out at 20) and below the chart tooltip
+           (1000), the navbar and its menus (8990+) and every dialog. */
+        .feed-header {
+            position: sticky;
+            top: 48px;
+            z-index: 900;
+            background: var(--bg-page);
+            /* Pulls the header up into the filter bar's bottom margin, so the
+               invisible summary row does not leave a wide gap at the top of
+               the page. */
+            margin: -0.75rem 0 1rem;
+            padding: 0.25rem 0 0.5rem;
+        }
+        body.mod-mode .feed-header { top: 74px; }
+        .feed-header .view-tabs { margin-bottom: 0.5rem; }
+        .feed-header #status-bar { margin-bottom: 0; }
+        /* A hairline under the header once it is floating over the feed, so
+           it reads as a bar the cards pass under rather than as the top card. */
+        .feed-header.is-pinned {
+            border-bottom: 1px solid var(--border);
+            box-shadow: 0 6px 8px -6px rgba(0,0,0,0.18);
+        }
+
+        /* Filter summary: one line that stands in for the filter bar once it
+           has scrolled away. visibility rather than display, so its row is
+           always reserved and the header never changes height as it pins. */
+        .filter-summary {
+            visibility: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            width: 100%;
+            margin-bottom: 0.4rem;
+            padding: 3px 10px;
+            font-family: inherit;
+            font-size: 0.8125rem;
+            line-height: 1.5;
+            text-align: left;
+            color: var(--color-primary);
+            background: var(--bg-card);
+            border: 1px solid var(--color-primary);
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .feed-header.is-pinned .filter-summary { visibility: visible; }
+        .filter-summary-text {
+            min-width: 0;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+        .filter-summary-edit {
+            flex-shrink: 0;
+            font-weight: 600;
+            text-decoration: underline;
+        }
+        /* "Edit filters" scrolls the filter bar back into view; this stops it
+           landing under the fixed top bar. */
+        .filter-bar { scroll-margin-top: 60px; }
+        body.mod-mode .filter-bar { scroll-margin-top: 86px; }
+
+        /* Leaflet gives its panes z-index 400 and its zoom buttons 1000, with
+           no stacking context of their own, so without this the map would
+           draw over the pinned header as it scrolls under it. */
+        #map-view { isolation: isolate; }
+
+        /* Phones: pin only the tab row. Here the status row stacks into two
+           lines, and together they would take a quarter of the screen. The
+           wrapper drops out of layout (display: contents) so the tabs' sticky
+           range becomes the whole page rather than the wrapper's own height;
+           a sticky child of a short box would unstick as soon as the box
+           scrolled away. */
+        @media (max-width: 640px) {
+            .feed-header { display: contents; }
+            .filter-summary { display: none; }
+            .feed-header .view-tabs {
+                position: sticky;
+                top: 48px;
+                z-index: 900;
+                background: var(--bg-page);
+                padding-top: 0.4rem;
+                margin-top: -0.4rem;
+            }
+            body.mod-mode .feed-header .view-tabs { top: 74px; }
+            .feed-header #status-bar { margin-bottom: 1rem; }
+        }
+
         #refresh-indicator {
             display: inline-block;
             width: 10px;
