@@ -13,7 +13,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="BirdWatchAI">
-    <link rel="stylesheet" href="css/community.css?v=b858fc22">
+    <link rel="stylesheet" href="css/community.css?v=9a929915">
 </head>
 <body>
 <!-- Top navbar with auth controls -->
@@ -732,6 +732,17 @@
             <li style="color:var(--color-gray-500)">Loading…</li>
         </ul>
 
+        <h4 style="font-size:0.9rem;margin:1.5rem 0 0.5rem;color:var(--color-gray-900);">Users</h4>
+        <p style="font-size:0.8rem;color:var(--color-gray-500);margin-bottom:0.5rem;">
+            Every account, most recently active first. "Active" is the latest thing they did,
+            including their feeders checking in; "signed in" only changes on a fresh sign-in, so
+            someone who stays signed in can show an old date there and still be active.
+            Students never appear here: classroom devices don't have accounts.
+        </p>
+        <ul id="admin-user-activity-list" class="mod-user-list">
+            <li style="color:var(--color-gray-500)">Loading…</li>
+        </ul>
+
         <h4 style="font-size:0.9rem;margin:1.5rem 0 0.5rem;color:var(--color-gray-900);">Remote Support</h4>
         <p style="font-size:0.8rem;color:var(--color-gray-500);margin-bottom:0.5rem;">
             Open a session to a feeder that's checking in, then run the one-click script on your PC to
@@ -1395,6 +1406,7 @@
 <script src="js/community-navbar.js?v=c6f0216c"></script>
 <script src="js/community-my-feeders.js?v=07a5aacb"></script>
 <script src="js/community-remote.js?v=748a95c8"></script>
+<script src="js/community-admin-users.js?v=12db5ee3"></script>
 <!-- ?v=5: the panel gained the tier picker, the redeem form and the bulk
      roster paste. Markup,
      script and stylesheet all have to land together — new HTML against a cached

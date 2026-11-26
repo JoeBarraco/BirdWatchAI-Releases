@@ -2713,6 +2713,10 @@
            stylesheet uses no :has(), :is() or :where() anywhere; making an
            admin panel the one place that needs a 2022 selector is not worth
            saving two ids. */
+        /* The admin Users list stacks the same way, for the same reason: an
+           email plus three lines of notes about the person, not a name and a
+           pill. Its notes get their own small grey style below. */
+        #admin-user-activity-list .mod-user-info,
         #community-member-list .mod-user-info,
         #community-pending-list .mod-user-info {
             flex-direction: column; align-items: flex-start; gap: 1px;
@@ -2722,6 +2726,7 @@
             min-width: 0; flex: 1;
             overflow-wrap: anywhere;
         }
+        .admin-user-meta { font-size: 0.75rem; color: var(--color-gray-500); }
 
         /* The buttons keep their own line and their own size. */
         #community-member-list li > span:last-child,
