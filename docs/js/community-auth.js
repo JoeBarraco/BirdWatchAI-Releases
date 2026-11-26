@@ -409,19 +409,70 @@ function clearModSession() {
 // did. Any privileged call can therefore come back with a dead session; when it
 // does, drop the moderator back at the login modal rather than failing silently.
 // Returns true if the error was a session expiry and has been handled.
+//
+// ⚠ "ADMIN ACCESS REQUIRED" IS USUALLY AN EXPIRED SESSION TOO.
+// Every admin-only RPC checks `moderator_session_role(p_token) <> 'admin'`,
+// and that role is null for a dead token as well as for a non-admin, so an
+// admin whose session lapsed overnight was told "Admin access required", and
+// filed it as "I thought I was the admin". This browser only
+// shows admin tools when the server said "admin" at login, so if it still
+// believes that and the server now disagrees, the session is the thing that
+// changed. Treat it as expiry and renew. If the renewed session really isn't
+// admin (demoted since), updateModUI() hides the admin button and nothing loops.
+//
+// Fixed here rather than in the SQL because there are sixteen admin RPCs in
+// nine files, each of which would have to be re-applied by hand; every admin
+// section already routes its errors through this one function.
+let modAdminRenewal = null;   // one renewal for the panel's several parallel loads
+
 function handleModSessionError(err) {
     const msg = String((err && (err.message || err.error || err.msg)) || err || '');
-    if (!/expired moderator session/i.test(msg)) return false;
+    const adminDenied = /admin access required/i.test(msg);
+    if (adminDenied) {
+        // The panel's sections load in parallel and all fail together. The
+        // first one clears the session below, so the rest see isAdmin() false
+        // here — they must still count as handled, or they would print the
+        // misleading message under the renewal that is already under way.
+        if (modAdminRenewal) return true;
+        if (!isAdmin()) return false;
+    } else if (!/expired moderator session/i.test(msg)) {
+        return false;
+    }
     const viaAuth = sessionStorage.getItem('bwai-mod-via') === 'auth';
     clearModSession();
     updateModUI();
     if (viaAuth && authAccessToken) {
         // Signed in normally: mint a fresh moderator session from that sign-in
         // instead of sending the moderator to a login box.
-        enterModFromAuth({ quiet: true }).then(ok => showToast(ok
+        const renewal = enterModFromAuth({ quiet: true });
+        if (adminDenied) {
+            modAdminRenewal = renewal;
+            renewal.then(ok => {
+                const panelOpen = document.getElementById('mod-admin-modal')?.classList.contains('open');
+                if (ok && isAdmin() && panelOpen) {
+                    // Reload every section of the open panel. Clicking the
+                    // admin button runs openAdminPanel() plus each section's
+                    // own self-wired listener, so this stays correct as
+                    // sections are added in other files.
+                    document.getElementById('navbar-admin-btn')?.click();
+                    showToast('Moderator session renewed');
+                } else if (!ok) {
+                    showToast('Your moderator session has expired — please sign in again');
+                    if (panelOpen) closeAdminPanel();
+                }
+            }).finally(() => { modAdminRenewal = null; });
+            return true;
+        }
+        renewal.then(ok => showToast(ok
             ? 'Moderator session renewed — please try that again'
             : 'Your moderator session has expired'));
         return true;
+    }
+    if (adminDenied) {
+        // Password login, or signed out: nothing to renew from, so close the
+        // admin panel rather than leave it showing four error lines.
+        const panelOpen = document.getElementById('mod-admin-modal')?.classList.contains('open');
+        if (panelOpen) closeAdminPanel();
     }
     showToast('Your moderator session has expired — please sign in again');
     if (typeof renderFeed === 'function') renderFeed();

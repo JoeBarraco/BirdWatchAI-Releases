@@ -46,7 +46,14 @@ declare
 begin
   admin_role := moderator_session_role(p_token);
 
-  if admin_role is null or admin_role <> 'admin' then
+  -- A dead token is reported as expired, not as "not an admin". The other
+  -- admin RPCs fold the two together, which told a lapsed admin they weren't
+  -- one; the client now copes with that, but there is no reason for a new
+  -- function to repeat it.
+  if admin_role is null then
+    raise exception 'Invalid or expired moderator session';
+  end if;
+  if admin_role <> 'admin' then
     raise exception 'Admin access required';
   end if;
 
