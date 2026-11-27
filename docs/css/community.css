@@ -3355,63 +3355,95 @@
             color: var(--color-gray-900);
             word-break: break-word;
         }
-        .feeder-view-detections {
-            font-family: inherit;
-            font-size: 0.8rem;
-            font-weight: 500;
-            padding: 6px 10px;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            background: var(--bg-card);
-            color: var(--color-gray-700);
-            cursor: pointer;
-            align-self: flex-start;
-            transition: all 0.15s;
-        }
-        .feeder-view-detections:hover {
-            border-color: var(--color-primary);
-            color: var(--color-primary);
-        }
+        /* ── Feeder card actions ──────────────────────────────────────────────
+           One row: the main actions (Watch live when available, View detections)
+           on the left, small icon buttons on the right (copy link, map, and a ⋯
+           menu holding the moderator-only Merge / Delete). Keeps every card the
+           same height and stops seven equal-weight buttons wrapping into a heap. */
         .feeder-actions {
             display: flex;
-            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-top: auto;               /* pin to the bottom so cards in a row line up */
+            padding-top: 10px;
+            border-top: 1px solid var(--border);
+        }
+        .feeder-actions-main { display: flex; gap: 6px; min-width: 0; }
+        .feeder-actions-icons { display: flex; gap: 4px; flex-shrink: 0; }
+        .feeder-view-detections,
+        .feeder-watch-live {
+            font-family: inherit;
+            font-size: 0.8rem;
+            font-weight: 600;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .feeder-view-detections {
+            border: 1px solid var(--color-primary);
+            background: var(--bg-card);
+            color: var(--color-primary);
+        }
+        .feeder-view-detections:hover { background: var(--color-primary); color: #fff; }
+        .feeder-watch-live { border: 1px solid #d33; background: #d33; color: #fff; }
+        .feeder-watch-live:hover { background: #b22; border-color: #b22; }
+        .feeder-icon-btn {
+            width: 32px;
+            height: 32px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.95rem;
+            padding: 0;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--bg-card);
+            color: var(--color-gray-700);
+            cursor: pointer;
+            list-style: none;               /* <summary> marker */
+            transition: all 0.15s;
+        }
+        .feeder-icon-btn::-webkit-details-marker { display: none; }
+        .feeder-icon-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
+        .feeder-more { position: relative; }
+        .feeder-more-menu {
+            position: absolute;
+            right: 0;
+            bottom: calc(100% + 4px);
+            z-index: 20;
+            min-width: 170px;
+            display: flex;
+            flex-direction: column;
+            padding: 4px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+        }
+        .feeder-more-menu button {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
             gap: 6px;
+            width: 100%;
+            margin: 0;
             align-self: stretch;
-        }
-        .feeder-show-on-map {
             font-family: inherit;
-            font-size: 0.8rem;
-            font-weight: 500;
-            padding: 6px 10px;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            background: var(--bg-card);
-            color: var(--color-gray-700);
+            font-size: 0.85rem;
+            text-align: left;
+            padding: 7px 10px;
+            border: 0;
+            border-radius: 5px;
+            background: none;
+            color: var(--color-gray-900);
             cursor: pointer;
-            transition: all 0.15s;
         }
-        .feeder-show-on-map:hover {
-            border-color: var(--color-primary);
-            color: var(--color-primary);
-        }
-        /* "🔗 Copy link" — same neutral styling as the other secondary actions on
-           the feeder card, brand-color on hover to signal the click. */
-        .feeder-copy-link {
-            font-family: inherit;
-            font-size: 0.8rem;
-            font-weight: 500;
-            padding: 6px 10px;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            background: var(--bg-card);
-            color: var(--color-gray-700);
-            cursor: pointer;
-            transition: all 0.15s;
-        }
-        .feeder-copy-link:hover {
-            border-color: var(--color-primary);
-            color: var(--color-primary);
-        }
+        .feeder-more-menu button:hover { background: var(--color-gray-100, #f2f2f2); }
+        .feeder-more-menu .feeder-mod-delete { color: #b03a2e; }
+        .feeder-meta .feeder-version { color: var(--color-gray-500); font-variant-numeric: tabular-nums; }
         /* Mini-card used for source + target preview in the merge-feeder modal.
            Same idea as the feeder cards on the Feeders tab but compressed:
            bold display name on top, a metadata strip below with state pill,

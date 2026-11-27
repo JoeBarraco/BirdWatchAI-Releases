@@ -222,6 +222,7 @@ function renderFeed() {
                     <button class="reaction-btn${reacted ? ' reacted' : ''}" data-reaction-id="${d.id}" data-emoji="❤️" data-label="like">${likeBtnText(likeCount, reacted)}</button>${likeCount ? `<button class="likers-btn" onclick="showLikers('${d.id}', this.parentElement)" title="See who liked">Liked by…</button>` : ''}
                 </div>
                 ${d.video_url ? `<a class="card-video" href="${d.video_url}" data-video-play="${d.video_url}" target="_blank" rel="noopener">🎬 Watch video</a>` : ''}
+                ${feederId && typeof liveSlotHtml === 'function' ? liveSlotHtml(feederId, d.feeders?.display_name) : ''}
                 <button class="card-ai" data-ai-species="${esc(d.species)}" title="Species info and links">🌐 Web</button>
                 <button class="card-share" data-share-id="${d.id}" title="Copy link to this detection">🔗 Share</button>
                 <button class="card-comment-btn" onclick="openComments('${d.id}')" title="Comments">${commentBtnLabel(cCount)}</button>
@@ -856,30 +857,46 @@ function renderFeeders() {
         const stateLabel = state === 'monitoring' ? 'Monitoring'
                          : state === 'idle'       ? 'Idle'
                                                   : 'Offline';
-        const statusText = f.status ? esc(f.status) : '—';
+        // The pill already says monitoring / idle / offline, so the feeder's own status text is only
+        // worth a row when it says something else ("paused", "camera error", …).
+        const statusRaw = (f.status || '').trim();
+        const statusRow = statusRaw && !['monitoring', 'online', 'idle', 'offline'].includes(statusRaw.toLowerCase())
+            ? `<div><dt>Status</dt><dd>${esc(statusRaw)}</dd></div>` : '';
         const hb = feederHeartbeat(f);
         const locationCell = renderFeederLocationCell(f);
+        const fid = esc(f.id || f.feeder_id || '');
+        const name = esc(f.display_name || 'Unnamed feeder');
+        const modItems = isModLoggedIn() && (f.id || f.feeder_id) ? `
+                    <button class="feeder-mod-merge" data-feeder-id="${fid}" data-feeder-name="${name}" onclick="openModMergeFeeder(this)">🔀 Merge into…</button>
+                    <button class="feeder-mod-delete" data-feeder-id="${fid}" data-feeder-name="${name}" onclick="confirmModDeleteFeeder(this)">🗑️ Delete feeder</button>` : '';
         return `
         <div class="feeder-card ${stateClass}">
             <div class="feeder-card-header">
                 <span class="feeder-status-dot ${stateClass}" aria-hidden="true"></span>
-                <h3 class="feeder-name">${feederMarkByName(f.display_name)}${esc(f.display_name || 'Unnamed feeder')}</h3>
+                <h3 class="feeder-name" title="${name}">${feederMarkByName(f.display_name)}${name}</h3>
                 <span class="feeder-state-pill ${stateClass}">${stateLabel}</span>
             </div>
             <dl class="feeder-meta">
-                <div><dt>Status</dt><dd>${statusText}</dd></div>
-                <div><dt>Version</dt><dd>${f.app_version ? esc(f.app_version) : '—'}</dd></div>
+                ${statusRow}
                 <div><dt>Location</dt><dd>${locationCell}</dd></div>
-                <div><dt>Last heartbeat</dt><dd title="${hb ? esc(new Date(hb).toLocaleString()) : ''}">${esc(fmtFeederHeartbeat(f))}</dd></div>
+                <div><dt>Last seen</dt><dd title="${hb ? esc(new Date(hb).toLocaleString()) : ''}">${esc(fmtFeederHeartbeat(f))}</dd></div>
+                <div><dt>Version</dt><dd class="feeder-version">${f.app_version ? esc(String(f.app_version).split('+')[0]) : '—'}</dd></div>
             </dl>
             ${typeof feederBadgeStripHtml === 'function' ? feederBadgeStripHtml(f.id || f.feeder_id) : ''}
             <div class="feeder-actions">
-                ${typeof liveButtonHtml === 'function' ? liveButtonHtml(f) : ''}
-                ${f.display_name ? `<button class="feeder-view-detections" data-feeder-name="${esc(f.display_name)}" onclick="viewFeederDetections(this)">View detections →</button>` : ''}
-                ${f.display_name ? `<button class="feeder-copy-link" data-feeder-name="${esc(f.display_name)}" onclick="copyFeederDeepLink(this)" title="Copy a shareable link to this feeder's view">🔗 Copy link</button>` : ''}
-                ${hasGps(f) ? `<button class="feeder-show-on-map" data-feeder-id="${esc(f.feeder_id || f.id || f.display_name || '')}" data-feeder-lat="${(+f.latitude).toFixed(6)}" data-feeder-lng="${(+f.longitude).toFixed(6)}" data-feeder-name="${esc(f.display_name || '')}" onclick="showFeederOnMap(this)">🗺️ Show on map</button>` : ''}
-                ${isModLoggedIn() && (f.id || f.feeder_id) ? `<button class="feeder-mod-merge" data-feeder-id="${esc(f.id || f.feeder_id)}" data-feeder-name="${esc(f.display_name || 'Unnamed feeder')}" onclick="openModMergeFeeder(this)" title="Move this feeder's detections into another feeder, then delete this one">🔀 Merge into…</button>` : ''}
-                ${isModLoggedIn() && (f.id || f.feeder_id) ? `<button class="feeder-mod-delete" data-feeder-id="${esc(f.id || f.feeder_id)}" data-feeder-name="${esc(f.display_name || 'Unnamed feeder')}" onclick="confirmModDeleteFeeder(this)" title="Delete this feeder and all of its community detections">🗑️ Delete feeder</button>` : ''}
+                <div class="feeder-actions-main">
+                    ${typeof liveButtonHtml === 'function' ? liveButtonHtml(f) : ''}
+                    ${f.display_name ? `<button class="feeder-view-detections" data-feeder-name="${name}" onclick="viewFeederDetections(this)" title="View this feeder's detections">Detections →</button>` : ''}
+                </div>
+                <div class="feeder-actions-icons">
+                    ${f.display_name ? `<button class="feeder-icon-btn feeder-copy-link" data-feeder-name="${name}" onclick="copyFeederDeepLink(this)" title="Copy a shareable link to this feeder" aria-label="Copy link">🔗</button>` : ''}
+                    ${hasGps(f) ? `<button class="feeder-icon-btn feeder-show-on-map" data-feeder-id="${esc(f.feeder_id || f.id || f.display_name || '')}" data-feeder-lat="${(+f.latitude).toFixed(6)}" data-feeder-lng="${(+f.longitude).toFixed(6)}" data-feeder-name="${name}" onclick="showFeederOnMap(this)" title="Show on map" aria-label="Show on map">🗺️</button>` : ''}
+                    ${modItems ? `<details class="feeder-more">
+                        <summary class="feeder-icon-btn" title="Moderator actions" aria-label="Moderator actions">⋯</summary>
+                        <div class="feeder-more-menu">${modItems}
+                        </div>
+                    </details>` : ''}
+                </div>
             </div>
         </div>`;
     }).join('');
@@ -2507,3 +2524,10 @@ document.addEventListener('click', (ev) => {
     });
 });
 
+
+// Feeder-card ⋯ menus are <details>: close any open one when clicking elsewhere.
+document.addEventListener('click', e => {
+    document.querySelectorAll('details.feeder-more[open]').forEach(d => {
+        if (!d.contains(e.target)) d.removeAttribute('open');
+    });
+});

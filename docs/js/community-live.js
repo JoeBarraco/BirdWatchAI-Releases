@@ -16,57 +16,117 @@ const LIVE_RELAY_WS   = 'wss://live.birdwatchai.com';
 const LIVE_RELAY_HTTP = 'https://live.birdwatchai.com';
 
 const liveDeviceKeys = new Map();   // feeder id -> device_key (from the feeders table, RLS-scoped)
-let   liveOnlineKeys = new Set();   // device keys currently offering live view
-let   liveRefreshBusy = false;
-let   liveView = null;              // the open player, if any
+const liveState      = new Map();   // device_key -> true/false, as last reported by the relay
+let   liveScanTimer  = null;
+let   liveScanBusy   = false;
+let   liveView       = null;   // the open player, if any
 
-// Called after every loadFeeders(). Cheap: one feeders query for ids we haven't seen, plus one
-// tiny relay request per feeder that's online. Re-renders the grid only if the set changed.
-async function refreshLiveAvailability(feeders) {
-    if (liveRefreshBusy || !Array.isArray(feeders) || !feeders.length) return;
-    liveRefreshBusy = true;
-    try {
-        const ids = feeders.map(f => String(f.id || f.feeder_id || '')).filter(Boolean);
-        const missing = ids.filter(id => !liveDeviceKeys.has(id));
-        if (missing.length) {
-            const res = await fetch(
-                `${SUPABASE_URL}/rest/v1/feeders?select=id,device_key&id=in.(${missing.map(encodeURIComponent).join(',')})`,
-                { headers: sbHeaders(sbAuthed()) });
-            if (res.ok) {
-                for (const row of await res.json()) {
-                    if (row.device_key) liveDeviceKeys.set(String(row.id), row.device_key);
-                }
-            }
-        }
-
-        const candidates = feeders
-            .filter(f => typeof feederIsOnline !== 'function' || feederIsOnline(f))
-            .map(f => liveDeviceKeys.get(String(f.id || f.feeder_id || '')))
-            .filter(Boolean);
-
-        const results = await Promise.all(candidates.map(async key => {
-            try {
-                const r = await fetch(`${LIVE_RELAY_HTTP}/online/${encodeURIComponent(key)}`, { cache: 'no-store' });
-                return r.ok && (await r.json()).online ? key : null;
-            } catch { return null; }   // relay unreachable: just no buttons
-        }));
-        const next = new Set(results.filter(Boolean));
-
-        const changed = next.size !== liveOnlineKeys.size || [...next].some(k => !liveOnlineKeys.has(k));
-        liveOnlineKeys = next;
-        if (changed && typeof renderFeeders === 'function') renderFeeders();
-    } catch (e) {
-        console.warn('Live view: availability check failed', e);
-    } finally {
-        liveRefreshBusy = false;
+// Fill in device keys for feeder ids we haven't looked up yet. RLS-scoped: a private feeder the
+// visitor can't see simply never gets a key, so never gets a button.
+async function liveResolveKeys(ids) {
+    const missing = [...new Set(ids)].filter(id => id && !liveDeviceKeys.has(id));
+    if (!missing.length) return;
+    for (let i = 0; i < missing.length; i += 100) {
+        const chunk = missing.slice(i, i + 100);
+        const res = await fetch(
+            `${SUPABASE_URL}/rest/v1/feeders?select=id,device_key&id=in.(${chunk.map(encodeURIComponent).join(',')})`,
+            { headers: sbHeaders(sbAuthed()) });
+        if (!res.ok) continue;
+        const rows = await res.json();
+        for (const id of chunk) liveDeviceKeys.set(id, null);      // remember misses too
+        for (const row of rows) liveDeviceKeys.set(String(row.id), row.device_key || null);
     }
 }
 
-// Button for a feeder card, or '' when that feeder isn't offering live view right now.
+// Ask the relay which of these feeders are offering live view. Returns true if anything changed.
+async function liveCheck(ids) {
+    await liveResolveKeys(ids);
+    const keys = [...new Set(ids.map(id => liveDeviceKeys.get(id)).filter(Boolean))].slice(0, 60);
+    let changed = false;
+    await Promise.all(keys.map(async key => {
+        let online = false;
+        try {
+            const r = await fetch(`${LIVE_RELAY_HTTP}/online/${encodeURIComponent(key)}`, { cache: 'no-store' });
+            online = r.ok && !!(await r.json()).online;
+        } catch { /* relay unreachable: treat as not live */ }
+        if (liveState.get(key) !== online) changed = true;
+        liveState.set(key, online);
+    }));
+    return changed;
+}
+
+function liveIsOn(feederId) {
+    const key = liveDeviceKeys.get(String(feederId || ''));
+    return !!key && liveState.get(key) === true;
+}
+
+// ── Feeders tab ─────────────────────────────────────────
+// Called after every loadFeeders(); re-renders the grid only if a feeder went live or stopped.
+async function refreshLiveAvailability(feeders) {
+    if (!Array.isArray(feeders) || !feeders.length) return;
+    try {
+        const ids = feeders
+            .filter(f => typeof feederIsOnline !== 'function' || feederIsOnline(f))
+            .map(f => String(f.id || f.feeder_id || ''))
+            .filter(Boolean);
+        if (await liveCheck(ids)) {
+            if (typeof renderFeeders === 'function') renderFeeders();
+            liveUpdateSlots();
+        }
+    } catch (e) {
+        console.warn('Live view: availability check failed', e);
+    }
+}
+
 function liveButtonHtml(f) {
-    const key = liveDeviceKeys.get(String(f.id || f.feeder_id || ''));
-    if (!key || !liveOnlineKeys.has(key)) return '';
-    return `<button class="feeder-watch-live" data-device-key="${esc(key)}" data-feeder-name="${esc(f.display_name || 'Feeder')}" onclick="openLiveView(this)" title="Watch this feeder live">🔴 Watch live</button>`;
+    const id = String(f.id || f.feeder_id || '');
+    if (!liveIsOn(id)) return '';
+    return `<button class="feeder-watch-live" data-device-key="${esc(liveDeviceKeys.get(id))}" data-feeder-name="${esc(f.display_name || 'Feeder')}" onclick="openLiveView(this)" title="Watch this feeder live">🔴 Live</button>`;
+}
+
+// ── Detection cards ─────────────────────────────────────
+// Cards render a placeholder; a background scan fills in the ones whose feeder is live, without
+// re-rendering the feed (which would reset scroll and images).
+function liveSlotHtml(feederId, feederName) {
+    const id = String(feederId || '');
+    liveScheduleScan(400);
+    return `<span class="live-slot" data-feeder-id="${esc(id)}" data-feeder-name="${esc(feederName || 'Feeder')}">${liveSlotInner(id, feederName)}</span>`;
+}
+
+function liveSlotInner(id, name) {
+    if (!liveIsOn(id)) return '';
+    return `<button class="card-watch-live" data-device-key="${esc(liveDeviceKeys.get(id))}" data-feeder-name="${esc(name || 'Feeder')}" onclick="openLiveView(this)" title="Watch this feeder live">🔴 Watch live</button>`;
+}
+
+function liveUpdateSlots() {
+    document.querySelectorAll('.live-slot').forEach(el => {
+        const html = liveSlotInner(el.dataset.feederId, el.dataset.feederName);
+        if (el.innerHTML !== html) el.innerHTML = html;
+    });
+}
+
+function liveScheduleScan(delayMs) {
+    if (liveScanTimer) return;
+    liveScanTimer = setTimeout(liveScan, delayMs);
+}
+
+async function liveScan() {
+    liveScanTimer = null;
+    if (liveScanBusy) return;
+    liveScanBusy = true;
+    try {
+        const ids = [...document.querySelectorAll('.live-slot')].map(el => el.dataset.feederId).filter(Boolean);
+        if (ids.length && !document.hidden) {
+            await liveCheck(ids);
+            liveUpdateSlots();
+        }
+    } catch (e) {
+        console.warn('Live view: feed scan failed', e);
+    } finally {
+        liveScanBusy = false;
+        // Keep the buttons honest while the page is open: feeders come and go.
+        liveScheduleScan(45000);
+    }
 }
 
 async function liveViewToken(deviceKey) {
@@ -121,9 +181,10 @@ function closeLiveView() {
     const s = document.createElement('style');
     s.id = 'live-view-styles';
     s.textContent = `
-        .feeder-watch-live{background:#d33;color:#fff;border:0;border-radius:6px;padding:6px 10px;
-            font-weight:600;cursor:pointer}
-        .feeder-watch-live:hover{background:#b22}
+        .card-watch-live{background:none;border:0;padding:0;margin:0;font:inherit;font-size:12px;
+            color:#d33;font-weight:600;cursor:pointer;text-align:left}
+        .card-watch-live:hover{text-decoration:underline}
+        .live-slot:empty{display:none}
         #live-view-modal{position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.7);
             display:flex;align-items:center;justify-content:center;padding:16px}
         #live-view-modal .live-view-dialog{background:var(--color-white,#fff);color:inherit;border-radius:12px;
