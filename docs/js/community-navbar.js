@@ -88,6 +88,31 @@
         if (e.key === 'Escape') closeAll();
     });
 
+    // ── admin menu entries that jump to one section of the admin dialog ──
+    // The admin dialog holds four unrelated jobs, and a single "Moderators"
+    // entry made the other three unfindable. Each [data-admin-section] item
+    // opens the dialog by CLICKING the original #navbar-admin-btn rather than
+    // calling openAdminPanel(): the communities, users and remote-support
+    // sections each wire their own loader to that button's click (see
+    // community-communities.js, community-admin-users.js, community-remote.js),
+    // and a direct call would open the dialog with those sections stuck on
+    // "Loading…". Same trick community-auth.js uses to reload the panel.
+    nav.addEventListener('click', (e) => {
+        const item = e.target.closest('[data-admin-section]');
+        if (!item) return;
+        const btn = document.getElementById('navbar-admin-btn');
+        if (!btn) return;
+        btn.click();
+        // The dialog is display:none until .open lands, and a hidden element
+        // cannot be scrolled to, so wait a frame for it to be laid out.
+        // `start` plus scroll-margin-top (community.css, .admin-sec) keeps the
+        // heading clear of the sticky Close bar.
+        requestAnimationFrame(() => {
+            const sec = document.getElementById(item.dataset.adminSection);
+            if (sec) sec.scrollIntoView({ block: 'start' });
+        });
+    });
+
     // ── keep labels, separators and menus in step with the items ──
     const $ = (id) => document.getElementById(id);
 

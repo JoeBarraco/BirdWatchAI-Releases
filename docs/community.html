@@ -13,7 +13,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="BirdWatchAI">
-    <link rel="stylesheet" href="css/community.css?v=b0614dbc">
+    <link rel="stylesheet" href="css/community.css?v=6fda5338">
 </head>
 <body>
 <!-- Top navbar with auth controls -->
@@ -47,7 +47,19 @@
                 <button id="navbar-comments-history-btn" class="navbar-menu-item" role="menuitem" onclick="openCommentsHistory()" title="Review comments across all detections" style="display:none;">💬 All comments</button>
                 <div class="navbar-menu-sep" data-admin-only></div>
                 <div class="navbar-menu-label" data-admin-only>Admin</div>
-                <button id="navbar-admin-btn" class="navbar-menu-item" role="menuitem" onclick="openAdminPanel()" title="Manage moderators" style="display:none;">👥 Moderators</button>
+                <!-- One admin dialog, four jobs. "Moderators" alone hid the other
+                     three behind a name that says nothing about them ("I get
+                     confused that I need to moderate -> moderators to ... create
+                     communities ... view user login ... remote in feeders").
+                     Each job gets its own entry; all of them open the SAME
+                     dialog (through the original button, so every section's
+                     self-wired listener still fires) and scroll to their section.
+                     data-admin-section is handled in community-navbar.js;
+                     data-admin-only makes them show and hide with the original. -->
+                <button id="navbar-admin-btn" class="navbar-menu-item" role="menuitem" onclick="openAdminPanel()" title="Add or remove moderators and admins" style="display:none;">👥 Moderators &amp; admins</button>
+                <button type="button" class="navbar-menu-item" role="menuitem" data-admin-only data-admin-section="admin-sec-communities" title="Create, review or delete communities" style="display:none;">🏫 Communities</button>
+                <button type="button" class="navbar-menu-item" role="menuitem" data-admin-only data-admin-section="admin-sec-users" title="Every account, when it last signed in and was active" style="display:none;">👤 Users</button>
+                <button type="button" class="navbar-menu-item" role="menuitem" data-admin-only data-admin-section="admin-sec-remote" title="Open a remote-support session to a feeder" style="display:none;">🛰 Remote support</button>
             </div>
         </div>
 
@@ -624,7 +636,7 @@
 <!-- ── Mod flag queue modal ──────────────────────────────────── -->
 <div id="flag-queue-modal" role="dialog" aria-modal="true">
     <div class="flag-queue-box mod-sticky-box">
-        <!-- Same sticky header as Manage Moderators: a long queue pushed
+        <!-- Same sticky header as Site admin: a long queue pushed
              Close off the bottom of the window. -->
         <div class="mod-panel-head">
             <h3>Flagged Detections</h3>
@@ -681,7 +693,7 @@
              very bottom ("the only way to close the dialog box is scroll all
              the way down"). Escape and clicking outside also close it. -->
         <div class="mod-panel-head">
-            <h3>Manage Moderators</h3>
+            <h3>Site admin</h3>
             <button type="button" class="mod-head-close-text" onclick="closeAdminPanel()">✕ Close</button>
         </div>
         <ul id="mod-user-list" class="mod-user-list">
@@ -699,7 +711,7 @@
         </div>
         <div id="mod-add-status" style="font-size:0.8rem;margin-top:0.5rem;display:none;"></div>
 
-        <h4 style="font-size:0.9rem;margin:1.5rem 0 0.5rem;color:var(--color-gray-900);">Create a Community</h4>
+        <h4 id="admin-sec-communities" class="admin-sec" style="font-size:0.9rem;margin:1.5rem 0 0.5rem;color:var(--color-gray-900);">Create a Community</h4>
         <p style="font-size:0.8rem;color:var(--color-gray-500);margin-bottom:0.5rem;">
             Private communities are hidden from the public feed and are never listed —
             feeder owners join with the code below. The owner must already have signed in
@@ -732,7 +744,7 @@
             <li style="color:var(--color-gray-500)">Loading…</li>
         </ul>
 
-        <h4 style="font-size:0.9rem;margin:1.5rem 0 0.5rem;color:var(--color-gray-900);">Users</h4>
+        <h4 id="admin-sec-users" class="admin-sec" style="font-size:0.9rem;margin:1.5rem 0 0.5rem;color:var(--color-gray-900);">Users</h4>
         <p style="font-size:0.8rem;color:var(--color-gray-500);margin-bottom:0.5rem;">
             Every account, most recently active first. "Active" is the latest thing they did,
             including their feeders checking in; "signed in" only changes on a fresh sign-in, so
@@ -743,7 +755,7 @@
             <li style="color:var(--color-gray-500)">Loading…</li>
         </ul>
 
-        <h4 style="font-size:0.9rem;margin:1.5rem 0 0.5rem;color:var(--color-gray-900);">Remote Support</h4>
+        <h4 id="admin-sec-remote" class="admin-sec" style="font-size:0.9rem;margin:1.5rem 0 0.5rem;color:var(--color-gray-900);">Remote Support</h4>
         <p style="font-size:0.8rem;color:var(--color-gray-500);margin-bottom:0.5rem;">
             Open a session to a feeder that's checking in, then run the one-click script on your PC to
             reach its dashboard and SSH. The session reaches only the feeder's own SSH server, a banner
@@ -1056,8 +1068,15 @@
      a question. Small box, because it is one textarea and two optional
      dropdowns. -->
 <div id="classroom-idea-modal" role="dialog" aria-modal="true">
-    <div class="mod-admin-box">
-        <h3>Suggest something</h3>
+    <div class="mod-admin-box mod-sticky-box">
+        <!-- A Close in the header, as on the other dialogs. With only the
+             form's Cancel to leave by, a person who had just SENT something
+             had to press a button that reads as "throw this away" ("only
+             way out ... is pressing cancel, even if you sent something"). -->
+        <div class="mod-panel-head">
+            <h3>Suggest something</h3>
+            <button type="button" class="mod-head-close-text" onclick="closeClassroomIdeaStandalone()">✕ Close</button>
+        </div>
         <div id="classroom-idea-body"></div>
     </div>
 </div>
@@ -1407,7 +1426,7 @@
      modal. Must load before community-auth.js, which calls into window.bwOverlay. -->
 <script src="js/community-overlay.js?v=81687514"></script>
 <script src="js/community-auth.js?v=72d62c57"></script>
-<script src="js/community-navbar.js?v=c6f0216c"></script>
+<script src="js/community-navbar.js?v=eb6ea486"></script>
 <script src="js/community-my-feeders.js?v=07a5aacb"></script>
 <script src="js/community-remote.js?v=748a95c8"></script>
 <script src="js/community-admin-users.js?v=12db5ee3"></script>
@@ -1441,7 +1460,7 @@
      longer exists. Swapping the two would make that half of the check silently
      do nothing. -->
 <script src="js/classroom-standards.js?v=f2e3de89"></script>
-<script src="js/community-classroom.js?v=21cedfaa"></script>
+<script src="js/community-classroom.js?v=72579595"></script>
 <!-- English + Español on the board (K-2). -->
 <script src="js/classroom-spanish.js?v=1a4afa9b"></script>
 <!-- The stage read aloud, and the reveal pointing at its evidence. After the classroom file. -->

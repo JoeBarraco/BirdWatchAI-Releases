@@ -3014,9 +3014,17 @@ function classroomChoicesBlock(S, q, choices) {
     // position — and on a colour question they are a second, contradictory
     // colour on the same button. The swatch is the one that means something.
     const swatched = q.choices.some(c => c && c.swatch);
+    // When EVERY answer is a photograph, the photographs are the question:
+    // "Which bird has a black cap and a black bib?" is answered by looking,
+    // not by reading the names. The thumbnail beside a label was sized for a
+    // colour clue and was skipped mid-lesson as "pics are too small", so
+    // these answers become photo tiles instead (community.css,
+    // .classroom-choices.photos). Only when all of them have one: a single
+    // tile among text buttons would make that answer the obvious one.
+    const photos = q.choices.length > 0 && q.choices.every(c => c && c.photo);
     if (!q.guess_first || S.revealed || shown) {
         return `<div class="classroom-choices ${q.choices.length > 3 ? 'four' : ''}${
-                swatched ? ' swatched' : ''}">${choices}</div>`;
+                swatched ? ' swatched' : ''}${photos ? ' photos' : ''}">${choices}</div>`;
     }
     return `
         <div class="classroom-guess-first">
@@ -15839,7 +15847,29 @@ async function sendClassroomIdea() {
     // teacher wrote because the save failed is the one outcome this whole
     // screen exists to avoid.
     if (text) text.value = '';
-    say('Sent — thank you. It arrives by email within a couple of seconds.');
+
+    // Then the form goes away. It used to stay up with "Sent" in the small
+    // status line under it, and a full-looking form with a Send button still
+    // on it asks to be sent again: "it confuses the user whether they need
+    // to press send again or not". Same ending as sendClassroomSuggestion —
+    // say it went, offer another, offer a way out that is not "Cancel".
+    //
+    // The form lives in two places (the navbar modal and the classroom
+    // panel's right-hand pane), so the thanks replaces whichever one this
+    // form is actually in, and Close/another mean what they mean there.
+    const inModal = !!(status && status.closest('#classroom-idea-modal'));
+    const host = document.getElementById(inModal ? 'classroom-idea-body' : 'classroom-review');
+    if (!host) { say('Sent — thank you.'); return; }
+    host.innerHTML = `
+        ${inModal ? '' : '<h4 class="classroom-h">Thanks</h4>'}
+        <p class="classroom-muted">✓ Sent — thank you. It is on the list and arrives
+           by email within a couple of seconds; nothing more to press.</p>
+        <div class="classroom-form-actions">
+            <button class="classroom-btn" onclick="${inModal
+                ? 'openClassroomIdeaStandalone()' : 'openClassroomIdea()'}">Suggest something else</button>
+            <button class="classroom-btn-primary${inModal ? '' : ' classroom-right-close'}" onclick="${inModal
+                ? 'closeClassroomIdeaStandalone()' : 'closeClassroomRight()'}">Close</button>
+        </div>`;
 }
 
 function closeClassroomFlag(i) {

@@ -5751,6 +5751,39 @@
     object-fit: cover; border-radius: 10px;
 }
 
+/* Every answer a photograph (spot-the-feature, art-primary-color): the
+   photos ARE the question, so each answer becomes a tile — photo across the
+   full width of the button, name underneath. The 11vmin thumbnail above is
+   about 120px on a 1080p projector, and a K–2 class cannot find a black bib
+   in that from their seats ("pics are too small").
+   Height is capped in vh so prompt + tiles still fit the stage; if a short
+   screen still runs over, classroomFitStage scales the slide as for any
+   other dense slide. The review panel renders choices as its own list, so
+   none of this reaches it. */
+.classroom-choices.photos > .classroom-choice {
+    flex-direction: column; align-items: stretch;
+    text-align: center; gap: 1vmin;
+    padding: 1.4vmin;
+}
+.classroom-choices.photos .classroom-choice-photo {
+    width: 100%; height: auto; aspect-ratio: 4 / 3;
+    max-height: 36vh; min-width: 0; min-height: 0;
+}
+/* The letter is what a presenter-remote key picks, so it stays visible, but
+   on a tile it rides on the photo's corner rather than taking a row. */
+.classroom-choices.photos .classroom-choice-key {
+    position: absolute; top: 2vmin; left: 2vmin; z-index: 2;
+}
+/* flex:1 is right for a label beside a thumbnail; in a column it would
+   stretch the name to fill the tile's height instead of sitting under it. */
+.classroom-choices.photos .classroom-choice-label { flex: 0 0 auto; }
+.classroom-choices.photos .classroom-votes { align-self: center; }
+/* Four tiles in a 2×2 grid would need two photo rows and the fitter would
+   shrink the whole slide to pay for it; one row of four keeps them large. */
+@media (min-width: 700px) {
+    .classroom-choices.photos.four { grid-template-columns: repeat(4, 1fr); }
+}
+
 .classroom-bar {
     position: absolute; inset: 0 auto 0 0;
     background: var(--color-primary); opacity: 0.18;
@@ -7164,6 +7197,11 @@ body.ch-home #classroom-panel-brand .classroom-stage-school { display: none; }
     cursor: pointer; white-space: nowrap;
 }
 .mod-head-close-text:hover { border-color: var(--color-gray-500); color: var(--color-gray-900); }
+
+/* Sections of the admin dialog that a Moderate-menu entry jumps straight to
+   (community-navbar.js, data-admin-section). Without the margin the heading
+   lands under the sticky Close bar and the jump looks like it missed. */
+#mod-admin-modal .admin-sec { scroll-margin-top: 4.5rem; }
 
 /* Life list header stays put while the photo grid scrolls, with Close in it. */
 .life-list-box > .life-list-header {
