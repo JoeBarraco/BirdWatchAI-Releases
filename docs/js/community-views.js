@@ -712,6 +712,9 @@ async function loadFeeders() {
             throw new Error(`HTTP ${res.status}${body ? ' — ' + body.slice(0, 200) : ''}`);
         }
         allFeeders = await res.json();
+        // Which feeders are offering live view right now (community-live.js). Not awaited: the
+        // grid renders immediately and gains its "Watch live" buttons a moment later.
+        if (typeof refreshLiveAvailability === 'function') refreshLiveAvailability(allFeeders);
         // Badge stats are fetched once per page load and shared with the
         // Stats leaderboard. Awaited (not fire-and-forget) so the cards
         // render with their badge strips already in place rather than
@@ -871,6 +874,7 @@ function renderFeeders() {
             </dl>
             ${typeof feederBadgeStripHtml === 'function' ? feederBadgeStripHtml(f.id || f.feeder_id) : ''}
             <div class="feeder-actions">
+                ${typeof liveButtonHtml === 'function' ? liveButtonHtml(f) : ''}
                 ${f.display_name ? `<button class="feeder-view-detections" data-feeder-name="${esc(f.display_name)}" onclick="viewFeederDetections(this)">View detections →</button>` : ''}
                 ${f.display_name ? `<button class="feeder-copy-link" data-feeder-name="${esc(f.display_name)}" onclick="copyFeederDeepLink(this)" title="Copy a shareable link to this feeder's view">🔗 Copy link</button>` : ''}
                 ${hasGps(f) ? `<button class="feeder-show-on-map" data-feeder-id="${esc(f.feeder_id || f.id || f.display_name || '')}" data-feeder-lat="${(+f.latitude).toFixed(6)}" data-feeder-lng="${(+f.longitude).toFixed(6)}" data-feeder-name="${esc(f.display_name || '')}" onclick="showFeederOnMap(this)">🗺️ Show on map</button>` : ''}
