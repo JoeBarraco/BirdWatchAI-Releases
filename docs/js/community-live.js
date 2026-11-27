@@ -16,15 +16,37 @@ const LIVE_RELAY_WS   = 'wss://live.birdwatchai.com';
 const LIVE_RELAY_HTTP = 'https://live.birdwatchai.com';
 
 const liveDeviceKeys = new Map();   // feeder id -> device_key (from the feeders table, RLS-scoped)
+const liveKeyMisses  = new Map();   // feeder id -> { at, authed }: a lookup that found no key, and when
 const liveState      = new Map();   // device_key -> true/false, as last reported by the relay
+
+// How long "no key for this feeder" is believed before asking again.
+const LIVE_MISS_RETRY_MS = 2 * 60 * 1000;
 let   liveScanTimer  = null;
 let   liveScanBusy   = false;
 let   liveView       = null;   // the open player, if any
 
 // Fill in device keys for feeder ids we haven't looked up yet. RLS-scoped: a private feeder the
 // visitor can't see simply never gets a key, so never gets a button.
+//
+// ⚠ A MISS IS NOT FOREVER. It used to be: every miss was remembered for the life of the page.
+// But the first lookup often runs before the saved sign-in has finished restoring
+// (community-auth.js checks the token with Supabase first), so it ran as an anonymous visitor, RLS
+// hid every private feeder, and those feeders then had no Watch live for the rest of the visit.
+// Whether the button showed came down to which finished first on each load: "The live video
+// buttons are intermittent", seen on Roland Park, a private school feeder, while the relay
+// reported it connected on every check. So a miss is retried as soon as the sign-in state differs
+// from when it was recorded, and in any case after LIVE_MISS_RETRY_MS (a feeder made visible to
+// you, or shared, mid-visit).
+function liveKeyWanted(id) {
+    if (!id || liveDeviceKeys.has(id)) return false;
+    const miss = liveKeyMisses.get(id);
+    return !miss
+        || miss.authed !== sbAuthed()
+        || Date.now() - miss.at > LIVE_MISS_RETRY_MS;
+}
+
 async function liveResolveKeys(ids) {
-    const missing = [...new Set(ids)].filter(id => id && !liveDeviceKeys.has(id));
+    const missing = [...new Set(ids)].filter(liveKeyWanted);
     if (!missing.length) return;
     for (let i = 0; i < missing.length; i += 100) {
         const chunk = missing.slice(i, i + 100);
@@ -33,8 +55,15 @@ async function liveResolveKeys(ids) {
             { headers: sbHeaders(sbAuthed()) });
         if (!res.ok) continue;
         const rows = await res.json();
-        for (const id of chunk) liveDeviceKeys.set(id, null);      // remember misses too
-        for (const row of rows) liveDeviceKeys.set(String(row.id), row.device_key || null);
+        const authed = sbAuthed();
+        const found = new Set();
+        for (const row of rows) {
+            if (!row.device_key) continue;
+            liveDeviceKeys.set(String(row.id), row.device_key);
+            liveKeyMisses.delete(String(row.id));
+            found.add(String(row.id));
+        }
+        for (const id of chunk) if (!found.has(id)) liveKeyMisses.set(id, { at: Date.now(), authed });
     }
 }
 
@@ -44,11 +73,17 @@ async function liveCheck(ids) {
     const keys = [...new Set(ids.map(id => liveDeviceKeys.get(id)).filter(Boolean))].slice(0, 60);
     let changed = false;
     await Promise.all(keys.map(async key => {
-        let online = false;
+        // Only a definite answer from the relay changes a button. A request that fails or times
+        // out says nothing about the feeder, and treating it as "offline" made a button vanish
+        // for a whole re-check interval (45 s on cards, 30 s on the Feeders tab) because of one
+        // dropped request on the viewer's own connection. A feeder that really goes away is
+        // reported offline by the relay itself on the next check.
+        let online;
         try {
             const r = await fetch(`${LIVE_RELAY_HTTP}/online/${encodeURIComponent(key)}`, { cache: 'no-store' });
-            online = r.ok && !!(await r.json()).online;
-        } catch { /* relay unreachable: treat as not live */ }
+            if (!r.ok) return;
+            online = !!(await r.json()).online;
+        } catch { return; }
         if (liveState.get(key) !== online) changed = true;
         liveState.set(key, online);
     }));
