@@ -180,14 +180,21 @@ function openLiveView(btn) {
 // closes, so this tab is not pulling a second copy of the stream from the relay.
 //
 // The pop-out gets its viewer token by calling liveViewToken here, in its opener, so the sign-in
-// stays this page's business (see the comment in live.html). The name 'bw-live' means a second
-// Pop out reuses the same window rather than stacking them.
+// stays this page's business (see the comment in live.html).
+//
+// One window PER FEEDER, named after its device key. A single shared name ('bw-live') made every
+// Pop out reuse the one window and switch it to the new feeder, so only one could be watched at a
+// time ("i can only currently pop out 1 feeder video at a time. Why cant I have multiple?").
+// Per-feeder names give each feeder its own window while popping out the SAME feeder again still
+// brings its existing window back rather than opening a duplicate. Each window is its own viewer
+// on the relay, which fans one feeder upload out to any number of viewers, so a feeder does no
+// more work however many windows watch it.
 function popOutLiveView() {
     const overlay = document.getElementById('live-view-modal');
     const key = overlay?.dataset?.deviceKey;
     if (!key) return;
     const url = `live.html?feeder=${encodeURIComponent(key)}&name=${encodeURIComponent(overlay.dataset.feederName || 'Feeder')}`;
-    const win = window.open(url, 'bw-live', 'popup,width=720,height=500');
+    const win = window.open(url, `bw-live-${key.replace(/[^A-Za-z0-9_-]/g, '')}`, 'popup,width=720,height=500');
     if (!win) {
         // Blocked anyway (some browsers block every popup by policy). Keep the dialog playing
         // rather than closing it on nothing.
