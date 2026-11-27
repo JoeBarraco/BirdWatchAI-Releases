@@ -151,12 +151,15 @@ function openLiveView(btn) {
         <div class="live-view-dialog">
             <div class="live-view-header">
                 <strong>${esc(btn.dataset.feederName)}</strong> <span class="live-view-sub">live</span>
+                <button class="live-view-popout" onclick="popOutLiveView()" title="Keep watching in a separate window while you use the site">⧉ Pop out</button>
                 <button class="live-view-close" onclick="closeLiveView()" aria-label="Close">✕</button>
             </div>
             <div class="live-view-player"></div>
             <p class="live-view-note">A few frames a second, no sound. Closes itself after 30 minutes.</p>
         </div>`;
     overlay.addEventListener('click', e => { if (e.target === overlay) closeLiveView(); });
+    overlay.dataset.deviceKey = key;
+    overlay.dataset.feederName = btn.dataset.feederName || 'Feeder';
     document.body.appendChild(overlay);
     document.addEventListener('keydown', liveViewEsc);
 
@@ -166,6 +169,32 @@ function openLiveView(btn) {
         fps: 3,
         getToken: () => liveViewToken(key),
     });
+}
+
+// "⧉ Pop out": the same feeder in a window of its own (docs/live.html), so it keeps playing while
+// this page scrolls the feed, changes tab or goes somewhere else. Asked for as "the option to still
+// navigate the site with the video in a popped out window".
+//
+// window.open runs first and synchronously, inside the click: popup blockers allow a window only
+// from the user's own gesture, and anything awaited before it would lose that. Then the dialog
+// closes, so this tab is not pulling a second copy of the stream from the relay.
+//
+// The pop-out gets its viewer token by calling liveViewToken here, in its opener, so the sign-in
+// stays this page's business (see the comment in live.html). The name 'bw-live' means a second
+// Pop out reuses the same window rather than stacking them.
+function popOutLiveView() {
+    const overlay = document.getElementById('live-view-modal');
+    const key = overlay?.dataset?.deviceKey;
+    if (!key) return;
+    const url = `live.html?feeder=${encodeURIComponent(key)}&name=${encodeURIComponent(overlay.dataset.feederName || 'Feeder')}`;
+    const win = window.open(url, 'bw-live', 'popup,width=720,height=500');
+    if (!win) {
+        // Blocked anyway (some browsers block every popup by policy). Keep the dialog playing
+        // rather than closing it on nothing.
+        if (typeof showToast === 'function') showToast('Your browser blocked the pop-out window. Allow pop-ups for this site and try again.');
+        return;
+    }
+    closeLiveView();
 }
 
 function liveViewEsc(e) { if (e.key === 'Escape') closeLiveView(); }
@@ -191,7 +220,9 @@ function closeLiveView() {
             width:min(960px,100%);padding:12px 12px 8px;box-shadow:0 10px 40px rgba(0,0,0,.4)}
         #live-view-modal .live-view-header{display:flex;align-items:center;gap:8px;margin-bottom:8px}
         #live-view-modal .live-view-sub{color:#d33;font-weight:600;text-transform:uppercase;font-size:12px}
-        #live-view-modal .live-view-close{margin-left:auto;border:0;background:none;font-size:20px;cursor:pointer}
+        #live-view-modal .live-view-popout{margin-left:auto;font:inherit;font-size:13px;font-weight:600;padding:4px 10px;
+            border:1px solid rgba(127,127,127,.4);border-radius:6px;background:none;color:inherit;cursor:pointer}
+        #live-view-modal .live-view-close{border:0;background:none;font-size:20px;cursor:pointer;color:inherit}
         #live-view-modal .live-view-note{margin:6px 2px 0;font-size:12px;opacity:.7}`;
     document.head.appendChild(s);
 })();

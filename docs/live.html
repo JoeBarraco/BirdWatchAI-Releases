@@ -1,0 +1,105 @@
+<!doctype html>
+<!--
+  A feeder's live view in a window of its own, opened by "⧉ Pop out" on the
+  live-view dialog (js/community-live.js).
+
+  Asked for as: "viewing live video should give me the option to still
+  navigate the site with the video in a popped out window." The dialog covers
+  the feed and closes when you go anywhere else; this window keeps playing
+  while the main one browses the feed, the map or another page entirely.
+
+  The player is the same js/live-view.js the dialog uses, talking to the relay
+  directly, so nothing about the stream changes: same frame rate, same 30-minute
+  cap, same "stop when nobody is looking" (live-view.js pauses on a hidden tab,
+  and a popped-out window is only hidden when it is minimised).
+
+  The viewer token is the delicate part. It comes from the live-token edge
+  function as the signed-in member, and the session lives in the window that
+  opened this one, which also keeps it refreshed. So the token is asked of the
+  opener while it is still there. Only once it is gone (closed, or navigated
+  away from the community page) does this window read the saved session
+  itself, and it never refreshes it: a refresh here would rotate the refresh
+  token out from under the main page and sign the member out there.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Live — BirdWatchAI</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; height: 100%; background: #111; color: #eee;
+               font: 14px system-ui, sans-serif; }
+  body { display: flex; flex-direction: column; }
+  header { display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+           background: #1c1c1c; border-bottom: 1px solid #333; }
+  header .sub { color: #e55; font-weight: 600; text-transform: uppercase; font-size: 12px; }
+  main { flex: 1; min-height: 0; display: flex; }
+  /* live-view.js draws a 16:9 box; in a window the window is the box. */
+  #player { flex: 1; min-height: 0; border-radius: 0; aspect-ratio: auto; }
+  footer { padding: 6px 12px; font-size: 12px; opacity: .7; }
+</style>
+</head>
+<body>
+  <header><strong id="name">Feeder</strong> <span class="sub">live</span></header>
+  <main><div id="player"></div></main>
+  <footer>A few frames a second, no sound. Closes itself after 30 minutes. Close this window to stop.</footer>
+
+  <script src="js/live-view.js?v=248aae56"></script>
+  <script>
+  (function () {
+    'use strict';
+    // Copied from js/community-core.js, not loaded from it: that file sets up the feed page as it
+    // loads (an observer on the feed's scroll sentinel, among others) and throws on a page that
+    // has no feed. Both values are public by design (the publishable key ships in every page of
+    // the site). If either ever changes there, change it here too.
+    var SUPABASE_URL = 'https://lsamggztfizmkyljdgwq.supabase.co';
+    var ANON_KEY     = 'sb_publishable_-80LQjkx2s82XnURj2DfQQ_d7ARz3js';
+
+    var params = new URLSearchParams(location.search);
+    var key  = params.get('feeder');
+    var name = params.get('name') || 'Feeder';
+    document.getElementById('name').textContent = name;
+    document.title = name + ' — live';
+
+    var player = document.getElementById('player');
+    if (!key || typeof BirdWatchLive === 'undefined') {
+      player.textContent = 'Nothing to show. Open live view from a feeder on the community page.';
+      return;
+    }
+
+    // The opener's own token function, while the community page is still in it.
+    // Cross-origin or navigated away, touching it throws or comes back empty.
+    function fromOpener() {
+      try {
+        var o = window.opener;
+        if (o && !o.closed && typeof o.liveViewToken === 'function') return o.liveViewToken(key);
+      } catch (e) { /* the opener has moved on */ }
+      return null;
+    }
+
+    // The saved session, read-only (see the comment at the top for why it is
+    // never refreshed here). An expired token gets a refusal from live-token,
+    // which live-view.js shows as "Could not get access" with a Try again.
+    async function fromSavedSession() {
+      var token = null;
+      try { token = localStorage.getItem('bwai-auth-token'); } catch (e) { /* storage blocked */ }
+      var functionsUrl = SUPABASE_URL.replace('.supabase.co', '.supabase.co/functions/v1');
+      var res = await fetch(functionsUrl + '/live-token?feeder=' + encodeURIComponent(key), {
+        headers: { apikey: ANON_KEY, Authorization: 'Bearer ' + (token || ANON_KEY) },
+      });
+      if (!res.ok) throw new Error('live-token ' + res.status);
+      return (await res.json()).token;
+    }
+
+    BirdWatchLive.mount(player, {
+      relayUrl: 'wss://live.birdwatchai.com',
+      feederId: key,
+      fps: 3,
+      getToken: function () { return fromOpener() || fromSavedSession(); },
+    });
+  })();
+  </script>
+</body>
+</html>

@@ -7198,10 +7198,37 @@ body.ch-home #classroom-panel-brand .classroom-stage-school { display: none; }
 }
 .mod-head-close-text:hover { border-color: var(--color-gray-500); color: var(--color-gray-900); }
 
-/* Sections of the admin dialog that a Moderate-menu entry jumps straight to
-   (community-navbar.js, data-admin-section). Without the margin the heading
-   lands under the sticky Close bar and the jump looks like it missed. */
-#mod-admin-modal .admin-sec { scroll-margin-top: 4.5rem; }
+/* ── Site admin: one job per tab (js/community-admin-tabs.js) ──
+   The tabs sit inside the sticky header, so switching jobs never needs a
+   scroll back to the top, and wrap onto a second row rather than scrolling
+   sideways on a phone. */
+.admin-head { flex-wrap: wrap; row-gap: 0.6rem; }
+.admin-tabs {
+    flex: 1 0 100%;
+    display: flex; flex-wrap: wrap; gap: 0.35rem;
+}
+.admin-tabs [role="tab"] {
+    font: inherit; font-size: 0.85rem; font-weight: 600;
+    padding: 6px 12px; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--bg-card);
+    color: var(--color-gray-700); cursor: pointer;
+}
+.admin-tabs [role="tab"]:hover { border-color: var(--color-gray-500); color: var(--color-gray-900); }
+.admin-tabs [role="tab"].active {
+    background: var(--color-primary); border-color: var(--color-primary); color: #fff;
+}
+/* `hidden` would lose to any display rule a panel picks up later; say it outright. */
+.admin-tab-panel[hidden] { display: none !important; }
+.admin-filter {
+    width: 100%; box-sizing: border-box;
+    margin: 0 0 0.5rem; padding: 7px 10px;
+    font: inherit; font-size: 0.85rem;
+    border: 1px solid var(--border); border-radius: 6px;
+    background: var(--bg-card); color: var(--color-gray-900);
+}
+.mod-user-list > li[hidden] { display: none !important; }
+.mod-user-list > .admin-filter-empty { color: var(--color-gray-500); font-size: 0.85rem; }
+
 
 /* Life list header stays put while the photo grid scrolls, with Close in it. */
 .life-list-box > .life-list-header {

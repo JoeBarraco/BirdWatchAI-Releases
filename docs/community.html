@@ -13,7 +13,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="BirdWatchAI">
-    <link rel="stylesheet" href="css/community.css?v=6fda5338">
+    <link rel="stylesheet" href="css/community.css?v=516c7a8d">
 </head>
 <body>
 <!-- Top navbar with auth controls -->
@@ -47,19 +47,11 @@
                 <button id="navbar-comments-history-btn" class="navbar-menu-item" role="menuitem" onclick="openCommentsHistory()" title="Review comments across all detections" style="display:none;">💬 All comments</button>
                 <div class="navbar-menu-sep" data-admin-only></div>
                 <div class="navbar-menu-label" data-admin-only>Admin</div>
-                <!-- One admin dialog, four jobs. "Moderators" alone hid the other
-                     three behind a name that says nothing about them ("I get
-                     confused that I need to moderate -> moderators to ... create
-                     communities ... view user login ... remote in feeders").
-                     Each job gets its own entry; all of them open the SAME
-                     dialog (through the original button, so every section's
-                     self-wired listener still fires) and scroll to their section.
-                     data-admin-section is handled in community-navbar.js;
-                     data-admin-only makes them show and hide with the original. -->
-                <button id="navbar-admin-btn" class="navbar-menu-item" role="menuitem" onclick="openAdminPanel()" title="Add or remove moderators and admins" style="display:none;">👥 Moderators &amp; admins</button>
-                <button type="button" class="navbar-menu-item" role="menuitem" data-admin-only data-admin-section="admin-sec-communities" title="Create, review or delete communities" style="display:none;">🏫 Communities</button>
-                <button type="button" class="navbar-menu-item" role="menuitem" data-admin-only data-admin-section="admin-sec-users" title="Every account, when it last signed in and was active" style="display:none;">👤 Users</button>
-                <button type="button" class="navbar-menu-item" role="menuitem" data-admin-only data-admin-section="admin-sec-remote" title="Open a remote-support session to a feeder" style="display:none;">🛰 Remote support</button>
+                <!-- One entry, one dialog, tabs inside it (see #mod-admin-modal).
+                     A menu entry per admin job was tried and dropped: it made the
+                     menu longer without making the dialog any shorter, and the
+                     dialog is what grows as users and communities do. -->
+                <button id="navbar-admin-btn" class="navbar-menu-item" role="menuitem" onclick="openAdminPanel()" title="Moderators, communities, users and remote support" style="display:none;">🛠 Site admin</button>
             </div>
         </div>
 
@@ -692,10 +684,25 @@
              sections run well past the window, and Close was only at the
              very bottom ("the only way to close the dialog box is scroll all
              the way down"). Escape and clicking outside also close it. -->
-        <div class="mod-panel-head">
+        <div class="mod-panel-head admin-head">
             <h3>Site admin</h3>
             <button type="button" class="mod-head-close-text" onclick="closeAdminPanel()">✕ Close</button>
+            <!-- One job at a time. This dialog stacked moderators, communities,
+                 users and remote support one under another, and two of those
+                 lists grow with every school that signs up ("when users and
+                 communities grow it will only get worse"). Tabs and filters are
+                 run by js/community-admin-tabs.js. Every panel's list still
+                 lives in the page and still loads on open, so the loaders in
+                 community-auth / -communities / -admin-users / -remote, which
+                 find their lists by id, did not have to change. -->
+            <div class="admin-tabs" role="tablist" aria-label="Site admin sections">
+                <button type="button" role="tab" data-admin-tab="mods">👥 Moderators</button>
+                <button type="button" role="tab" data-admin-tab="communities">🏫 Communities</button>
+                <button type="button" role="tab" data-admin-tab="users">👤 Users</button>
+                <button type="button" role="tab" data-admin-tab="remote">🛰 Remote support</button>
+            </div>
         </div>
+        <section class="admin-tab-panel" role="tabpanel" data-admin-panel="mods">
         <ul id="mod-user-list" class="mod-user-list">
             <li style="color:var(--color-gray-500)">Loading...</li>
         </ul>
@@ -710,8 +717,10 @@
             <button onclick="doAdminAddUser()">+ Invite</button>
         </div>
         <div id="mod-add-status" style="font-size:0.8rem;margin-top:0.5rem;display:none;"></div>
+        </section>
 
-        <h4 id="admin-sec-communities" class="admin-sec" style="font-size:0.9rem;margin:1.5rem 0 0.5rem;color:var(--color-gray-900);">Create a Community</h4>
+        <section class="admin-tab-panel" role="tabpanel" data-admin-panel="communities">
+        <h4 style="font-size:0.9rem;margin:0 0 0.5rem;color:var(--color-gray-900);">Create a Community</h4>
         <p style="font-size:0.8rem;color:var(--color-gray-500);margin-bottom:0.5rem;">
             Private communities are hidden from the public feed and are never listed —
             feeder owners join with the code below. The owner must already have signed in
@@ -740,22 +749,30 @@
             community is deleted ends up in none at all, which hides it from everyone
             including its own owner — remove its feeders first.
         </p>
+        <input type="search" class="admin-filter" data-admin-filter="community-admin-list"
+               placeholder="Filter by name, code or owner" aria-label="Filter communities">
         <ul id="community-admin-list" class="mod-user-list">
             <li style="color:var(--color-gray-500)">Loading…</li>
         </ul>
 
-        <h4 id="admin-sec-users" class="admin-sec" style="font-size:0.9rem;margin:1.5rem 0 0.5rem;color:var(--color-gray-900);">Users</h4>
+        </section>
+
+        <section class="admin-tab-panel" role="tabpanel" data-admin-panel="users">
         <p style="font-size:0.8rem;color:var(--color-gray-500);margin-bottom:0.5rem;">
             Every account, most recently active first. "Active" is the latest thing they did,
             including their feeders checking in; "signed in" only changes on a fresh sign-in, so
             someone who stays signed in can show an old date there and still be active.
             Students never appear here: classroom devices don't have accounts.
         </p>
+        <input type="search" class="admin-filter" data-admin-filter="admin-user-activity-list"
+               placeholder="Filter by name or email" aria-label="Filter users">
         <ul id="admin-user-activity-list" class="mod-user-list">
             <li style="color:var(--color-gray-500)">Loading…</li>
         </ul>
 
-        <h4 id="admin-sec-remote" class="admin-sec" style="font-size:0.9rem;margin:1.5rem 0 0.5rem;color:var(--color-gray-900);">Remote Support</h4>
+        </section>
+
+        <section class="admin-tab-panel" role="tabpanel" data-admin-panel="remote">
         <p style="font-size:0.8rem;color:var(--color-gray-500);margin-bottom:0.5rem;">
             Open a session to a feeder that's checking in, then run the one-click script on your PC to
             reach its dashboard and SSH. The session reaches only the feeder's own SSH server, a banner
@@ -765,6 +782,7 @@
         <ul id="remote-support-list" class="mod-user-list">
             <li style="color:var(--color-gray-500)">Loading…</li>
         </ul>
+        </section>
 
         <div class="mod-btn-row" style="margin-top:1.25rem;">
             <button class="mod-btn-cancel" onclick="closeAdminPanel()">Close</button>
@@ -1408,7 +1426,7 @@
 <!-- Live view: the player (shared with the relay's /demo/ page) and the "Watch live" button.
      Both optional — community-views.js checks for them with typeof. -->
 <script src="js/live-view.js?v=248aae56"></script>
-<script src="js/community-live.js?v=bd627df1"></script>
+<script src="js/community-live.js?v=9746c86c"></script>
 <!-- ?v=2: gained escJs(), which community-views / -auth / -communities now all
      call. Every one of those must be re-fetched with it — a cached social.js
      leaves escJs undefined and the handlers throw. -->
@@ -1426,7 +1444,8 @@
      modal. Must load before community-auth.js, which calls into window.bwOverlay. -->
 <script src="js/community-overlay.js?v=81687514"></script>
 <script src="js/community-auth.js?v=72d62c57"></script>
-<script src="js/community-navbar.js?v=eb6ea486"></script>
+<script src="js/community-navbar.js?v=c6f0216c"></script>
+<script src="js/community-admin-tabs.js?v=d0b53c5f"></script>
 <script src="js/community-my-feeders.js?v=07a5aacb"></script>
 <script src="js/community-remote.js?v=748a95c8"></script>
 <script src="js/community-admin-users.js?v=12db5ee3"></script>

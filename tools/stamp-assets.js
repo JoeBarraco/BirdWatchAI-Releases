@@ -61,6 +61,7 @@ const checkOnly = process.argv.includes('--check');
 // larger change than the one this script is for.
 const HTML_FILES = [
     'docs/community.html',
+    'docs/live.html',
     'index.html',
 ];
 
