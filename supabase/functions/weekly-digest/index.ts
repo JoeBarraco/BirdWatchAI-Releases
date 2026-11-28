@@ -21,10 +21,13 @@ function buildHtml(opts: {
   topSpecies: [string, number][];
   rarestSighting: { species: string; feeder: string | null; detected_at: string; image_url: string | null } | null;
   firstOfSeason: { species: string; feeder: string | null; detected_at: string } | null;
+  visitors: [string, number][];
+  visitorPhoto: { species: string; feeder: string | null; image_url: string } | null;
   unsubscribeUrl: string;
   siteUrl: string;
 }) {
-  const { weekLabel, totalDetections, topSpecies, rarestSighting, firstOfSeason, unsubscribeUrl, siteUrl: SITE_URL } = opts;
+  const { weekLabel, totalDetections, topSpecies, rarestSighting, firstOfSeason, visitors, visitorPhoto, unsubscribeUrl, siteUrl: SITE_URL } = opts;
+  const visitorTotal = visitors.reduce((n, [, c]) => n + c, 0);
   const maxCount = topSpecies[0]?.[1] ?? 1;
 
   const topSpeciesRows = topSpecies.map(([species, count], i) => {
@@ -59,6 +62,20 @@ function buildHtml(opts: {
       ${firstOfSeason.feeder ? `<div style="font-size:13px;color:#666;">${esc(firstOfSeason.feeder)}</div>` : ''}
     </div>` : '';
 
+  // Non-bird visitors (squirrels, raccoons, deer...) from feeders with "identify non-bird
+  // visitors" on. Their own section, after the birds: the rankings above stay birds-only, and
+  // this is the week's fun extra. Omitted entirely in a week with none.
+  const visitorsBlock = visitors.length ? `
+    <div style="background:#efebe9;border-left:4px solid #8d6e63;border-radius:0 8px 8px 0;padding:16px 20px;margin:28px 0 8px;">
+      <div style="font-size:12px;font-weight:700;color:#6d4c41;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">🐾 Other Visitors This Week</div>
+      ${visitorPhoto ? `<img src="${esc(visitorPhoto.image_url)}" alt="${esc(visitorPhoto.species)}" style="width:100%;max-width:320px;border-radius:8px;margin-bottom:6px;display:block;">
+      <div style="font-size:12px;color:#888;margin-bottom:10px;">${esc(visitorPhoto.species)}${visitorPhoto.feeder ? ` at ${esc(visitorPhoto.feeder)}` : ''}</div>` : ''}
+      <div style="font-size:14px;color:#333;line-height:1.7;">
+        ${visitors.map(([sp, n]) => `<span style="white-space:nowrap;">${esc(sp)} <span style="color:#888;">${n}×</span></span>`).join(' &nbsp;·&nbsp; ')}
+      </div>
+      <div style="font-size:12px;color:#888;margin-top:8px;">Not birds, so they're not in the counts above. Feeders can now name squirrels, raccoons, deer and more.</div>
+    </div>` : '';
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>BirdWatchAI Weekly Digest</title></head>
@@ -80,7 +97,8 @@ function buildHtml(opts: {
         <tr>
           <td style="background:#e8f5e9;padding:16px 32px;text-align:center;border-bottom:1px solid #dcedc8;">
             <span style="font-size:28px;font-weight:800;color:#2d5a3d;">${totalDetections.toLocaleString()}</span>
-            <span style="font-size:15px;color:#555;margin-left:6px;">bird detections this week across all feeders</span>
+            <span style="font-size:15px;color:#555;margin-left:6px;">bird detections this week across all feeders</span>${visitorTotal ? `
+            <div style="font-size:13px;color:#6d4c41;margin-top:4px;">plus ${visitorTotal.toLocaleString()} other visitor${visitorTotal === 1 ? '' : 's'} 🐾</div>` : ''}
           </td>
         </tr>
 
@@ -96,6 +114,8 @@ function buildHtml(opts: {
             <table width="100%" cellpadding="0" cellspacing="0">
               ${topSpeciesRows}
             </table>
+
+            ${visitorsBlock}
 
             <!-- CTA -->
             <div style="text-align:center;margin:32px 0 8px;">
@@ -155,6 +175,33 @@ Deno.serve(async (req) => {
       .limit(2000);
 
     if (dErr) throw dErr;
+
+    // The week's non-bird visitors, for their own section. Fetched apart from the birds so that
+    // nothing above (rarest, first of season, most-seen) can ever pick an animal. A failure here
+    // costs only the extra section, never the digest.
+    let visitors: [string, number][] = [];
+    let visitorPhoto: { species: string; feeder: string | null; image_url: string } | null = null;
+    {
+      const { data: vrows, error: vErr } = await supabase
+        .from('community_detections')
+        .select('species, detected_at, image_url, feeders(display_name)')
+        .eq('is_bird', false)
+        .gte('detected_at', weekAgo.toISOString())
+        .order('detected_at', { ascending: false })
+        .limit(2000);
+      if (vErr) {
+        console.warn('weekly-digest: visitors not loaded:', vErr.message);
+      } else if (vrows?.length) {
+        const vcounts: Record<string, number> = {};
+        for (const v of vrows) if (v.species) vcounts[v.species] = (vcounts[v.species] ?? 0) + 1;
+        visitors = (Object.entries(vcounts) as [string, number][]).sort((a, b) => b[1] - a[1]).slice(0, 8);
+        // A photo of the week's most-seen visitor, newest first.
+        const top = visitors[0]?.[0];
+        const shot = vrows.find(v => v.species === top && v.image_url && !String(v.image_url).startsWith('private://'));
+        if (shot) visitorPhoto = { species: shot.species, feeder: (shot.feeders as any)?.display_name ?? null, image_url: shot.image_url };
+      }
+    }
+
     if (!detections?.length) {
       return new Response(JSON.stringify({ message: 'No detections this week, skipping.' }), { status: 200 });
     }
@@ -250,6 +297,8 @@ Deno.serve(async (req) => {
           firstOfSeason: firstOfSeason
             ? { ...firstOfSeason, feeder: (firstOfSeason.feeders as any)?.display_name ?? null }
             : null,
+          visitors,
+          visitorPhoto,
           unsubscribeUrl: unsubUrl,
           siteUrl: SITE_URL,
         });
@@ -280,7 +329,7 @@ Deno.serve(async (req) => {
     }
 
     console.log(`Weekly digest sent to ${sent} subscribers.`);
-    return new Response(JSON.stringify({ sent, detections: detections.length, weekLabel }), {
+    return new Response(JSON.stringify({ sent, detections: detections.length, visitors: visitors.length, weekLabel }), {
       headers: { 'Content-Type': 'application/json' },
       status: 200,
     });
