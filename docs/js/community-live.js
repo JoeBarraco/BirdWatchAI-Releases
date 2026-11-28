@@ -140,15 +140,30 @@ function liveUpdateSlots() {
     });
 }
 
+// A sooner request replaces a later one. It used to be "if a scan is queued, do nothing", and one
+// almost always is: the 45 s keep-honest re-check. So when the feed re-rendered (sign-in finishing,
+// the auto-refresh, a filter, "load more") and asked for a scan in 400 ms, feeders the page hadn't
+// checked yet sat without a Watch live button for up to 45 s. That hit private feeders hardest:
+// they only appear once the saved sign-in has restored, by which time the 45 s timer is queued.
+let liveScanDue = 0;
 function liveScheduleScan(delayMs) {
-    if (liveScanTimer) return;
+    const due = Date.now() + delayMs;
+    if (liveScanTimer) {
+        if (due >= liveScanDue) return;
+        clearTimeout(liveScanTimer);
+    }
+    liveScanDue = due;
     liveScanTimer = setTimeout(liveScan, delayMs);
 }
 
+let liveScanAgain = false;
 async function liveScan() {
     liveScanTimer = null;
-    if (liveScanBusy) return;
+    // Asked for while a scan is running (new cards rendered mid-scan): run again right after it,
+    // not at the next 45 s re-check.
+    if (liveScanBusy) { liveScanAgain = true; return; }
     liveScanBusy = true;
+    liveScanAgain = false;
     try {
         const ids = [...document.querySelectorAll('.live-slot')].map(el => el.dataset.feederId).filter(Boolean);
         if (ids.length && !document.hidden) {
@@ -160,9 +175,15 @@ async function liveScan() {
     } finally {
         liveScanBusy = false;
         // Keep the buttons honest while the page is open: feeders come and go.
-        liveScheduleScan(45000);
+        liveScheduleScan(liveScanAgain ? 400 : 45000);
     }
 }
+
+// Scans are skipped while the tab is in the background, so coming back to it could show buttons
+// up to 45 s stale. Check as soon as it's visible again.
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && document.querySelector('.live-slot')) liveScheduleScan(400);
+});
 
 async function liveViewToken(deviceKey) {
     const functionsUrl = SUPABASE_URL.replace('.supabase.co', '.supabase.co/functions/v1');
