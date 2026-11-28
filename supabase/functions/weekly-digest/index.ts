@@ -146,6 +146,10 @@ Deno.serve(async (req) => {
     const { data: detections, error: dErr } = await supabase
       .from('community_detections')
       .select('species, rarity, detected_at, image_url, feeders(display_name)')
+      // Birds only: a feeder that identifies non-bird visitors stores them with is_bird = false
+      // (setup-community-visitors.sql), and the digest's rarest / top / first-of-season picks are
+      // about birds.
+      .eq('is_bird', true)
       .gte('detected_at', weekAgo.toISOString())
       .order('detected_at', { ascending: false })
       .limit(2000);
@@ -207,6 +211,7 @@ Deno.serve(async (req) => {
         .from('community_detections')
         .select('id', { count: 'exact', head: true })
         .eq('species', sp)
+        .eq('is_bird', true)
         .lt('detected_at', weekAgo.toISOString());
       if (count === 0) {
         firstOfSeason = detections.find(d => d.species === sp) ?? null;

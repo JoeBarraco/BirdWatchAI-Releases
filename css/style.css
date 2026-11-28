@@ -537,7 +537,9 @@ ul {
 
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    /* Four since the non-bird visitor stat joined species and accuracy. auto-fit drops to two
+       per row on a tablet before the phone rule below makes it one. */
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: var(--space-lg);
     text-align: center;
 }

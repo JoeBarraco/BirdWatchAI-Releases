@@ -1601,6 +1601,11 @@ async function loadClassroomData(room) {
               + `?select=id,feeder_id,species,confidence,detected_at,image_url,video_url,`
               + `temperature,rarity,latitude,longitude,zip_code`
               + `&feeder_id=in.(${ids.join(',')})`
+              // Birds only. A feeder that identifies non-bird visitors (squirrels, deer,
+              // cats...) stores them with is_bird = false; every lesson here is about birds,
+              // and a squirrel turning up as the answer to "which bird came most?" would be
+              // wrong in front of a class.
+              + `&is_bird=eq.true`
               + `&detected_at=gte.${encodeURIComponent(since)}`
               + `&order=detected_at.desc`;
 
@@ -1759,6 +1764,7 @@ async function cmFetchMonthRows(ids, untilIso) {
     const url = `${SUPABASE_URL}/rest/v1/community_detections`
               + `?select=feeder_id,species,detected_at`
               + `&feeder_id=in.(${ids.join(',')})`
+              + `&is_bird=eq.true`   // birds only, as above
               + `&detected_at=gte.${encodeURIComponent(from)}`
               + `&detected_at=lt.${encodeURIComponent(untilIso)}`
               + `&order=detected_at.desc`;
@@ -12007,6 +12013,7 @@ function cmFetchPhotoWeek(feederId, at) {
         const url = `${SUPABASE_URL}/rest/v1/community_detections`
                   + `?select=feeder_id,species,detected_at,image_url,confidence`
                   + `&feeder_id=eq.${encodeURIComponent(feederId)}`
+                  + `&is_bird=eq.true`   // birds only: lessons are about birds
                   + `&detected_at=gte.${encodeURIComponent(from.toISOString())}`
                   + `&detected_at=lt.${encodeURIComponent(to.toISOString())}`
                   + `&order=detected_at.desc`;
@@ -17301,6 +17308,7 @@ async function deleteClassroom(id) {
 // one row with an exact count and read the total off the content-range header.
 async function cmCountDetections(feederId, fromIso, toIso) {
     const url = `${SUPABASE_URL}/rest/v1/community_detections?select=id`
+              + `&is_bird=eq.true`   // predictions are about birds
               + `&feeder_id=eq.${feederId}`
               + `&detected_at=gte.${encodeURIComponent(fromIso)}`
               + `&detected_at=lt.${encodeURIComponent(toIso)}&limit=1`;

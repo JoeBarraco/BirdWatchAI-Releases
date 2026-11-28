@@ -240,6 +240,15 @@ function periodToISO(period) {
     return null;
 }
 
+// A non-bird visitor (squirrel, raccoon, deer, cat...) from a feeder with "identify non-bird
+// visitors" on, stored with is_bird = false (supabase/setup-community-visitors.sql). Visitors
+// belong in the feed, map, gallery and clips, which show what came to the feeder, but never in
+// anything that counts bird species: the Stats tabs, life lists, classroom lessons. Rows from
+// before the column existed have no is_bird at all, hence "!== false" rather than "=== true".
+function isBirdDetection(d) {
+    return !d || d.is_bird !== false;
+}
+
 function applyClientFilters(data) {
     const { feeder, zip, coords, radiusMiles, species, rarity, search, favoritesOnly } = getFilters();
     // Pre-build the feederId → GPS index once per call so "Near me" can fall

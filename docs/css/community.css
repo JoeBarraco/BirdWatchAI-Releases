@@ -1681,6 +1681,19 @@
         }
 
         /* ── First-of-season badge ───────────────────────────── */
+        /* A non-bird visitor (isBirdDetection in community-core.js). Earthy rather than the
+           season badge's orange, so the two never read as the same kind of news. */
+        .badge-visitor {
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 700;
+            background: #8d6e63;
+            color: white;
+            border-radius: 4px;
+            padding: 1px 5px;
+            margin-left: 4px;
+            vertical-align: middle;
+        }
         .badge-first-season {
             display: inline-block;
             font-size: 10px;

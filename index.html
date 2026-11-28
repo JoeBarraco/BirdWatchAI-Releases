@@ -21,7 +21,7 @@
          GitHub Pages serves these with a 10-minute max-age, so without it a
          browser can pair new HTML with the previous JS, and a mismatch there
          silently breaks anything scripted (the pricing configurator especially). -->
-    <link rel="stylesheet" href="css/style.css?v=f21a3bc1">
+    <link rel="stylesheet" href="css/style.css?v=73571586">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="icon" type="image/png" href="images/favicon.png">
     <link rel="manifest" href="manifest.json">
@@ -88,6 +88,7 @@
             <p class="hero-subtitle">
                 BirdWatchAI connects to your camera and uses artificial intelligence to 
                 automatically detect, identify, and notify you of bird visitors — even when you're away.
+                And when the visitor isn't a bird, it can tell you that too: squirrel, raccoon, deer or cat.
             </p>
             <div class="hero-cta">
                 <a href="#download" class="btn btn-primary btn-large">
@@ -114,13 +115,22 @@
     <section class="stats" aria-label="Key statistics">
         <div class="container">
             <div class="stats-grid" role="list">
+                <!-- 9,244 and 98.4% are the optional BioCLIP 2 model (Settings → Identification);
+                     the built-in default is 964 species. The FAQ says so. 98.4% is 187 of 190
+                     real Tampa Bay feeder photos with the location filter on (Nov 2026); 32 is
+                     the non-bird visitor list. Change these with docs/SPECIES-MODELS.md in
+                     birdwatchai-server, which is where the measurements live. -->
                 <div class="stat" role="listitem">
-                    <span class="stat-number" aria-hidden="true">965+</span>
-                    <span class="stat-label">Bird Species Recognized</span>
+                    <span class="stat-number" aria-hidden="true">9,244</span>
+                    <span class="stat-label">Bird Species, Every Continent</span>
                 </div>
                 <div class="stat" role="listitem">
-                    <span class="stat-number" aria-hidden="true">24/7</span>
-                    <span class="stat-label">Automatic Monitoring</span>
+                    <span class="stat-number" aria-hidden="true">98.4%</span>
+                    <span class="stat-label">Correct on Real Feeder Photos</span>
+                </div>
+                <div class="stat" role="listitem">
+                    <span class="stat-number" aria-hidden="true">32</span>
+                    <span class="stat-label">Backyard Animals, Too</span>
                 </div>
                 <div class="stat" role="listitem">
                     <span class="stat-number" aria-hidden="true">100%</span>
@@ -226,9 +236,18 @@
                 <div class="feature-card feature-card-main" role="listitem">
                     <div class="feature-icon">🐦✨</div>
                     <h3>AI Bird Identification</h3>
-                    <p>Our trained neural network identifies 965+ North American bird species in real-time. Get instant notifications with species name, confidence level, and rarity for your location.</p>
+                    <p>Choose the fast built-in model (964 North American species) or <strong>BioCLIP 2</strong>: 9,244 bird species from every continent, and <strong>98.4% correct</strong> on 190 real feeder photos in our test, against 78% for the standard model. A location filter narrows it to the birds expected at your feeder that week. Get instant notifications with species name, confidence level, and rarity for your location.</p>
                 </div>
                 
+                <!-- Non-bird visitors (BirdWatchAI Server 0.5.468+, BioCLIP 2). A card of its
+                     own, second only to identification: most feeder cameras know birds and
+                     nothing else. Figures are from docs/SPECIES-MODELS.md in birdwatchai-server. -->
+                <div class="feature-card" role="listitem">
+                    <div class="feature-icon">🐿️</div>
+                    <h3>Not Just Birds</h3>
+                    <p>Most feeder cameras only know birds, so a squirrel is either ignored or logged as one. BirdWatchAI can name <strong>32 backyard visitors</strong>: squirrels, chipmunks, raccoons, opossums, rabbits, deer, foxes, cats, dogs, anoles and more. On 64 real photos of animals at our feeders it recorded 61 of them as visitors, and it mistook none of 23 bird photos for an animal. Visitors get their own filter and never count toward your bird stats or life list.</p>
+                </div>
+
                 <div class="feature-card" role="listitem">
                     <div class="feature-icon">📹</div>
                     <h3>RTSP Camera Support</h3>
@@ -565,7 +584,7 @@
                         <p class="opt-price"><strong>$75</strong> one-time <span class="opt-price-alt">— or <strong>$50</strong> as part of any kit below</span></p>
                         <p>The part that watches the camera and tells you what landed. Runs on a computer in your home rather than in the cloud, so your footage never leaves the house unless you choose to share it.</p>
                         <ul class="pricing-features">
-                            <li><span class="check">✓</span> Identifies 965+ North American species</li>
+                            <li><span class="check">✓</span> Identifies up to 9,244 bird species worldwide, plus squirrels, raccoons, deer and other visitors</li>
                             <li><span class="check">✓</span> Email &amp; push notifications</li>
                             <li><span class="check">✓</span> Snapshots, video clips &amp; summary reports</li>
                             <li><span class="check">✓</span> Statistics, life list and a species gallery</li>
@@ -824,7 +843,7 @@
                         <span class="opt-card-pick-now">✓ In the builder now</span>
                     </a>
                 </div>
-                <p class="fullnest-outro">The names are build sizes, not birds the software looks for — it identifies 965+ species whichever one you pick. Prices are in <a href="#build">the builder</a>, which names your build as you choose. One step is still yours: connecting it to your camera in the setup wizard, since the camera's address depends on your own network.</p>
+                <p class="fullnest-outro">The names are build sizes, not birds the software looks for — it identifies the same birds and animals whichever one you pick. Prices are in <a href="#build">the builder</a>, which names your build as you choose. One step is still yours: connecting it to your camera in the setup wizard, since the camera's address depends on your own network.</p>
                 <p class="opt-back"><a href="#build">↓ Back to the builder</a></p>
 
                 <p class="pricing-note">
@@ -1152,7 +1171,17 @@ docker compose up -d</code></pre>
                 
                 <div class="faq-item">
                     <h3>How accurate is the bird identification?</h3>
-                    <p>Our AI model recognizes 965+ North American bird species with high accuracy. You can adjust the confidence threshold to balance between catching more birds vs. reducing false positives.</p>
+                    <p>There are two models to choose from in Settings. The built-in one knows 964 North American species and is fast enough for any computer. <strong>BioCLIP 2</strong>, a free 306&nbsp;MB download, knows 9,244 bird species worldwide. We tested both on 190 real photos from four Tampa Bay feeders, each labelled by eye. With the location filter on, BioCLIP 2 named <strong>187 correctly (98.4%)</strong>, against 161 (84.7%) for the built-in model. BioCLIP 2 is slower, about a quarter of a second per bird on a PC, and needs roughly 1&nbsp;GB of free memory. It hasn't been tested on a Raspberry Pi yet. You can also adjust the confidence threshold to balance catching more birds against fewer false alarms.</p>
+                </div>
+
+                <div class="faq-item">
+                    <h3>Does it work outside North America?</h3>
+                    <p>Yes, with BioCLIP 2. Its 9,244 species come from every continent. Mapped against the BirdNET range model, about 2,570 are found in South America, 2,500 in Asia, 1,900 in Africa, 1,770 in North and Central America, 1,470 in Australia and the Pacific, and 530 in Europe. Many species live on more than one continent. Turn on the location filter and it only considers the birds expected at your feeder that week.</p>
+                </div>
+
+                <div class="faq-item">
+                    <h3>Can it identify squirrels and other animals?</h3>
+                    <p>Yes. Turn on <em>Also identify non-bird visitors</em> (it needs BioCLIP 2) and BirdWatchAI names 32 kinds of backyard animal: gray, fox, red and flying squirrels, chipmunk, groundhog, raccoon, opossum, cottontail, skunk, armadillo, white-tailed and mule deer, red and gray fox, coyote, bobcat, black bear, cat, dog, anoles, iguana and more. It also catches the squirrels that bird cameras usually mistake for birds. On 64 real photos of animals at our feeders it recorded 61 as visitors, and it called none of 23 bird photos an animal. Visitors appear in your history, gallery and the community feed with their own filter, and never count toward bird statistics, your life list or badges.</p>
                 </div>
                 
                 <div class="faq-item">
@@ -1264,7 +1293,7 @@ docker compose up -d</code></pre>
         const grid         = document.getElementById('sightings-grid');
         try {
             const url = `${SUPABASE_URL}/rest/v1/community_detections` +
-                `?select=id,species,rarity,detected_at,image_url,zip_code,feeders(display_name)` +
+                `?select=id,species,rarity,detected_at,image_url,zip_code,is_bird,feeders(display_name)` +
                 `&image_url=not.is.null&order=detected_at.desc&limit=12`;
             const res  = await fetch(url, { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` } });
             const data = await res.json();
@@ -1286,7 +1315,7 @@ docker compose up -d</code></pre>
                 return `<a class="sighting-card" href="docs/community.html?id=${d.id}" title="${esc(d.species)}">
                     <img src="${esc(d.image_url)}" alt="${esc(d.species)}" loading="lazy">
                     <div class="sighting-overlay">
-                        <span class="sighting-species">${esc(d.species)}</span>
+                        <span class="sighting-species">${d.is_bird === false ? '🐾 ' : ''}${esc(d.species)}</span>
                         ${meta ? `<div class="sighting-meta">${meta}</div>` : ''}
                     </div>
                 </a>`;
@@ -1306,7 +1335,7 @@ docker compose up -d</code></pre>
     // ── Live Ticker ───────────────────────────────────────────
     (async () => {
         try {
-            const res  = await fetch(`${_SB_URL}/rest/v1/community_detections?select=species,rarity,detected_at,feeders(display_name)&order=detected_at.desc&limit=20`, { headers: _headers });
+            const res  = await fetch(`${_SB_URL}/rest/v1/community_detections?select=species,rarity,detected_at,is_bird,feeders(display_name)&order=detected_at.desc&limit=20`, { headers: _headers });
             const data = await res.json();
             if (!data.length) return;
             const items = data.map(d => {
@@ -1314,7 +1343,7 @@ docker compose up -d</code></pre>
                 const when = ago < 1 ? 'just now' : ago < 60 ? `${ago}m ago` : `${Math.round(ago/60)}h ago`;
                 const where = d.feeders?.display_name ? ` at ${_esc(d.feeders.display_name)}` : '';
                 const rare = d.rarity && d.rarity !== 'Common' ? ` · <em>${_esc(d.rarity)}</em>` : '';
-                return `<span class="ticker-item">🐦 <strong>${_esc(d.species)}</strong>${where}${rare} <span class="ticker-sep">·</span> ${when}</span>`;
+                return `<span class="ticker-item">${d.is_bird === false ? '🐾' : '🐦'} <strong>${_esc(d.species)}</strong>${where}${rare} <span class="ticker-sep">·</span> ${when}</span>`;
             }).join('<span class="ticker-sep">|</span>');
             const inner = document.getElementById('ticker-inner');
             inner.innerHTML = items + '<span style="padding:0 4rem;"></span>' + items;
@@ -1332,7 +1361,7 @@ docker compose up -d</code></pre>
         const panel = document.getElementById('highlights-grid');
         try {
             const since = new Date(Date.now() - 7 * 86400000).toISOString();
-            const res   = await fetch(`${_SB_URL}/rest/v1/community_detections?select=species,rarity,detected_at,image_url,feeders(display_name)&detected_at=gte.${encodeURIComponent(since)}&limit=500&order=detected_at.desc`, { headers: _headers });
+            const res   = await fetch(`${_SB_URL}/rest/v1/community_detections?select=species,rarity,detected_at,image_url,feeders(display_name)&is_bird=eq.true&detected_at=gte.${encodeURIComponent(since)}&limit=500&order=detected_at.desc`, { headers: _headers });
             const data  = await res.json();
             if (!data.length) { panel.innerHTML = '<div class="highlights-loading">No data yet this week.</div>'; return; }
 
@@ -1352,7 +1381,7 @@ docker compose up -d</code></pre>
             const peakDayStr = peakDay ? new Date(peakDay[0]).toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'}) : '—';
             // New species this week vs prior week
             const priorSince = new Date(Date.now() - 14*86400000).toISOString();
-            const res2 = await fetch(`${_SB_URL}/rest/v1/community_detections?select=species,detected_at&detected_at=gte.${encodeURIComponent(priorSince)}&detected_at=lt.${encodeURIComponent(since)}&limit=500`, { headers: _headers });
+            const res2 = await fetch(`${_SB_URL}/rest/v1/community_detections?select=species,detected_at&is_bird=eq.true&detected_at=gte.${encodeURIComponent(priorSince)}&detected_at=lt.${encodeURIComponent(since)}&limit=500`, { headers: _headers });
             const priorData = await res2.json();
             const priorSpecies = new Set(priorData.map(d=>d.species));
             const newThisWeek = [...new Set(data.map(d=>d.species))].filter(s=>!priorSpecies.has(s)).length;
@@ -1381,7 +1410,7 @@ docker compose up -d</code></pre>
         const panel = document.getElementById('migration-content');
         try {
             const since = new Date(Date.now() - 30*86400000).toISOString();
-            const res   = await fetch(`${_SB_URL}/rest/v1/community_detections?select=species,detected_at,image_url&detected_at=gte.${encodeURIComponent(since)}&limit=500&order=detected_at.desc`, { headers: _headers });
+            const res   = await fetch(`${_SB_URL}/rest/v1/community_detections?select=species,detected_at,image_url&is_bird=eq.true&detected_at=gte.${encodeURIComponent(since)}&limit=500&order=detected_at.desc`, { headers: _headers });
             const data  = await res.json();
             if (!data.length) { panel.innerHTML = '<div class="highlights-loading">No data for this month.</div>'; return; }
 
@@ -1427,7 +1456,7 @@ docker compose up -d</code></pre>
             // older records. Filtering on zip_code=not.is.null here is what
             // silently emptied this map.
             const since = new Date(Date.now() - 30*86400000).toISOString();
-            const res   = await fetch(`${_SB_URL}/rest/v1/community_detections?select=species,rarity,detected_at,zip_code,image_url,feeders(zip_code)&detected_at=gte.${encodeURIComponent(since)}&limit=500&order=detected_at.desc`, { headers: _headers });
+            const res   = await fetch(`${_SB_URL}/rest/v1/community_detections?select=species,rarity,detected_at,zip_code,image_url,feeders(zip_code)&is_bird=eq.true&detected_at=gte.${encodeURIComponent(since)}&limit=500&order=detected_at.desc`, { headers: _headers });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data  = await res.json();
             data.forEach(d => { d.zip_code = d.zip_code || d.feeders?.zip_code || null; });
@@ -1494,7 +1523,7 @@ docker compose up -d</code></pre>
         const panel = document.getElementById('feeder-dir-grid');
         try {
             const since = new Date(Date.now() - 30*86400000).toISOString();
-            const res   = await fetch(`${_SB_URL}/rest/v1/community_detections?select=species,detected_at,image_url,feeders(display_name)&detected_at=gte.${encodeURIComponent(since)}&limit=500&order=detected_at.desc`, { headers: _headers });
+            const res   = await fetch(`${_SB_URL}/rest/v1/community_detections?select=species,detected_at,image_url,feeders(display_name)&is_bird=eq.true&detected_at=gte.${encodeURIComponent(since)}&limit=500&order=detected_at.desc`, { headers: _headers });
             const data  = await res.json();
             if (!data.length) { panel.innerHTML = '<div class="highlights-loading">No feeders found.</div>'; return; }
 
@@ -1609,7 +1638,7 @@ docker compose up -d</code></pre>
             const lastYear = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
             const dayStart = lastYear.toISOString().slice(0, 10) + 'T00:00:00';
             const dayEnd   = lastYear.toISOString().slice(0, 10) + 'T23:59:59';
-            const res = await fetch(`${_SB_URL}/rest/v1/community_detections?select=species,rarity,detected_at,image_url,feeders(display_name)&detected_at=gte.${encodeURIComponent(dayStart)}&detected_at=lte.${encodeURIComponent(dayEnd)}&order=detected_at.desc&limit=50`, { headers: _headers });
+            const res = await fetch(`${_SB_URL}/rest/v1/community_detections?select=species,rarity,detected_at,image_url,feeders(display_name)&is_bird=eq.true&detected_at=gte.${encodeURIComponent(dayStart)}&detected_at=lte.${encodeURIComponent(dayEnd)}&order=detected_at.desc&limit=50`, { headers: _headers });
             const data = await res.json();
             if (!Array.isArray(data) || !data.length) return;
 

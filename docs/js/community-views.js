@@ -165,7 +165,8 @@ function renderFeed() {
     const firstOfSeason = new Set();
     if (seasonEarliestBySpecies) {
         visible.forEach(d => {
-            if (d.detected_at && seasonEarliestBySpecies[d.species] === d.detected_at) {
+            // Birds only: a season of squirrels is not news.
+            if (isBirdDetection(d) && d.detected_at && seasonEarliestBySpecies[d.species] === d.detected_at) {
                 firstOfSeason.add(d.id);
             }
         });
@@ -189,7 +190,7 @@ function renderFeed() {
         // split is why `+ Life List` and `☆ Follow` are no longer inline in the
         // text: they sat there for historical reasons, and buttons on both
         // sides made the card read as neither one thing nor the other.
-        const lifeListBtn = currentUser
+        const lifeListBtn = currentUser && isBirdDetection(d)
             ? `<button class="life-list-add-btn${onLifeList ? ' on-list' : ''}" onclick="toggleLifeListSpecies('${escJs(d.species)}', '${d.id}', this)" title="${onLifeList ? 'Remove from life list' : 'Add to life list'}">${onLifeList ? '✓ On life list' : '+ Life list'}</button>`
             : '';
         const followBtn = currentUser && feederId
@@ -205,7 +206,8 @@ function renderFeed() {
                 <div class="card-title">
                     <span class="species-link" data-species="${esc(d.species)}" style="cursor:pointer;text-decoration:underline dotted;">${esc(d.species)}</span>${d.rarity
                         ? ` <span class="${rarityClass}">· ${esc(d.rarity)}</span>` : ''}${isFirst
-                        ? ' <span class="badge-first-season">🌱 First of Season</span>' : ''}
+                        ? ' <span class="badge-first-season">🌱 First of Season</span>' : ''}${isBirdDetection(d)
+                        ? '' : ' <span class="badge-visitor" title="Not a bird: a visitor identified by the feeder">🐾 Visitor</span>'}
                 </div>
                 <div class="card-meta">
                     ${d.feeders?.display_name ? `<span class="card-feeder">${feederMark(d.feeders)} ${esc(d.feeders.display_name)}</span>` : ''}${formatLocationChip(d)}
@@ -1174,7 +1176,9 @@ async function loadAllThenRenderStats() {
 
 function renderStats() {
     if (currentView !== 'stats') return;
-    const visible = applyClientFilters(allDetections);
+    // Every Stats tab (here, Trend, Calendar, Records, Pairs) counts birds only: see
+    // isBirdDetection. The feed, map, gallery and CSV export still include visitors.
+    const visible = applyClientFilters(allDetections).filter(isBirdDetection);
     const total   = visible.length;
 
     // ── Month-over-month helpers ──────────────────────────
@@ -1183,8 +1187,8 @@ function renderStats() {
     const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
     const lastMonthEnd   = thisMonthStart;
 
-    const thisMo = applyClientFilters(allDetections).filter(d => d.detected_at >= thisMonthStart);
-    const lastMo = applyClientFilters(allDetections).filter(d => d.detected_at >= lastMonthStart && d.detected_at < lastMonthEnd);
+    const thisMo = applyClientFilters(allDetections).filter(isBirdDetection).filter(d => d.detected_at >= thisMonthStart);
+    const lastMo = applyClientFilters(allDetections).filter(isBirdDetection).filter(d => d.detected_at >= lastMonthStart && d.detected_at < lastMonthEnd);
 
     function momDelta(curr, prev) {
         if (!prev) return '';
@@ -1754,7 +1758,7 @@ function toggleTrendSpecies(sp) {
 }
 
 function renderTrend() {
-    const visible = applyClientFilters(allDetections);
+    const visible = applyClientFilters(allDetections).filter(isBirdDetection);
     const panel   = document.getElementById('stats-trend');
     if (!visible.length) {
         panel.innerHTML = '<div class="feed-empty">No data for the current filters.</div>';
@@ -1969,7 +1973,7 @@ function renderTrendChart() {
 function renderCalendar() {
     const panel = document.getElementById('stats-calendar');
     if (!panel) return;
-    const visible = applyClientFilters(allDetections);
+    const visible = applyClientFilters(allDetections).filter(isBirdDetection);
     if (!visible.length) {
         panel.innerHTML = '<div class="feed-empty">No data for the current filters.</div>';
         return;
@@ -2126,7 +2130,7 @@ function renderCalendar() {
 function renderRecords() {
     const panel = document.getElementById('stats-records');
     if (!panel) return;
-    const visible = applyClientFilters(allDetections);
+    const visible = applyClientFilters(allDetections).filter(isBirdDetection);
     if (!visible.length) {
         panel.innerHTML = '<div class="feed-empty">No data for the current filters.</div>';
         return;
@@ -2285,7 +2289,7 @@ function renderRecords() {
 function renderPairs() {
     const panel = document.getElementById('stats-pairs');
     if (!panel) return;
-    const visible = applyClientFilters(allDetections);
+    const visible = applyClientFilters(allDetections).filter(isBirdDetection);
     if (!visible.length) {
         panel.innerHTML = '<div class="feed-empty">No data for the current filters.</div>';
         return;
